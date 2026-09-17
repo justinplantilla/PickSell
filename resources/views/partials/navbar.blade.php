@@ -20,7 +20,7 @@
     .nav-logo { display: inline-flex; align-items: center; gap: 10px; color: #f9f8f6; font-size: 20px; font-weight: 800; letter-spacing: 0; line-height: 1; white-space: nowrap; }
     .nav-logo img { width: 24px; height: 24px; object-fit: contain; display: block; mix-blend-mode: normal; }
     .nav-logo span { color: #f9f8f6; }
-    .nav-logo > span > span { color: #ff6f61; }
+    .nav-logo > span > span { color: #f9f8f6; }
     .nav-logo:hover { transform: translateY(-1px); }
 
     .nav-search {
