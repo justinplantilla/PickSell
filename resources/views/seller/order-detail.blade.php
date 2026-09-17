@@ -59,7 +59,7 @@
                     @if($order->status === 'pending')
                     <form method="POST" action="/seller/orders/{{ $order->id }}/pack">
                         @csrf @method('PATCH')
-                        <button type="submit" class="btn btn-coral">📦 Mark as Packed</button>
+                        <button type="submit" class="btn btn-coral">Mark as Packed</button>
                     </form>
                     @elseif($order->status === 'processing')
                     <form method="POST" action="/seller/orders/{{ $order->id }}/handover" style="display:flex;gap:0.5rem;align-items:flex-end;">
@@ -68,12 +68,12 @@
                             <label class="form-label">Waybill Number *</label>
                             <input type="text" name="waybill_number" class="form-control" required placeholder="Enter waybill number">
                         </div>
-                        <button type="submit" class="btn btn-success">🚚 Hand Over</button>
+                        <button type="submit" class="btn btn-success">Hand Over</button>
                     </form>
                     @elseif($order->status === 'shipped')
                     <div class="alert alert-success" style="margin:0;">Order has been handed over to courier. Awaiting delivery confirmation.</div>
                     @elseif($order->status === 'completed')
-                    <div class="alert alert-success" style="margin:0;">✅ Order delivered and completed.</div>
+                    <div class="alert alert-success" style="margin:0;">Order delivered and completed.</div>
                     @endif
                 </div>
             </div>
@@ -84,14 +84,7 @@
             <div class="card-header"><span class="card-title">Customer Feedback</span></div>
             <div class="card-body">
                 @if($order->rating)
-                <div style="margin-bottom:0.5rem;">
-                    <span style="font-size:1.2rem;">
-                        @for($i=1;$i<=5;$i++)
-                            {{ $i <= $order->rating ? '⭐' : '☆' }}
-                        @endfor
-                    </span>
-                    <span style="font-size:0.85rem;color:#888;margin-left:0.4rem;">{{ $order->rating }}/5</span>
-                </div>
+                <div style="margin-bottom:0.5rem;font-size:0.85rem;color:#888;">Customer rating: {{ $order->rating }}/5</div>
                 @endif
                 @if($order->feedback)
                 <p style="font-size:0.88rem;color:#555;">{{ $order->feedback }}</p>
