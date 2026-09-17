@@ -129,7 +129,11 @@
             <div class="card-header"><span class="card-title">Account Details</span></div>
             <div class="card-body">
                 <table>
+                    <tr><td style="color:#888;width:130px;">Role</td><td><span class="badge badge-active">Buyer</span></td></tr>
+                    <tr><td style="color:#888;">Status</td><td><span class="badge badge-{{ auth()->user()->status }}">{{ auth()->user()->status }}</span></td></tr>
                     <tr><td style="color:#888;width:130px;">Full Name</td><td>{{ auth()->user()->full_name }}</td></tr>
+                    <tr><td style="color:#888;">Email</td><td>{{ auth()->user()->email }}</td></tr>
+                    <tr><td style="color:#888;">Contact</td><td>{{ auth()->user()->contact_no }}</td></tr>
                     <tr><td style="color:#888;">Sex</td><td>{{ auth()->user()->sex }}</td></tr>
                     <tr><td style="color:#888;">Birthday</td><td>{{ auth()->user()->birthday ? auth()->user()->birthday->format('M d, Y').' (Age '.auth()->user()->age.')' : '—' }}</td></tr>
                     <tr><td style="color:#888;">Address</td><td>{{ implode(', ', array_filter([auth()->user()->house_no, auth()->user()->street, auth()->user()->barangay, auth()->user()->municipality, auth()->user()->province])) }}</td></tr>

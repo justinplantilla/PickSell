@@ -35,6 +35,14 @@
                     </div>
                 </div>
                 <div class="form-group">
+                    <label class="form-label">Middle Initial</label>
+                    <input type="text" name="middle_initial" class="form-control" value="{{ auth()->user()->middle_initial }}" maxlength="5">
+                </div>
+                <div class="grid-2">
+                    <div class="form-group"><label class="form-label">Sex *</label><select name="sex" class="form-control" required><option value="Male" {{ auth()->user()->sex === 'Male' ? 'selected' : '' }}>Male</option><option value="Female" {{ auth()->user()->sex === 'Female' ? 'selected' : '' }}>Female</option></select></div>
+                    <div class="form-group"><label class="form-label">Birthday *</label><input type="date" name="birthday" class="form-control" value="{{ auth()->user()->birthday?->format('Y-m-d') }}" required></div>
+                </div>
+                <div class="form-group">
                     <label class="form-label">Email *</label>
                     <input type="email" name="email" class="form-control" value="{{ auth()->user()->email }}" required>
                 </div>
@@ -50,6 +58,13 @@
                     <label class="form-label">Line of Business</label>
                     <input type="text" name="line_of_business" class="form-control" value="{{ auth()->user()->line_of_business }}">
                 </div>
+                <div class="grid-2">
+                    <div class="form-group"><label class="form-label">Province *</label><input type="text" name="province" class="form-control" value="{{ auth()->user()->province }}" required></div>
+                    <div class="form-group"><label class="form-label">Municipality *</label><input type="text" name="municipality" class="form-control" value="{{ auth()->user()->municipality }}" required></div>
+                    <div class="form-group"><label class="form-label">Barangay *</label><input type="text" name="barangay" class="form-control" value="{{ auth()->user()->barangay }}" required></div>
+                    <div class="form-group"><label class="form-label">House No.</label><input type="text" name="house_no" class="form-control" value="{{ auth()->user()->house_no }}"></div>
+                </div>
+                <div class="form-group"><label class="form-label">Street</label><input type="text" name="street" class="form-control" value="{{ auth()->user()->street }}"></div>
                 <button type="submit" class="btn btn-coral">Save Changes</button>
             </form>
         </div>
@@ -85,9 +100,13 @@
                 <table>
                     <tr><td style="color:#888;width:140px;">Role</td><td><span class="badge badge-active">Seller</span></td></tr>
                     <tr><td style="color:#888;">Status</td><td><span class="badge badge-{{ auth()->user()->status }}">{{ auth()->user()->status }}</span></td></tr>
+                    <tr><td style="color:#888;">Email</td><td>{{ auth()->user()->email }}</td></tr>
+                    <tr><td style="color:#888;">Contact</td><td>{{ auth()->user()->contact_no }}</td></tr>
+                    <tr><td style="color:#888;">Business</td><td>{{ auth()->user()->business_name ?? '—' }}</td></tr>
+                    <tr><td style="color:#888;">Line of Business</td><td>{{ auth()->user()->line_of_business ?? '—' }}</td></tr>
                     <tr><td style="color:#888;">Sex</td><td>{{ auth()->user()->sex }}</td></tr>
                     <tr><td style="color:#888;">Birthday</td><td>{{ auth()->user()->birthday ? auth()->user()->birthday->format('M d, Y').' (Age '.auth()->user()->age.')' : '—' }}</td></tr>
-                    <tr><td style="color:#888;">Address</td><td>{{ implode(', ', array_filter([auth()->user()->barangay, auth()->user()->municipality, auth()->user()->province])) }}</td></tr>
+                    <tr><td style="color:#888;">Address</td><td>{{ implode(', ', array_filter([auth()->user()->house_no, auth()->user()->street, auth()->user()->barangay, auth()->user()->municipality, auth()->user()->province])) }}</td></tr>
                     <tr><td style="color:#888;">Member Since</td><td>{{ auth()->user()->created_at->format('M d, Y') }}</td></tr>
                 </table>
             </div>
