@@ -7,8 +7,13 @@
     .account-page .card::before { content: ''; position: absolute; inset: 0 0 auto; height: 3px; background: var(--coral); }
     .account-page .btn { box-shadow: 0 0 0 1px rgba(232,71,42,.18), 0 6px 16px rgba(232,71,42,.2); transition: transform .2s, box-shadow .2s, background .2s; }
     .account-page .btn:hover { transform: translateY(-2px); box-shadow: 0 0 0 2px rgba(232,71,42,.2), 0 10px 24px rgba(232,71,42,.32); }
-    .account-page .danger-card { border-color: rgba(220,38,38,.35); }
-    .account-page .danger-card::before { background: #dc2626; }
+    .account-page .danger-card { border: 1px solid #ef4444; border-radius: 16px; background: #1b1b1b; color: #f3f4f6; box-shadow: 0 8px 24px rgba(239,68,68,.08); }
+    .account-page .danger-card::before { display: none; }
+    .account-page .danger-card .card-header { border-bottom: 0; padding-bottom: 0.35rem; }
+    .account-page .danger-card .card-title { color: #ff4545; }
+    .account-page .danger-card .card-body { padding-top: 0.35rem; }
+    .account-page .danger-card .btn-danger { background: #ff4545; border: 0; color: #fff; box-shadow: 0 8px 18px rgba(255,69,69,.35); }
+    .account-page .danger-card .btn-danger:hover { background: #ff5d5d; box-shadow: 0 10px 24px rgba(255,69,69,.5); }
 </style>
 @endsection
 
