@@ -48,6 +48,6 @@
             </tbody>
         </table>
     </div>
-    @if($orders->hasPages())<div style="padding:1rem;">{{ $orders->withQueryString()->links() }}</div>@endif
+    @if($orders->hasPages())<div class="dashboard-pagination">{{ $orders->withQueryString()->links() }}</div>@endif
 </div>
 @endsection

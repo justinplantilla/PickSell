@@ -245,6 +245,7 @@
         }
     </style>
     @yield('styles')
+    @include('partials.pagination-styles')
 </head>
 <body>
     <!-- Sidebar -->

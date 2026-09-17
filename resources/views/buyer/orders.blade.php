@@ -101,7 +101,7 @@
 @endforelse
 
 @if($orders->hasPages())
-<div style="margin-top:1rem;">{{ $orders->withQueryString()->links() }}</div>
+<div class="dashboard-pagination" style="margin-top:1rem;">{{ $orders->withQueryString()->links() }}</div>
 @endif
 
 <!-- Feedback Modal -->

@@ -101,7 +101,7 @@
     </a>
     @endforeach
 </div>
-<div class="buyer-pagination">{{ $products->withQueryString()->links() }}</div>
+<div class="buyer-pagination dashboard-pagination">{{ $products->withQueryString()->links() }}</div>
 @endif
     </section>
 

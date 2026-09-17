@@ -33,6 +33,6 @@
             </tbody>
         </table>
     </div>
-    @if($products->hasPages())<div style="padding:1rem 1.2rem;">{{ $products->withQueryString()->links() }}</div>@endif
+    @if($products->hasPages())<div class="dashboard-pagination">{{ $products->withQueryString()->links() }}</div>@endif
 </div>
 @endsection

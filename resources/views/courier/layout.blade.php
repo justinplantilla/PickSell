@@ -43,6 +43,7 @@
         .form-label { display:block; font-weight:600; font-size:0.82rem; margin-bottom:0.35rem; }
         @media(max-width:700px) { .stats { grid-template-columns:repeat(2,1fr); } .page { padding:1rem; } .topbar { align-items:flex-start; flex-direction:column; } }
     </style>
+    @include('partials.pagination-styles')
 </head>
 <body>
 <header class="topbar">

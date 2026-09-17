@@ -239,6 +239,7 @@
         }
     </style>
     @yield('styles')
+    @include('partials.pagination-styles')
 </head>
 <body>
     <aside class="sidebar" id="sidebar">

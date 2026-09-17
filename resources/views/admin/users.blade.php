@@ -68,7 +68,7 @@
         </tbody>
     </table>
     @if($users->hasPages())
-    <div style="padding:1rem 1.2rem;">{{ $users->withQueryString()->links() }}</div>
+    <div class="dashboard-pagination">{{ $users->withQueryString()->links() }}</div>
     @endif
 </div>
 @endsection

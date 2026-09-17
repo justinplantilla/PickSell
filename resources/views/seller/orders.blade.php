@@ -54,7 +54,7 @@
         </table>
     </div>
     @if($orders->hasPages())
-    <div style="padding:1rem 1.2rem;">{{ $orders->withQueryString()->links() }}</div>
+    <div class="dashboard-pagination">{{ $orders->withQueryString()->links() }}</div>
     @endif
 </div>
 

@@ -269,6 +269,7 @@
         }
     </style>
     @yield('styles')
+    @include('partials.pagination-styles')
 </head>
 <body>
     <nav class="navbar">

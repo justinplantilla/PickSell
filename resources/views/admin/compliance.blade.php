@@ -35,7 +35,7 @@
         </tbody>
     </table>
     @if($sellers->hasPages())
-    <div style="padding:1rem 1.2rem;">{{ $sellers->withQueryString()->links() }}</div>
+    <div class="dashboard-pagination">{{ $sellers->withQueryString()->links() }}</div>
     @endif
 </div>
 

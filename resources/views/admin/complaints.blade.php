@@ -44,7 +44,7 @@
         </tbody>
     </table>
     @if($complaints->hasPages())
-    <div style="padding:1rem 1.2rem;">{{ $complaints->withQueryString()->links() }}</div>
+    <div class="dashboard-pagination">{{ $complaints->withQueryString()->links() }}</div>
     @endif
 </div>
 @endsection
