@@ -58,6 +58,7 @@
         .navbar-search button { padding: 0.5rem 1rem; background: var(--coral); border: none; border-radius: 0 6px 6px 0; color: #fff; cursor: pointer; }
         .navbar-search button:hover { background: var(--coral-dark); }
         .navbar-right { margin-left: auto; display: flex; align-items: center; gap: 1.2rem; }
+        .dashboard-datetime { color: #aaa; font-size: 0.75rem; white-space: nowrap; }
         .nav-icon-btn { position: relative; color: #ccc; display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer; transition: color 0.2s; }
         .nav-icon-btn:hover { color: #fff; }
         .cart-badge { position: absolute; top: -6px; right: -8px; background: var(--coral); color: #fff; font-size: 0.6rem; font-weight: 700; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
@@ -280,6 +281,7 @@
             </button>
         </form>
         <div class="navbar-right">
+            <span class="dashboard-datetime">{{ now()->format('M d, Y h:i A') }}</span>
             <a href="/buyer/chat" class="nav-icon-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
                 <span>Messages</span>

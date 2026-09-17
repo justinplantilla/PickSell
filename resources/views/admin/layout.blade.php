@@ -354,7 +354,7 @@
                     <div class="notif-header">Notifications <span id="notifCount" style="color:var(--coral);"></span></div>
                     <div id="notifList"><div class="notif-empty">Loading...</div></div>
                 </div>
-                <span style="font-size:0.85rem;color:#888;">{{ now()->format('M d, Y') }}</span>
+                <span style="font-size:0.85rem;color:#888;">{{ now()->format('M d, Y h:i A') }}</span>
             </div>
         </div>
         <div class="content">

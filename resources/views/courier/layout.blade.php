@@ -10,6 +10,7 @@
         body { margin:0; font-family:'Segoe UI',sans-serif; background:#f4f4f4; color:#2d2d2d; }
         a { color:inherit; text-decoration:none; }
         .topbar { background:var(--charcoal); color:#fff; padding:0.9rem 1.5rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+        .dashboard-datetime { color:#aaa; font-size:0.78rem; white-space:nowrap; }
         .brand { color:var(--coral); font-size:1.35rem; font-weight:800; }
         .brand span { color:#fff; }
         nav { display:flex; gap:0.9rem; flex-wrap:wrap; align-items:center; }
@@ -47,6 +48,7 @@
 <body>
 <header class="topbar">
     <a class="brand" href="{{ route('courier.orders') }}">Pick<span>Sell</span> <small style="font-size:0.65rem;color:#aaa;">COURIER</small></a>
+    <span class="dashboard-datetime">{{ now()->format('M d, Y h:i A') }}</span>
     <nav>
         <a class="{{ request()->routeIs('courier.orders') ? 'active' : '' }}" href="{{ route('courier.orders') }}">Delivery Tasks</a>
         <a class="{{ request()->routeIs('courier.reports') ? 'active' : '' }}" href="{{ route('courier.reports') }}">Reports</a>
