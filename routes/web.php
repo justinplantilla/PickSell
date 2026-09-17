@@ -22,6 +22,13 @@ Route::get('/', function () {
 });
 Route::get('/shop', function (Request $request) {
     $query = Product::where('status', 'active')->where('stock', '>', 0)->whereNotNull('image')->with('seller');
+    $search = trim((string) $request->get('q', ''));
+    if ($search) {
+        $query->where(function ($builder) use ($search) {
+            $builder->where('name', 'like', "%{$search}%")
+                ->orWhere('category', 'like', "%{$search}%");
+        });
+    }
     $category = strtolower(trim((string) $request->get('cat', '')));
     $category = $category === 'home' ? 'home & living' : $category;
     if ($category) $query->whereRaw('LOWER(category) = ?', [$category]);

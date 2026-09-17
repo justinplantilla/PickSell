@@ -375,5 +375,6 @@ if (localStorage.getItem('sellerDark') === 'true') document.body.classList.add('
     </div>
 </div>
 @yield('scripts')
+@include('partials.search-suggestions')
 </body>
 </html>

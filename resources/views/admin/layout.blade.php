@@ -438,5 +438,6 @@ if (localStorage.getItem('adminDark') === 'true') document.body.classList.add('d
         </div>
     </div>
 </div>
+@include('partials.search-suggestions')
 </body>
 </html>

@@ -7,7 +7,7 @@
         <span class="card-title">Product Inventory</span>
         <div class="filters">
             <form method="GET" style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-                <input type="text" name="search" value="{{ $search }}" placeholder="Search products..." class="search-input">
+                <input type="text" name="search" data-product-search value="{{ $search }}" placeholder="Search products..." class="search-input">
                 <select name="status" class="filter-select" onchange="this.form.submit()">
                     <option value="all" {{ $status==='all'?'selected':'' }}>All Status</option>
                     <option value="active" {{ $status==='active'?'selected':'' }}>Active</option>

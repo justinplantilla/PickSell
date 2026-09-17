@@ -196,7 +196,7 @@
     <a href="/" class="nav-logo"><img src="{{ asset('images/transparent logo.png') }}" alt="PickSell logo"><span>Pick<span>Sell</span></span></a>
 
     <form class="nav-search" action="/shop" method="GET">
-        <input type="text" name="q" placeholder="Search products, brands, categories..." value="{{ request('q') }}">
+        <input type="text" name="q" data-product-search placeholder="Search products, brands, categories..." value="{{ request('q') }}">
         <button type="submit">Search</button>
     </form>
 
@@ -248,3 +248,5 @@
     })();
 </script>
 @endif
+
+@include('partials.search-suggestions')

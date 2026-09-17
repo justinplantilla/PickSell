@@ -6,7 +6,7 @@
     <div class="card-header">
         <span class="card-title">Product Curation</span>
         <form method="GET" class="filters">
-            <input type="text" name="search" class="search-input" placeholder="Search products..." value="{{ $search }}">
+            <input type="text" name="search" data-product-search class="search-input" placeholder="Search products..." value="{{ $search }}">
             <button type="submit" class="btn btn-coral btn-sm">Search</button>
         </form>
     </div>
