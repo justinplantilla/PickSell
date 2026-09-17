@@ -59,9 +59,9 @@
                     <input type="text" name="line_of_business" class="form-control" value="{{ auth()->user()->line_of_business }}">
                 </div>
                 <div class="grid-2">
-                    <div class="form-group"><label class="form-label">Province *</label><input type="text" name="province" class="form-control" value="{{ auth()->user()->province }}" required></div>
-                    <div class="form-group"><label class="form-label">Municipality *</label><input type="text" name="municipality" class="form-control" value="{{ auth()->user()->municipality }}" required></div>
-                    <div class="form-group"><label class="form-label">Barangay *</label><input type="text" name="barangay" class="form-control" value="{{ auth()->user()->barangay }}" required></div>
+                    <div class="form-group"><label class="form-label">Province</label><select class="form-control" data-profile-province aria-label="Registered province"><option>Loading provinces...</option></select><input type="hidden" name="province" data-profile-hidden="province" value="{{ auth()->user()->province }}"></div>
+                    <div class="form-group"><label class="form-label">Municipality</label><select class="form-control" data-profile-municipality aria-label="Registered municipality"><option>Loading municipalities...</option></select><input type="hidden" name="municipality" data-profile-hidden="municipality" value="{{ auth()->user()->municipality }}"></div>
+                    <div class="form-group"><label class="form-label">Barangay</label><select class="form-control" data-profile-barangay aria-label="Registered barangay"><option>Loading barangays...</option></select><input type="hidden" name="barangay" data-profile-hidden="barangay" value="{{ auth()->user()->barangay }}"></div>
                     <div class="form-group"><label class="form-label">House No.</label><input type="text" name="house_no" class="form-control" value="{{ auth()->user()->house_no }}"></div>
                 </div>
                 <div class="form-group"><label class="form-label">Street</label><input type="text" name="street" class="form-control" value="{{ auth()->user()->street }}"></div>
@@ -125,4 +125,8 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('scripts')
+@include('partials.profile-address-script')
 @endsection

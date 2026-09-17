@@ -295,11 +295,6 @@ class BuyerController extends Controller
             'email'          => 'required|email|unique:users,email,' . auth()->id(),
             'contact_no'     => ['required', 'regex:/^09\d{9}$/'],
             'birthday'       => 'required|date|before:-18 years',
-            'province'       => 'required|string',
-            'municipality'   => 'required|string',
-            'barangay'       => 'required|string',
-            'street'         => 'nullable|string|max:255',
-            'house_no'       => 'nullable|string|max:100',
         ]);
 
         auth()->user()->update($request->only([
@@ -310,11 +305,6 @@ class BuyerController extends Controller
             'email',
             'contact_no',
             'birthday',
-            'province',
-            'municipality',
-            'barangay',
-            'street',
-            'house_no',
         ]));
 
         if ($request->expectsJson()) {

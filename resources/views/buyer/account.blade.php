@@ -71,18 +71,18 @@
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
                         <div class="form-group">
                             <label class="form-label">Province *</label>
-                            <input type="text" name="province" class="form-control" value="{{ auth()->user()->province }}" required>
+                            <select class="form-control" data-profile-province aria-label="Registered province"><option>Loading provinces...</option></select><input type="hidden" name="province" data-profile-hidden="province" value="{{ auth()->user()->province }}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Municipality *</label>
-                            <input type="text" name="municipality" class="form-control" value="{{ auth()->user()->municipality }}" required>
+                            <select class="form-control" data-profile-municipality aria-label="Registered municipality"><option>Loading municipalities...</option></select><input type="hidden" name="municipality" data-profile-hidden="municipality" value="{{ auth()->user()->municipality }}">
                         </div>
                     </div>
 
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
                         <div class="form-group">
                             <label class="form-label">Barangay *</label>
-                            <input type="text" name="barangay" class="form-control" value="{{ auth()->user()->barangay }}" required>
+                            <select class="form-control" data-profile-barangay aria-label="Registered barangay"><option>Loading barangays...</option></select><input type="hidden" name="barangay" data-profile-hidden="barangay" value="{{ auth()->user()->barangay }}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">House No.</label>
@@ -173,4 +173,8 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('scripts')
+@include('partials.profile-address-script')
 @endsection
