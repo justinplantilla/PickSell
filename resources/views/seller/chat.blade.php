@@ -47,8 +47,8 @@
             <a href="/seller/chat?user={{ $user->id }}" class="chat-item {{ $activeUser && $activeUser->id === $user->id ? 'active' : '' }}" data-name="{{ strtolower($user->full_name) }}">
                 <div class="chat-avatar {{ $user->role }}">{{ strtoupper(substr($user->first_name, 0, 1)) }}</div>
                 <div class="chat-item-info">
-                    <div class="chat-item-name">{{ $user->full_name }}</div>
-                    <div class="chat-item-preview">{{ ucfirst($user->role) }}</div>
+                    <div class="chat-item-name">{{ $user->role === 'admin' ? 'PickSell Support' : $user->full_name }}</div>
+                    <div class="chat-item-preview">{{ $user->role === 'admin' ? 'Customer support' : ucfirst($user->role) }}</div>
                 </div>
                 @if($user->unread > 0)
                 <span class="unread-badge">{{ $user->unread }}</span>
@@ -65,8 +65,8 @@
         <div class="chat-header">
             <div class="chat-avatar {{ $activeUser->role }}">{{ strtoupper(substr($activeUser->first_name, 0, 1)) }}</div>
             <div>
-                <div style="font-weight:700;font-size:0.95rem;">{{ $activeUser->full_name }}</div>
-                <div style="font-size:0.78rem;color:#aaa;">{{ ucfirst($activeUser->role) }} · {{ $activeUser->email }}</div>
+                <div style="font-weight:700;font-size:0.95rem;">{{ $activeUser->role === 'admin' ? 'PickSell Support' : $activeUser->full_name }}</div>
+                <div style="font-size:0.78rem;color:#aaa;">{{ $activeUser->role === 'admin' ? 'Customer support' : ucfirst($activeUser->role).' · '.$activeUser->email }}</div>
             </div>
         </div>
         <div class="chat-messages" id="chatMessages">
