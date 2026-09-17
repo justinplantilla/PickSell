@@ -190,13 +190,18 @@ class SellerController extends Controller
     {
         $seller = $this->seller();
 
-        // Only show buyers who have initiated a conversation
+        // Show only buyers who have messaged the seller or placed an order.
         $chattedBuyerIds = Message::where(function ($q) use ($seller) {
             $q->where('sender_id', $seller->id)->orWhere('receiver_id', $seller->id);
         })->get()->map(fn($m) => $m->sender_id === $seller->id ? $m->receiver_id : $m->sender_id)
           ->unique()->values();
 
-        $users = User::whereIn('id', $chattedBuyerIds)
+        $orderedBuyerIds = Order::where('seller_id', $seller->id)
+            ->pluck('buyer_id');
+
+        $contactIds = $chattedBuyerIds->merge($orderedBuyerIds)->unique()->values();
+
+        $users = User::whereIn('id', $contactIds)
             ->where('role', 'buyer')->where('status', 'approved')->get();
 
         // Include admin only if seller has already messaged them
