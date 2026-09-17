@@ -324,9 +324,10 @@
                     ->latest()->get();
             @endphp
             @foreach($announcements as $ann)
-            <div style="background:#fff8e1;border:1px solid #fde68a;border-radius:8px;padding:0.7rem 1rem;margin-bottom:0.8rem;display:flex;align-items:flex-start;gap:0.7rem;font-size:0.85rem;">
+            <div class="seller-announcement" data-announcement-id="{{ $ann->id }}" style="background:#fff8e1;border:1px solid #fde68a;border-radius:8px;padding:0.7rem 1rem;margin-bottom:0.8rem;display:flex;align-items:flex-start;gap:0.7rem;font-size:0.85rem;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#d97706" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px;"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
-                <div><strong>{{ $ann->title }}</strong> — {{ $ann->message }}</div>
+                <div style="flex:1;"><strong>{{ $ann->title }}</strong> — {{ $ann->message }}</div>
+                <button type="button" aria-label="Close announcement" title="Close" onclick="dismissSellerAnnouncement(this)" style="border:0;background:transparent;color:#8a6a16;font-size:1.1rem;line-height:1;cursor:pointer;padding:0 .2rem;">&times;</button>
             </div>
             @endforeach
             @if(session('success'))
@@ -356,6 +357,20 @@ function toggleDark() {
     localStorage.setItem('sellerDark', document.body.classList.contains('dark'));
 }
 if (localStorage.getItem('sellerDark') === 'true') document.body.classList.add('dark');
+</script>
+<script>
+function dismissSellerAnnouncement(button) {
+    const banner = button.closest('[data-announcement-id]');
+    const dismissed = JSON.parse(localStorage.getItem('dismissedSellerAnnouncements') || '[]');
+    const id = Number(banner.dataset.announcementId);
+    if (!dismissed.includes(id)) dismissed.push(id);
+    localStorage.setItem('dismissedSellerAnnouncements', JSON.stringify(dismissed));
+    banner.remove();
+}
+document.querySelectorAll('.seller-announcement').forEach(banner => {
+    const dismissed = JSON.parse(localStorage.getItem('dismissedSellerAnnouncements') || '[]');
+    if (dismissed.includes(Number(banner.dataset.announcementId))) banner.remove();
+});
 </script>
 
 <button class="dm-toggle" onclick="toggleDark()" title="Toggle dark mode">
