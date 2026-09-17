@@ -168,6 +168,23 @@ class AuthController extends Controller
         return redirect('/');
     }
 
+    public function deleteAccount(Request $request)
+    {
+        $request->validate(['password' => 'required|string']);
+        $user = $request->user();
+
+        if (!Hash::check($request->password, $user->password)) {
+            return back()->withErrors(['password' => 'The password is incorrect.']);
+        }
+
+        Auth::logout();
+        $user->delete();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect('/')->with('success', 'Your account has been deleted.');
+    }
+
     private function redirectByRole(string $role): string
     {
         return match($role) {

@@ -1,8 +1,19 @@
 @extends('admin.layout')
 @section('title', 'My Account')
 
+@section('styles')
+<style>
+    .account-page .card { position: relative; border: 1px solid rgba(232,71,42,.28); box-shadow: 0 8px 24px rgba(232,71,42,.08); }
+    .account-page .card::before { content: ''; position: absolute; inset: 0 0 auto; height: 3px; background: var(--coral); }
+    .account-page .btn { box-shadow: 0 0 0 1px rgba(232,71,42,.18), 0 6px 16px rgba(232,71,42,.2); transition: transform .2s, box-shadow .2s, background .2s; }
+    .account-page .btn:hover { transform: translateY(-2px); box-shadow: 0 0 0 2px rgba(232,71,42,.2), 0 10px 24px rgba(232,71,42,.32); }
+    .account-page .danger-card { border-color: rgba(220,38,38,.35); }
+    .account-page .danger-card::before { background: #dc2626; }
+</style>
+@endsection
+
 @section('content')
-<div class="grid-2">
+<div class="account-page">
     <div class="card">
         <div class="card-header"><span class="card-title"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style="vertical-align:middle;margin-right:6px;"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>Profile Information</span></div>
         <div class="card-body">
@@ -61,6 +72,20 @@
             <tr><td style="font-weight:600;color:#888;padding:0.4rem 1rem 0.4rem 0;">Status</td><td><span class="badge badge-approved">Active</span></td></tr>
             <tr><td style="font-weight:600;color:#888;padding:0.4rem 1rem 0.4rem 0;">Member Since</td><td>{{ auth()->user()->created_at->format('F d, Y') }}</td></tr>
         </table>
+    </div>
+</div>
+
+<div class="account-page" style="margin-top:1.5rem;">
+    <div class="card danger-card">
+        <div class="card-header"><span class="card-title">Delete Account</span></div>
+        <div class="card-body">
+            <p style="font-size:0.88rem;color:#888;margin-bottom:1rem;">Permanently delete your administrator account and related records.</p>
+            <form method="POST" action="{{ route('account.delete') }}" onsubmit="return confirm('Delete your account permanently? This cannot be undone.')">
+                @csrf @method('DELETE')
+                <input type="password" name="password" class="form-control" placeholder="Confirm your password" required style="margin-bottom:.7rem;max-width:360px;">
+                <button type="submit" class="btn btn-danger">Delete Account</button>
+            </form>
+        </div>
     </div>
 </div>
 @endsection

@@ -54,6 +54,7 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::delete('/account', [AuthController::class, 'deleteAccount'])->name('account.delete');
     Route::get('/buyer/dashboard',   fn() => view('dashboard'))->name('buyer.dashboard');
     Route::get('/courier/dashboard', fn() => redirect('/courier/orders'))->name('courier.dashboard');
     Route::get('/dashboard', fn() => redirect(match(auth()->user()->role) {
