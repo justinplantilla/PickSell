@@ -21,13 +21,20 @@
         barangay: document.querySelector('[data-profile-hidden="barangay"]')
     };
 
+    const normalizeName = value => String(value || '')
+        .toLowerCase()
+        .replace(/\bcity of\b/g, '')
+        .replace(/\b(city|municipality)\b/g, '')
+        .replace(/[^a-z0-9]/g, '');
+
     const setOptions = (select, items, placeholder, selectedValue) => {
         select.innerHTML = `<option value="">${placeholder}</option>`;
         items.sort((first, second) => first.name.localeCompare(second.name));
+        const selectedName = normalizeName(selectedValue);
         items.forEach(item => {
             const option = new Option(item.name, item.name);
             option.dataset.code = item.code;
-            option.selected = item.name === selectedValue;
+            option.selected = normalizeName(item.name) === selectedName;
             select.add(option);
         });
         select.disabled = false;
@@ -49,7 +56,11 @@
             const municipalities = await fetch(`${baseUrl}/provinces/${provinceCode}/cities-municipalities/`).then(response => response.json());
             setOptions(municipalitySelect, municipalities, '-- Select Municipality --', address.municipality);
             const municipalityCode = municipalitySelect.selectedOptions[0]?.dataset.code;
-            if (!municipalityCode) return;
+            if (!municipalityCode) {
+                fallback(municipalitySelect, address.municipality, '-- Select Municipality --');
+                fallback(barangaySelect, address.barangay, '-- Select Barangay --');
+                return;
+            }
 
             const barangays = await fetch(`${baseUrl}/cities-municipalities/${municipalityCode}/barangays/`).then(response => response.json());
             setOptions(barangaySelect, barangays, '-- Select Barangay --', address.barangay);
