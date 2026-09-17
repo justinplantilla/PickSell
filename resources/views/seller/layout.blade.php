@@ -313,7 +313,7 @@
         <div class="topbar">
             <div class="topbar-title">@yield('title')</div>
             <div class="topbar-right">
-                <span style="font-size:0.85rem;color:#888;">{{ now()->format('M d, Y h:i A') }}</span>
+                @include('partials.dashboard-clock')
             </div>
         </div>
         <div class="content">
