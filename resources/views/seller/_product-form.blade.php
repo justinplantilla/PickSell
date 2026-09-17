@@ -4,8 +4,21 @@
         <input type="text" name="name" class="form-control" required>
     </div>
     <div class="form-group">
-        <label class="form-label">Category</label>
-        <input type="text" name="category" class="form-control" placeholder="e.g. Electronics, Clothing">
+        @php
+            $categories = ['Electronics', 'Fashion', 'Home & Living', 'Sports', 'Beauty', 'Food & Grocery', 'Books', 'Toys', 'Others'];
+            $registeredCategory = auth()->user()->line_of_business;
+            if ($registeredCategory && !in_array($registeredCategory, $categories, true)) {
+                array_unshift($categories, $registeredCategory);
+            }
+            $selectedCategory = old('category', $registeredCategory);
+        @endphp
+        <label class="form-label">Category *</label>
+        <select name="category" class="form-control" required>
+            <option value="">Select category</option>
+            @foreach($categories as $category)
+                <option value="{{ $category }}" {{ $selectedCategory === $category ? 'selected' : '' }}>{{ $category }}</option>
+            @endforeach
+        </select>
     </div>
 </div>
 <div class="form-group">
