@@ -8,9 +8,10 @@ class Order extends Model
 {
     protected $fillable = [
         'order_number', 'product_id', 'buyer_id', 'seller_id', 'logistics_id', 'courier_id',
+        'origin_branch_id', 'destination_branch_id', 'destination_barangay_id',
         'product_name', 'quantity', 'amount', 'commission', 'status',
         'waybill_number', 'tracking_status',
-        'packed_at', 'handed_over_at', 'delivered_at',
+        'packed_at', 'handed_over_at', 'delivered_at', 'assigned_at',
         'rating', 'feedback',
     ];
 
@@ -25,4 +26,7 @@ class Order extends Model
     public function logistics() { return $this->belongsTo(User::class, 'logistics_id'); }
     public function courier() { return $this->belongsTo(User::class, 'courier_id'); }
     public function product() { return $this->belongsTo(Product::class); }
+    public function originBranch() { return $this->belongsTo(LogisticsBranch::class, 'origin_branch_id'); }
+    public function destinationBranch() { return $this->belongsTo(LogisticsBranch::class, 'destination_branch_id'); }
+    public function destinationBarangay() { return $this->belongsTo(Barangay::class, 'destination_barangay_id'); }
 }

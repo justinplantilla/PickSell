@@ -1,8 +1,9 @@
 @extends('admin.layout')
+@vite('resources/css/views/admin-application-detail.css')
 @section('title', 'Review Application')
 
 @section('content')
-<div style="margin-bottom:1rem;">
+<div class="blade-inline-1">
     <a href="/admin/registrations" class="btn btn-outline btn-sm">← Back to Registrations</a>
 </div>
 
@@ -39,11 +40,11 @@
                 $fields['Delivery Area'] = $user->delivery_area ?? '—';
             }
             @endphp
-            <table style="font-size:0.88rem;">
+            <table class="blade-inline-2">
                 @foreach($fields as $label => $value)
                 <tr>
-                    <td style="font-weight:600;color:#888;padding:0.4rem 0.8rem 0.4rem 0;width:140px;">{{ $label }}</td>
-                    <td style="padding:0.4rem 0;">{{ $value }}</td>
+                    <td class="blade-inline-3">{{ $label }}</td>
+                    <td class="blade-inline-4">{{ $value }}</td>
                 </tr>
                 @endforeach
             </table>
@@ -52,24 +53,24 @@
 
     <!-- Uploaded Documents -->
     <div>
-        <div class="card" style="margin-bottom:1rem;">
+        <div class="card blade-inline-5">
             <div class="card-header"><span class="card-title">Uploaded Documents</span></div>
-            <div class="card-body" style="display:flex;flex-direction:column;gap:0.8rem;">
+            <div class="card-body blade-inline-6">
                 @if($user->id_upload)
                 <div>
-                    <div style="font-size:0.82rem;font-weight:600;margin-bottom:0.3rem;">Government-Issued ID</div>
+                    <div class="blade-inline-7">Government-Issued ID</div>
                     <a href="{{ asset('storage/'.$user->id_upload) }}" target="_blank" class="btn btn-outline btn-sm">📎 View ID</a>
                 </div>
                 @endif
                 @if($user->business_permit)
                 <div>
-                    <div style="font-size:0.82rem;font-weight:600;margin-bottom:0.3rem;">Business Permit</div>
+                    <div class="blade-inline-8">Business Permit</div>
                     <a href="{{ asset('storage/'.$user->business_permit) }}" target="_blank" class="btn btn-outline btn-sm">📎 View Permit</a>
                 </div>
                 @endif
                 @if($user->or_cr_upload)
                 <div>
-                    <div style="font-size:0.82rem;font-weight:600;margin-bottom:0.3rem;">OR/CR & Driver's License</div>
+                    <div class="blade-inline-9">OR/CR & Driver's License</div>
                     <a href="{{ asset('storage/'.$user->or_cr_upload) }}" target="_blank" class="btn btn-outline btn-sm">📎 View OR/CR</a>
                 </div>
                 @endif
@@ -82,17 +83,17 @@
             <div class="card-header"><span class="card-title">Decision</span></div>
             <div class="card-body">
                 <!-- Approve -->
-                <form method="POST" action="/admin/registrations/{{ $user->id }}/approve" style="margin-bottom:1rem;">
+                <form method="POST" action="/admin/registrations/{{ $user->id }}/approve" class="blade-inline-10">
                     @csrf @method('PATCH')
-                    <p style="font-size:0.85rem;color:#555;margin-bottom:0.8rem;">Approving will activate the account and notify the applicant via email.</p>
+                    <p class="blade-inline-11">Approving will activate the account and notify the applicant via email.</p>
                     <button type="submit" class="btn btn-success" onclick="return confirm('Approve this application?')">✅ Approve Registration</button>
                 </form>
-                <hr style="border:none;border-top:1px solid #f0ebe0;margin-bottom:1rem;">
+                <hr class="blade-inline-12">
                 <!-- Disapprove -->
                 <form method="POST" action="/admin/registrations/{{ $user->id }}/disapprove">
                     @csrf @method('PATCH')
                     <div class="form-group">
-                        <label class="form-label">Reason for Disapproval <span style="color:var(--coral)">*</span></label>
+                        <label class="form-label">Reason for Disapproval <span class="blade-inline-13">*</span></label>
                         <textarea name="reason" class="form-control" placeholder="State the reason..." required></textarea>
                     </div>
                     <button type="submit" class="btn btn-danger" onclick="return confirm('Disapprove this application?')">❌ Disapprove Registration</button>
@@ -102,7 +103,7 @@
         @else
         <div class="card">
             <div class="card-body">
-                <p style="font-size:0.88rem;">Status: <span class="badge badge-{{ $user->status }}">{{ ucfirst($user->status) }}</span></p>
+                <p class="blade-inline-14">Status: <span class="badge badge-{{ $user->status }}">{{ ucfirst($user->status) }}</span></p>
             </div>
         </div>
         @endif

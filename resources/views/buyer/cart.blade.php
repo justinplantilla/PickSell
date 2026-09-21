@@ -1,63 +1,63 @@
 @extends('buyer.layout')
+@vite('resources/css/views/buyer-cart.css')
 @section('title', 'My Cart')
 
 @section('content')
-<h2 style="font-size:1.2rem;font-weight:800;margin-bottom:1.2rem;">My Cart ({{ $items->count() }} item{{ $items->count() !== 1 ? 's' : '' }})</h2>
+<h2 class="blade-inline-1">My Cart ({{ $items->count() }} item{{ $items->count() !== 1 ? 's' : '' }})</h2>
 
 @if($items->isEmpty())
-<div style="text-align:center;padding:4rem 1rem;color:#aaa;">
-    <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" viewBox="0 0 24 24" style="margin-bottom:1rem;opacity:0.3;"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM5.2 5H2V3H0v2h2l3.6 7.59L4.25 15A2 2 0 0 0 6 18h14v-2H6.42a.25.25 0 0 1-.25-.25l.03-.12L7.1 14h9.45c.75 0 1.41-.41 1.75-1.03L21.7 6.5A1 1 0 0 0 20.83 5H5.2z"/></svg>
-    <div style="font-size:1rem;font-weight:600;margin-bottom:0.5rem;">Your cart is empty</div>
-    <a href="/buyer/shop" class="btn btn-coral" style="margin-top:0.5rem;">Start Shopping</a>
+<div class="blade-inline-2">
+    <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" viewBox="0 0 24 24" class="blade-inline-3"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM5.2 5H2V3H0v2h2l3.6 7.59L4.25 15A2 2 0 0 0 6 18h14v-2H6.42a.25.25 0 0 1-.25-.25l.03-.12L7.1 14h9.45c.75 0 1.41-.41 1.75-1.03L21.7 6.5A1 1 0 0 0 20.83 5H5.2z"/></svg>
+    <div class="blade-inline-4">Your cart is empty</div>
+    <a href="/buyer/shop" class="btn btn-coral blade-inline-5">Start Shopping</a>
 </div>
 @else
 <form method="POST" action="/buyer/cart/checkout" id="checkoutForm">
     @csrf
-    <div style="display:grid;grid-template-columns:1fr 340px;gap:1.5rem;align-items:start;">
+    <div class="blade-inline-6">
         <div>
             <div class="card">
                 <div class="card-header">
-                    <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;cursor:pointer;">
-                        <input type="checkbox" id="selectAll" onchange="toggleAll(this)"> Select All
+                    <label class="blade-inline-7">
+                        <input type="checkbox" id="selectAll" data-cart-select-all> Select All
                     </label>
                 </div>
-                <div style="overflow-x:auto;">
+                <div class="blade-inline-8">
                     <table>
                         <thead><tr><th></th><th>Product</th><th>Variation</th><th>Price</th><th>Qty</th><th>Subtotal</th><th></th></tr></thead>
                         <tbody>
                         @foreach($items as $item)
                         <tr>
-                            <td><input type="checkbox" name="item_ids[]" value="{{ $item->id }}" class="item-check" onchange="updateSummary()"></td>
+                            <td><input type="checkbox" name="item_ids[]" value="{{ $item->id }}" class="item-check"></td>
                             <td>
-                                <div style="display:flex;align-items:center;gap:0.6rem;">
+                                <div class="blade-inline-9">
                                     @if($item->product->image)
-                                        <img src="{{ Storage::url($item->product->image) }}" style="width:44px;height:44px;object-fit:cover;border-radius:6px;">
+                                        <img src="{{ Storage::url($item->product->image) }}" class="blade-inline-10">
                                     @else
-                                        <div style="width:44px;height:44px;background:var(--bone);border-radius:6px;"></div>
+                                        <div class="blade-inline-11"></div>
                                     @endif
                                     <div>
-                                        <div style="font-weight:600;font-size:0.88rem;">{{ $item->product->name }}</div>
-                                        <div style="font-size:0.75rem;color:#aaa;">{{ $item->product->seller->business_name ?? $item->product->seller->full_name }}</div>
+                                        <div class="blade-inline-12">{{ $item->product->name }}</div>
+                                        <div class="blade-inline-13">{{ $item->product->seller->business_name ?? $item->product->seller->full_name }}</div>
                                     </div>
                                 </div>
                             </td>
-                            <td style="font-size:0.82rem;color:#666;">{{ $item->variation ? $item->variation->type.': '.$item->variation->value : '—' }}</td>
-                            <td style="font-weight:600;color:var(--coral);">₱{{ number_format($item->product->effective_price, 2) }}</td>
+                            <td class="blade-inline-14">{{ $item->variation ? $item->variation->type.': '.$item->variation->value : '—' }}</td>
+                            <td class="blade-inline-15">₱{{ number_format($item->product->effective_price, 2) }}</td>
                             <td>
-                                <div style="display:flex;align-items:center;gap:0.3rem;">
+                                <div class="blade-inline-16">
                                     <input type="number"
                                            name="quantity"
                                            value="{{ $item->quantity }}"
                                            min="1"
                                            max="{{ $item->product->stock }}"
                                            data-item-id="{{ $item->id }}"
-                                           class="qty-input"
-                                           style="width:55px;padding:0.3rem;border:1.5px solid #ddd6c8;border-radius:6px;text-align:center;font-size:0.85rem;">
+                                           class="qty-input blade-inline-17">
                                 </div>
                             </td>
-                            <td style="font-weight:700;" data-subtotal="{{ $item->product->effective_price * $item->quantity }}">₱{{ number_format($item->product->effective_price * $item->quantity, 2) }}</td>
+                            <td class="blade-inline-18" data-subtotal="{{ $item->product->effective_price * $item->quantity }}">₱{{ number_format($item->product->effective_price * $item->quantity, 2) }}</td>
                             <td>
-                                <button type="button" class="btn btn-sm remove-item-btn" data-item-id="{{ $item->id }}" style="background:none;border:none;color:#dc2626;cursor:pointer;" title="Remove">
+                                <button type="button" class="btn btn-sm remove-item-btn" data-item-id="{{ $item->id }}" class="blade-inline-19" title="Remove">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                                 </button>
                             </td>
@@ -94,19 +94,19 @@
                             @endforeach
                         </select>
                         @if($logisticsProviders->isEmpty())
-                            <small style="display:block;color:#b45309;margin-top:.35rem;">No approved logistics providers are available yet.</small>
+                            <small class="blade-inline-20">No approved logistics providers are available yet.</small>
                         @endif
                     </div>
-                    <hr style="border:none;border-top:1px solid #f0ebe0;margin:1rem 0;">
-                    <div style="display:flex;justify-content:space-between;font-size:0.88rem;margin-bottom:0.5rem;">
-                        <span style="color:#888;">Selected Items</span>
+                    <hr class="blade-inline-21">
+                    <div class="blade-inline-22">
+                        <span class="blade-inline-23">Selected Items</span>
                         <span id="selectedCount">0</span>
                     </div>
-                    <div style="display:flex;justify-content:space-between;font-size:1rem;font-weight:800;margin-bottom:1rem;">
+                    <div class="blade-inline-24">
                         <span>Total</span>
-                        <span style="color:var(--coral);" id="totalAmount">₱0.00</span>
+                        <span class="blade-inline-25" id="totalAmount">₱0.00</span>
                     </div>
-                    <button type="submit" class="btn btn-coral" style="width:100%;justify-content:center;" id="placeOrderBtn" disabled>
+                    <button type="submit" class="btn btn-coral blade-inline-26" id="placeOrderBtn" disabled>
                         Place Order
                     </button>
                 </div>
@@ -118,78 +118,5 @@
 @endsection
 
 @section('scripts')
-<script>
-const csrfToken = '{{ csrf_token() }}';
-
-function toggleAll(cb) {
-    document.querySelectorAll('.item-check').forEach(c => c.checked = cb.checked);
-    updateSummary();
-}
-
-function updateSummary() {
-    const checked = document.querySelectorAll('.item-check:checked');
-    let total = 0;
-    checked.forEach(c => {
-        const row = c.closest('tr');
-        total += parseFloat(row.querySelector('[data-subtotal]').dataset.subtotal);
-    });
-    document.getElementById('selectedCount').textContent = checked.length;
-    document.getElementById('totalAmount').textContent = '₱' + total.toLocaleString('en-PH', {minimumFractionDigits:2});
-    document.getElementById('placeOrderBtn').disabled = checked.length === 0;
-    const selectAll = document.getElementById('selectAll');
-    if (selectAll) {
-        selectAll.checked = checked.length === document.querySelectorAll('.item-check').length;
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.qty-input').forEach(function (input) {
-        input.addEventListener('change', function () {
-            const itemId = this.dataset.itemId;
-            const quantity = Number(this.value || 1);
-            if (!itemId || quantity < 1) return;
-
-            fetch(`/buyer/cart/item/${itemId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({ quantity })
-            }).then(response => {
-                if (!response.ok) {
-                    throw new Error('Unable to update quantity');
-                }
-                window.location.reload();
-            }).catch(() => {
-                alert('Unable to update quantity. Please try again.');
-            });
-        });
-    });
-
-    document.querySelectorAll('.remove-item-btn').forEach(function (button) {
-        button.addEventListener('click', function () {
-            const itemId = this.dataset.itemId;
-            if (!itemId) return;
-            if (!confirm('Remove this item from your cart?')) return;
-
-            fetch(`/buyer/cart/item/${itemId}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json'
-                }
-            }).then(response => {
-                if (!response.ok) {
-                    throw new Error('Unable to remove item');
-                }
-                window.location.reload();
-            }).catch(() => {
-                alert('Unable to remove this item. Please try again.');
-            });
-        });
-    });
-});
-</script>
+@vite('resources/js/views/buyer-cart.js')
 @endsection

@@ -1,0 +1,31 @@
+.branch-toolbar { display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem; }
+    .branch-modal { position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:1rem;background:rgba(20,20,20,.58);backdrop-filter:blur(5px);opacity:0;visibility:hidden;transition:opacity .25s ease,visibility .25s ease; }
+    .branch-modal.open { opacity:1;visibility:visible; }
+    .branch-modal-card { width:min(620px,100%);max-height:calc(100vh - 2rem);overflow:auto;background:#fff;border:1px solid #e8e2d8;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.25);transform:translateY(18px) scale(.97);transition:transform .3s cubic-bezier(.22,1,.36,1); }
+    .branch-modal.open .branch-modal-card { transform:translateY(0) scale(1); }
+    .branch-modal-head { display:flex;align-items:center;justify-content:space-between;padding:1.1rem 1.2rem;border-bottom:1px solid #eee8df; }
+    .branch-modal-title { font-size:1.05rem;font-weight:800; }
+    .branch-modal-close { border:0;background:transparent;color:#888;font-size:1.5rem;line-height:1;cursor:pointer;padding:.2rem .4rem;border-radius:6px; }
+    .branch-modal-close:hover { background:#fff3f0;color:var(--coral); }
+    .branch-modal-body { padding:1.2rem; }
+    .branch-form-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem; }
+    .branch-form-grid .full { grid-column:1 / -1; }
+    .branch-form-label { display:block;font-size:.78rem;font-weight:700;margin-bottom:.35rem; }
+    .branch-form-actions { display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.2rem; }
+    @media(max-width:600px) { .branch-form-grid { grid-template-columns:1fr; }.branch-form-grid .full { grid-column:auto; } }
+
+/* Extracted inline declarations */
+.blade-inline-1 { font-size:1.45rem !important; margin:0 0 .3rem !important;  }
+.blade-inline-2 { color:#888 !important; margin:0 !important;  }
+.blade-inline-3 { display:flex !important; gap:.5rem !important; flex-wrap:wrap !important;  }
+.blade-inline-4 { display:flex !important; gap:.5rem !important;  }
+.blade-inline-5 { font-size:.78rem !important; color:#888 !important;  }
+.blade-inline-6 { overflow-x:auto !important;  }
+.blade-inline-7 { font-size:.72rem !important; color:#888 !important;  }
+.blade-inline-8 { text-align:center !important; color:#888 !important; padding:2rem !important;  }
+.blade-inline-9 { width:100% !important;  }
+.blade-inline-10 { width:100% !important;  }
+.blade-inline-11 { width:100% !important;  }
+.blade-inline-12 { width:100% !important;  }
+.blade-inline-13 { width:100% !important;  }
+.blade-inline-14 { width:100% !important;  }

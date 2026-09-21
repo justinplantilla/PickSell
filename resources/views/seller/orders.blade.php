@@ -1,4 +1,5 @@
 @extends('seller.layout')
+@vite('resources/css/views/seller-orders.css')
 @section('title', 'Orders')
 
 @section('content')
@@ -7,7 +8,7 @@
         <span class="card-title">Order Management</span>
         <div class="filters">
             <form method="GET">
-                <select name="status" class="filter-select" onchange="this.form.submit()">
+                <select name="status" class="filter-select" data-submit-on-change>
                     <option value="all" {{ $status==='all'?'selected':'' }}>All Orders</option>
                     <option value="pending" {{ $status==='pending'?'selected':'' }}>Pending</option>
                     <option value="processing" {{ $status==='processing'?'selected':'' }}>Processing</option>
@@ -18,7 +19,7 @@
             </form>
         </div>
     </div>
-    <div style="overflow-x:auto;">
+    <div class="blade-inline-1">
         <table>
             <thead>
                 <tr><th>Order #</th><th>Buyer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr>
@@ -26,15 +27,15 @@
             <tbody>
             @forelse($orders as $order)
             <tr>
-                <td><a href="/seller/orders/{{ $order->id }}" style="color:var(--coral);font-weight:600;">{{ $order->order_number }}</a></td>
+                <td><a href="/seller/orders/{{ $order->id }}" class="blade-inline-2">{{ $order->order_number }}</a></td>
                 <td>{{ $order->buyer->full_name ?? '—' }}</td>
                 <td>{{ $order->product_name }}</td>
                 <td>{{ $order->quantity }}</td>
                 <td>₱{{ number_format($order->amount, 2) }}</td>
                 <td><span class="badge badge-{{ $order->status }}">{{ $order->status }}</span></td>
-                <td style="font-size:0.8rem;color:#888;">{{ $order->created_at->format('M d, Y') }}</td>
+                <td class="blade-inline-3">{{ $order->created_at->format('M d, Y') }}</td>
                 <td>
-                    <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+                    <div class="blade-inline-4">
                         <a href="/seller/orders/{{ $order->id }}" class="btn btn-outline btn-sm">View</a>
                         @if($order->status === 'pending')
                         <form method="POST" action="/seller/orders/{{ $order->id }}/pack">
@@ -48,7 +49,7 @@
                 </td>
             </tr>
             @empty
-            <tr><td colspan="8" style="text-align:center;color:#aaa;padding:2rem;">No orders found.</td></tr>
+            <tr><td colspan="8" class="blade-inline-5">No orders found.</td></tr>
             @endforelse
             </tbody>
         </table>
@@ -78,13 +79,5 @@
 @endsection
 
 @section('scripts')
-<script>
-function openHandover(orderId) {
-    document.getElementById('handoverForm').action = '/seller/orders/' + orderId + '/handover';
-    document.getElementById('handoverModal').classList.add('open');
-}
-document.querySelectorAll('.modal-overlay').forEach(m => {
-    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
-});
-</script>
+@vite('resources/js/views/seller-orders.js')
 @endsection

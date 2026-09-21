@@ -1,4 +1,5 @@
 @extends('admin.layout')
+@vite('resources/css/views/admin-registrations.css')
 @section('title', 'Manage Registrations')
 
 @section('content')
@@ -6,14 +7,14 @@
     <div class="card-header">
         <span class="card-title">Registration Applications</span>
         <form method="GET" class="filters">
-            <select name="role" class="filter-select" onchange="this.form.submit()">
+            <select name="role" class="filter-select" data-submit-on-change>
                 <option value="all" {{ $role==='all'?'selected':'' }}>All Roles</option>
                 <option value="buyer" {{ $role==='buyer'?'selected':'' }}>Buyer</option>
                 <option value="seller" {{ $role==='seller'?'selected':'' }}>Seller</option>
                 <option value="courier" {{ $role==='courier'?'selected':'' }}>Courier</option>
                     <option value="logistics" {{ $role==='logistics'?'selected':'' }}>Logistics Provider</option>
             </select>
-            <select name="status" class="filter-select" onchange="this.form.submit()">
+            <select name="status" class="filter-select" data-submit-on-change>
                 <option value="pending" {{ $status==='pending'?'selected':'' }}>Pending</option>
                 <option value="approved" {{ $status==='approved'?'selected':'' }}>Approved</option>
                 <option value="disapproved" {{ $status==='disapproved'?'selected':'' }}>Disapproved</option>
@@ -37,7 +38,7 @@
             <td><a href="/admin/registrations/{{ $user->id }}" class="btn btn-coral btn-sm">Review</a></td>
         </tr>
         @empty
-        <tr><td colspan="7" style="text-align:center;color:#888;padding:2rem;">No applications found.</td></tr>
+        <tr><td colspan="7" class="blade-inline-1">No applications found.</td></tr>
         @endforelse
         </tbody>
     </table>

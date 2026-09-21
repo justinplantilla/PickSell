@@ -1,4 +1,5 @@
 @extends('seller.layout')
+@vite('resources/css/views/seller-dashboard.css')
 @section('title', 'Dashboard')
 
 @section('content')
@@ -50,23 +51,23 @@
 <div class="grid-2">
     <div class="card">
         <div class="card-header"><span class="card-title">Monthly Sales (Last 6 Months)</span></div>
-        <div class="card-body"><div id="salesChart"></div></div>
+        <div class="card-body"><div id="salesChart" data-seller-sales-chart data-sales='@json($sales)' data-months='@json($months)'></div></div>
     </div>
     <div class="card">
         <div class="card-header">
             <span class="card-title">Recent Orders</span>
             <a href="/seller/orders" class="btn btn-outline btn-sm">View All</a>
         </div>
-        <div class="card-body" style="padding:0;">
+        <div class="card-body blade-inline-1">
             @if($recentOrders->isEmpty())
-                <div style="padding:1.5rem;text-align:center;color:#aaa;font-size:0.85rem;">No orders yet.</div>
+                <div class="blade-inline-2">No orders yet.</div>
             @else
             <table>
                 <thead><tr><th>Order #</th><th>Buyer</th><th>Amount</th><th>Status</th></tr></thead>
                 <tbody>
                 @foreach($recentOrders as $order)
                 <tr>
-                    <td><a href="/seller/orders/{{ $order->id }}" style="color:var(--coral);font-weight:600;">{{ $order->order_number }}</a></td>
+                    <td><a href="/seller/orders/{{ $order->id }}" class="blade-inline-3">{{ $order->order_number }}</a></td>
                     <td>{{ $order->buyer->full_name ?? '—' }}</td>
                     <td>₱{{ number_format($order->amount, 2) }}</td>
                     <td><span class="badge badge-{{ $order->status }}">{{ $order->status }}</span></td>
@@ -81,18 +82,5 @@
 @endsection
 
 @section('scripts')
-<script>
-new ApexCharts(document.getElementById('salesChart'), {
-    chart: { type: 'area', height: 220, toolbar: { show: false }, sparkline: { enabled: false } },
-    series: [{ name: 'Sales (₱)', data: {!! json_encode($sales) !!} }],
-    xaxis: { categories: {!! json_encode($months) !!} },
-    colors: ['#E8472A'],
-    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05 } },
-    stroke: { curve: 'smooth', width: 2 },
-    dataLabels: { enabled: false },
-    yaxis: { labels: { formatter: v => '₱' + v.toLocaleString() } },
-    tooltip: { y: { formatter: v => '₱' + v.toLocaleString() } },
-    grid: { borderColor: '#f0ebe0' },
-}).render();
-</script>
+@vite('resources/js/views/seller-dashboard.js')
 @endsection

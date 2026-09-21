@@ -12,7 +12,13 @@ use Carbon\Carbon;
 class AuthController extends Controller
 {
     public function showLogin()    { return view('auth.login'); }
-    public function showRegister() { return view('auth.register'); }
+
+    public function showRegister(Request $request)
+    {
+        $registrationRoles = $this->registrationRoles($request);
+
+        return view('auth.register', compact('registrationRoles'));
+    }
 
     public function login(Request $request)
     {
@@ -39,6 +45,20 @@ class AuthController extends Controller
             return back()->withErrors(['email' => 'Your account has been suspended. Please contact support.'])->onlyInput('email');
         }
 
+        $allowedLoginRoles = $request->getHost() === 'logistics.pick-sell.shop'
+            ? ['logistics', 'courier']
+            : ['buyer', 'seller', 'admin'];
+
+        if (!in_array($user->role, $allowedLoginRoles, true)) {
+            $siteName = $request->getHost() === 'logistics.pick-sell.shop'
+                ? 'PickSell Logistics'
+                : 'PickSell';
+
+            return back()->withErrors([
+                'email' => "This account cannot log in through {$siteName}. Please use the correct portal.",
+            ])->onlyInput('email');
+        }
+
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
 
@@ -48,9 +68,10 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $role = $request->input('role', 'buyer');
+        $registrationRoles = $this->registrationRoles($request);
 
         $rules = [
-            'role'           => 'required|in:buyer,seller,courier,logistics',
+            'role'           => 'required|in:'.implode(',', $registrationRoles),
             'provider_type'  => 'required_if:role,logistics|nullable|in:company,individual',
             'last_name'      => 'required|string|max:100',
             'first_name'     => 'required|string|max:100',
@@ -58,6 +79,7 @@ class AuthController extends Controller
             'sex'            => 'required|in:Male,Female',
             'email'          => 'required|email|unique:users',
             'password'       => 'required|min:8|confirmed',
+            'confirmed'      => 'accepted',
             'contact_no'     => ['required', 'regex:/^09\d{9}$/'],
             'birthday'       => 'required|date|before:-18 years',
             'province'       => 'required|string',
@@ -122,6 +144,13 @@ class AuthController extends Controller
         ], $extra));
 
         return redirect('/login')->with('success', 'Registration submitted! Please wait for admin approval. You will be notified via email.');
+    }
+
+    private function registrationRoles(Request $request): array
+    {
+        return $request->getHost() === 'logistics.pick-sell.shop'
+            ? ['courier', 'logistics']
+            : ['buyer', 'seller'];
     }
 
     public function showForgotPassword() { return view('auth.forgot-password'); }

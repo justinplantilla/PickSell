@@ -261,8 +261,16 @@ class SellerController extends Controller
             'contact_no'    => 'required|string|max:20',
             'business_name' => 'nullable|string|max:255',
             'line_of_business' => 'nullable|string|max:255',
+            'province'      => 'required|string|max:120',
+            'municipality'  => 'required|string|max:120',
+            'barangay'      => 'required|string|max:120',
+            'street'        => 'nullable|string|max:255',
+            'house_no'      => 'nullable|string|max:100',
         ]);
-        auth()->user()->update($request->only('first_name', 'last_name', 'middle_initial', 'sex', 'birthday', 'email', 'contact_no', 'business_name', 'line_of_business'));
+        auth()->user()->update($request->only(
+            'first_name', 'last_name', 'middle_initial', 'sex', 'birthday', 'email', 'contact_no',
+            'business_name', 'line_of_business', 'province', 'municipality', 'barangay', 'street', 'house_no'
+        ));
         return back()->with('success', 'Account updated successfully.');
     }
 

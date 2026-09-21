@@ -1,4 +1,5 @@
 @extends('admin.layout')
+@vite('resources/css/views/admin-logistics.css')
 @section('title', 'Sorting Center / Logistics')
 
 @section('content')
@@ -6,20 +7,20 @@
     <div class="card-header">
         <div>
             <span class="card-title">Sorting Center / Logistics</span>
-            <div style="font-size:0.78rem;color:#888;margin-top:0.25rem;">Receive, scan, sort, and assign prepared parcels to riders.</div>
+            <div class="blade-inline-1">Receive, scan, sort, and assign prepared parcels to riders.</div>
         </div>
         <form method="GET">
-            <select name="status" class="filter-select" onchange="this.form.submit()">
+            <select name="status" class="filter-select" data-submit-on-change>
                 <option value="all" {{ $status === 'all' ? 'selected' : '' }}>All Parcels</option>
                 <option value="shipped" {{ $status === 'shipped' ? 'selected' : '' }}>At Sorting Center / In Transit</option>
                 <option value="completed" {{ $status === 'completed' ? 'selected' : '' }}>Delivered</option>
             </select>
         </form>
     </div>
-    <div style="padding:1rem 1.2rem;background:#fff8e1;border-bottom:1px solid #f0ebe0;font-size:0.84rem;">
+    <div class="blade-inline-2">
         <strong>Process:</strong> Receive parcel → Scan waybill → Read address → Determine area → Sort parcel → Identify rider → Assign parcel.
     </div>
-    <div style="overflow-x:auto;">
+    <div class="blade-inline-3">
         <table>
             <thead>
                 <tr><th>Parcel / Waybill</th><th>Delivery Address / Area</th><th>Seller</th><th>Status</th><th>Assigned Rider</th><th>Action</th></tr>
@@ -32,35 +33,35 @@
                 <tr>
                     <td>
                         <strong>{{ $order->order_number }}</strong>
-                        <div style="font-size:0.75rem;color:#888;">{{ $order->waybill_number ?? 'Awaiting scan / waybill' }}</div>
+                        <div class="blade-inline-4">{{ $order->waybill_number ?? 'Awaiting scan / waybill' }}</div>
                     </td>
                     <td>
                         <div>{{ $area }}</div>
-                        <div style="font-size:0.75rem;color:#888;">{{ $order->buyer->barangay ?? 'Address unavailable' }}</div>
+                        <div class="blade-inline-5">{{ $order->buyer->barangay ?? 'Address unavailable' }}</div>
                     </td>
                     <td>{{ $order->seller->business_name ?? $order->seller->full_name ?? '—' }}</td>
                     <td>
                         <span class="badge badge-{{ $order->status }}">{{ ucfirst($order->status) }}</span>
-                        <div style="font-size:0.72rem;color:#888;margin-top:0.25rem;max-width:180px;">{{ $order->tracking_status ?? 'Received from seller' }}</div>
+                        <div class="blade-inline-6">{{ $order->tracking_status ?? 'Received from seller' }}</div>
                     </td>
                     <td>
                         @if($order->courier)
                             <strong>{{ $order->courier->full_name }}</strong>
-                            <div style="font-size:0.75rem;color:#888;">{{ $order->courier->delivery_area ?? 'Area not set' }}</div>
+                            <div class="blade-inline-7">{{ $order->courier->delivery_area ?? 'Area not set' }}</div>
                         @else
-                            <span style="color:#b45309;">Unassigned</span>
+                            <span class="blade-inline-8">Unassigned</span>
                         @endif
                     </td>
                     <td>
                         @if($order->status !== 'completed')
-                        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;min-width:280px;">
+                        <div class="blade-inline-9">
                         @if($order->tracking_status !== 'Received and scanned at sorting center' && !$order->courier_id)
                         <form method="POST" action="{{ route('admin.logistics.scan', $order) }}">
                             @csrf @method('PATCH')
                             <button class="btn btn-outline btn-sm" type="submit">Mark Scanned</button>
                         </form>
                         @endif
-                        <form method="POST" action="{{ route('admin.logistics.assign', $order) }}" style="display:flex;gap:0.4rem;">
+                        <form method="POST" action="{{ route('admin.logistics.assign', $order) }}" class="blade-inline-10">
                             @csrf @method('PATCH')
                             <select name="courier_id" class="filter-select" required>
                                 <option value="">Assign rider</option>
@@ -74,12 +75,12 @@
                         </form>
                             </div>
                         @else
-                            <span style="font-size:0.8rem;color:#16a34a;">Completed</span>
+                            <span class="blade-inline-11">Completed</span>
                         @endif
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="6" style="text-align:center;color:#888;padding:2rem;">No parcels found.</td></tr>
+                <tr><td colspan="6" class="blade-inline-12">No parcels found.</td></tr>
             @endforelse
             </tbody>
         </table>
@@ -93,12 +94,12 @@
     <div class="card-header"><span class="card-title">Approved Rider Areas</span></div>
     <div class="card-body">
         @forelse($couriers->groupBy(fn($courier) => $courier->delivery_area ?: 'Area not set') as $area => $areaCouriers)
-            <div style="display:inline-flex;flex-direction:column;gap:0.2rem;padding:0.7rem 1rem;margin:0 0.6rem 0.6rem 0;border:1px solid #e8e2d8;border-radius:8px;min-width:180px;">
+            <div class="blade-inline-13">
                 <strong>{{ $area }}</strong>
-                <span style="font-size:0.78rem;color:#888;">{{ $areaCouriers->pluck('full_name')->join(', ') }}</span>
+                <span class="blade-inline-14">{{ $areaCouriers->pluck('full_name')->join(', ') }}</span>
             </div>
         @empty
-            <span style="color:#888;">No approved riders yet.</span>
+            <span class="blade-inline-15">No approved riders yet.</span>
         @endforelse
     </div>
 </div>

@@ -2,23 +2,11 @@
 @section('title', 'My Account')
 
 @section('styles')
-<style>
-    .account-page .card { position: relative; border: 1px solid rgba(232,71,42,.28); box-shadow: 0 8px 24px rgba(232,71,42,.08); }
-    .account-page .card::before { content: ''; position: absolute; inset: 0 0 auto; height: 3px; background: var(--coral); }
-    .account-page .btn { box-shadow: 0 0 0 1px rgba(232,71,42,.18), 0 6px 16px rgba(232,71,42,.2); transition: transform .2s, box-shadow .2s, background .2s; }
-    .account-page .btn:hover { transform: translateY(-2px); box-shadow: 0 0 0 2px rgba(232,71,42,.2), 0 10px 24px rgba(232,71,42,.32); }
-    .account-page .danger-card { border: 1px solid #ef4444; border-radius: 16px; background: inherit; box-shadow: 0 8px 24px rgba(239,68,68,.08); }
-    .account-page .danger-card::before { display: none; }
-    .account-page .danger-card .card-header { border-bottom: 0; padding-bottom: 0.35rem; }
-    .account-page .danger-card .card-title { color: #ff4545; }
-    .account-page .danger-card .card-body { padding-top: 0.35rem; }
-    .account-page .danger-card .btn-danger { background: #ff4545; border: 0; color: #fff; box-shadow: 0 8px 18px rgba(255,69,69,.35); }
-    .account-page .danger-card .btn-danger:hover { background: #ff5d5d; box-shadow: 0 10px 24px rgba(255,69,69,.5); }
-</style>
+@vite('resources/css/views/buyer-account.css')
 @endsection
 
 @section('content')
-<h2 style="font-size:1.2rem;font-weight:800;margin-bottom:1.2rem;">My Account</h2>
+<h2 class="blade-inline-1">My Account</h2>
 
 <div class="account-page grid-2">
     <div>
@@ -28,7 +16,7 @@
                 <form method="POST" action="/buyer/account">
                     @csrf @method('PATCH')
 
-                    <div style="display:grid;grid-template-columns:1fr 1fr 0.5fr;gap:1rem;">
+                    <div class="blade-inline-2">
                         <div class="form-group">
                             <label class="form-label">Last Name *</label>
                             <input type="text" name="last_name" class="form-control" value="{{ auth()->user()->last_name }}" required>
@@ -43,7 +31,7 @@
                         </div>
                     </div>
 
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                    <div class="blade-inline-3">
                         <div class="form-group">
                             <label class="form-label">Sex *</label>
                             <select name="sex" class="form-control" required>
@@ -68,7 +56,7 @@
                         <input type="text" name="contact_no" class="form-control" value="{{ auth()->user()->contact_no }}" required>
                     </div>
 
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                    <div class="blade-inline-4">
                         <div class="form-group">
                             <label class="form-label">Province *</label>
                             <select class="form-control" data-profile-province aria-label="Registered province"><option>Loading provinces...</option></select><input type="hidden" name="province" data-profile-hidden="province" value="{{ auth()->user()->province }}">
@@ -79,7 +67,7 @@
                         </div>
                     </div>
 
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+                    <div class="blade-inline-5">
                         <div class="form-group">
                             <label class="form-label">Barangay *</label>
                             <select class="form-control" data-profile-barangay aria-label="Registered barangay"><option>Loading barangays...</option></select><input type="hidden" name="barangay" data-profile-hidden="barangay" value="{{ auth()->user()->barangay }}">
@@ -108,7 +96,7 @@
                     <div class="form-group">
                         <label class="form-label">Current Password *</label>
                         <input type="password" name="current_password" class="form-control" required>
-                        @error('current_password')<div style="color:#dc2626;font-size:0.8rem;margin-top:0.3rem;">{{ $message }}</div>@enderror
+                        @error('current_password')<div class="blade-inline-6">{{ $message }}</div>@enderror
                     </div>
                     <div class="form-group">
                         <label class="form-label">New Password *</label>
@@ -129,31 +117,31 @@
             <div class="card-header"><span class="card-title">Account Details</span></div>
             <div class="card-body">
                 <table>
-                    <tr><td style="color:#888;width:130px;">Role</td><td><span class="badge badge-active">Buyer</span></td></tr>
-                    <tr><td style="color:#888;">Status</td><td><span class="badge badge-{{ auth()->user()->status }}">{{ auth()->user()->status }}</span></td></tr>
-                    <tr><td style="color:#888;width:130px;">Full Name</td><td>{{ auth()->user()->full_name }}</td></tr>
-                    <tr><td style="color:#888;">Email</td><td>{{ auth()->user()->email }}</td></tr>
-                    <tr><td style="color:#888;">Contact</td><td>{{ auth()->user()->contact_no }}</td></tr>
-                    <tr><td style="color:#888;">Sex</td><td>{{ auth()->user()->sex }}</td></tr>
-                    <tr><td style="color:#888;">Birthday</td><td>{{ auth()->user()->birthday ? auth()->user()->birthday->format('M d, Y').' (Age '.auth()->user()->age.')' : '—' }}</td></tr>
-                    <tr><td style="color:#888;">Address</td><td>{{ implode(', ', array_filter([auth()->user()->house_no, auth()->user()->street, auth()->user()->barangay, auth()->user()->municipality, auth()->user()->province])) }}</td></tr>
-                    <tr><td style="color:#888;">Member Since</td><td>{{ auth()->user()->created_at->format('M d, Y') }}</td></tr>
+                    <tr><td class="blade-inline-7">Role</td><td><span class="badge badge-active">Buyer</span></td></tr>
+                    <tr><td class="blade-inline-8">Status</td><td><span class="badge badge-{{ auth()->user()->status }}">{{ auth()->user()->status }}</span></td></tr>
+                    <tr><td class="blade-inline-9">Full Name</td><td>{{ auth()->user()->full_name }}</td></tr>
+                    <tr><td class="blade-inline-10">Email</td><td>{{ auth()->user()->email }}</td></tr>
+                    <tr><td class="blade-inline-11">Contact</td><td>{{ auth()->user()->contact_no }}</td></tr>
+                    <tr><td class="blade-inline-12">Sex</td><td>{{ auth()->user()->sex }}</td></tr>
+                    <tr><td class="blade-inline-13">Birthday</td><td>{{ auth()->user()->birthday ? auth()->user()->birthday->format('M d, Y').' (Age '.auth()->user()->age.')' : '—' }}</td></tr>
+                    <tr><td class="blade-inline-14">Address</td><td>{{ implode(', ', array_filter([auth()->user()->house_no, auth()->user()->street, auth()->user()->barangay, auth()->user()->municipality, auth()->user()->province])) }}</td></tr>
+                    <tr><td class="blade-inline-15">Member Since</td><td>{{ auth()->user()->created_at->format('M d, Y') }}</td></tr>
                 </table>
             </div>
         </div>
 
         <div class="card">
             <div class="card-header"><span class="card-title">Quick Links</span></div>
-            <div class="card-body" style="display:flex;flex-direction:column;gap:0.6rem;">
-                <a href="/buyer/orders" class="btn btn-outline" style="justify-content:flex-start;">
+            <div class="card-body blade-inline-16">
+                <a href="/buyer/orders" class="btn btn-outline blade-inline-17">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
                     My Orders
                 </a>
-                <a href="/buyer/cart" class="btn btn-outline" style="justify-content:flex-start;">
+                <a href="/buyer/cart" class="btn btn-outline blade-inline-18">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM5.2 5H2V3H0v2h2l3.6 7.59L4.25 15A2 2 0 0 0 6 18h14v-2H6.42a.25.25 0 0 1-.25-.25l.03-.12L7.1 14h9.45c.75 0 1.41-.41 1.75-1.03L21.7 6.5A1 1 0 0 0 20.83 5H5.2z"/></svg>
                     My Cart
                 </a>
-                <a href="/buyer/chat" class="btn btn-outline" style="justify-content:flex-start;">
+                <a href="/buyer/chat" class="btn btn-outline blade-inline-19">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
                     Messages
                 </a>
@@ -163,10 +151,10 @@
         <div class="card danger-card">
             <div class="card-header"><span class="card-title">Delete Account</span></div>
             <div class="card-body">
-                <p style="font-size:0.88rem;color:#888;margin-bottom:1rem;">Permanently delete your buyer account and its related records.</p>
-                <form method="POST" action="{{ route('account.delete') }}" onsubmit="return confirm('Delete your account permanently? This cannot be undone.')">
+                <p class="blade-inline-20">Permanently delete your buyer account and its related records.</p>
+                <form method="POST" action="{{ route('account.delete') }}" data-confirm="Delete your account permanently? This cannot be undone.">
                     @csrf @method('DELETE')
-                    <input type="password" name="password" class="form-control" placeholder="Confirm your password" required style="margin-bottom:.7rem;">
+                    <input type="password" name="password" class="form-control" placeholder="Confirm your password" required class="blade-inline-21">
                     <button type="submit" class="btn btn-danger">Delete Account</button>
                 </form>
             </div>

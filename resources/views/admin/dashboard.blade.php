@@ -1,4 +1,5 @@
 @extends('admin.layout')
+@vite('resources/css/views/admin-dashboard.css')
 @section('title', 'Dashboard')
 
 @section('content')
@@ -52,7 +53,7 @@
         <a href="/admin/registrations" class="btn btn-outline btn-sm">View All</a>
     </div>
     @if($recentApps->isEmpty())
-        <div class="card-body" style="color:#888;font-size:0.88rem;">No pending applications.</div>
+        <div class="card-body blade-inline-1">No pending applications.</div>
     @else
     <table>
         <thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Applied</th><th>Action</th></tr></thead>
@@ -71,24 +72,6 @@
     @endif
 </div>
 
-<script>
-new ApexCharts(document.getElementById('userChart'), {
-    chart: { type: 'donut', height: 280 },
-    series: [{{ $stats['buyers'] }}, {{ $stats['sellers'] }}, {{ $stats['couriers'] }}],
-    labels: ['Buyers', 'Sellers', 'Couriers'],
-    colors: ['#2563eb', '#16a34a', '#d97706'],
-    legend: { position: 'bottom' },
-    plotOptions: { pie: { donut: { size: '60%' } } },
-}).render();
-
-new ApexCharts(document.getElementById('trendChart'), {
-    chart: { type: 'area', height: 280, toolbar: { show: false } },
-    series: [{ name: 'Registrations', data: [4, 7, 5, 12, 9, {{ $stats['total'] }}] }],
-    xaxis: { categories: ['Aug','Sep','Oct','Nov','Dec','Jan'] },
-    colors: ['#E8472A'],
-    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05 } },
-    stroke: { curve: 'smooth', width: 2 },
-    dataLabels: { enabled: false },
-}).render();
-</script>
+<div data-admin-chart-data data-buyers="{{ $stats['buyers'] }}" data-sellers="{{ $stats['sellers'] }}" data-couriers="{{ $stats['couriers'] }}" data-total="{{ $stats['total'] }}" hidden></div>
+@vite('resources/js/views/admin-dashboard.js')
 @endsection

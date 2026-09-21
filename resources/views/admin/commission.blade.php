@@ -1,18 +1,19 @@
 @extends('admin.layout')
+@vite('resources/css/views/admin-commission.css')
 @section('title', 'Commission Management')
 
 @section('content')
 <!-- Date Filter -->
-<div class="card" style="margin-bottom:1.5rem;">
+<div class="card blade-inline-1">
     <div class="card-body">
-        <form method="GET" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
-            <div class="form-group" style="margin:0;">
+        <form method="GET" class="blade-inline-2">
+            <div class="form-group blade-inline-3">
                 <label class="form-label">From</label>
-                <input type="date" name="from" class="form-control" value="{{ $from }}" style="width:160px;">
+                <input type="date" name="from" class="form-control" value="{{ $from }}" class="blade-inline-4">
             </div>
-            <div class="form-group" style="margin:0;">
+            <div class="form-group blade-inline-5">
                 <label class="form-label">To</label>
-                <input type="date" name="to" class="form-control" value="{{ $to }}" style="width:160px;">
+                <input type="date" name="to" class="form-control" value="{{ $to }}" class="blade-inline-6">
             </div>
             <button type="submit" class="btn btn-coral">Filter</button>
         </form>
@@ -45,9 +46,9 @@
     <div class="card">
         <div class="card-header"><span class="card-title">Commission Rate</span></div>
         <div class="card-body">
-            <p style="font-size:0.88rem;color:#555;margin-bottom:1rem;">Current platform commission rate applied to all completed orders.</p>
-            <div style="font-size:3rem;font-weight:800;color:var(--coral);text-align:center;padding:1.5rem 0;">{{ $rate }}%</div>
-            <p style="font-size:0.82rem;color:#aaa;text-align:center;">Per completed transaction</p>
+            <p class="blade-inline-7">Current platform commission rate applied to all completed orders.</p>
+            <div class="blade-inline-8">{{ $rate }}%</div>
+            <p class="blade-inline-9">Per completed transaction</p>
         </div>
     </div>
 </div>
@@ -55,7 +56,7 @@
 <div class="card">
     <div class="card-header"><span class="card-title">Order Commission Breakdown</span></div>
     @if($orders->isEmpty())
-    <div class="card-body" style="color:#888;font-size:0.88rem;">No completed orders in this period.</div>
+    <div class="card-body blade-inline-10">No completed orders in this period.</div>
     @else
     <table>
         <thead>
@@ -68,7 +69,7 @@
             <td>{{ $order->seller->full_name ?? '—' }}</td>
             <td>{{ $order->product_name }}</td>
             <td>₱{{ number_format($order->amount, 2) }}</td>
-            <td style="color:var(--coral);font-weight:700;">₱{{ number_format($order->commission, 2) }}</td>
+            <td class="blade-inline-11">₱{{ number_format($order->commission, 2) }}</td>
             <td>{{ $order->created_at->format('M d, Y') }}</td>
         </tr>
         @endforeach
@@ -77,18 +78,6 @@
     @endif
 </div>
 
-<script>
-@if($orders->isNotEmpty())
-new ApexCharts(document.getElementById('commissionChart'), {
-    chart: { type: 'bar', height: 280, toolbar: { show: false } },
-    series: [{ name: 'Commission (₱)', data: [{{ $orders->pluck('commission')->implode(',') }}] }],
-    xaxis: { categories: [{{ $orders->map(fn($o) => '"'.addslashes($o->order_number).'"')->implode(',') }}] },
-    colors: ['#E8472A'],
-    dataLabels: { enabled: false },
-    plotOptions: { bar: { borderRadius: 4 } },
-}).render();
-@else
-document.getElementById('commissionChart').innerHTML = '<p style="text-align:center;color:#aaa;padding:2rem;">No data available</p>';
-@endif
-</script>
+<div data-commission-chart data-commissions='@json($orders->pluck("commission")->values())' data-orders='@json($orders->map(fn($order) => $order->order_number)->values())' hidden></div>
+@vite('resources/js/views/admin-commission.js')
 @endsection

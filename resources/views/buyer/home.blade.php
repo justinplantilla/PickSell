@@ -1,4 +1,5 @@
 @extends('buyer.layout')
+@vite('resources/css/views/buyer-home.css')
 @section('title', 'Shop')
 
 @section('catbar')
@@ -53,18 +54,18 @@
             <a href="{{ route('buyer.home') }}" class="buyer-section-link">See all deals</a>
         </div>
 @if($search || $category)
-<div style="margin-bottom:1rem;font-size:0.88rem;color:#888;">
+<div class="blade-inline-1">
     Showing results
     @if($search) for "<strong>{{ $search }}</strong>"@endif
     @if($category) in <strong>{{ $category }}</strong>@endif
     — {{ $products->total() }} product(s) found
-    <a href="/buyer/shop" style="color:var(--coral);margin-left:0.5rem;">Clear</a>
+    <a href="/buyer/shop" class="blade-inline-2">Clear</a>
 </div>
 @endif
 
 @if($products->isEmpty())
-<div style="text-align:center;padding:4rem 1rem;color:#aaa;">
-    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" viewBox="0 0 24 24" style="margin-bottom:1rem;opacity:0.3;"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM5.2 5H2V3H0v2h2l3.6 7.59L4.25 15A2 2 0 0 0 6 18h14v-2H6.42a.25.25 0 0 1-.25-.25l.03-.12L7.1 14h9.45c.75 0 1.41-.41 1.75-1.03L21.7 6.5A1 1 0 0 0 20.83 5H5.2z"/></svg>
+<div class="blade-inline-3">
+    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" viewBox="0 0 24 24" class="blade-inline-4"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM5.2 5H2V3H0v2h2l3.6 7.59L4.25 15A2 2 0 0 0 6 18h14v-2H6.42a.25.25 0 0 1-.25-.25l.03-.12L7.1 14h9.45c.75 0 1.41-.41 1.75-1.03L21.7 6.5A1 1 0 0 0 20.83 5H5.2z"/></svg>
     <div>No products found.</div>
 </div>
 @else

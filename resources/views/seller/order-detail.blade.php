@@ -1,8 +1,9 @@
 @extends('seller.layout')
+@vite('resources/css/views/seller-order-detail.css')
 @section('title', 'Order #' . $order->order_number)
 
 @section('content')
-<div style="margin-bottom:1rem;">
+<div class="blade-inline-1">
     <a href="/seller/orders" class="btn btn-outline btn-sm">← Back to Orders</a>
 </div>
 
@@ -15,13 +16,13 @@
             </div>
             <div class="card-body">
                 <table>
-                    <tr><td style="color:#888;width:140px;">Order #</td><td><strong>{{ $order->order_number }}</strong></td></tr>
-                    <tr><td style="color:#888;">Product</td><td>{{ $order->product_name }}</td></tr>
-                    <tr><td style="color:#888;">Quantity</td><td>{{ $order->quantity }}</td></tr>
-                    <tr><td style="color:#888;">Amount</td><td><strong>₱{{ number_format($order->amount, 2) }}</strong></td></tr>
-                    <tr><td style="color:#888;">Commission</td><td>₱{{ number_format($order->commission, 2) }}</td></tr>
-                    <tr><td style="color:#888;">Net Profit</td><td><strong style="color:#16a34a;">₱{{ number_format($order->amount - $order->commission, 2) }}</strong></td></tr>
-                    <tr><td style="color:#888;">Order Date</td><td>{{ $order->created_at->format('M d, Y h:i A') }}</td></tr>
+                    <tr><td class="blade-inline-2">Order #</td><td><strong>{{ $order->order_number }}</strong></td></tr>
+                    <tr><td class="blade-inline-3">Product</td><td>{{ $order->product_name }}</td></tr>
+                    <tr><td class="blade-inline-4">Quantity</td><td>{{ $order->quantity }}</td></tr>
+                    <tr><td class="blade-inline-5">Amount</td><td><strong>₱{{ number_format($order->amount, 2) }}</strong></td></tr>
+                    <tr><td class="blade-inline-6">Commission</td><td>₱{{ number_format($order->commission, 2) }}</td></tr>
+                    <tr><td class="blade-inline-7">Net Profit</td><td><strong class="blade-inline-8">₱{{ number_format($order->amount - $order->commission, 2) }}</strong></td></tr>
+                    <tr><td class="blade-inline-9">Order Date</td><td>{{ $order->created_at->format('M d, Y h:i A') }}</td></tr>
                 </table>
             </div>
         </div>
@@ -31,13 +32,13 @@
             <div class="card-body">
                 @if($order->buyer)
                 <table>
-                    <tr><td style="color:#888;width:140px;">Name</td><td>{{ $order->buyer->full_name }}</td></tr>
-                    <tr><td style="color:#888;">Email</td><td>{{ $order->buyer->email }}</td></tr>
-                    <tr><td style="color:#888;">Contact</td><td>{{ $order->buyer->contact_no }}</td></tr>
-                    <tr><td style="color:#888;">Address</td><td>{{ implode(', ', array_filter([$order->buyer->house_no, $order->buyer->street, $order->buyer->barangay, $order->buyer->municipality, $order->buyer->province])) }}</td></tr>
+                    <tr><td class="blade-inline-10">Name</td><td>{{ $order->buyer->full_name }}</td></tr>
+                    <tr><td class="blade-inline-11">Email</td><td>{{ $order->buyer->email }}</td></tr>
+                    <tr><td class="blade-inline-12">Contact</td><td>{{ $order->buyer->contact_no }}</td></tr>
+                    <tr><td class="blade-inline-13">Address</td><td>{{ implode(', ', array_filter([$order->buyer->house_no, $order->buyer->street, $order->buyer->barangay, $order->buyer->municipality, $order->buyer->province])) }}</td></tr>
                 </table>
                 @else
-                <p style="color:#aaa;">Buyer info unavailable.</p>
+                <p class="blade-inline-14">Buyer info unavailable.</p>
                 @endif
             </div>
         </div>
@@ -48,32 +49,32 @@
             <div class="card-header"><span class="card-title">Shipment & Tracking</span></div>
             <div class="card-body">
                 <table>
-                    <tr><td style="color:#888;width:140px;">Waybill #</td><td>{{ $order->waybill_number ?? '—' }}</td></tr>
-                    <tr><td style="color:#888;">Tracking Status</td><td>{{ $order->tracking_status ?? '—' }}</td></tr>
-                    <tr><td style="color:#888;">Packed At</td><td>{{ $order->packed_at ? $order->packed_at->format('M d, Y h:i A') : '—' }}</td></tr>
-                    <tr><td style="color:#888;">Handed Over</td><td>{{ $order->handed_over_at ? $order->handed_over_at->format('M d, Y h:i A') : '—' }}</td></tr>
-                    <tr><td style="color:#888;">Delivered At</td><td>{{ $order->delivered_at ? $order->delivered_at->format('M d, Y h:i A') : '—' }}</td></tr>
+                    <tr><td class="blade-inline-15">Waybill #</td><td>{{ $order->waybill_number ?? '—' }}</td></tr>
+                    <tr><td class="blade-inline-16">Tracking Status</td><td>{{ $order->tracking_status ?? '—' }}</td></tr>
+                    <tr><td class="blade-inline-17">Packed At</td><td>{{ $order->packed_at ? $order->packed_at->format('M d, Y h:i A') : '—' }}</td></tr>
+                    <tr><td class="blade-inline-18">Handed Over</td><td>{{ $order->handed_over_at ? $order->handed_over_at->format('M d, Y h:i A') : '—' }}</td></tr>
+                    <tr><td class="blade-inline-19">Delivered At</td><td>{{ $order->delivered_at ? $order->delivered_at->format('M d, Y h:i A') : '—' }}</td></tr>
                 </table>
 
-                <div style="margin-top:1.2rem;">
+                <div class="blade-inline-20">
                     @if($order->status === 'pending')
                     <form method="POST" action="/seller/orders/{{ $order->id }}/pack">
                         @csrf @method('PATCH')
                         <button type="submit" class="btn btn-coral">Mark as Packed</button>
                     </form>
                     @elseif($order->status === 'processing')
-                    <form method="POST" action="/seller/orders/{{ $order->id }}/handover" style="display:flex;gap:0.5rem;align-items:flex-end;">
+                    <form method="POST" action="/seller/orders/{{ $order->id }}/handover" class="blade-inline-21">
                         @csrf @method('PATCH')
-                        <div class="form-group" style="flex:1;margin:0;">
+                        <div class="form-group blade-inline-22">
                             <label class="form-label">Waybill Number *</label>
                             <input type="text" name="waybill_number" class="form-control" required placeholder="Enter waybill number">
                         </div>
                         <button type="submit" class="btn btn-success">Hand Over</button>
                     </form>
                     @elseif($order->status === 'shipped')
-                    <div class="alert alert-success" style="margin:0;">Order has been handed over to courier. Awaiting delivery confirmation.</div>
+                    <div class="alert alert-success blade-inline-23">Order has been handed over to courier. Awaiting delivery confirmation.</div>
                     @elseif($order->status === 'completed')
-                    <div class="alert alert-success" style="margin:0;">Order delivered and completed.</div>
+                    <div class="alert alert-success blade-inline-24">Order delivered and completed.</div>
                     @endif
                 </div>
             </div>
@@ -84,10 +85,10 @@
             <div class="card-header"><span class="card-title">Customer Feedback</span></div>
             <div class="card-body">
                 @if($order->rating)
-                <div style="margin-bottom:0.5rem;font-size:0.85rem;color:#888;">Customer rating: {{ $order->rating }}/5</div>
+                <div class="blade-inline-25">Customer rating: {{ $order->rating }}/5</div>
                 @endif
                 @if($order->feedback)
-                <p style="font-size:0.88rem;color:#555;">{{ $order->feedback }}</p>
+                <p class="blade-inline-26">{{ $order->feedback }}</p>
                 @endif
             </div>
         </div>

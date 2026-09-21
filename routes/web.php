@@ -16,6 +16,10 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 
 Route::get('/', function () {
+    if (request()->getHost() === 'logistics.pick-sell.shop') {
+        return redirect()->route('logistics.dashboard');
+    }
+
     $featuredProducts = Product::where('status', 'active')->where('stock', '>', 0)
         ->where('is_featured', true)->with('seller')->latest()->take(8)->get();
     return view('welcome', compact('featuredProducts'));
@@ -69,12 +73,25 @@ Route::middleware('auth')->group(function () {
 // Logistics / Sorting Center Staff Routes
 Route::middleware(['auth', LogisticsMiddleware::class])->prefix('logistics')->group(function () {
     Route::get('/dashboard', [LogisticsController::class, 'dashboard'])->name('logistics.dashboard');
+    Route::get('/branches', [LogisticsController::class, 'branches'])->name('logistics.branches');
+    Route::post('/branches', [LogisticsController::class, 'storeBranch'])->name('logistics.branches.store');
+    Route::get('/branches/{branch}/edit', [LogisticsController::class, 'editBranch'])->name('logistics.branches.edit');
+    Route::put('/branches/{branch}', [LogisticsController::class, 'updateBranch'])->name('logistics.branches.update');
+    Route::get('/coverage', [LogisticsController::class, 'module'])->defaults('module', 'coverage')->name('logistics.coverage');
+    Route::get('/assignments', [LogisticsController::class, 'module'])->defaults('module', 'assignments')->name('logistics.assignments');
     Route::get('/applications', [LogisticsController::class, 'applications'])->name('logistics.applications');
     Route::patch('/applications/{user}/approve', [LogisticsController::class, 'approveCourier'])->name('logistics.applications.approve');
     Route::patch('/applications/{user}/disapprove', [LogisticsController::class, 'disapproveCourier'])->name('logistics.applications.disapprove');
     Route::get('/parcels', [LogisticsController::class, 'parcels'])->name('logistics.parcels');
     Route::patch('/parcels/{order}/scan', [LogisticsController::class, 'scanParcel'])->name('logistics.parcels.scan');
     Route::patch('/parcels/{order}/assign', [LogisticsController::class, 'assignCourier'])->name('logistics.parcels.assign');
+    Route::get('/tracking', [LogisticsController::class, 'module'])->defaults('module', 'tracking')->name('logistics.tracking');
+    Route::get('/riders', [LogisticsController::class, 'module'])->defaults('module', 'riders')->name('logistics.riders');
+    Route::get('/reports/deliveries', [LogisticsController::class, 'module'])->defaults('module', 'delivery-reports')->name('logistics.reports.deliveries');
+    Route::get('/reports/branches', [LogisticsController::class, 'module'])->defaults('module', 'branch-reports')->name('logistics.reports.branches');
+    Route::get('/complaints', [LogisticsController::class, 'module'])->defaults('module', 'complaints')->name('logistics.complaints');
+    Route::get('/messages', [LogisticsController::class, 'module'])->defaults('module', 'messages')->name('logistics.messages');
+    Route::get('/account', [LogisticsController::class, 'account'])->name('logistics.account');
 });
 
 // Courier / Rider Routes

@@ -2,19 +2,7 @@
 @section('title', 'My Account')
 
 @section('styles')
-<style>
-    .account-page .card { position: relative; border: 1px solid rgba(232,71,42,.28); box-shadow: 0 8px 24px rgba(232,71,42,.08); }
-    .account-page .card::before { content: ''; position: absolute; inset: 0 0 auto; height: 3px; background: var(--coral); }
-    .account-page .btn { box-shadow: 0 0 0 1px rgba(232,71,42,.18), 0 6px 16px rgba(232,71,42,.2); transition: transform .2s, box-shadow .2s, background .2s; }
-    .account-page .btn:hover { transform: translateY(-2px); box-shadow: 0 0 0 2px rgba(232,71,42,.2), 0 10px 24px rgba(232,71,42,.32); }
-    .account-page .danger-card { border: 1px solid #ef4444; border-radius: 16px; background: inherit; box-shadow: 0 8px 24px rgba(239,68,68,.08); }
-    .account-page .danger-card::before { display: none; }
-    .account-page .danger-card .card-header { border-bottom: 0; padding-bottom: 0.35rem; }
-    .account-page .danger-card .card-title { color: #ff4545; }
-    .account-page .danger-card .card-body { padding-top: 0.35rem; }
-    .account-page .danger-card .btn-danger { background: #ff4545; border: 0; color: #fff; box-shadow: 0 8px 18px rgba(255,69,69,.35); }
-    .account-page .danger-card .btn-danger:hover { background: #ff5d5d; box-shadow: 0 10px 24px rgba(255,69,69,.5); }
-</style>
+@vite('resources/css/views/seller-account.css')
 @endsection
 
 @section('content')
@@ -79,7 +67,7 @@
                     <div class="form-group">
                         <label class="form-label">Current Password *</label>
                         <input type="password" name="current_password" class="form-control" required>
-                        @error('current_password')<div style="color:#dc2626;font-size:0.8rem;margin-top:0.3rem;">{{ $message }}</div>@enderror
+                        @error('current_password')<div class="blade-inline-1">{{ $message }}</div>@enderror
                     </div>
                     <div class="form-group">
                         <label class="form-label">New Password *</label>
@@ -98,16 +86,16 @@
             <div class="card-header"><span class="card-title">Account Info</span></div>
             <div class="card-body">
                 <table>
-                    <tr><td style="color:#888;width:140px;">Role</td><td><span class="badge badge-active">Seller</span></td></tr>
-                    <tr><td style="color:#888;">Status</td><td><span class="badge badge-{{ auth()->user()->status }}">{{ auth()->user()->status }}</span></td></tr>
-                    <tr><td style="color:#888;">Email</td><td>{{ auth()->user()->email }}</td></tr>
-                    <tr><td style="color:#888;">Contact</td><td>{{ auth()->user()->contact_no }}</td></tr>
-                    <tr><td style="color:#888;">Business</td><td>{{ auth()->user()->business_name ?? '—' }}</td></tr>
-                    <tr><td style="color:#888;">Line of Business</td><td>{{ auth()->user()->line_of_business ?? '—' }}</td></tr>
-                    <tr><td style="color:#888;">Sex</td><td>{{ auth()->user()->sex }}</td></tr>
-                    <tr><td style="color:#888;">Birthday</td><td>{{ auth()->user()->birthday ? auth()->user()->birthday->format('M d, Y').' (Age '.auth()->user()->age.')' : '—' }}</td></tr>
-                    <tr><td style="color:#888;">Address</td><td>{{ implode(', ', array_filter([auth()->user()->house_no, auth()->user()->street, auth()->user()->barangay, auth()->user()->municipality, auth()->user()->province])) }}</td></tr>
-                    <tr><td style="color:#888;">Member Since</td><td>{{ auth()->user()->created_at->format('M d, Y') }}</td></tr>
+                    <tr><td class="blade-inline-2">Role</td><td><span class="badge badge-active">Seller</span></td></tr>
+                    <tr><td class="blade-inline-3">Status</td><td><span class="badge badge-{{ auth()->user()->status }}">{{ auth()->user()->status }}</span></td></tr>
+                    <tr><td class="blade-inline-4">Email</td><td>{{ auth()->user()->email }}</td></tr>
+                    <tr><td class="blade-inline-5">Contact</td><td>{{ auth()->user()->contact_no }}</td></tr>
+                    <tr><td class="blade-inline-6">Business</td><td>{{ auth()->user()->business_name ?? '—' }}</td></tr>
+                    <tr><td class="blade-inline-7">Line of Business</td><td>{{ auth()->user()->line_of_business ?? '—' }}</td></tr>
+                    <tr><td class="blade-inline-8">Sex</td><td>{{ auth()->user()->sex }}</td></tr>
+                    <tr><td class="blade-inline-9">Birthday</td><td>{{ auth()->user()->birthday ? auth()->user()->birthday->format('M d, Y').' (Age '.auth()->user()->age.')' : '—' }}</td></tr>
+                    <tr><td class="blade-inline-10">Address</td><td>{{ implode(', ', array_filter([auth()->user()->house_no, auth()->user()->street, auth()->user()->barangay, auth()->user()->municipality, auth()->user()->province])) }}</td></tr>
+                    <tr><td class="blade-inline-11">Member Since</td><td>{{ auth()->user()->created_at->format('M d, Y') }}</td></tr>
                 </table>
             </div>
         </div>
@@ -115,10 +103,10 @@
         <div class="card danger-card">
             <div class="card-header"><span class="card-title">Delete Account</span></div>
             <div class="card-body">
-                <p style="font-size:0.88rem;color:#888;margin-bottom:1rem;">Permanently delete your seller account and its related records.</p>
-                <form method="POST" action="{{ route('account.delete') }}" onsubmit="return confirm('Delete your account permanently? This cannot be undone.')">
+                <p class="blade-inline-12">Permanently delete your seller account and its related records.</p>
+                <form method="POST" action="{{ route('account.delete') }}" data-confirm="Delete your account permanently? This cannot be undone.">
                     @csrf @method('DELETE')
-                    <input type="password" name="password" class="form-control" placeholder="Confirm your password" required style="margin-bottom:.7rem;">
+                    <input type="password" name="password" class="form-control" placeholder="Confirm your password" required class="blade-inline-13">
                     <button type="submit" class="btn btn-danger">Delete Account</button>
                 </form>
             </div>

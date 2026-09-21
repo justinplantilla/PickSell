@@ -9,6 +9,7 @@ use App\Models\Message;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\LogisticsRoutingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -137,6 +138,8 @@ class BuyerController extends Controller
 
         if ($items->isEmpty()) return back()->withErrors(['item_ids' => 'No items selected.']);
 
+        $routing = app(LogisticsRoutingService::class);
+
         foreach ($items as $item) {
             $product = $item->product;
             $price   = $product->effective_price;
@@ -149,7 +152,7 @@ class BuyerController extends Controller
             $amount     = $price * $item->quantity;
             $commission = $amount * 0.10;
 
-            Order::create([
+            $order = Order::create([
                 'order_number'   => 'ORD-' . strtoupper(Str::random(8)),
                 'product_id'     => $product->id,
                 'buyer_id'       => $this->buyer()->id,
@@ -161,6 +164,7 @@ class BuyerController extends Controller
                 'commission'     => $commission,
                 'status'         => 'pending',
             ]);
+            $routing->routeOrder($order, $product->seller, $this->buyer());
 
             // Deduct stock
             $product->decrement('stock', $item->quantity);

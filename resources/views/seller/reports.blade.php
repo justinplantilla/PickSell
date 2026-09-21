@@ -1,15 +1,16 @@
 @extends('seller.layout')
+@vite('resources/css/views/seller-reports.css')
 @section('title', 'Reports')
 
 @section('content')
 <div class="card">
     <div class="card-header">
         <span class="card-title">Financial & Performance Report</span>
-        <form method="GET" style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
-            <label style="font-size:0.82rem;font-weight:600;">From</label>
-            <input type="date" name="from" value="{{ $from }}" class="form-control" style="width:auto;">
-            <label style="font-size:0.82rem;font-weight:600;">To</label>
-            <input type="date" name="to" value="{{ $to }}" class="form-control" style="width:auto;">
+        <form method="GET" class="blade-inline-1">
+            <label class="blade-inline-2">From</label>
+            <input type="date" name="from" value="{{ $from }}" class="form-control blade-inline-3">
+            <label class="blade-inline-4">To</label>
+            <input type="date" name="to" value="{{ $to }}" class="form-control blade-inline-5">
             <button type="submit" class="btn btn-coral btn-sm">Generate</button>
         </form>
     </div>
@@ -49,20 +50,20 @@
 <div class="grid-2">
     <div class="card">
         <div class="card-header"><span class="card-title">Daily Sales</span></div>
-        <div class="card-body"><div id="dailyChart"></div></div>
+        <div class="card-body"><div id="dailyChart" data-seller-daily-chart data-sales='@json($dailySales)' data-days='@json($days)'></div></div>
     </div>
     <div class="card">
         <div class="card-header"><span class="card-title">Top Products</span></div>
-        <div class="card-body" style="padding:0;">
+        <div class="card-body blade-inline-6">
             @if($topProducts->isEmpty())
-                <div style="padding:1.5rem;text-align:center;color:#aaa;font-size:0.85rem;">No data for this period.</div>
+                <div class="blade-inline-7">No data for this period.</div>
             @else
             <table>
                 <thead><tr><th>#</th><th>Product</th><th>Orders</th><th>Sales</th></tr></thead>
                 <tbody>
                 @foreach($topProducts as $i => $p)
                 <tr>
-                    <td style="color:#888;">{{ $i+1 }}</td>
+                    <td class="blade-inline-8">{{ $i+1 }}</td>
                     <td>{{ $p['name'] }}</td>
                     <td>{{ $p['count'] }}</td>
                     <td>₱{{ number_format($p['sales'], 2) }}</td>
@@ -77,16 +78,5 @@
 @endsection
 
 @section('scripts')
-<script>
-new ApexCharts(document.getElementById('dailyChart'), {
-    chart: { type: 'bar', height: 220, toolbar: { show: false } },
-    series: [{ name: 'Sales (₱)', data: {!! json_encode($dailySales) !!} }],
-    xaxis: { categories: {!! json_encode($days) !!}, labels: { rotate: -45, style: { fontSize: '10px' } } },
-    colors: ['#E8472A'],
-    dataLabels: { enabled: false },
-    yaxis: { labels: { formatter: v => '₱' + v.toLocaleString() } },
-    tooltip: { y: { formatter: v => '₱' + v.toLocaleString() } },
-    grid: { borderColor: '#f0ebe0' },
-}).render();
-</script>
+@vite('resources/js/views/seller-reports.js')
 @endsection

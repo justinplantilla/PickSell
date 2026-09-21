@@ -14,6 +14,7 @@ class User extends Authenticatable
         'last_name', 'first_name', 'middle_initial', 'sex',
         'email', 'password', 'contact_no', 'birthday', 'age',
         'province', 'municipality', 'barangay', 'street', 'house_no',
+        'municipality_id', 'barangay_id',
         'id_upload',
         // Seller
         'business_name', 'line_of_business', 'business_permit',
@@ -46,4 +47,7 @@ class User extends Authenticatable
     public function ordersAsSeller()   { return $this->hasMany(Order::class, 'seller_id'); }
     public function ordersAsCourier()  { return $this->hasMany(Order::class, 'courier_id'); }
     public function products()         { return $this->hasMany(\App\Models\Product::class, 'seller_id'); }
+    public function municipality()      { return $this->belongsTo(Municipality::class); }
+    public function barangay()          { return $this->belongsTo(Barangay::class); }
+    public function branchAssignments() { return $this->hasMany(BranchRider::class); }
 }

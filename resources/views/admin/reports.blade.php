@@ -1,18 +1,19 @@
 @extends('admin.layout')
+@vite('resources/css/views/admin-reports.css')
 @section('title', 'Generate Reports')
 
 @section('content')
 <!-- Date Filter -->
-<div class="card" style="margin-bottom:1.5rem;">
+<div class="card blade-inline-1">
     <div class="card-body">
-        <form method="GET" style="display:flex;gap:1rem;align-items:flex-end;flex-wrap:wrap;">
-            <div class="form-group" style="margin:0;">
+        <form method="GET" class="blade-inline-2">
+            <div class="form-group blade-inline-3">
                 <label class="form-label">From</label>
-                <input type="date" name="from" class="form-control" value="{{ $from }}" style="width:160px;">
+                <input type="date" name="from" class="form-control" value="{{ $from }}" class="blade-inline-4">
             </div>
-            <div class="form-group" style="margin:0;">
+            <div class="form-group blade-inline-5">
                 <label class="form-label">To</label>
-                <input type="date" name="to" class="form-control" value="{{ $to }}" style="width:160px;">
+                <input type="date" name="to" class="form-control" value="{{ $to }}" class="blade-inline-6">
             </div>
             <button type="submit" class="btn btn-coral">Generate</button>
             <a href="/admin/reports/export?from={{ $from }}&to={{ $to }}&type=sales" class="btn btn-outline">📄 Export Sales PDF</a>
@@ -67,7 +68,7 @@
                 <td>{{ $s['name'] }}</td>
                 <td>₱{{ number_format($s['sales']) }}</td>
                 <td>{{ $s['orders'] }}</td>
-                <td style="color:var(--coral);font-weight:700;">₱{{ number_format($s['commission']) }}</td>
+                <td class="blade-inline-7">₱{{ number_format($s['commission']) }}</td>
             </tr>
             @endforeach
             </tbody>
@@ -75,14 +76,6 @@
     </div>
 </div>
 
-<script>
-new ApexCharts(document.getElementById('salesChart'), {
-    chart: { type: 'bar', height: 280, toolbar: { show: false } },
-    series: [{ name: 'Sales (₱)', data: {{ json_encode($data['monthly_sales']) }} }],
-    xaxis: { categories: {{ json_encode($data['months']) }} },
-    colors: ['#E8472A'],
-    dataLabels: { enabled: false },
-    plotOptions: { bar: { borderRadius: 4 } },
-}).render();
-</script>
+<div data-sales-chart data-sales='@json($data["monthly_sales"])' data-months='@json($data["months"])' hidden></div>
+@vite('resources/js/views/admin-reports.js')
 @endsection

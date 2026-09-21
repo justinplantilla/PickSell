@@ -1,0 +1,10 @@
+.search-suggest-form { position: relative; }
+    .search-suggestions { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 300; display: grid; gap: 0.25rem; padding: 0.4rem; border: 1px solid #e8e2d8; border-radius: 10px; background: #fff; box-shadow: 0 10px 28px rgba(0,0,0,.16); }
+    .search-suggestions[hidden] { display: none; }
+    .search-suggestion { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; padding: 0.65rem 0.75rem; border: 0; border-radius: 7px; background: transparent; color: #2d2d2d; cursor: pointer; font: inherit; text-align: left; }
+    .search-suggestion:hover, .search-suggestion:focus-visible { background: #fff3f0; color: var(--coral); outline: none; }
+    .search-suggestion small { color: #999; font-size: 0.72rem; white-space: nowrap; }
+    body.dark .search-suggestions { background: #1b1b1b; border-color: #333; }
+    body.dark .search-suggestion { color: #e5e7eb; }
+    body.dark .search-suggestion:hover, body.dark .search-suggestion:focus-visible { background: #2a2a2a; color: #ff8068; }
+    body.dark .search-suggestion small { color: #9ca3af; }

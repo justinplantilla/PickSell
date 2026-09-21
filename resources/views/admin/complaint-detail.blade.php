@@ -1,8 +1,9 @@
 @extends('admin.layout')
+@vite('resources/css/views/admin-complaint-detail.css')
 @section('title', 'Review Complaint #{{ $complaint->id }}')
 
 @section('content')
-<div style="margin-bottom:1rem;">
+<div class="blade-inline-1">
     <a href="/admin/complaints" class="btn btn-outline btn-sm">← Back to Complaints</a>
 </div>
 
@@ -10,25 +11,25 @@
     <div class="card">
         <div class="card-header"><span class="card-title">Complaint Details</span></div>
         <div class="card-body">
-            <table style="font-size:0.88rem;">
-                <tr><td style="font-weight:600;color:#888;padding:0.4rem 0.8rem 0.4rem 0;width:140px;">Filed By</td><td>{{ $complaint->filer->full_name ?? '—' }} ({{ ucfirst($complaint->filer->role ?? '') }})</td></tr>
-                <tr><td style="font-weight:600;color:#888;padding:0.4rem 0.8rem 0.4rem 0;">Against</td><td>{{ $complaint->against->full_name ?? 'N/A' }}</td></tr>
-                <tr><td style="font-weight:600;color:#888;padding:0.4rem 0.8rem 0.4rem 0;">Subject</td><td>{{ $complaint->subject }}</td></tr>
-                <tr><td style="font-weight:600;color:#888;padding:0.4rem 0.8rem 0.4rem 0;">Filed On</td><td>{{ $complaint->created_at->format('M d, Y h:i A') }}</td></tr>
-                <tr><td style="font-weight:600;color:#888;padding:0.4rem 0.8rem 0.4rem 0;">Status</td>
+            <table class="blade-inline-2">
+                <tr><td class="blade-inline-3">Filed By</td><td>{{ $complaint->filer->full_name ?? '—' }} ({{ ucfirst($complaint->filer->role ?? '') }})</td></tr>
+                <tr><td class="blade-inline-4">Against</td><td>{{ $complaint->against->full_name ?? 'N/A' }}</td></tr>
+                <tr><td class="blade-inline-5">Subject</td><td>{{ $complaint->subject }}</td></tr>
+                <tr><td class="blade-inline-6">Filed On</td><td>{{ $complaint->created_at->format('M d, Y h:i A') }}</td></tr>
+                <tr><td class="blade-inline-7">Status</td>
                     <td>
                         @php $badgeMap = ['open'=>'badge-pending','under_review'=>'badge-pending','resolved'=>'badge-approved','dismissed'=>'badge-deactivated']; @endphp
                         <span class="badge {{ $badgeMap[$complaint->status] ?? 'badge-pending' }}">{{ ucfirst(str_replace('_',' ',$complaint->status)) }}</span>
                     </td>
                 </tr>
             </table>
-            <div style="margin-top:1rem;">
-                <div style="font-size:0.82rem;font-weight:600;margin-bottom:0.4rem;">Details</div>
-                <div style="background:#fafaf8;border:1px solid #f0ebe0;border-radius:8px;padding:0.8rem;font-size:0.88rem;line-height:1.6;">{{ $complaint->details }}</div>
+            <div class="blade-inline-8">
+                <div class="blade-inline-9">Details</div>
+                <div class="blade-inline-10">{{ $complaint->details }}</div>
             </div>
             @if($complaint->evidence_path)
-            <div style="margin-top:1rem;">
-                <div style="font-size:0.82rem;font-weight:600;margin-bottom:0.4rem;">Evidence</div>
+            <div class="blade-inline-11">
+                <div class="blade-inline-12">Evidence</div>
                 <a href="{{ asset('storage/'.$complaint->evidence_path) }}" target="_blank" class="btn btn-outline btn-sm">📎 View Evidence</a>
             </div>
             @endif
@@ -53,7 +54,7 @@
                     <label class="form-label">Admin Notes / Resolution</label>
                     <textarea name="admin_notes" class="form-control" rows="6" placeholder="Write your resolution or coordination notes...">{{ $complaint->admin_notes }}</textarea>
                 </div>
-                <div style="display:flex;gap:0.6rem;">
+                <div class="blade-inline-13">
                     <button type="submit" class="btn btn-coral">💾 Save Resolution</button>
                 </div>
             </form>

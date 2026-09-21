@@ -1,4 +1,5 @@
 @extends('admin.layout')
+@vite('resources/css/views/admin-users.css')
 @section('title', 'User Accounts')
 
 @section('content')
@@ -37,7 +38,7 @@
             <td><span class="badge badge-{{ $user->status }}">{{ ucfirst($user->status) }}</span></td>
             <td>{{ $user->created_at->format('M d, Y') }}</td>
             <td>
-                <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+                <div class="blade-inline-1">
                     @if($user->status !== 'approved')
                     <form method="POST" action="/admin/users/{{ $user->id }}/status">
                         @csrf @method('PATCH')
@@ -63,7 +64,7 @@
             </td>
         </tr>
         @empty
-        <tr><td colspan="7" style="text-align:center;color:#888;padding:2rem;">No users found.</td></tr>
+        <tr><td colspan="7" class="blade-inline-2">No users found.</td></tr>
         @endforelse
         </tbody>
     </table>
