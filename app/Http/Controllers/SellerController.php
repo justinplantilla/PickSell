@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Mail\NewMessageMail;
+use App\Notifications\SellerDeliveryReceived;
 use App\Models\Message;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -21,7 +23,7 @@ class SellerController extends Controller
         $seller = $this->seller();
         $stats = [
             'total_orders'     => Order::where('seller_id', $seller->id)->count(),
-            'pending_orders'   => Order::where('seller_id', $seller->id)->where('status', 'pending')->count(),
+            'pending_orders'   => Order::where('seller_id', $seller->id)->where('status', 'placed')->count(),
             'completed_orders' => Order::where('seller_id', $seller->id)->where('status', 'completed')->count(),
             'total_sales'      => Order::where('seller_id', $seller->id)->where('status', 'completed')->sum('amount'),
             'total_products'   => Product::where('seller_id', $seller->id)->where('status', 'active')->count(),
@@ -132,8 +134,12 @@ class SellerController extends Controller
     public function packOrder(Order $order)
     {
         abort_if($order->seller_id !== $this->seller()->id, 403);
-        $order->update(['status' => 'processing', 'packed_at' => now()]);
-        return back()->with('success', 'Order marked as packed.');
+        $order->update([
+            'status' => 'preparing',
+            'packed_at' => now(),
+            'tracking_status' => 'Seller is preparing the order',
+        ]);
+        return back()->with('success', 'Order marked as being prepared.');
     }
 
     public function handoverOrder(Request $request, Order $order)
@@ -141,12 +147,46 @@ class SellerController extends Controller
         abort_if($order->seller_id !== $this->seller()->id, 403);
         $data = $request->validate(['waybill_number' => 'required|string|max:100']);
         $order->update([
-            'status'         => 'shipped',
+            'status'         => 'ready_for_pickup',
             'waybill_number' => $data['waybill_number'],
             'handed_over_at' => now(),
-            'tracking_status' => 'Handed over to courier',
+            'tracking_status' => 'Pickup requested from seller',
         ]);
-        return back()->with('success', 'Order handed over to courier.');
+        return back()->with('success', 'Order is ready for pickup.');
+    }
+
+    public function showWaybill(Order $order)
+    {
+        abort_if($order->seller_id !== $this->seller()->id, 403);
+
+        $pdf = Pdf::loadView('seller.pdf.waybill', compact('order'))
+            ->setPaper([0, 0, 300, 500], 'portrait');
+
+        return $pdf->stream('waybill-' . $order->order_number . '.pdf');
+    }
+
+    public function confirmDelivery(Order $order)
+    {
+        abort_if($order->seller_id !== $this->seller()->id, 403);
+        abort_if($order->status !== 'delivered', 422, 'Only delivered orders can be confirmed.');
+
+        $order->update([
+            'status' => 'completed',
+            'tracking_status' => 'Seller confirmed buyer receipt',
+            'confirmed_by_seller_at' => now(),
+        ]);
+
+        $this->seller()->notify(new SellerDeliveryReceived($order));
+
+        return back()->with('success', 'Delivery confirmed.');
+    }
+
+    public function notifications()
+    {
+        $notifications = auth()->user()->notifications()->latest()->take(20)->get();
+        auth()->user()->unreadNotifications->markAsRead();
+
+        return response()->json($notifications);
     }
 
     // Reports

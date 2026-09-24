@@ -17,7 +17,22 @@ return new class extends Migration
             $table->string('product_name');
             $table->decimal('amount', 10, 2);
             $table->decimal('commission', 10, 2);
-            $table->enum('status', ['pending', 'processing', 'shipped', 'completed', 'cancelled'])->default('pending');
+            $table->enum('status', [
+                'placed',
+                'confirmed',
+                'preparing',
+                'ready_for_pickup',
+                'picked_up',
+                'at_sorting_center',
+                'sorted',
+                'assigned_to_rider',
+                'out_for_delivery',
+                'delivered',
+                'completed',
+                'delivery_failed',
+                'returned',
+                'cancelled',
+            ])->default('placed');
             $table->timestamps();
         });
     }

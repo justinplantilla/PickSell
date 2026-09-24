@@ -19,6 +19,11 @@
         <div class="stat-card-num">{{ $stats['sellers'] }}</div>
         <div class="stat-card-label">Active Sellers</div>
     </div>
+    <div class="stat-card blue">
+        <div class="stat-card-icon">⚙</div>
+        <div class="stat-card-num">{{ $stats['logistics'] }}</div>
+        <div class="stat-card-label">Active Logistics</div>
+    </div>
     <div class="stat-card orange">
         <div class="stat-card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2a3 3 0 0 0 6 0h6a3 3 0 0 0 6 0h2v-5l-3-4zM6 18.5A1.5 1.5 0 1 1 7.5 17 1.5 1.5 0 0 1 6 18.5zm13.5-9 1.96 2.5H17V9.5h2.5zm-1.5 9A1.5 1.5 0 1 1 19.5 17a1.5 1.5 0 0 1-1.5 1.5z"/></svg></div>
         <div class="stat-card-num">{{ $stats['couriers'] }}</div>
@@ -72,6 +77,6 @@
     @endif
 </div>
 
-<div data-admin-chart-data data-buyers="{{ $stats['buyers'] }}" data-sellers="{{ $stats['sellers'] }}" data-couriers="{{ $stats['couriers'] }}" data-total="{{ $stats['total'] }}" hidden></div>
+<div data-admin-chart-data data-buyers="{{ $stats['buyers'] }}" data-sellers="{{ $stats['sellers'] }}" data-logistics="{{ $stats['logistics'] }}" data-couriers="{{ $stats['couriers'] }}" data-total="{{ $stats['total'] }}" hidden></div>
 @vite('resources/js/views/admin-dashboard.js')
 @endsection

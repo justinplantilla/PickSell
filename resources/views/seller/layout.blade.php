@@ -84,6 +84,14 @@
         <div class="topbar">
             <div class="topbar-title">@yield('title')</div>
             <div class="topbar-right">
+                <button class="notif-btn" id="notifBtn" onclick="toggleSellerNotif()" aria-label="Seller notifications">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4a2 2 0 0 0 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                    <span class="notif-dot" id="sellerNotifDot"></span>
+                </button>
+                <div class="notif-dropdown" id="sellerNotifDropdown">
+                    <div class="notif-header">Notifications <span id="sellerNotifCount"></span></div>
+                    <div id="sellerNotifList"><div class="notif-empty">Loading...</div></div>
+                </div>
                 @include('partials.dashboard-clock')
             </div>
         </div>

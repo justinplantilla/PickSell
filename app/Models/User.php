@@ -39,6 +39,7 @@ class User extends Authenticatable
 
     public function isApproved(): bool { return $this->status === 'approved'; }
     public function isPending(): bool  { return $this->status === 'pending'; }
+    public function isDeactivated(): bool { return $this->status === 'deactivated'; }
 
     public function sentMessages()     { return $this->hasMany(Message::class, 'sender_id'); }
     public function receivedMessages() { return $this->hasMany(Message::class, 'receiver_id'); }

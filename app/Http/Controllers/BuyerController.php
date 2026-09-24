@@ -9,6 +9,7 @@ use App\Models\Message;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Notifications\NewSellerOrder;
 use App\Services\LogisticsRoutingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -17,6 +18,20 @@ use Illuminate\Support\Str;
 class BuyerController extends Controller
 {
     private function buyer() { return auth()->user(); }
+
+    private function createBuyerNotification(User $user, string $message, ?Order $order = null): void
+    {
+        $user->notifications()->create([
+            'id' => (string) Str::uuid(),
+            'type' => 'App\\Notifications\\BuyerOrderUpdate',
+            'data' => json_encode([
+                'type' => $order ? 'order' : 'message',
+                'order_id' => $order?->id,
+                'order_number' => $order?->order_number,
+                'message' => $message,
+            ]),
+        ]);
+    }
 
     private function getCart()
     {
@@ -162,8 +177,10 @@ class BuyerController extends Controller
                 'quantity'       => $item->quantity,
                 'amount'         => $amount,
                 'commission'     => $commission,
-                'status'         => 'pending',
+                'status'         => 'placed',
+                'tracking_status' => 'Order placed and awaiting seller preparation',
             ]);
+            $product->seller->notify(new NewSellerOrder($order));
             $routing->routeOrder($order, $product->seller, $this->buyer());
 
             // Deduct stock
@@ -275,11 +292,39 @@ class BuyerController extends Controller
             'product_id'  => $request->product_id,
             'read'        => false,
         ]);
+        $receiver = User::findOrFail($request->receiver_id);
+        $this->createBuyerNotification(
+            $receiver,
+            'You have a new message from ' . auth()->user()->full_name . '.',
+        );
         $msg->load('sender', 'receiver', 'product');
         \Illuminate\Support\Facades\Mail::to($msg->receiver->email)->send(new NewMessageMail($msg));
         $redirect = '/buyer/chat?user=' . $request->receiver_id;
         if ($request->product_id) $redirect .= '&product=' . $request->product_id;
         return redirect($redirect);
+    }
+
+    public function notifications()
+    {
+        $notifications = auth()->user()->notifications()->latest()->take(20)->get()->map(function ($notification) {
+            $payload = is_string($notification->data) ? json_decode($notification->data, true) : $notification->data;
+
+            return [
+                'id' => $notification->id,
+                'type' => $notification->type,
+                'created_at' => $notification->created_at,
+                'updated_at' => $notification->updated_at,
+                'read_at' => $notification->read_at,
+                'order_id' => $payload['order_id'] ?? null,
+                'order_number' => $payload['order_number'] ?? null,
+                'message' => $payload['message'] ?? 'New notification',
+                'status' => $payload['status'] ?? null,
+            ];
+        });
+
+        auth()->user()->unreadNotifications->markAsRead();
+
+        return response()->json($notifications);
     }
 
     // Account

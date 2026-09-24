@@ -27,8 +27,9 @@ class AdminController extends Controller
             'pending'   => User::where('status', 'pending')->count(),
             'buyers'    => User::where('role', 'buyer')->where('status', 'approved')->count(),
             'sellers'   => User::where('role', 'seller')->where('status', 'approved')->count(),
+            'logistics' => User::where('role', 'logistics')->where('status', 'approved')->count(),
             'couriers'  => User::where('role', 'courier')->where('status', 'approved')->count(),
-            'total'     => User::whereIn('role', ['buyer', 'seller', 'courier'])->count(),
+            'total'     => User::whereIn('role', ['buyer', 'seller', 'logistics', 'courier'])->count(),
             'suspended' => User::where('status', 'suspended')->count(),
         ];
         $recentApps = User::whereIn('role', ['buyer', 'seller', 'courier'])
@@ -51,6 +52,18 @@ class AdminController extends Controller
         return back()->with('success', $product->is_featured
             ? 'Product added to Featured Products.'
             : 'Product removed from Featured Products.');
+    }
+
+    public function moderateProduct(Request $request, Product $product)
+    {
+        $data = $request->validate(['status' => 'required|in:active,archived']);
+        $product->update(['status' => $data['status']]);
+        $product->seller?->notifications()->create([
+            'id' => \Illuminate\Support\Str::uuid(),
+            'type' => 'App\\Notifications\\ProductModeration',
+            'data' => json_encode(['message' => "Your product '{$product->name}' was marked {$data['status']} by Admin."]),
+        ]);
+        return back()->with('success', "Product {$product->name} marked {$data['status']}.");
     }
 
     // Registrations
@@ -182,6 +195,21 @@ class AdminController extends Controller
             'admin_notes' => 'nullable|string|max:2000',
         ]);
         $complaint->update($request->only('status', 'admin_notes'));
+
+        $participants = collect([$complaint->filer, $complaint->against])->filter()->unique('id');
+        foreach ($participants as $participant) {
+            $participant->notifications()->create([
+                'id' => \Illuminate\Support\Str::uuid(),
+                'type' => 'App\\Notifications\\ComplaintStatusUpdate',
+                'data' => json_encode([
+                    'complaint_id' => $complaint->id,
+                    'subject' => $complaint->subject,
+                    'status' => $complaint->status,
+                    'message' => 'Your complaint #'.$complaint->id.' has been updated to '.str_replace('_', ' ', $complaint->status).'.',
+                ]),
+            ]);
+        }
+
         return back()->with('success', 'Complaint updated successfully.');
     }
 
@@ -329,9 +357,22 @@ class AdminController extends Controller
     public function settings()
     {
         $announcements = Announcement::latest()->get();
-        $tos     = PlatformSetting::get('terms_of_service');
-        $privacy = PlatformSetting::get('privacy_policy');
-        return view('admin.settings', compact('announcements', 'tos', 'privacy'));
+        $tos      = PlatformSetting::get('terms_of_service');
+        $privacy  = PlatformSetting::get('privacy_policy');
+        $platformName = PlatformSetting::get('platform_name', 'PickSell');
+        $supportEmail = PlatformSetting::get('support_email', 'support@picksell.ph');
+        $commissionRate = PlatformSetting::get('commission_rate', '10');
+        $maxFileUploadMb = PlatformSetting::get('max_file_upload_mb', '5');
+
+        return view('admin.settings', compact(
+            'announcements',
+            'tos',
+            'privacy',
+            'platformName',
+            'supportEmail',
+            'commissionRate',
+            'maxFileUploadMb'
+        ));
     }
 
     public function saveSettings(Request $request)
@@ -349,6 +390,22 @@ class AdminController extends Controller
                 'active'   => true,
             ]);
             return back()->with('success', 'Announcement posted successfully.');
+        }
+
+        if ($request->hasAny(['platform_name', 'support_email', 'commission_rate', 'max_file_upload_mb'])) {
+            $request->validate([
+                'platform_name' => 'nullable|string|max:255',
+                'support_email' => 'nullable|email|max:255',
+                'commission_rate' => 'nullable|numeric|min:0|max:100',
+                'max_file_upload_mb' => 'nullable|integer|min:1|max:500',
+            ]);
+
+            PlatformSetting::set('platform_name', (string) $request->input('platform_name', 'PickSell'));
+            PlatformSetting::set('support_email', (string) $request->input('support_email', 'support@picksell.ph'));
+            PlatformSetting::set('commission_rate', (string) $request->input('commission_rate', '10'));
+            PlatformSetting::set('max_file_upload_mb', (string) $request->input('max_file_upload_mb', '5'));
+
+            return back()->with('success', 'General settings saved successfully.');
         }
 
         // Save policies
@@ -378,13 +435,11 @@ class AdminController extends Controller
     {
         $admin = auth()->user();
 
-        // Support mode: only show users who have messaged the admin
-        $userIds = Message::where('receiver_id', $admin->id)
-            ->pluck('sender_id')->unique()->values();
-
-        $users = User::whereIn('id', $userIds)
-            ->whereIn('role', ['buyer', 'seller', 'courier'])
-            ->where('status', 'approved')->get();
+        $users = User::whereIn('role', ['buyer', 'seller', 'courier', 'logistics'])
+            ->where('status', 'approved')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
 
         $activeUserId = $request->get('user');
         $activeUser   = $activeUserId ? User::find($activeUserId) : null;
@@ -424,7 +479,8 @@ class AdminController extends Controller
             'body'        => $request->body,
             'read'        => false,
         ]);
-        return back();
+
+        return redirect()->route('admin.chat', ['user' => $request->receiver_id]);
     }
 
     // Notifications

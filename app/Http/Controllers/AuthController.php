@@ -45,6 +45,10 @@ class AuthController extends Controller
             return back()->withErrors(['email' => 'Your account has been suspended. Please contact support.'])->onlyInput('email');
         }
 
+        if ($user->isDeactivated()) {
+            return back()->withErrors(['email' => 'Your account has been deactivated. Please contact support.'])->onlyInput('email');
+        }
+
         $allowedLoginRoles = $request->getHost() === 'logistics.pick-sell.shop'
             ? ['logistics', 'courier']
             : ['buyer', 'seller', 'admin'];

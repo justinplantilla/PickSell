@@ -82,16 +82,22 @@ Route::middleware(['auth', LogisticsMiddleware::class])->prefix('logistics')->gr
     Route::get('/applications', [LogisticsController::class, 'applications'])->name('logistics.applications');
     Route::patch('/applications/{user}/approve', [LogisticsController::class, 'approveCourier'])->name('logistics.applications.approve');
     Route::patch('/applications/{user}/disapprove', [LogisticsController::class, 'disapproveCourier'])->name('logistics.applications.disapprove');
+    Route::patch('/riders/{user}/status', [LogisticsController::class, 'updateRiderStatus'])->name('logistics.riders.status');
     Route::get('/parcels', [LogisticsController::class, 'parcels'])->name('logistics.parcels');
+    Route::patch('/parcels/{order}/approve-pickup', [LogisticsController::class, 'approvePickup'])->name('logistics.parcels.approve-pickup');
     Route::patch('/parcels/{order}/scan', [LogisticsController::class, 'scanParcel'])->name('logistics.parcels.scan');
     Route::patch('/parcels/{order}/assign', [LogisticsController::class, 'assignCourier'])->name('logistics.parcels.assign');
     Route::get('/tracking', [LogisticsController::class, 'module'])->defaults('module', 'tracking')->name('logistics.tracking');
     Route::get('/riders', [LogisticsController::class, 'module'])->defaults('module', 'riders')->name('logistics.riders');
-    Route::get('/reports/deliveries', [LogisticsController::class, 'module'])->defaults('module', 'delivery-reports')->name('logistics.reports.deliveries');
+    Route::get('/reports/deliveries', [LogisticsController::class, 'deliveryReports'])->name('logistics.reports.deliveries');
+    Route::get('/reports/deliveries/export', [LogisticsController::class, 'exportDeliveryReports'])->name('logistics.reports.deliveries.export');
     Route::get('/reports/branches', [LogisticsController::class, 'module'])->defaults('module', 'branch-reports')->name('logistics.reports.branches');
     Route::get('/complaints', [LogisticsController::class, 'module'])->defaults('module', 'complaints')->name('logistics.complaints');
-    Route::get('/messages', [LogisticsController::class, 'module'])->defaults('module', 'messages')->name('logistics.messages');
+    Route::get('/messages', [LogisticsController::class, 'messages'])->name('logistics.messages');
+    Route::post('/messages/send', [LogisticsController::class, 'sendMessage'])->name('logistics.messages.send');
     Route::get('/account', [LogisticsController::class, 'account'])->name('logistics.account');
+    Route::patch('/account', [LogisticsController::class, 'updateAccount'])->name('logistics.account.update');
+    Route::patch('/account/password', [LogisticsController::class, 'updatePassword'])->name('logistics.account.password');
 });
 
 // Courier / Rider Routes
@@ -122,6 +128,7 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
     // Orders
     Route::get('/orders',                           [BuyerController::class, 'orders'])->name('buyer.orders');
     Route::post('/orders/{order}/feedback',         [BuyerController::class, 'submitFeedback'])->name('buyer.feedback');
+    Route::get('/notifications',                    [BuyerController::class, 'notifications'])->name('buyer.notifications');
 
     // Chat
     Route::get('/chat',                             [BuyerController::class, 'chat'])->name('buyer.chat');
@@ -146,8 +153,11 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     // Orders
     Route::get('/orders',                           [SellerController::class, 'orders'])->name('seller.orders');
     Route::get('/orders/{order}',                   [SellerController::class, 'showOrder'])->name('seller.orders.show');
+    Route::get('/orders/{order}/waybill',           [SellerController::class, 'showWaybill'])->name('seller.orders.waybill');
     Route::patch('/orders/{order}/pack',            [SellerController::class, 'packOrder'])->name('seller.orders.pack');
     Route::patch('/orders/{order}/handover',        [SellerController::class, 'handoverOrder'])->name('seller.orders.handover');
+    Route::patch('/orders/{order}/confirm-delivery', [SellerController::class, 'confirmDelivery'])->name('seller.orders.confirm-delivery');
+    Route::get('/notifications',                    [SellerController::class, 'notifications'])->name('seller.notifications');
 
     // Reports
     Route::get('/reports', [SellerController::class, 'reports'])->name('seller.reports');
@@ -167,6 +177,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
     Route::get('/products', [AdminController::class, 'products'])->name('admin.products');
     Route::patch('/products/{product}/featured', [AdminController::class, 'toggleFeatured'])->name('admin.products.featured');
+    Route::patch('/products/{product}/status', [AdminController::class, 'moderateProduct'])->name('admin.products.status');
 
     // Registrations
     Route::get('/registrations',                     [AdminController::class, 'registrations'])->name('admin.registrations');

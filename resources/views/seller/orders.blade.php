@@ -37,6 +37,9 @@
                 <td>
                     <div class="blade-inline-4">
                         <a href="/seller/orders/{{ $order->id }}" class="btn btn-outline btn-sm">View</a>
+                        @if(in_array($order->status, ['shipped', 'completed'], true))
+                        <a href="/seller/orders/{{ $order->id }}/waybill" target="_blank" class="btn btn-outline btn-sm">Waybill</a>
+                        @endif
                         @if($order->status === 'pending')
                         <form method="POST" action="/seller/orders/{{ $order->id }}/pack">
                             @csrf @method('PATCH')

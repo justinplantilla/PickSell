@@ -1,0 +1,7 @@
+@extends('logistics.layout')
+@section('title', 'Messages')
+@section('content')
+<div class="blade-inline-1"><h1 class="blade-inline-2">Messages</h1><p class="blade-inline-3">Communicate with approved platform users about delivery operations.</p></div>
+<div class="card"><div class="card-body"><div class="chat-contacts">@forelse($contacts as $contact)<a class="btn {{ $activeUser?->id === $contact->id ? 'btn-coral' : 'btn-outline' }}" href="{{ route('logistics.messages', ['user' => $contact->id]) }}">{{ $contact->full_name }}</a>@empty<span class="blade-inline-3">No conversations yet.</span>@endforelse</div></div></div>
+@if($activeUser)<div class="card"><div class="card-header"><span class="card-title">Conversation with {{ $activeUser->full_name }}</span></div><div class="card-body"><div class="chat-messages">@forelse($messages as $message)<p><strong>{{ $message->sender_id === auth()->id() ? 'You' : $message->sender->full_name }}:</strong> {{ $message->body }}</p>@empty<p class="blade-inline-3">No messages yet.</p>@endforelse</div><form method="POST" action="{{ route('logistics.messages.send') }}" class="chat-compose">@csrf<input type="hidden" name="receiver_id" value="{{ $activeUser->id }}"><textarea class="form-control" name="body" rows="3" maxlength="2000" placeholder="Write a message..." required></textarea><button class="btn btn-coral" type="submit">Send Message</button></form></div></div>@endif
+@endsection

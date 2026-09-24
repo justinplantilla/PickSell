@@ -13,7 +13,7 @@
     </div>
     <div class="blade-inline-1">
         <table>
-            <thead><tr><th>Product</th><th>Seller</th><th>Category</th><th>Price</th><th>Status</th><th>Featured</th><th>Action</th></tr></thead>
+            <thead><tr><th>Product</th><th>Seller</th><th>Category Review</th><th>Price</th><th>Status</th><th>Featured</th><th>Moderation</th></tr></thead>
             <tbody>
             @forelse($products as $product)
             <tr>
@@ -22,11 +22,11 @@
                     <strong>{{ $product->name }}</strong>
                 </div></td>
                 <td>{{ $product->seller->business_name ?? $product->seller->full_name }}</td>
-                <td>{{ $product->category ?? '—' }}</td>
+                <td>{{ $product->category ?? '—' }}<div class="blade-inline-4">Registered: {{ $product->seller->line_of_business ?? '—' }}</div><span class="badge {{ strtolower((string) $product->category) === strtolower((string) $product->seller->line_of_business) ? 'badge-approved' : 'badge-pending' }}">{{ strtolower((string) $product->category) === strtolower((string) $product->seller->line_of_business) ? 'Category match' : 'Review needed' }}</span></td>
                 <td>₱{{ number_format($product->effective_price, 2) }}</td>
                 <td><span class="badge badge-{{ $product->status }}">{{ ucfirst($product->status) }}</span></td>
                 <td><span class="badge {{ $product->is_featured ? 'badge-approved' : 'badge-archived' }}">{{ $product->is_featured ? 'Yes' : 'No' }}</span></td>
-                <td><form method="POST" action="{{ route('admin.products.featured', $product) }}">@csrf @method('PATCH')<button type="submit" class="btn {{ $product->is_featured ? 'btn-outline' : 'btn-coral' }} btn-sm">{{ $product->is_featured ? 'Unfeature' : 'Feature' }}</button></form></td>
+                <td><form method="POST" action="{{ route('admin.products.featured', $product) }}">@csrf @method('PATCH')<button type="submit" class="btn {{ $product->is_featured ? 'btn-outline' : 'btn-coral' }} btn-sm">{{ $product->is_featured ? 'Unfeature' : 'Feature' }}</button></form><form method="POST" action="{{ route('admin.products.status', $product) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="{{ $product->status === 'active' ? 'archived' : 'active' }}"><button type="submit" class="btn {{ $product->status === 'active' ? 'btn-danger' : 'btn-success' }} btn-sm">{{ $product->status === 'active' ? 'Archive for Review' : 'Restore' }}</button></form></td>
             </tr>
             @empty
             <tr><td colspan="7" class="blade-inline-4">No products found.</td></tr>

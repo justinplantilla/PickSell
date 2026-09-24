@@ -83,19 +83,19 @@
             <div class="blade-inline-12">
                 <div class="form-group">
                     <label class="form-label">Platform Name</label>
-                    <input type="text" class="form-control" value="PickSell">
+                    <input type="text" name="platform_name" class="form-control" value="{{ $platformName ?? 'PickSell' }}">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Support Email</label>
-                    <input type="email" class="form-control" value="support@picksell.ph">
+                    <input type="email" name="support_email" class="form-control" value="{{ $supportEmail ?? 'support@picksell.ph' }}">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Commission Rate (%)</label>
-                    <input type="number" class="form-control" value="10" min="0" max="100">
+                    <input type="number" name="commission_rate" class="form-control" value="{{ $commissionRate ?? 10 }}" min="0" max="100" step="0.01">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Max File Upload Size (MB)</label>
-                    <input type="number" class="form-control" value="5">
+                    <input type="number" name="max_file_upload_mb" class="form-control" value="{{ $maxFileUploadMb ?? 5 }}" min="1" max="500">
                 </div>
             </div>
             <button type="submit" class="btn btn-coral"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24" class="blade-inline-13"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z"/></svg>Save Settings</button>

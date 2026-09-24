@@ -41,11 +41,11 @@ class CourierController extends Controller
         abort_if($order->courier_id !== $this->courier()->id, 403);
 
         $data = $request->validate([
-            'status' => 'required|in:shipped,completed',
+            'status' => 'required|in:out_for_delivery,delivered',
         ]);
 
         $updates = ['status' => $data['status']];
-        if ($data['status'] === 'shipped') {
+        if ($data['status'] === 'out_for_delivery') {
             $updates['tracking_status'] = 'Out for delivery';
         } else {
             $updates['tracking_status'] = 'Delivered';
@@ -54,7 +54,22 @@ class CourierController extends Controller
 
         $order->update($updates);
 
-        return back()->with('success', $data['status'] === 'completed'
+        $message = $data['status'] === 'delivered'
+            ? 'Your order #' . $order->order_number . ' has been delivered.'
+            : 'Your order #' . $order->order_number . ' is now out for delivery.';
+
+        $order->buyer?->notifications()->create([
+            'id' => \Illuminate\Support\Str::uuid(),
+            'type' => 'App\\Notifications\\BuyerOrderUpdate',
+            'data' => json_encode([
+                'type' => 'order',
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'message' => $message,
+            ]),
+        ]);
+
+        return back()->with('success', $data['status'] === 'delivered'
             ? 'Parcel marked as delivered.'
             : 'Parcel marked as out for delivery.');
     }

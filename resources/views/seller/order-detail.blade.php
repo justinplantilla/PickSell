@@ -75,10 +75,27 @@
                     <div class="alert alert-success blade-inline-23">Order has been handed over to courier. Awaiting delivery confirmation.</div>
                     @elseif($order->status === 'completed')
                     <div class="alert alert-success blade-inline-24">Order delivered and completed.</div>
+                    @if(!$order->confirmed_by_seller_at)
+                    <form method="POST" action="/seller/orders/{{ $order->id }}/confirm-delivery" class="blade-inline-21">
+                        @csrf @method('PATCH')
+                        <button type="submit" class="btn btn-success">Confirm Delivery</button>
+                    </form>
+                    @else
+                    <div class="alert alert-info blade-inline-23">Delivery confirmed by seller on {{ $order->confirmed_by_seller_at->format('M d, Y h:i A') }}.</div>
+                    @endif
                     @endif
                 </div>
             </div>
         </div>
+
+        @if(in_array($order->status, ['shipped','completed'], true))
+        <div class="card">
+            <div class="card-header"><span class="card-title">Shipping Documents</span></div>
+            <div class="card-body">
+                <a href="/seller/orders/{{ $order->id }}/waybill" target="_blank" class="btn btn-outline">Download Waybill Label</a>
+            </div>
+        </div>
+        @endif
 
         @if($order->status === 'completed' && ($order->rating || $order->feedback))
         <div class="card">

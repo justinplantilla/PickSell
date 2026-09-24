@@ -22,6 +22,16 @@
         </form>
         <div class="navbar-right">
             @include('partials.dashboard-clock')
+            <div class="nav-notification-wrap">
+                <button class="nav-icon-btn notif-btn" id="buyerNotifBtn" type="button" onclick="toggleBuyerNotif()" aria-label="Buyer notifications">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4a2 2 0 0 0 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+                    <span class="notif-dot" id="buyerNotifDot"></span>
+                </button>
+                <div class="notif-dropdown" id="buyerNotifDropdown">
+                    <div class="notif-header">Notifications <span id="buyerNotifCount"></span></div>
+                    <div id="buyerNotifList"><div class="notif-empty">Loading...</div></div>
+                </div>
+            </div>
             <a href="/buyer/chat" class="nav-icon-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
                 <span>Messages</span>
