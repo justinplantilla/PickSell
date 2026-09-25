@@ -184,9 +184,15 @@ class SellerController extends Controller
     public function notifications()
     {
         $notifications = auth()->user()->notifications()->latest()->take(20)->get();
-        auth()->user()->unreadNotifications->markAsRead();
+        $unreadCount = auth()->user()->unreadNotifications()->count();
 
-        return response()->json($notifications);
+        return response()->json($notifications)->header('X-Unread-Count', $unreadCount);
+    }
+
+    public function markNotificationsRead()
+    {
+        auth()->user()->unreadNotifications->markAsRead();
+        return response()->json(['success' => true]);
     }
 
     // Reports

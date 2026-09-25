@@ -1,5 +1,7 @@
 @extends('admin.layout')
+@section('styles')
 @vite('resources/css/views/admin-registrations.css')
+@endsection
 @section('title', 'Manage Registrations')
 
 @section('content')

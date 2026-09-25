@@ -50,8 +50,13 @@
         .navbar-search button { padding: 0.5rem 1rem; background: var(--coral); border: none; border-radius: 0 6px 6px 0; color: #fff; cursor: pointer; }
         .navbar-search button:hover { background: var(--coral-dark); }
         .navbar-right { margin-left: auto; display: flex; align-items: center; gap: 1.2rem; }
-        .nav-icon-btn { position: relative; color: #ccc; display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer; transition: color 0.2s; }
-        .nav-icon-btn:hover { color: #fff; }
+        .nav-icon-btn { position: relative; color: #ccc; display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; cursor: pointer; transition: color .2s, background-color .2s, transform .2s; }
+        .nav-icon-btn:hover, .nav-icon-btn:focus-visible { color: #fff; transform: translateY(-2px); outline: none; }
+        .nav-icon-btn.notif-btn { padding: 0.45rem; border-radius: 50%; }
+        .nav-icon-btn.notif-btn:hover, .nav-icon-btn.notif-btn:focus-visible { background: rgba(255,255,255,.12); }
+        .nav-icon-btn.notif-btn:active, .nav-icon-btn.notif-btn.is-open { transform: scale(.94); }
+        .nav-icon-btn .notif-dot { position: absolute; top: 1px; right: 1px; width: 8px; height: 8px; background: var(--coral); border: 2px solid var(--charcoal); border-radius: 50%; display: none; animation: buyer-notif-pulse 1.8s ease-in-out infinite; }
+        @keyframes buyer-notif-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(232,71,42,.4); } 50% { box-shadow: 0 0 0 5px rgba(232,71,42,0); } }
         .cart-badge { position: absolute; top: -6px; right: -8px; background: var(--coral); color: #fff; font-size: 0.6rem; font-weight: 700; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
         .nav-user { display: flex; align-items: center; gap: 0.5rem; color: #ccc; font-size: 0.85rem; cursor: pointer; position: relative; }
         .nav-user:hover { color: #fff; }
@@ -61,6 +66,23 @@
         .user-dropdown a, .user-dropdown button { display: flex; align-items: center; gap: 0.6rem; padding: 0.7rem 1rem; font-size: 0.85rem; color: var(--charcoal); width: 100%; background: none; border: none; cursor: pointer; text-align: left; }
         .user-dropdown a:hover, .user-dropdown button:hover { background: #fff3f0; color: var(--coral); }
         .user-dropdown hr { border: none; border-top: 1px solid #f0ebe0; margin: 0.3rem 0; }
+        .notif-dropdown { position: absolute; top: 42px; right: 0; width: 300px; background: #fff; border: 1px solid #e8e2d8; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 200; display: none; max-height: 360px; overflow-y: auto; }
+        .notif-dropdown.open { display: block; }
+        .notif-header { padding: .75rem 1rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0ebe0; font-size: .85rem; font-weight: 700; }
+        .notif-item { padding: .75rem 1rem; border-bottom: 1px solid #f0ebe0; font-size: .82rem; }
+        .notif-empty { padding: 1.25rem; text-align: center; color: #888; font-size: .82rem; }
+        button.notif-item { display:block; width:100%; background:transparent; border:0; text-align:left; cursor:pointer; transition:background .2s, padding-left .2s; }
+        button.notif-item:hover { background:#fff3f0; padding-left:1.2rem; }
+        .notif-item-time { display:block; margin-top:.2rem; color:#aaa; font-size:.75rem; }
+        .notification-detail-modal { position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:1rem; background:rgba(20,20,20,.42); }
+        .notification-detail-card { position:relative; width:min(440px,100%); padding:1.5rem; border:1px solid #e8e2d8; border-radius:14px; background:#fff; box-shadow:0 18px 50px rgba(0,0,0,.2); }
+        .notification-detail-close { position:absolute; top:.65rem; right:.75rem; border:0; background:transparent; color:#888; font-size:1.5rem; cursor:pointer; }
+        .notification-detail-kicker { color:var(--coral); font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+        .notification-detail-card h2 { margin:.45rem 2rem .75rem 0; font-size:1.05rem; }
+        .notification-detail-message { color:#555; line-height:1.55; }
+        .notification-detail-time { display:block; margin-top:1rem; color:#999; font-size:.78rem; }
+        .notif-mark-read { border: 0; background: transparent; color: var(--coral); font-size: .72rem; font-weight: 700; cursor: pointer; padding: .25rem; }
+        .notif-mark-read:hover { text-decoration: underline; color: var(--coral-dark); }
 
         /* Category bar */
         .cat-bar { background: #fff; border-bottom: 1px solid #e8e2d8; padding: 0 1.5rem; display: flex; align-items: center; gap: 0.5rem; overflow-x: auto; height: 44px; }

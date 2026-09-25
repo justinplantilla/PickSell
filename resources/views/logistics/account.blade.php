@@ -1,5 +1,7 @@
 @extends('logistics.layout')
+@section('styles')
 @vite('resources/css/views/logistics-account.css')
+@endsection
 @section('title', 'My Account')
 @section('content')
 <div class="blade-inline-1"><h1 class="blade-inline-2">My Account</h1><p class="blade-inline-3">Your Logistics Sub-Admin profile and access details.</p></div>

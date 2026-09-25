@@ -1,5 +1,7 @@
 @extends('logistics.layout')
+@section('styles')
 @vite('resources/css/views/logistics-module.css')
+@endsection
 @section('title', $definition['title'])
 @section('content')
 <div class="blade-inline-1"><h1 class="blade-inline-2">{{ $definition['title'] }}</h1><p class="blade-inline-3">{{ $definition['description'] }}</p></div>

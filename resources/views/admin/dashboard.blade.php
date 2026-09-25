@@ -1,5 +1,7 @@
 @extends('admin.layout')
+@section('styles')
 @vite('resources/css/views/admin-dashboard.css')
+@endsection
 @section('title', 'Dashboard')
 
 @section('content')
@@ -78,5 +80,7 @@
 </div>
 
 <div data-admin-chart-data data-buyers="{{ $stats['buyers'] }}" data-sellers="{{ $stats['sellers'] }}" data-logistics="{{ $stats['logistics'] }}" data-couriers="{{ $stats['couriers'] }}" data-total="{{ $stats['total'] }}" hidden></div>
+@section('scripts')
 @vite('resources/js/views/admin-dashboard.js')
+@endsection
 @endsection

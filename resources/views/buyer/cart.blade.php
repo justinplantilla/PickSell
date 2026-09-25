@@ -1,5 +1,7 @@
 @extends('buyer.layout')
+@section('styles')
 @vite('resources/css/views/buyer-cart.css')
+@endsection
 @section('title', 'My Cart')
 
 @section('content')

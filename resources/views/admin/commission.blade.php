@@ -1,5 +1,7 @@
 @extends('admin.layout')
+@section('styles')
 @vite('resources/css/views/admin-commission.css')
+@endsection
 @section('title', 'Commission Management')
 
 @section('content')
@@ -22,17 +24,17 @@
 
 <div class="stat-grid">
     <div class="stat-card green">
-        <div class="stat-card-icon">💰</div>
+        <div class="stat-card-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5.5A4.5 4.5 0 0 0 12.5 2C10 2 8 3.2 8 5.5S10 9 12.5 9s4.5 1.5 4.5 4-2 4.5-5 4.5A5.5 5.5 0 0 1 7 15"/></svg></div>
         <div class="stat-card-num">₱{{ number_format($totalSales, 2) }}</div>
         <div class="stat-card-label">Total Sales</div>
     </div>
     <div class="stat-card coral">
-        <div class="stat-card-icon">📊</div>
+        <div class="stat-card-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 16v-4M12 16V8M16 16v-7"/></svg></div>
         <div class="stat-card-num">₱{{ number_format($totalCommission, 2) }}</div>
         <div class="stat-card-label">Total Commission ({{ $rate }}%)</div>
     </div>
     <div class="stat-card blue">
-        <div class="stat-card-icon">🧾</div>
+        <div class="stat-card-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h4"/></svg></div>
         <div class="stat-card-num">{{ $orders->count() }}</div>
         <div class="stat-card-label">Completed Orders</div>
     </div>
@@ -79,5 +81,7 @@
 </div>
 
 <div data-commission-chart data-commissions='@json($orders->pluck("commission")->values())' data-orders='@json($orders->map(fn($order) => $order->order_number)->values())' hidden></div>
+@section('scripts')
 @vite('resources/js/views/admin-commission.js')
+@endsection
 @endsection

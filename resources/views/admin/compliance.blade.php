@@ -1,5 +1,7 @@
 @extends('admin.layout')
+@section('styles')
 @vite('resources/css/views/admin-compliance.css')
+@endsection
 @section('title', 'Seller Compliance')
 
 @section('content')
@@ -20,7 +22,7 @@
             <td>
                 <div class="blade-inline-1">
                     <!-- Warn -->
-                    <button class="btn btn-outline btn-sm" onclick="openWarn({{ $seller->id }}, '{{ $seller->full_name }}')">⚠️ Warn</button>
+                    <button class="btn btn-outline btn-sm" onclick="openWarn({{ $seller->id }}, '{{ $seller->full_name }}')"><svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 1 21h22L12 2zm1 14h-2v-2h2v2zm0-4h-2V8h2v4z"/></svg>Warn</button>
                     <!-- Suspend -->
                     <form method="POST" action="/admin/users/{{ $seller->id }}/status">
                         @csrf @method('PATCH')
@@ -43,7 +45,7 @@
 <!-- Warn Modal -->
 <div id="warnModal" class="blade-inline-3">
     <div class="blade-inline-4">
-        <h3 class="blade-inline-5">⚠️ Issue Warning to <span id="warnName"></span></h3>
+        <h3 class="blade-inline-5"><svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 1 21h22L12 2zm1 14h-2v-2h2v2zm0-4h-2V8h2v4z"/></svg>Issue Warning to <span id="warnName"></span></h3>
         <form method="POST" id="warnForm">
             @csrf @method('PATCH')
             <div class="form-group">
@@ -58,5 +60,7 @@
     </div>
 </div>
 
+@section('scripts')
 @vite('resources/js/views/admin-compliance.js')
+@endsection
 @endsection

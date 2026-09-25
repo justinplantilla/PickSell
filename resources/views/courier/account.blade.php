@@ -1,5 +1,7 @@
 @extends('courier.layout')
+@section('styles')
 @vite('resources/css/views/courier-account.css')
+@endsection
 @section('title', 'Account')
 @section('content')
 <h1 class="blade-inline-1">Courier Account</h1>

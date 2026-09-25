@@ -73,5 +73,7 @@
         @endif
     </div>
 </div>
+@section('scripts')
 @vite('resources/js/views/seller-chat.js')
+@endsection
 @endsection

@@ -1,5 +1,7 @@
 @extends('seller.layout')
+@section('styles')
 @vite('resources/css/views/seller-inventory.css')
+@endsection
 @section('title', 'Inventory')
 
 @section('content')

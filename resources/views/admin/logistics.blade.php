@@ -1,5 +1,7 @@
 @extends('admin.layout')
+@section('styles')
 @vite('resources/css/views/admin-logistics.css')
+@endsection
 @section('title', 'Sorting Center / Logistics')
 
 @section('content')

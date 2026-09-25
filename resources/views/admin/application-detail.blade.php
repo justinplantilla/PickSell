@@ -1,5 +1,7 @@
 @extends('admin.layout')
+@section('styles')
 @vite('resources/css/views/admin-application-detail.css')
+@endsection
 @section('title', 'Review Application')
 
 @section('content')
@@ -86,7 +88,7 @@
                 <form method="POST" action="/admin/registrations/{{ $user->id }}/approve" class="blade-inline-10">
                     @csrf @method('PATCH')
                     <p class="blade-inline-11">Approving will activate the account and notify the applicant via email.</p>
-                    <button type="submit" class="btn btn-success" onclick="return confirm('Approve this application?')">✅ Approve Registration</button>
+                    <button type="submit" class="btn btn-success" onclick="return confirm('Approve this application?')"><svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 16.2-3.5-3.5L4.1 14.1 9 19l11-11-1.4-1.4z"/></svg>Approve Registration</button>
                 </form>
                 <hr class="blade-inline-12">
                 <!-- Disapprove -->
@@ -96,7 +98,7 @@
                         <label class="form-label">Reason for Disapproval <span class="blade-inline-13">*</span></label>
                         <textarea name="reason" class="form-control" placeholder="State the reason..." required></textarea>
                     </div>
-                    <button type="submit" class="btn btn-danger" onclick="return confirm('Disapprove this application?')">❌ Disapprove Registration</button>
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Disapprove this application?')"><svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.4 5 5 6.4l5.6 5.6L5 17.6 6.4 19l5.6-5.6 5.6 5.6 1.4-1.4-5.6-5.6L19 6.4 17.6 5 12 10.6 6.4 5z"/></svg>Disapprove Registration</button>
                 </form>
             </div>
         </div>

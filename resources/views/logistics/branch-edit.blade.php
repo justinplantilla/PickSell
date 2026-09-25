@@ -1,5 +1,7 @@
 @extends('logistics.layout')
+@section('styles')
 @vite('resources/css/views/logistics-branch-edit.css')
+@endsection
 @section('title', 'Edit Branch')
 @section('content')
 <div class="blade-inline-1">

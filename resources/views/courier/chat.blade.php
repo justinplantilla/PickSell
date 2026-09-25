@@ -1,5 +1,7 @@
 @extends('courier.layout')
+@section('styles')
 @vite('resources/css/views/courier-chat.css')
+@endsection
 @section('title', 'Chat')
 @section('content')
 <h1 class="blade-inline-1">Chat / Messaging</h1>

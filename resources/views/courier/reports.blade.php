@@ -1,5 +1,7 @@
 @extends('courier.layout')
+@section('styles')
 @vite('resources/css/views/courier-reports.css')
+@endsection
 @section('title', 'Reports')
 @section('content')
 <h1 class="blade-inline-1">Delivery Reports</h1>

@@ -7,3 +7,4 @@
 .blade-inline-5 { margin-bottom:1rem !important; font-size:1rem !important;  }
 .blade-inline-6 { color:var(--coral) !important }
 .blade-inline-7 { display:flex !important; gap:0.6rem !important; justify-content:flex-end !important;  }
+.action-icon { display:inline-block; vertical-align:middle; margin-right:.3rem; }

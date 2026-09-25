@@ -1,8 +1,9 @@
 @extends('logistics.layout')
 @section('title', 'Branches')
-@section('content')
+@section('styles')
 @vite('resources/css/views/logistics-branches.css')
-
+@endsection
+@section('content')
 <div class="branch-toolbar"><div><h1 class="blade-inline-1">Branches</h1><p class="blade-inline-2">Create a municipality branch and manage its delivery coverage.</p></div><div class="blade-inline-3"><form method="GET" class="blade-inline-4"><input class="form-control" name="search" value="{{ $search }}" placeholder="Search branch, city, manager..." aria-label="Search branches"><button class="btn btn-outline" type="submit">Search</button></form><button class="btn btn-coral" type="button" data-open-branch-modal="add">+ Add Branch</button></div></div>
 
 <div class="card">
@@ -44,5 +45,7 @@
     </div>
 </div>
 
+@section('scripts')
 @vite('resources/js/views/logistics-branches.js')
+@endsection
 @endsection

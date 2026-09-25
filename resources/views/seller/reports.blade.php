@@ -1,5 +1,7 @@
 @extends('seller.layout')
+@section('styles')
 @vite('resources/css/views/seller-reports.css')
+@endsection
 @section('title', 'Reports')
 
 @section('content')

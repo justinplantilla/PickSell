@@ -1,5 +1,6 @@
 @extends('layouts.app')
-@section('title', 'Log In')
+@php($isLogisticsSite = request()->getHost() === 'logistics.pick-sell.shop')
+@section('title', $isLogisticsSite ? 'Log In | PickSell Logistics' : 'Log In')
 
 @section('styles')
 @vite('resources/css/pages/login.css')
@@ -10,8 +11,8 @@
     <div class="auth-shell">
         <div class="auth-card">
         <div class="auth-logo"><a href="/"><img src="{{ asset('images/transparent logo.png') }}" alt="PickSell logo"><span>Pick<span>Sell</span></span></a></div>
-        <h1 class="auth-title">Welcome back</h1>
-        <p class="auth-sub">Log in to your PickSell account</p>
+        <h1 class="auth-title">{{ $isLogisticsSite ? 'PickSell Logistics' : 'Welcome back' }}</h1>
+        <p class="auth-sub">{{ $isLogisticsSite ? 'Log in to your logistics portal' : 'Log in to your PickSell account' }}</p>
 
         @if(session('success'))
             <div class="alert-success">{{ session('success') }}</div>
@@ -50,9 +51,7 @@
     </div>
 </div>
 
-<button class="dm-toggle" data-theme-toggle title="Toggle dark mode">
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
-</button>
+@endsection
 
 @section('scripts')
 @vite('resources/js/pages/login.js')

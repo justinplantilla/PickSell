@@ -64,5 +64,7 @@
     </div>
 </div>
 
+@section('scripts')
 @vite('resources/js/views/admin-chat.js')
+@endsection
 @endsection

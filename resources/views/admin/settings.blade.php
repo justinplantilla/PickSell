@@ -1,5 +1,7 @@
 @extends('admin.layout')
+@section('styles')
 @vite('resources/css/views/admin-settings.css')
+@endsection
 @section('title', 'Platform Settings')
 
 @section('content')

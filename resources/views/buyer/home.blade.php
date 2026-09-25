@@ -1,5 +1,7 @@
 @extends('buyer.layout')
+@section('styles')
 @vite('resources/css/views/buyer-home.css')
+@endsection
 @section('title', 'Shop')
 
 @section('catbar')

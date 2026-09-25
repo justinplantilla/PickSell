@@ -25,5 +25,6 @@
     @if($errors->any())<div class="alert alert-error">{{ $errors->first() }}</div>@endif
     @yield('content')
 </main>
+@yield('scripts')
 </body>
 </html>

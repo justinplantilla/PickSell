@@ -1,5 +1,7 @@
 @extends('seller.layout')
+@section('styles')
 @vite('resources/css/views/seller-dashboard.css')
+@endsection
 @section('title', 'Dashboard')
 
 @section('content')
@@ -82,5 +84,7 @@
 @endsection
 
 @section('scripts')
+@section('scripts')
 @vite('resources/js/views/seller-dashboard.js')
+@endsection
 @endsection

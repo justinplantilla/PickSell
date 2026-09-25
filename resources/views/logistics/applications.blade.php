@@ -1,5 +1,7 @@
 @extends('logistics.layout')
+@section('styles')
 @vite('resources/css/views/logistics-applications.css')
+@endsection
 @section('title', 'Courier Applications')
 @section('content')
 <div class="card"><div class="card-body"><form method="GET" class="blade-inline-1"><input class="form-control" name="search" value="{{ $search }}" placeholder="Search courier, area, plate..." aria-label="Search courier applications"><input type="hidden" name="status" value="{{ $status }}"><button class="btn btn-coral" type="submit">Search Couriers</button>@if($search)<a class="btn btn-outline" href="{{ route('logistics.applications', ['status' => $status]) }}">Clear</a>@endif</form></div></div>

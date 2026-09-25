@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap');
 
 body { display: flex; flex-direction: column; min-height: 100vh; }
+.auth-page .nav-top { position: relative; }
 .auth-wrapper { position: relative; isolation: isolate; overflow: hidden; flex: 1; display: flex; align-items: center; justify-content: center; padding: 3rem 1rem; background: radial-gradient(circle at 50% 0, rgba(255,111,97,.1), transparent 30rem), #fdfbf7; }
 .auth-wrapper::before { content: ''; position: absolute; z-index: -1; inset: -35%; background-image: linear-gradient(rgba(255,111,97,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,111,97,.035) 1px, transparent 1px); background-size: 42px 42px; transform: rotate(-4deg); animation: ambient-drift 24s linear infinite; }
 .auth-shell { display: grid; grid-template-columns: minmax(360px, 420px); justify-content: center; align-items: center; width: min(1120px, 100%); }

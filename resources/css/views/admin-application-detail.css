@@ -14,3 +14,4 @@
 .blade-inline-12 { border:none !important; border-top:1px solid #f0ebe0 !important; margin-bottom:1rem !important;  }
 .blade-inline-13 { color:var(--coral) !important }
 .blade-inline-14 { font-size:0.88rem !important;  }
+.action-icon { display:inline-block; vertical-align:middle; margin-right:.3rem; }

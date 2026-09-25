@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" type="image/png" href="{{ asset('images/transparent logo.png') }}">
     <title>PickSell Admin — @yield('title')</title>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
@@ -116,7 +117,7 @@
             <div class="topbar-right blade-inline-2">
                 <button class="notif-btn" id="notifBtn" onclick="toggleNotif()"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4a2 2 0 0 0 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span class="notif-dot" id="notifDot"></span></button>
                 <div class="notif-dropdown" id="notifDropdown">
-                    <div class="notif-header">Notifications <span id="notifCount" class="blade-inline-3"></span></div>
+                    <div class="notif-header"><span>Notifications <span id="notifCount" class="blade-inline-3"></span></span><button type="button" class="notif-mark-read" id="markAdminNotificationsRead">Mark all as read</button></div>
                     <div id="notifList"><div class="notif-empty">Loading...</div></div>
                 </div>
                 @include('partials.dashboard-clock')
@@ -140,16 +141,16 @@
 <button class="dm-toggle" data-theme-toggle title="Toggle dark mode">
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
 </button>
-@vite('resources/js/views/admin-layout.js')
-<div id="logoutModal" class="blade-inline-4">
-    <div class="blade-inline-5">
+@yield('scripts')
+<div id="logoutModal" class="admin-logout-modal">
+    <div class="admin-logout-dialog">
         <div class="blade-inline-6"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="#E8472A" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg></div>
-        <div class="blade-inline-7">Log Out?</div>
-        <div class="blade-inline-8">Are you sure you want to log out of your admin account?</div>
-        <div class="blade-inline-9">
-            <button onclick="document.getElementById('logoutModal').style.display='none'" class="blade-inline-10">Cancel</button>
-            <button onclick="document.getElementById('logoutForm').submit()" class="blade-inline-11">Yes, Log Out</button>
-        </div>
+            <div class="admin-logout-title">Log Out?</div>
+            <div class="admin-logout-message">Are you sure you want to log out of your admin account?</div>
+            <div class="admin-logout-actions">
+                <button onclick="document.getElementById('logoutModal').style.display='none'" class="admin-logout-cancel">Cancel</button>
+                <button onclick="document.getElementById('logoutForm').submit()" class="admin-logout-confirm">Yes, Log Out</button>
+            </div>
     </div>
 </div>
 @include('partials.search-suggestions')

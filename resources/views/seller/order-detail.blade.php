@@ -1,5 +1,7 @@
 @extends('seller.layout')
+@section('styles')
 @vite('resources/css/views/seller-order-detail.css')
+@endsection
 @section('title', 'Order #' . $order->order_number)
 
 @section('content')

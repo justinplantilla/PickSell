@@ -1,5 +1,7 @@
 @extends('admin.layout')
+@section('styles')
 @vite('resources/css/views/admin-complaints.css')
+@endsection
 @section('title', 'Complaints & Disputes')
 
 @section('content')

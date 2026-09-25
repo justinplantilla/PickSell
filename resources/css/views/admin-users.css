@@ -1,4 +1,12 @@
 
-/* Extracted inline declarations */
-.blade-inline-1 { display:flex !important; gap:0.4rem !important; flex-wrap:wrap !important;  }
-.blade-inline-2 { text-align:center !important; color:#888 !important; padding:2rem !important;  }
+.user-actions-cell { min-width: 238px; vertical-align: middle; }
+.user-actions { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
+.user-actions form { margin: 0; }
+.user-actions .btn { min-width: 76px; white-space: nowrap; text-align: center; }
+.user-actions .btn-outline { min-width: 88px; }
+.users-empty-state { text-align: center; color: #888; padding: 2rem; }
+@media (max-width: 900px) {
+	.user-actions-cell { min-width: 210px; }
+	.user-actions .btn { min-width: 72px; }
+	.user-actions .btn-outline { min-width: 84px; }
+}

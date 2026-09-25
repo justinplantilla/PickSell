@@ -322,9 +322,14 @@ class BuyerController extends Controller
             ];
         });
 
-        auth()->user()->unreadNotifications->markAsRead();
+        $unreadCount = auth()->user()->unreadNotifications()->count();
+        return response()->json($notifications)->header('X-Unread-Count', $unreadCount);
+    }
 
-        return response()->json($notifications);
+    public function markNotificationsRead()
+    {
+        auth()->user()->unreadNotifications->markAsRead();
+        return response()->json(['success' => true]);
     }
 
     // Account

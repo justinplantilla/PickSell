@@ -1,5 +1,7 @@
 @extends('logistics.layout')
+@section('styles')
 @vite('resources/css/views/logistics-dashboard.css')
+@endsection
 @section('title', 'Dashboard')
 @section('content')
 <h1 class="blade-inline-1">Logistics Dashboard</h1><p class="blade-inline-2">Manage courier applications and parcel movement through the sorting center.</p>

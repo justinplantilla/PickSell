@@ -1,5 +1,7 @@
 @extends('admin.layout')
+@section('styles')
 @vite('resources/css/views/admin-complaint-detail.css')
+@endsection
 @section('title', 'Review Complaint #{{ $complaint->id }}')
 
 @section('content')

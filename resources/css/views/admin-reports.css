@@ -7,3 +7,5 @@
 .blade-inline-5 { margin:0 !important;  }
 .blade-inline-6 { width:160px !important;  }
 .blade-inline-7 { color:var(--coral) !important; font-weight:700 !important;  }
+.filters .btn-outline { display: inline-flex; align-items: center; gap: 0.35rem; }
+.stat-card-icon svg { display: block; }

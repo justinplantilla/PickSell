@@ -1,5 +1,7 @@
 @extends('admin.layout')
+@section('styles')
 @vite('resources/css/views/admin-products.css')
+@endsection
 @section('title', 'Products')
 
 @section('content')
@@ -26,7 +28,7 @@
                 <td>₱{{ number_format($product->effective_price, 2) }}</td>
                 <td><span class="badge badge-{{ $product->status }}">{{ ucfirst($product->status) }}</span></td>
                 <td><span class="badge {{ $product->is_featured ? 'badge-approved' : 'badge-archived' }}">{{ $product->is_featured ? 'Yes' : 'No' }}</span></td>
-                <td><form method="POST" action="{{ route('admin.products.featured', $product) }}">@csrf @method('PATCH')<button type="submit" class="btn {{ $product->is_featured ? 'btn-outline' : 'btn-coral' }} btn-sm">{{ $product->is_featured ? 'Unfeature' : 'Feature' }}</button></form><form method="POST" action="{{ route('admin.products.status', $product) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="{{ $product->status === 'active' ? 'archived' : 'active' }}"><button type="submit" class="btn {{ $product->status === 'active' ? 'btn-danger' : 'btn-success' }} btn-sm">{{ $product->status === 'active' ? 'Archive for Review' : 'Restore' }}</button></form></td>
+                <td class="product-actions"><form method="POST" action="{{ route('admin.products.featured', $product) }}">@csrf @method('PATCH')<button type="submit" class="btn {{ $product->is_featured ? 'btn-outline' : 'btn-coral' }} btn-sm">{{ $product->is_featured ? 'Unfeature' : 'Feature' }}</button></form><form method="POST" action="{{ route('admin.products.status', $product) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="{{ $product->status === 'active' ? 'archived' : 'active' }}"><button type="submit" class="btn {{ $product->status === 'active' ? 'btn-danger' : 'btn-success' }} btn-sm">{{ $product->status === 'active' ? 'Archive for Review' : 'Restore' }}</button></form></td>
             </tr>
             @empty
             <tr><td colspan="7" class="blade-inline-4">No products found.</td></tr>

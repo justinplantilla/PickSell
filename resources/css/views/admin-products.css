@@ -4,3 +4,11 @@
 .blade-inline-2 { display:flex !important; align-items:center !important; gap:0.65rem !important; min-width:220px !important;  }
 .blade-inline-3 { width:42px !important; height:42px !important; object-fit:cover !important; border-radius:6px !important;  }
 .blade-inline-4 { text-align:center !important; color:#888 !important; padding:2rem !important;  }
+.product-actions { min-width: 150px; vertical-align: middle; }
+.product-actions form { display: block; margin: 0 0 0.35rem; }
+.product-actions form:last-child { margin-bottom: 0; }
+.product-actions .btn { width: 100%; min-width: 132px; white-space: nowrap; }
+@media (max-width: 900px) {
+	.product-actions { min-width: 140px; }
+	.product-actions .btn { min-width: 0; }
+}

@@ -28,7 +28,7 @@
                     <span class="notif-dot" id="buyerNotifDot"></span>
                 </button>
                 <div class="notif-dropdown" id="buyerNotifDropdown">
-                    <div class="notif-header">Notifications <span id="buyerNotifCount"></span></div>
+                    <div class="notif-header"><span>Notifications <span id="buyerNotifCount"></span></span><button type="button" class="notif-mark-read" id="markBuyerNotificationsRead">Mark all as read</button></div>
                     <div id="buyerNotifList"><div class="notif-empty">Loading...</div></div>
                 </div>
             </div>

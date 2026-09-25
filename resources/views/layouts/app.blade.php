@@ -9,7 +9,8 @@
     @vite('resources/js/components/form-behaviors.js')
     @yield('styles')
 </head>
-<body class="{{ request()->is('/') ? 'landing-page' : '' }}">
+@php($isAuthPage = request()->is('login', 'register', 'forgot-password', 'reset-password/*'))
+<body class="{{ request()->is('/') ? 'landing-page' : '' }}{{ $isAuthPage ? ' auth-page' : '' }}">
     @include('partials.navbar')
 
     @yield('content')

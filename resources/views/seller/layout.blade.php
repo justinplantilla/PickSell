@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" type="image/png" href="{{ asset('images/transparent logo.png') }}">
     <title>PickSell Seller — @yield('title')</title>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
@@ -89,7 +90,7 @@
                     <span class="notif-dot" id="sellerNotifDot"></span>
                 </button>
                 <div class="notif-dropdown" id="sellerNotifDropdown">
-                    <div class="notif-header">Notifications <span id="sellerNotifCount"></span></div>
+                    <div class="notif-header"><span>Notifications <span id="sellerNotifCount"></span></span><button type="button" class="notif-mark-read" id="markSellerNotificationsRead">Mark all as read</button></div>
                     <div id="sellerNotifList"><div class="notif-empty">Loading...</div></div>
                 </div>
                 @include('partials.dashboard-clock')
@@ -118,7 +119,6 @@
         </div>
     </div>
 
-@vite('resources/js/views/seller-layout.js')
 @vite('resources/js/views/seller-layout.js')
 
 <button class="dm-toggle" data-theme-toggle title="Toggle dark mode">

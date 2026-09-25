@@ -9,19 +9,33 @@
     .account-page .danger-card .card-body { padding-top: 0.35rem; }
     .account-page .danger-card .btn-danger { background: #ff4545; border: 0; color: #fff; box-shadow: 0 8px 18px rgba(255,69,69,.35); }
     .account-page .danger-card .btn-danger:hover { background: #ff5d5d; box-shadow: 0 10px 24px rgba(255,69,69,.5); }
+    .account-icon { display: inline-block; width: 16px; height: 16px; vertical-align: middle; margin-right: 6px; flex: 0 0 auto; }
+    .account-page .btn .account-icon { width: 14px; height: 14px; margin-right: 0; }
+    .account-details-icon { display: inline-block; width: 16px; height: 16px; vertical-align: middle; margin-right: 6px; }
+    .account-error { color: #c0392b; font-size: 0.78rem; margin-top: 0.25rem; }
+    .account-details-table { width: 100%; font-size: 0.88rem; }
+    .account-details-table td { padding: 0.65rem 1rem 0.65rem 0; border-bottom: 1px solid #f0ebe0; }
+    .account-details-table tr:last-child td { border-bottom: 0; }
+    .account-label { width: 160px; font-weight: 600; color: #888; }
+    .account-role-badge { background: #fff3f0; color: var(--coral); }
+    .account-date { font-weight: 600; color: var(--charcoal); }
+    .account-danger-section { margin-top: 1.5rem; }
+    .account-danger-copy { font-size: 0.88rem; color: #888; margin-bottom: 1rem; }
+    .account-danger-input { margin-bottom: 0.7rem; max-width: 360px; }
+    .account-page .card-body form { max-width: 720px; }
+    .account-page .form-group { width: 100%; }
+    .account-page .form-control { display: block; min-height: 40px; height: auto; }
+    .account-page form > .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; width: auto; min-height: 38px; white-space: nowrap; }
+    .account-page table { width: 100%; table-layout: fixed; }
+    .account-page table td:first-child { width: 160px; }
+    .account-page table td:last-child { width: auto; }
+    .account-page .danger-card form { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+    .account-page .danger-card form .form-control { flex: 1 1 260px; max-width: 360px; }
+    @media (max-width: 640px) {
+        .account-page table { table-layout: auto; }
+        .account-page table td:first-child { width: 40%; }
+        .account-page .danger-card form { align-items: stretch; }
+        .account-page .danger-card form .form-control,
+        .account-page .danger-card form .btn { width: 100%; max-width: none; }
+    }
 
-/* Extracted inline declarations */
-.blade-inline-1 { vertical-align:middle !important; margin-right:6px !important;  }
-.blade-inline-2 { vertical-align:middle !important; margin-right:4px !important;  }
-.blade-inline-3 { vertical-align:middle !important; margin-right:6px !important;  }
-.blade-inline-4 { color:#c0392b !important; font-size:0.78rem !important; margin-top:0.25rem !important;  }
-.blade-inline-5 { vertical-align:middle !important; margin-right:4px !important;  }
-.blade-inline-6 { vertical-align:middle !important; margin-right:6px !important;  }
-.blade-inline-7 { font-size:0.88rem !important;  }
-.blade-inline-8 { font-weight:600 !important; color:#888 !important; padding:0.4rem 1rem 0.4rem 0 !important; width:160px !important;  }
-.blade-inline-9 { background:#fff3f0 !important; color:var(--coral) !important;  }
-.blade-inline-10 { font-weight:600 !important; color:#888 !important; padding:0.4rem 1rem 0.4rem 0 !important;  }
-.blade-inline-11 { font-weight:600 !important; color:#888 !important; padding:0.4rem 1rem 0.4rem 0 !important;  }
-.blade-inline-12 { margin-top:1.5rem !important;  }
-.blade-inline-13 { font-size:0.88rem !important; color:#888 !important; margin-bottom:1rem !important;  }
-.blade-inline-14 { margin-bottom:.7rem !important; max-width:360px !important;  }

@@ -129,6 +129,7 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
     Route::get('/orders',                           [BuyerController::class, 'orders'])->name('buyer.orders');
     Route::post('/orders/{order}/feedback',         [BuyerController::class, 'submitFeedback'])->name('buyer.feedback');
     Route::get('/notifications',                    [BuyerController::class, 'notifications'])->name('buyer.notifications');
+    Route::post('/notifications/read',              [BuyerController::class, 'markNotificationsRead'])->name('buyer.notifications.read');
 
     // Chat
     Route::get('/chat',                             [BuyerController::class, 'chat'])->name('buyer.chat');
@@ -158,6 +159,7 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     Route::patch('/orders/{order}/handover',        [SellerController::class, 'handoverOrder'])->name('seller.orders.handover');
     Route::patch('/orders/{order}/confirm-delivery', [SellerController::class, 'confirmDelivery'])->name('seller.orders.confirm-delivery');
     Route::get('/notifications',                    [SellerController::class, 'notifications'])->name('seller.notifications');
+    Route::post('/notifications/read',              [SellerController::class, 'markNotificationsRead'])->name('seller.notifications.read');
 
     // Reports
     Route::get('/reports', [SellerController::class, 'reports'])->name('seller.reports');
@@ -222,6 +224,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
 
     // Notifications (JSON)
     Route::get('/notifications', [AdminController::class, 'notifications'])->name('admin.notifications');
+    Route::post('/notifications/read', [AdminController::class, 'markNotificationsRead'])->name('admin.notifications.read');
 
     // Account
     Route::get('/account',             [AdminController::class, 'account'])->name('admin.account');

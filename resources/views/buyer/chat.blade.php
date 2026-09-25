@@ -103,5 +103,7 @@
         @endif
     </div>
 </div>
+@section('scripts')
 @vite('resources/js/views/buyer-chat.js')
+@endsection
 @endsection
