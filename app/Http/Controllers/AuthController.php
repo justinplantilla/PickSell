@@ -16,8 +16,9 @@ class AuthController extends Controller
     public function showRegister(Request $request)
     {
         $registrationRoles = $this->registrationRoles($request);
+        $email = strtolower(trim((string) $request->query('email', '')));
 
-        return view('auth.register', compact('registrationRoles'));
+        return view('auth.register', compact('registrationRoles', 'email'));
     }
 
     public function login(Request $request)
@@ -71,6 +72,7 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
+        $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
         $role = $request->input('role', 'buyer');
         $registrationRoles = $this->registrationRoles($request);
 

@@ -1,0 +1,1 @@
+function e(e,t){document.getElementById(`warnName`).textContent=t,document.getElementById(`warnForm`).action=`/admin/compliance/`+e+`/warn`,document.getElementById(`warnModal`).style.display=`flex`}function t(){document.getElementById(`warnModal`).style.display=`none`}window.openWarn=e,window.closeWarn=t;

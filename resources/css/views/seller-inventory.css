@@ -1,7 +1,7 @@
 
 /* Extracted inline declarations */
 .blade-inline-1 { display:flex !important; gap:0.5rem !important; flex-wrap:wrap !important;  }
-.blade-inline-2 { overflow-x:auto !important;  }
+.inventory-table-wrap { overflow-x:auto; }
 .blade-inline-3 { display:flex !important; align-items:center !important; gap:0.6rem !important;  }
 .blade-inline-4 { width:36px !important; height:36px !important; object-fit:cover !important; border-radius:6px !important;  }
 .blade-inline-5 { width:36px !important; height:36px !important; background:#f0ebe0 !important; border-radius:6px !important; display:flex !important; align-items:center !important; justify-content:center !important; font-size:1.2rem !important;  }

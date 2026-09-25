@@ -21,7 +21,7 @@ Route::get('/', function () {
     }
 
     $featuredProducts = Product::where('status', 'active')->where('stock', '>', 0)
-        ->where('is_featured', true)->with('seller')->latest()->take(8)->get();
+        ->with('seller')->latest()->take(8)->get();
     return view('welcome', compact('featuredProducts'));
 });
 Route::get('/shop', function (Request $request) {
@@ -38,8 +38,22 @@ Route::get('/shop', function (Request $request) {
     if ($category) $query->whereRaw('LOWER(category) = ?', [$category]);
     if ($request->filled('min')) $query->where('price', '>=', $request->float('min'));
     if ($request->filled('max')) $query->where('price', '<=', $request->float('max'));
-    $products = $query->latest()->get();
-    return view('pages.shop', compact('products'));
+    $sort = $request->get('sort', 'featured');
+    match ($sort) {
+        'price_asc' => $query->orderBy('price'),
+        'price_desc' => $query->orderByDesc('price'),
+        default => $query->latest(),
+    };
+    $products = $query->paginate(30)->withQueryString();
+    $categoryCounts = Product::where('status', 'active')
+        ->selectRaw('LOWER(category) as category, COUNT(*) as product_count')
+        ->whereNotNull('category')
+        ->groupByRaw('LOWER(category)')
+        ->orderBy('category')
+        ->pluck('product_count', 'category');
+    $categoryNames = ['Electronics', 'Fashion', 'Home & Living', 'Sports', 'Beauty', 'Food & Grocery', 'Books', 'Toys'];
+    $categories = collect($categoryNames)->mapWithKeys(fn ($category) => [$category => (int) ($categoryCounts[strtolower($category)] ?? 0)]);
+    return view('pages.shop', compact('products', 'categories', 'sort'));
 })->name('shop');
 Route::get('/about', fn() => view('pages.about'))->name('about');
 Route::get('/contact', fn() => view('pages.contact'))->name('contact');
@@ -116,10 +130,14 @@ Route::middleware(['auth', CourierMiddleware::class])->prefix('courier')->group(
 Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(function () {
     Route::get('/dashboard',                        [BuyerController::class, 'home'])->name('buyer.dashboard');
     Route::get('/shop',                             [BuyerController::class, 'home'])->name('buyer.home');
+    Route::get('/deals',                            [BuyerController::class, 'home'])->name('buyer.deals');
+    Route::get('/seller/{seller}',                  [BuyerController::class, 'sellerStorefront'])->name('buyer.seller');
     Route::get('/product/{product}',                [BuyerController::class, 'productDetail'])->name('buyer.product');
+    Route::post('/product/{product}/reviews',       [BuyerController::class, 'submitProductReview'])->name('buyer.product.review');
 
     // Cart
     Route::get('/cart',                             [BuyerController::class, 'cart'])->name('buyer.cart');
+    Route::get('/checkout',                         [BuyerController::class, 'checkout'])->name('buyer.checkout.page');
     Route::post('/cart/checkout',                   [BuyerController::class, 'placeOrder'])->name('buyer.checkout');
     Route::post('/cart/{product}',                  [BuyerController::class, 'addToCart'])->name('buyer.cart.add');
     Route::patch('/cart/item/{item}',               [BuyerController::class, 'updateCart'])->name('buyer.cart.update');
@@ -163,6 +181,7 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
 
     // Reports
     Route::get('/reports', [SellerController::class, 'reports'])->name('seller.reports');
+    Route::get('/reports/pdf', [SellerController::class, 'reportPdf'])->name('seller.reports.pdf');
 
     // Chat
     Route::get('/chat',       [SellerController::class, 'chat'])->name('seller.chat');
@@ -206,11 +225,6 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
     // Reports
     Route::get('/reports',        [AdminController::class, 'reports'])->name('admin.reports');
     Route::get('/reports/export', [AdminController::class, 'exportPdf'])->name('admin.reports.export');
-
-    // Sorting Center / Logistics
-    Route::get('/logistics', [AdminController::class, 'logistics'])->name('admin.logistics');
-    Route::patch('/logistics/orders/{order}/scan', [AdminController::class, 'scanParcel'])->name('admin.logistics.scan');
-    Route::patch('/logistics/orders/{order}/assign', [AdminController::class, 'assignCourier'])->name('admin.logistics.assign');
 
     // Settings
     Route::get('/settings',  [AdminController::class, 'settings'])->name('admin.settings.index');

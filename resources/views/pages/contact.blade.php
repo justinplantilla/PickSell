@@ -14,11 +14,11 @@
 <div class="contact-wrapper">
     <!-- Quick Help Cards -->
     <div class="quick-help">
-        <a href="#form" class="help-card"><h3>Track My Order</h3><p>Check your delivery status</p></a>
-        <a href="#form" class="help-card"><h3>Returns & Refunds</h3><p>Start a return request</p></a>
-        <a href="#form" class="help-card"><h3>Payment Issues</h3><p>Billing & payment help</p></a>
-        <a href="#form" class="help-card"><h3>Seller Support</h3><p>Help for sellers</p></a>
-        <a href="#form" class="help-card"><h3>Account & Security</h3><p>Login & account issues</p></a>
+        <button type="button" class="help-card" data-help-type="Order / Delivery Issue" aria-pressed="false"><h3>Track My Order</h3><p>Check your delivery status</p></button>
+        <button type="button" class="help-card" data-help-type="Return & Refund" aria-pressed="false"><h3>Returns & Refunds</h3><p>Start a return request</p></button>
+        <button type="button" class="help-card" data-help-type="Payment Problem" aria-pressed="false"><h3>Payment Issues</h3><p>Billing and order help</p></button>
+        <button type="button" class="help-card" data-help-type="Seller Support" aria-pressed="false"><h3>Seller Support</h3><p>Help for sellers</p></button>
+        <button type="button" class="help-card" data-help-type="Account Issue" aria-pressed="false"><h3>Account & Security</h3><p>Login & account issues</p></button>
     </div>
 
     <div class="contact-grid">
@@ -31,7 +31,7 @@
                 $faqs = [
                     ['q'=>'How do I track my order?','a'=>'Go to your Dashboard → Orders and click "Track" next to your order. You\'ll get real-time updates from our delivery partners.'],
                     ['q'=>'What is the return policy?','a'=>'You can return eligible items within 30 days of delivery. Items must be unused and in original packaging. Initiate returns from your Orders page.'],
-                    ['q'=>'How do I pay for my order?','a'=>'We accept GCash, Maya, credit/debit cards, and Cash on Delivery (COD) for eligible areas.'],
+                    ['q'=>'How do I get help with an order?','a'=>'Choose the closest issue type above and send us the order details. Our support team will guide you through the next steps.'],
                     ['q'=>'Is it safe to buy on PickSell?','a'=>'Yes! All sellers are verified and every purchase is covered by our Buyer Protection Program. We hold payment until you confirm receipt.'],
                     ['q'=>'How do I become a seller?','a'=>'Register for a free account, go to your Dashboard, and click "Start Selling". Setup takes less than 5 minutes.'],
                 ];
@@ -59,7 +59,7 @@
                 @csrf
                 <div class="form-group">
                     <label>Issue Type</label>
-                    <select name="type">
+                    <select name="type" id="issueTypeSelect">
                         <option>Order / Delivery Issue</option>
                         <option>Return & Refund</option>
                         <option>Payment Problem</option>

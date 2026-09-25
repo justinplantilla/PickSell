@@ -2,6 +2,7 @@ function toggleUserMenu() {
     document.getElementById('userDropdown').classList.toggle('open');
 }
 let buyerNotifications = [];
+const buyerNotificationIcon = '<svg class="notification-item-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>';
 function showBuyerNotificationDetail(notification) {
     const existing = document.getElementById('notificationDetailModal');
     if (existing) existing.remove();
@@ -40,7 +41,7 @@ function loadBuyerNotifs() {
             list.innerHTML = data.map((n, index) => {
                 const msg = n.message || '';
                 const time = new Date(n.created_at).toLocaleString();
-                return `<button type="button" class="notif-item" data-notification-index="${index}"><span>${msg}</span><span class="notif-item-time">${time}</span></button>`;
+                return `<button type="button" class="notif-item" data-notification-index="${index}">${buyerNotificationIcon}<span class="notification-item-copy"><span>${msg}</span><span class="notif-item-time">${time}</span></span></button>`;
             }).join('');
         });
 }
@@ -83,6 +84,77 @@ function dismissAnnouncement(id, button) {
     localStorage.setItem('dismissedAnnouncements', JSON.stringify(dismissed));
     banner.remove();
 }
+
+function showBuyerToast(message, type = 'success') {
+    let container = document.getElementById('buyer-toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'buyer-toast-container';
+        container.className = 'buyer-toast-container';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `buyer-toast buyer-toast-${type}`;
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('is-leaving');
+        setTimeout(() => toast.remove(), 220);
+    }, 2800);
+}
+
+function incrementBuyerCartBadge() {
+    const badge = document.querySelector('.cart-badge');
+    if (badge) {
+        badge.textContent = String(Number(badge.textContent || 0) + 1);
+        return;
+    }
+    const cartWrap = document.querySelector('.cart-link .cart-badge-wrap');
+    if (!cartWrap) return;
+    const badgeNode = document.createElement('span');
+    badgeNode.className = 'cart-badge';
+    badgeNode.textContent = '1';
+    cartWrap.appendChild(badgeNode);
+}
+
+async function handleBuyerCardCartAction(button) {
+    const action = button.dataset.cardCartAction;
+    if (!action || button.disabled) return;
+    const buyNowPath = button.dataset.cardBuyNow;
+    button.disabled = true;
+    try {
+        const formData = new FormData();
+        formData.append('quantity', '1');
+        const response = await fetch(action, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, Accept: 'application/json' },
+            body: formData,
+        });
+        if (!response.ok) throw new Error('Unable to add product');
+        const payload = await response.json();
+        incrementBuyerCartBadge();
+        if (buyNowPath && payload.item_id) {
+            window.location.href = `${buyNowPath}?item_ids[]=${encodeURIComponent(payload.item_id)}`;
+            return;
+        }
+        showBuyerToast('Added to cart successfully.');
+    } catch (error) {
+        showBuyerToast('Unable to add this product. Please try again.', 'error');
+    } finally {
+        button.disabled = false;
+    }
+}
+
+document.addEventListener('click', event => {
+    const button = event.target.closest('[data-card-cart-action]');
+    if (button) {
+        event.preventDefault();
+        event.stopPropagation();
+        handleBuyerCardCartAction(button);
+    }
+});
 document.querySelectorAll('.announcement-banner').forEach(banner => {
     const dismissed = JSON.parse(localStorage.getItem('dismissedAnnouncements') || '[]');
     if (dismissed.includes(Number(banner.dataset.announcementId))) banner.remove();
@@ -100,3 +172,4 @@ window.loadBuyerNotifs = loadBuyerNotifs;
 window.markBuyerNotificationsRead = markBuyerNotificationsRead;
 window.toggleDark = toggleDark;
 window.dismissAnnouncement = dismissAnnouncement;
+window.handleBuyerCardCartAction = handleBuyerCardCartAction;

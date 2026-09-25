@@ -119,7 +119,7 @@
                 <div class="form-section-title">Account Credentials</div>
                 <div class="form-group">
                     <label>Email Address <span class="req">*</span></label>
-                    <input type="email" name="email" value="{{ old('email') }}" placeholder="you@example.com" required>
+                    <input type="email" name="email" value="{{ old('email', $email) }}" placeholder="you@example.com" required>
                     @error('email')<div class="field-error">{{ $message }}</div>@enderror
                 </div>
                 <div class="form-row">

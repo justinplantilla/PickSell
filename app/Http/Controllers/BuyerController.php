@@ -8,12 +8,15 @@ use App\Models\CartItem;
 use App\Models\Message;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductReview;
 use App\Models\User;
 use App\Notifications\NewSellerOrder;
 use App\Services\LogisticsRoutingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 class BuyerController extends Controller
 {
@@ -43,11 +46,13 @@ class BuyerController extends Controller
     {
         $search   = $request->get('search');
         $category = $request->get('category');
+        $deals    = $request->boolean('deals') || $request->routeIs('buyer.deals');
 
         $query = Product::where('status', 'active')->where('stock', '>', 0)->with('seller');
 
         if ($search)   $query->where('name', 'like', "%$search%");
         if ($category) $query->where('category', $category);
+        if ($deals)    $query->where('discount', '>', 0);
 
         $products   = $query->latest()->paginate(12);
         $recommendedProducts = Product::where('status', 'active')
@@ -56,19 +61,41 @@ class BuyerController extends Controller
             ->latest()
             ->take(8)
             ->get();
-        $categories = Product::where('status', 'active')->whereNotNull('category')->distinct()->pluck('category');
+        $categoryNames = ['Beauty', 'Books', 'Clothing', 'Electronics', 'Fashion', 'Food & Grocery', 'Home & Living', 'Pet Supplies', 'Sports', 'Toys'];
+        $categories = collect($categoryNames)
+            ->merge(Product::where('status', 'active')->whereNotNull('category')->distinct()->pluck('category'))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
         $cartCount  = CartItem::whereHas('cart', fn($q) => $q->where('buyer_id', $this->buyer()->id))->count();
 
-        return view('buyer.home', compact('products', 'recommendedProducts', 'categories', 'search', 'category', 'cartCount'));
+        return view('buyer.home', compact('products', 'recommendedProducts', 'categories', 'search', 'category', 'deals', 'cartCount'));
     }
 
     // Product Detail
     public function productDetail(Product $product)
     {
         abort_if($product->status !== 'active', 404);
-        $product->load('seller', 'variations');
+        $product->load('seller', 'variations', 'reviews.buyer');
         $cartCount = CartItem::whereHas('cart', fn($q) => $q->where('buyer_id', $this->buyer()->id))->count();
-        return view('buyer.product-detail', compact('product', 'cartCount'));
+        $reviewCount = $product->reviews->count();
+        $reviewAverage = $reviewCount ? round($product->reviews->avg('rating'), 1) : 0;
+        return view('buyer.product-detail', compact('product', 'cartCount', 'reviewCount', 'reviewAverage'));
+    }
+
+    public function sellerStorefront(User $seller)
+    {
+        abort_unless($seller->role === 'seller' && $seller->status === 'approved', 404);
+
+        $products = $seller->products()
+            ->where('status', 'active')
+            ->where('stock', '>', 0)
+            ->latest()
+            ->paginate(12);
+        $cartCount = CartItem::whereHas('cart', fn($q) => $q->where('buyer_id', $this->buyer()->id))->count();
+
+        return view('buyer.seller-storefront', compact('seller', 'products', 'cartCount'));
     }
 
     // Add to Cart
@@ -88,8 +115,9 @@ class BuyerController extends Controller
 
         if ($existing) {
             $existing->increment('quantity', $data['quantity']);
+            $item = $existing;
         } else {
-            CartItem::create([
+            $item = CartItem::create([
                 'cart_id'      => $cart->id,
                 'product_id'   => $product->id,
                 'variation_id' => $data['variation_id'] ?? null,
@@ -97,21 +125,47 @@ class BuyerController extends Controller
             ]);
         }
 
-        return redirect()->route('buyer.cart')->with('success', 'Item added to cart.');
+        return $request->expectsJson()
+            ? response()->json([
+                'success' => true,
+                'message' => 'Item added to cart.',
+                'item_id' => $item->id,
+            ])
+            : redirect()->route('buyer.cart')->with('success', 'Item added to cart.');
     }
 
     // Cart
     public function cart()
     {
         $cart  = $this->getCart();
-        $items = CartItem::where('cart_id', $cart->id)->with('product.seller', 'variation')->get();
-        $cartCount = $items->count();
-        $logisticsProviders = User::where('role', 'logistics')
+        $items = CartItem::where('cart_id', $cart->id)->with('product.seller', 'variation')->latest()->paginate(20)->withQueryString();
+        $cartCount = CartItem::where('cart_id', $cart->id)->count();
+        $recommendations = Product::where('status', 'active')->where('stock', '>', 0)->with('seller')->latest()->take(4)->get();
+        return view('buyer.cart', compact('items', 'cartCount', 'recommendations'));
+    }
+
+    public function checkout(Request $request)
+    {
+        $itemIds = $request->input('item_ids', []);
+        if (empty($itemIds)) return redirect()->route('buyer.cart');
+
+        $cart  = $this->getCart();
+        $items = CartItem::whereIn('id', $itemIds)
+            ->where('cart_id', $cart->id)
+            ->with('product.seller', 'variation')
+            ->get();
+
+        if ($items->isEmpty()) return redirect()->route('buyer.cart');
+
+        $total = $items->sum(fn($i) => $i->product->effective_price * $i->quantity);
+        $cartCount = CartItem::where('cart_id', $cart->id)->count();
+        $logisticsProvider = User::where('role', 'logistics')
             ->where('status', 'approved')
             ->orderBy('business_name')
             ->orderBy('last_name')
-            ->get();
-        return view('buyer.cart', compact('items', 'cartCount', 'logisticsProviders'));
+            ->first();
+
+        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount', 'logisticsProvider'));
     }
 
     public function updateCart(Request $request, CartItem $item)
@@ -119,34 +173,37 @@ class BuyerController extends Controller
         abort_if($item->cart->buyer_id !== $this->buyer()->id, 403);
         $request->validate(['quantity' => 'required|integer|min:1']);
         $item->update(['quantity' => $request->quantity]);
-        return back();
+        return $request->expectsJson()
+            ? response()->json(['success' => true])
+            : back();
     }
 
     public function removeFromCart(CartItem $item)
     {
         abort_if($item->cart->buyer_id !== $this->buyer()->id, 403);
         $item->delete();
-        return back()->with('success', 'Item removed from cart.');
+        return request()->expectsJson()
+            ? response()->json(['success' => true])
+            : back()->with('success', 'Item removed from cart.');
     }
 
     // Place Order
     public function placeOrder(Request $request)
     {
-        $request->validate([
-            'item_ids'       => 'required|array',
-            'item_ids.*'     => 'exists:cart_items,id',
-            'payment_method' => 'required|in:cod,gcash,bank_transfer',
-            'logistics_id'   => 'required|exists:users,id',
-            'voucher_code'   => 'nullable|string',
+        $data = $request->validate([
+            'item_ids'     => 'required|array',
+            'item_ids.*'   => 'exists:cart_items,id',
+            'voucher_code' => 'nullable|string',
         ]);
 
-        $logisticsProvider = User::where('id', $request->logistics_id)
-            ->where('role', 'logistics')
+        $logisticsProvider = User::where('role', 'logistics')
             ->where('status', 'approved')
+            ->orderBy('business_name')
+            ->orderBy('last_name')
             ->firstOrFail();
 
         $cart  = $this->getCart();
-        $items = CartItem::whereIn('id', $request->item_ids)
+        $items = CartItem::whereIn('id', $data['item_ids'])
             ->where('cart_id', $cart->id)
             ->with('product')
             ->get();
@@ -160,7 +217,7 @@ class BuyerController extends Controller
             $price   = $product->effective_price;
 
             // Apply voucher if valid
-            if ($request->voucher_code && $product->voucher_code === $request->voucher_code) {
+            if (!empty($data['voucher_code']) && $product->voucher_code === $data['voucher_code']) {
                 $price = $price * (1 - $product->voucher_discount / 100);
             }
 
@@ -213,6 +270,24 @@ class BuyerController extends Controller
         return back()->with('success', 'Feedback submitted. Thank you!');
     }
 
+    public function submitProductReview(Request $request, Product $product)
+    {
+        $data = $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'body' => 'nullable|string|max:1000',
+        ]);
+        $order = Order::where('buyer_id', $this->buyer()->id)
+            ->where('product_id', $product->id)
+            ->where('status', 'completed')
+            ->latest()
+            ->firstOrFail();
+        ProductReview::updateOrCreate(
+            ['product_id' => $product->id, 'buyer_id' => $this->buyer()->id, 'order_id' => $order->id],
+            ['rating' => $data['rating'], 'body' => $data['body'] ?? null]
+        );
+        return back()->with('success', 'Your product review has been saved.');
+    }
+
     // Chat
     public function chat(Request $request)
     {
@@ -243,7 +318,14 @@ class BuyerController extends Controller
         if (!$activeUserId && $request->get('seller')) {
             $activeUserId = $request->get('seller');
         }
-        $activeUser = $activeUserId ? User::find($activeUserId) : null;
+        $activeUser = $activeUserId
+            ? User::whereKey($activeUserId)
+                ->where(function ($query) {
+                    $query->where('role', 'admin')
+                        ->orWhere(fn($seller) => $seller->where('role', 'seller')->where('status', 'approved'));
+                })
+                ->first()
+            : null;
         $messages   = collect();
         $product    = null;
 
@@ -280,27 +362,37 @@ class BuyerController extends Controller
 
     public function sendMessage(Request $request)
     {
-        $request->validate([
+        $data = $request->validate([
             'receiver_id' => 'required|exists:users,id',
             'body'        => 'required|string|max:2000',
             'product_id'  => 'nullable|exists:products,id',
         ]);
+        $receiver = User::whereKey($data['receiver_id'])
+            ->where(function ($query) {
+                $query->where('role', 'admin')
+                    ->orWhere(fn($seller) => $seller->where('role', 'seller')->where('status', 'approved'));
+            })
+            ->firstOrFail();
+        abort_if($receiver->id === auth()->id(), 422, 'You cannot message your own account.');
         $msg = Message::create([
             'sender_id'   => auth()->id(),
-            'receiver_id' => $request->receiver_id,
-            'body'        => $request->body,
-            'product_id'  => $request->product_id,
+            'receiver_id' => $receiver->id,
+            'body'        => $data['body'],
+            'product_id'  => $data['product_id'] ?? null,
             'read'        => false,
         ]);
-        $receiver = User::findOrFail($request->receiver_id);
         $this->createBuyerNotification(
             $receiver,
             'You have a new message from ' . auth()->user()->full_name . '.',
         );
         $msg->load('sender', 'receiver', 'product');
-        \Illuminate\Support\Facades\Mail::to($msg->receiver->email)->send(new NewMessageMail($msg));
-        $redirect = '/buyer/chat?user=' . $request->receiver_id;
-        if ($request->product_id) $redirect .= '&product=' . $request->product_id;
+        try {
+            \Illuminate\Support\Facades\Mail::to($msg->receiver->email)->send(new NewMessageMail($msg));
+        } catch (Throwable $exception) {
+            Log::warning('Chat message email notification failed.', ['message_id' => $msg->id, 'error' => $exception->getMessage()]);
+        }
+        $redirect = '/buyer/chat?user=' . $receiver->id;
+        if (!empty($data['product_id'])) $redirect .= '&product=' . $data['product_id'];
         return redirect($redirect);
     }
 
@@ -349,6 +441,11 @@ class BuyerController extends Controller
             'email'          => 'required|email|unique:users,email,' . auth()->id(),
             'contact_no'     => ['required', 'regex:/^09\d{9}$/'],
             'birthday'       => 'required|date|before:-18 years',
+            'province'       => 'required|string|max:100',
+            'municipality'   => 'required|string|max:100',
+            'barangay'       => 'required|string|max:100',
+            'street'         => 'nullable|string|max:255',
+            'house_no'       => 'nullable|string|max:100',
         ]);
 
         auth()->user()->update($request->only([
@@ -359,6 +456,11 @@ class BuyerController extends Controller
             'email',
             'contact_no',
             'birthday',
+            'province',
+            'municipality',
+            'barangay',
+            'street',
+            'house_no',
         ]));
 
         if ($request->expectsJson()) {

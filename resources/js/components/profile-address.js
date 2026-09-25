@@ -15,6 +15,22 @@ if (addressConfig && provinceSelect && municipalitySelect && barangaySelect) {
         municipality: document.querySelector('[data-profile-hidden="municipality"]'),
         barangay: document.querySelector('[data-profile-hidden="barangay"]')
     };
+    const fetchJson = async (url, cacheKey) => {
+        const cached = window.localStorage.getItem(cacheKey);
+        if (cached) return JSON.parse(cached);
+
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 6000);
+        try {
+            const response = await fetch(url, { signal: controller.signal, headers: { Accept: 'application/json' } });
+            if (!response.ok) throw new Error(`Address API returned ${response.status}`);
+            const data = await response.json();
+            window.localStorage.setItem(cacheKey, JSON.stringify(data));
+            return data;
+        } finally {
+            window.clearTimeout(timeout);
+        }
+    };
     const normalizeName = value => String(value || '').toLowerCase().replace(/\bcity of\b/g, '').replace(/\b(city|municipality|barangay)\b/g, '').replace(/[^a-z0-9]/g, '');
     const setOptions = (select, items, placeholder, selectedValue) => {
         select.innerHTML = `<option value="">${placeholder}</option>`;
@@ -36,11 +52,11 @@ if (addressConfig && provinceSelect && municipalitySelect && barangaySelect) {
     };
     const loadAddress = async () => {
         try {
-            const provinces = await fetch(`${baseUrl}/provinces/`).then(response => response.json());
+            const provinces = await fetchJson(`${baseUrl}/provinces/`, 'picksell.psgc.provinces');
             setOptions(provinceSelect, provinces, '-- Select Province --', address.province);
             const provinceCode = provinceSelect.selectedOptions[0]?.dataset.code;
             if (!provinceCode) return;
-            const municipalities = await fetch(`${baseUrl}/provinces/${provinceCode}/cities-municipalities/`).then(response => response.json());
+            const municipalities = await fetchJson(`${baseUrl}/provinces/${provinceCode}/cities-municipalities/`, `picksell.psgc.municipalities.${provinceCode}`);
             setOptions(municipalitySelect, municipalities, '-- Select Municipality --', address.municipality);
             const municipalityCode = municipalitySelect.selectedOptions[0]?.dataset.code;
             if (!municipalityCode) {
@@ -48,7 +64,7 @@ if (addressConfig && provinceSelect && municipalitySelect && barangaySelect) {
                 fallback(barangaySelect, address.barangay, '-- Select Barangay --');
                 return;
             }
-            const barangays = await fetch(`${baseUrl}/cities-municipalities/${municipalityCode}/barangays/`).then(response => response.json());
+            const barangays = await fetchJson(`${baseUrl}/cities-municipalities/${municipalityCode}/barangays/`, `picksell.psgc.barangays.${municipalityCode}`);
             setOptions(barangaySelect, barangays, '-- Select Barangay --', address.barangay);
         } catch {
             fallback(provinceSelect, address.province, '-- Select Province --');
@@ -61,5 +77,7 @@ if (addressConfig && provinceSelect && municipalitySelect && barangaySelect) {
         select.classList.add('profile-address-select');
     });
     Object.entries(hiddenFields).forEach(([key, field]) => { if (field) field.value = address[key]; });
+    fallback(municipalitySelect, address.municipality, 'Loading municipalities...');
+    fallback(barangaySelect, address.barangay, 'Loading barangays...');
     loadAddress();
 }

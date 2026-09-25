@@ -41,3 +41,17 @@
 .blade-inline-9 { font-size:0.85rem !important; color:var(--coral) !important; font-weight:700 !important;  }
 .blade-inline-10 { text-align:center !important; color:#aaa !important; font-size:0.85rem !important; margin-top:2rem !important;  }
 .blade-inline-11 { display:flex !important; gap:0.6rem !important; flex:1 !important;  }
+
+body.dark .chat-layout { background: #1b1b1b; border-color: #333; }
+body.dark .chat-sidebar, body.dark .chat-header, body.dark .chat-input-area { border-color: #333; }
+body.dark .chat-messages, body.dark .chat-empty { background: #151515; }
+body.dark .chat-item:hover, body.dark .chat-item.active { background: #2a1b18; }
+body.dark .msg.received .msg-bubble { background: #242424; border-color: #3a3a3a; }
+body.dark .chat-search, body.dark .chat-input { background: #2a2a2a; border-color: #444; color: #f3f4f6; }
+
+@media (max-width: 720px) {
+    .chat-layout { grid-template-columns: 1fr; height: auto; min-height: calc(100vh - 120px); }
+    .chat-sidebar { max-height: 280px; border-right: 0; border-bottom: 1px solid #f0ebe0; }
+    .chat-main { min-height: 460px; }
+    .msg { max-width: 84%; }
+}

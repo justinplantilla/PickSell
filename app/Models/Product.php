@@ -16,6 +16,7 @@ class Product extends Model
     public function orders()     { return $this->hasMany(Order::class); }
     public function variations() { return $this->hasMany(ProductVariation::class); }
     public function cartItems()  { return $this->hasMany(CartItem::class); }
+    public function reviews()    { return $this->hasMany(ProductReview::class); }
 
     public function getEffectivePriceAttribute(): float
     {

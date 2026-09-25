@@ -28,4 +28,10 @@ const leftProducts = [
     window.addEventListener('scroll', syncLandingNav, { passive: true });
     const landingObserver = new IntersectionObserver((entries) => { entries.forEach((entry) => { entry.target.classList.toggle('visible', entry.isIntersecting); }); }, { threshold: 0.14 });
     document.querySelectorAll('.reveal').forEach((section) => landingObserver.observe(section));
+    document.querySelectorAll('[data-normalize-email]').forEach((form) => {
+        form.addEventListener('submit', () => {
+            const email = form.querySelector('input[name="email"]');
+            if (email) email.value = email.value.trim().toLowerCase();
+        });
+    });
 

@@ -60,6 +60,9 @@
     .nav-search button:hover { background: #e85a4d; }
 
     .nav-actions { display: flex; align-items: center; gap: 1rem; margin-left: auto; animation: nav-item-in .55s .14s cubic-bezier(.22, 1, .36, 1) both; }
+    .nav-top { width: 100%; justify-content: space-between; }
+    .nav-search { min-width: 0; margin-inline: clamp(1rem, 3vw, 4rem); }
+    .nav-actions { flex-shrink: 0; }
     .nav-icon-btn {
         background: transparent;
         border: none;
@@ -162,7 +165,7 @@
         .nav-top { height: auto; min-height: 64px; padding: 0.75rem 1rem; flex-wrap: wrap; gap: 0.7rem; }
         .nav-logo { font-size: 20px; }
         .nav-logo img { width: 24px; height: 24px; }
-        .nav-search { order: 3; flex-basis: 100%; max-width: none; }
+        .nav-search { order: 3; flex-basis: 100%; max-width: none; margin-inline: 0; }
         .nav-actions { gap: 0.65rem; }
         .nav-auth { gap: 0.4rem; }
         .nav-auth .btn { padding: 0.45rem 0.7rem; font-size: 0.78rem; }

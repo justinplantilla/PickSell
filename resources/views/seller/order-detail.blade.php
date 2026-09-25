@@ -59,24 +59,24 @@
                 </table>
 
                 <div class="blade-inline-20">
-                    @if($order->status === 'pending')
+                    @if(in_array($order->status, ['placed', 'confirmed', 'pending'], true))
                     <form method="POST" action="/seller/orders/{{ $order->id }}/pack">
                         @csrf @method('PATCH')
-                        <button type="submit" class="btn btn-coral">Mark as Packed</button>
+                        <button type="submit" class="btn btn-coral">Mark as Prepared</button>
                     </form>
-                    @elseif($order->status === 'processing')
+                    @elseif(in_array($order->status, ['preparing', 'processing'], true))
                     <form method="POST" action="/seller/orders/{{ $order->id }}/handover" class="blade-inline-21">
                         @csrf @method('PATCH')
-                        <div class="form-group blade-inline-22">
-                            <label class="form-label">Waybill Number *</label>
-                            <input type="text" name="waybill_number" class="form-control" required placeholder="Enter waybill number">
+                        <div class="waybill-generation-note">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+                            <span>A unique waybill will be generated automatically when this parcel is handed over.</span>
                         </div>
-                        <button type="submit" class="btn btn-success">Hand Over</button>
+                        <button type="submit" class="btn btn-success">Generate Waybill &amp; Hand Over</button>
                     </form>
-                    @elseif($order->status === 'shipped')
-                    <div class="alert alert-success blade-inline-23">Order has been handed over to courier. Awaiting delivery confirmation.</div>
-                    @elseif($order->status === 'completed')
-                    <div class="alert alert-success blade-inline-24">Order delivered and completed.</div>
+                    @elseif(in_array($order->status, ['shipped', 'ready_for_pickup'], true))
+                    <div class="alert alert-info blade-inline-23">Waybill generated: <strong>{{ $order->waybill_number }}</strong>. Awaiting logistics scan.</div>
+                    @elseif($order->status === 'delivered')
+                    <div class="alert alert-success blade-inline-24">Order delivered. Please confirm buyer receipt.</div>
                     @if(!$order->confirmed_by_seller_at)
                     <form method="POST" action="/seller/orders/{{ $order->id }}/confirm-delivery" class="blade-inline-21">
                         @csrf @method('PATCH')
@@ -90,7 +90,7 @@
             </div>
         </div>
 
-        @if(in_array($order->status, ['shipped','completed'], true))
+        @if($order->waybill_number)
         <div class="card">
             <div class="card-header"><span class="card-title">Shipping Documents</span></div>
             <div class="card-body">

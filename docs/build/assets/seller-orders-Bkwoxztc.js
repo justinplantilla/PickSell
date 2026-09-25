@@ -1,0 +1,1 @@
+function e(e){document.getElementById(`handoverForm`).action=`/seller/orders/`+e+`/handover`,document.getElementById(`handoverModal`).classList.add(`open`)}document.querySelectorAll(`.modal-overlay`).forEach(e=>{e.addEventListener(`click`,t=>{t.target===e&&e.classList.remove(`open`)})}),window.openHandover=e;

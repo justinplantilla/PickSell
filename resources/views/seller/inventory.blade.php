@@ -21,7 +21,7 @@
             <button class="btn btn-coral btn-sm" onclick="openModal('addModal')">+ Add Product</button>
         </div>
     </div>
-    <div class="blade-inline-2">
+    <div class="inventory-table-wrap">
         <table>
             <thead>
                 <tr>

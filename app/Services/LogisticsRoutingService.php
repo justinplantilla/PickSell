@@ -67,7 +67,7 @@ class LogisticsRoutingService
                     });
             })
             ->withCount(['ordersAsCourier as active_parcels' => function ($query) {
-                $query->whereIn('status', ['shipped', 'processing']);
+                $query->whereIn('status', ['assigned_to_rider', 'out_for_delivery']);
             }])
             ->orderBy('active_parcels')->first();
     }

@@ -65,12 +65,12 @@
                 <div class="admin-info">
                     <a href="/seller/account" class="admin-avatar">{{ strtoupper(substr(auth()->user()->first_name, 0, 1)) }}</a>
                     <div class="admin-text">
-                        <a href="/seller/account" class="blade-inline-1">
+                        <a href="/seller/account" class="seller-profile-link">
                             <div class="admin-name">{{ auth()->user()->full_name }}</div>
                             <div class="admin-role">{{ auth()->user()->business_name ?? 'Seller' }}</div>
                         </a>
                     </div>
-                    <form method="POST" action="/logout" id="logoutForm">
+                    <form method="POST" action="/logout" id="logoutForm" data-logout-form data-confirm-message="Are you sure you want to log out?">
                         @csrf
                         <button type="button" class="btn-logout" title="Logout" onclick="document.getElementById('logoutModal').style.display='flex'">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
@@ -103,10 +103,10 @@
                     ->latest()->get();
             @endphp
             @foreach($announcements as $ann)
-            <div class="seller-announcement" data-announcement-id="{{ $ann->id }}" class="blade-inline-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#d97706" viewBox="0 0 24 24" class="blade-inline-3"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
-                <div class="blade-inline-4"><strong>{{ $ann->title }}</strong> — {{ $ann->message }}</div>
-                <button type="button" aria-label="Close announcement" title="Close" onclick="dismissSellerAnnouncement(this)" class="blade-inline-5">&times;</button>
+            <div class="seller-announcement" data-announcement-id="{{ $ann->id }}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#d97706" viewBox="0 0 24 24" class="announcement-icon"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+                <div class="announcement-copy"><strong>{{ $ann->title }}</strong> — {{ $ann->message }}</div>
+                <button type="button" aria-label="Close announcement" title="Close" onclick="dismissSellerAnnouncement(this)" class="announcement-dismiss">&times;</button>
             </div>
             @endforeach
             @if(session('success'))
@@ -126,14 +126,14 @@
 </button>
 
 <!-- Logout Modal -->
-<div id="logoutModal" class="blade-inline-6">
-    <div class="blade-inline-7">
-        <div class="blade-inline-8"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="#E8472A" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg></div>
-        <div class="blade-inline-9">Log Out?</div>
-        <div class="blade-inline-10">Are you sure you want to log out of your seller account?</div>
-        <div class="blade-inline-11">
-            <button onclick="document.getElementById('logoutModal').style.display='none'" class="blade-inline-12">Cancel</button>
-            <button onclick="document.getElementById('logoutForm').submit()" class="blade-inline-13">Yes, Log Out</button>
+<div id="logoutModal" class="logout-modal">
+    <div class="logout-dialog">
+        <div class="logout-icon"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="#E8472A" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17L15.59 17 17 18.41 24 12l-7-6.41zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg></div>
+        <div class="logout-title">Log Out?</div>
+        <div class="logout-message">Are you sure you want to log out of your seller account?</div>
+        <div class="logout-actions">
+            <button onclick="document.getElementById('logoutModal').style.display='none'" class="logout-cancel">Cancel</button>
+            <button onclick="document.getElementById('logoutForm').submit()" class="logout-confirm">Yes, Log Out</button>
         </div>
     </div>
 </div>

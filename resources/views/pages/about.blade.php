@@ -12,18 +12,18 @@
 </div>
 
 <div class="trust-strip">
-    <div class="trust-item"><span>🛡️</span> Buyer Protection</div>
-    <div class="trust-item"><span>🔒</span> Secure Checkout</div>
-    <div class="trust-item"><span>🚚</span> Fast Nationwide Delivery</div>
-    <div class="trust-item"><span>↩️</span> 30-Day Returns</div>
-    <div class="trust-item"><span>✅</span> Verified Sellers</div>
+    <div class="trust-item"><span class="trust-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 4 6v5c0 5 3.4 8.8 8 10 4.6-1.2 8-5 8-10V6l-8-3z"/></svg></span> Buyer Protection</div>
+    <div class="trust-item"><span class="trust-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 10V8a6 6 0 0 1 12 0v2M5 10h14v10H5z"/></svg></span> Order Protection</div>
+    <div class="trust-item"><span class="trust-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 6h11v10H3zM14 10h4l3 3v3h-7zM7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/></svg></span> Fast Nationwide Delivery</div>
+    <div class="trust-item"><span class="trust-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4v6h6M4 10a8 8 0 1 1 2 5.3"/></svg></span> 30-Day Returns</div>
+    <div class="trust-item"><span class="trust-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg></span> Verified Sellers</div>
 </div>
 
 <div class="about-wrapper">
     <section class="company-intro">
         <div class="section-label">Who We Are</div>
         <h2 class="section-title">A marketplace that moves with you.</h2>
-        <p>PickSell is a three-sided Philippine e-commerce marketplace connecting buyers, sellers, and couriers through an integrated logistics and sorting center. We enable easy browsing, secure checkout, and full order tracking from purchase to doorstep delivery.</p>
+        <p>PickSell is a three-sided Philippine e-commerce marketplace connecting buyers, sellers, and couriers through an integrated logistics and sorting center. We enable easy browsing, clear order handling, and full order tracking from purchase to doorstep delivery.</p>
     </section>
 
     <div class="section-label">Our Direction</div>
@@ -66,7 +66,7 @@
     <h2 class="section-title">Shop in <em>3 Easy Steps</em></h2>
     <div class="steps">
         <div class="step"><div class="step-num">1</div><h3>Browse & Discover</h3><p>Search thousands of products across all categories at the best prices.</p></div>
-        <div class="step"><div class="step-num">2</div><h3>Add to Cart & Pay</h3><p>Checkout securely with GCash, credit card, or cash on delivery.</p></div>
+        <div class="step"><div class="step-num">2</div><h3>Add to Cart & Confirm</h3><p>Review your order details and confirm the delivery arrangement.</p></div>
         <div class="step"><div class="step-num">3</div><h3>Receive & Enjoy</h3><p>Get your order delivered fast. Not satisfied? Return it hassle-free.</p></div>
     </div>
 
@@ -80,7 +80,7 @@
 
     <div class="section-label">Our Promise</div>
     <h2 class="section-title">Your <em>Protection</em> is Our Priority</h2>
-    <p class="section-body">Every purchase on PickSell is covered by our Buyer Protection Program. If your item doesn't arrive, arrives damaged, or isn't as described — we'll make it right. We only work with verified sellers and hold payments until you confirm your order is received.</p>
+    <p class="section-body">Every purchase on PickSell is covered by our Buyer Protection Program. If your item doesn't arrive, arrives damaged, or isn't as described — we'll make it right. We work with verified sellers and provide support through every delivery milestone.</p>
 
     @php
         $tos     = \App\Models\PlatformSetting::get('terms_of_service');

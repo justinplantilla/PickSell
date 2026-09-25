@@ -30,10 +30,18 @@ inputs.forEach(input => {
                 detail.textContent = item.category || 'Product';
                 button.append(name, detail);
                 button.addEventListener('click', () => {
-                    input.value = item.name;
+                    const formAction = form.action || '/buyer/shop';
+                    const params = new URLSearchParams();
+                    if (item.category === 'Category') {
+                        params.set('category', item.name);
+                    } else {
+                        params.set('search', item.name);
+                    }
+
+                    const targetUrl = new URL(formAction, window.location.origin);
+                    targetUrl.search = params.toString();
+                    window.location.href = targetUrl.toString();
                     hideSuggestions();
-                    if (typeof form.requestSubmit === 'function') form.requestSubmit();
-                    else form.submit();
                 });
                 dropdown.appendChild(button);
             });

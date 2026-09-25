@@ -80,11 +80,33 @@ class CheckoutTest extends TestCase
             'quantity' => 1,
         ]);
 
+        $logistics = User::create([
+            'role' => 'logistics',
+            'status' => 'approved',
+            'last_name' => 'Logistics',
+            'first_name' => 'Test',
+            'middle_initial' => null,
+            'sex' => 'Male',
+            'email' => 'logistics.checkout@example.com',
+            'password' => Hash::make('secret123'),
+            'contact_no' => '09112223344',
+            'birthday' => '1988-02-15',
+            'age' => 38,
+            'province' => 'Metro Manila',
+            'municipality' => 'Quezon City',
+            'barangay' => 'Diliman',
+            'street' => "Teacher's Village",
+            'house_no' => '8',
+            'id_upload' => 'uploads/logistics.jpg',
+            'business_name' => 'Fast Route Logistics',
+        ]);
+
         $response = $this->actingAs($buyer)
             ->from('/buyer/cart')
             ->post('/buyer/cart/checkout', [
                 'item_ids' => [$item->id],
                 'payment_method' => 'cod',
+                'logistics_id' => $logistics->id,
             ]);
 
         $response->assertRedirect('/buyer/orders');
@@ -92,8 +114,9 @@ class CheckoutTest extends TestCase
             'buyer_id' => $buyer->id,
             'seller_id' => $seller->id,
             'product_id' => $product->id,
+            'logistics_id' => $logistics->id,
             'quantity' => 1,
-            'status' => 'pending',
+            'status' => 'placed',
         ]);
     }
 }

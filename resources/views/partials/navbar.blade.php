@@ -7,7 +7,7 @@
         <nav class="landing-links">
             <a href="#how-it-works">How It Works</a>
             <a href="/register?role=seller">For Sellers</a>
-            <a href="/register?role=courier">For Couriers</a>
+            <a href="/register">For Couriers</a>
             <a href="#what-we-stand-for">About</a>
         </nav>
         <a href="/register" class="landing-nav-cta">Join PickSell</a>
@@ -35,8 +35,13 @@
         @endauth
         <div class="nav-divider"></div>
         @auth
-        <a href="/{{ Auth::user()->role === 'buyer' ? 'buyer/cart' : 'dashboard' }}" class="nav-icon-btn" title="Cart" class="blade-inline-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM5.2 5H2V3H0v2h2l3.6 7.59L4.25 15A2 2 0 0 0 6 18h14v-2H6.42a.25.25 0 0 1-.25-.25l.03-.12L7.1 14h9.45c.75 0 1.41-.41 1.75-1.03L21.7 6.5A1 1 0 0 0 20.83 5H5.2z"/></svg>
+        <a href="/{{ Auth::user()->role === 'buyer' ? 'buyer/cart' : 'dashboard' }}" class="nav-icon-btn cart-link" title="Cart">
+            <span class="cart-badge-wrap">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM5.2 5H2V3H0v2h2l3.6 7.59L4.25 15A2 2 0 0 0 6 18h14v-2H6.42a.25.25 0 0 1-.25-.25l.03-.12L7.1 14h9.45c.75 0 1.41-.41 1.75-1.03L21.7 6.5A1 1 0 0 0 20.83 5H5.2z"/></svg>
+                @if(Auth::user()->role === 'buyer' && isset($cartCount) && $cartCount > 0)
+                    <span class="cart-badge">{{ $cartCount }}</span>
+                @endif
+            </span>
         </a>
         @else
         <a href="/login" class="nav-icon-btn" title="Cart">

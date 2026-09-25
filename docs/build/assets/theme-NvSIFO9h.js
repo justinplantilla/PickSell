@@ -1,0 +1,1 @@
+function e(e=`darkMode`){let t=localStorage.getItem(e)===`true`;document.body.classList.toggle(`dark`,t)}function t(e=`darkMode`){let t=document.body.classList.toggle(`dark`);localStorage.setItem(e,String(t))}document.addEventListener(`click`,e=>{let n=e.target.closest(`[data-theme-toggle]`);n&&t(n.dataset.themeStorageKey||`darkMode`)});export{e as t};

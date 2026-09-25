@@ -1,0 +1,1 @@
+var e=document.getElementById(`chatMessages`);e&&(e.scrollTop=e.scrollHeight);function t(e){document.querySelectorAll(`#userList .chat-item`).forEach(t=>{t.style.display=t.dataset.name.includes(e.toLowerCase())?`flex`:`none`})}window.filterUsers=t;

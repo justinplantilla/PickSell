@@ -4,3 +4,20 @@
 .blade-inline-2 { color:var(--coral) !important; margin-left:0.5rem !important;  }
 .blade-inline-3 { text-align:center !important; padding:4rem 1rem !important; color:#aaa !important;  }
 .blade-inline-4 { margin-bottom:1rem !important; opacity:0.3 !important;  }
+
+.buyer-home .buyer-categories { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .7rem; }
+.buyer-home .buyer-category { min-height: 112px; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: .8rem; padding: 1rem; background: #fff; border: 1px solid #e8e0d7; border-radius: 14px; color: #3d4148; font-size: .78rem; font-weight: 800; position: relative; overflow: hidden; transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease, color .25s ease; }
+.buyer-home .buyer-category::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--coral); transform: scaleX(.35); transform-origin: left; transition: transform .25s ease; }
+.buyer-home .buyer-category:nth-child(2n)::after { background: #e3ae24; }
+.buyer-home .buyer-category:nth-child(3n)::after { background: #397d75; }
+.buyer-home .buyer-category:hover { transform: translateY(-5px); border-color: #d8cfc5; color: var(--coral-dark); box-shadow: 0 14px 26px rgba(45,45,45,.13); }
+.buyer-home .buyer-category:hover::after { transform: scaleX(1); }
+.buyer-home .buyer-category-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: #fff0eb; color: var(--coral); font-size: 1.35rem; line-height: 1; }
+.buyer-home .buyer-category-icon svg { display: block; width: 22px; height: 22px; }
+.buyer-home .buyer-category:nth-child(2n) .buyer-category-icon { background: #fff8df; color: #b88616; }
+.buyer-home .buyer-category:nth-child(3n) .buyer-category-icon { background: #e7f1ef; color: #397d75; }
+
+@media (max-width: 700px) {
+	.buyer-home .buyer-categories { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.buyer-home .buyer-category { min-height: 98px; }
+}

@@ -37,7 +37,7 @@
                 <span>Messages</span>
             </a>
             <a href="/buyer/cart" class="nav-icon-btn">
-                <div class="blade-inline-1">
+                <div class="cart-badge-wrap">
                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM5.2 5H2V3H0v2h2l3.6 7.59L4.25 15A2 2 0 0 0 6 18h14v-2H6.42a.25.25 0 0 1-.25-.25l.03-.12L7.1 14h9.45c.75 0 1.41-.41 1.75-1.03L21.7 6.5A1 1 0 0 0 20.83 5H5.2z"/></svg>
                     @if(isset($cartCount) && $cartCount > 0)
                     <span class="cart-badge">{{ $cartCount }}</span>
@@ -59,7 +59,7 @@
                         My Account
                     </a>
                     <hr>
-                    <form method="POST" action="/logout">
+                    <form method="POST" action="/logout" data-logout-form data-confirm-message="Are you sure you want to log out?">
                         @csrf
                         <button type="submit">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>

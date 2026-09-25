@@ -1,0 +1,1 @@
+var e=document.querySelector(`[data-dashboard-date]`),t=document.querySelector(`[data-dashboard-time]`);if(e&&t){let n=()=>{let n=new Date;e.textContent=n.toLocaleDateString(`en-US`,{weekday:`long`,month:`long`,day:`numeric`,year:`numeric`}).toUpperCase(),t.textContent=n.toLocaleTimeString(`en-US`,{hour:`numeric`,minute:`2-digit`,second:`2-digit`})};n(),window.setInterval(n,1e3)}

@@ -2,6 +2,7 @@ function confirmLogout() {
     document.getElementById('logoutModal').style.display = 'flex';
 }
 let adminNotifications = [];
+const adminNotificationIcon = '<svg class="notification-item-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>';
 function showAdminNotificationDetail(notification) {
     const payload = typeof notification.data === 'string' ? JSON.parse(notification.data || '{}') : (notification.data || notification);
     const existing = document.getElementById('notificationDetailModal');
@@ -45,9 +46,13 @@ function loadNotifs() {
             document.getElementById('notifDot').style.display = unread ? 'block' : 'none';
             if (!data.length) { list.innerHTML = '<div class="notif-empty">No notifications</div>'; return; }
             list.innerHTML = data.map((n, index) => {
-                const msg = JSON.parse(n.data).message || '';
+                let payload = n.data || {};
+                if (typeof payload === 'string') {
+                    try { payload = JSON.parse(payload); } catch { payload = {}; }
+                }
+                const msg = payload.message || '';
                 const time = new Date(n.created_at).toLocaleString();
-                return `<button type="button" class="notif-item" data-notification-index="${index}"><span>${msg}</span><span class="notif-item-time">${time}</span></button>`;
+                return `<button type="button" class="notif-item" data-notification-index="${index}">${adminNotificationIcon}<span class="notification-item-copy"><span>${msg}</span><span class="notif-item-time">${time}</span></span></button>`;
             }).join('');
         });
 }

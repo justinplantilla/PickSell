@@ -27,8 +27,12 @@
     "file": "assets/instrument-sans-600-normal-B9e8oLYv.woff",
     "src": "_instrument-sans-600-normal-B9e8oLYv.woff"
   },
+  "_theme-NvSIFO9h.js": {
+    "file": "assets/theme-NvSIFO9h.js",
+    "name": "theme"
+  },
   "resources/css/app.css": {
-    "file": "assets/app-CnOQVFH4.css",
+    "file": "assets/app-Dj99pG-E.css",
     "name": "app",
     "names": [
       "app.css"
@@ -36,10 +40,721 @@
     "src": "resources/css/app.css",
     "isEntry": true
   },
+  "resources/css/components/dashboard-clock.css": {
+    "file": "assets/dashboard-clock-DWTQ7wGP.css",
+    "name": "dashboard-clock",
+    "names": [
+      "dashboard-clock.css"
+    ],
+    "src": "resources/css/components/dashboard-clock.css",
+    "isEntry": true
+  },
+  "resources/css/layouts/app.css": {
+    "file": "assets/app-DQyILYFW.css",
+    "name": "app",
+    "names": [
+      "app.css"
+    ],
+    "src": "resources/css/layouts/app.css",
+    "isEntry": true
+  },
+  "resources/css/pages/login.css": {
+    "file": "assets/login-CG4VEuPG.css",
+    "name": "login",
+    "names": [
+      "login.css"
+    ],
+    "src": "resources/css/pages/login.css",
+    "isEntry": true
+  },
+  "resources/css/views/admin-account.css": {
+    "file": "assets/admin-account-CBJ6lfrZ.css",
+    "name": "admin-account",
+    "names": [
+      "admin-account.css"
+    ],
+    "src": "resources/css/views/admin-account.css",
+    "isEntry": true
+  },
+  "resources/css/views/admin-application-detail.css": {
+    "file": "assets/admin-application-detail-GMrkz11J.css",
+    "name": "admin-application-detail",
+    "names": [
+      "admin-application-detail.css"
+    ],
+    "src": "resources/css/views/admin-application-detail.css",
+    "isEntry": true
+  },
+  "resources/css/views/admin-chat.css": {
+    "file": "assets/admin-chat-MaEnttxk.css",
+    "name": "admin-chat",
+    "names": [
+      "admin-chat.css"
+    ],
+    "src": "resources/css/views/admin-chat.css",
+    "isEntry": true
+  },
+  "resources/css/views/admin-commission.css": {
+    "file": "assets/admin-commission-DxdaH7Uc.css",
+    "name": "admin-commission",
+    "names": [
+      "admin-commission.css"
+    ],
+    "src": "resources/css/views/admin-commission.css",
+    "isEntry": true
+  },
+  "resources/css/views/admin-complaint-detail.css": {
+    "file": "assets/admin-complaint-detail-nsIWWphW.css",
+    "name": "admin-complaint-detail",
+    "names": [
+      "admin-complaint-detail.css"
+    ],
+    "src": "resources/css/views/admin-complaint-detail.css",
+    "isEntry": true
+  },
+  "resources/css/views/admin-complaints.css": {
+    "file": "assets/admin-complaints-DdUCCtoN.css",
+    "name": "admin-complaints",
+    "names": [
+      "admin-complaints.css"
+    ],
+    "src": "resources/css/views/admin-complaints.css",
+    "isEntry": true
+  },
+  "resources/css/views/admin-compliance.css": {
+    "file": "assets/admin-compliance-DMqzhPyT.css",
+    "name": "admin-compliance",
+    "names": [
+      "admin-compliance.css"
+    ],
+    "src": "resources/css/views/admin-compliance.css",
+    "isEntry": true
+  },
+  "resources/css/views/admin-dashboard.css": {
+    "file": "assets/admin-dashboard-jVNo2M-Y.css",
+    "name": "admin-dashboard",
+    "names": [
+      "admin-dashboard.css"
+    ],
+    "src": "resources/css/views/admin-dashboard.css",
+    "isEntry": true
+  },
+  "resources/css/views/admin-layout.css": {
+    "file": "assets/admin-layout-Dyhl9kWh.css",
+    "name": "admin-layout",
+    "names": [
+      "admin-layout.css"
+    ],
+    "src": "resources/css/views/admin-layout.css",
+    "isEntry": true
+  },
+  "resources/css/views/admin-logistics.css": {
+    "file": "assets/admin-logistics-mrzG7ZoT.css",
+    "name": "admin-logistics",
+    "names": [
+      "admin-logistics.css"
+    ],
+    "src": "resources/css/views/admin-logistics.css",
+    "isEntry": true
+  },
+  "resources/css/views/admin-products.css": {
+    "file": "assets/admin-products-DgSBPC4a.css",
+    "name": "admin-products",
+    "names": [
+      "admin-products.css"
+    ],
+    "src": "resources/css/views/admin-products.css",
+    "isEntry": true
+  },
+  "resources/css/views/admin-registrations.css": {
+    "file": "assets/admin-registrations-DkTjkyEO.css",
+    "name": "admin-registrations",
+    "names": [
+      "admin-registrations.css"
+    ],
+    "src": "resources/css/views/admin-registrations.css",
+    "isEntry": true
+  },
+  "resources/css/views/admin-reports.css": {
+    "file": "assets/admin-reports-CbbTgg86.css",
+    "name": "admin-reports",
+    "names": [
+      "admin-reports.css"
+    ],
+    "src": "resources/css/views/admin-reports.css",
+    "isEntry": true
+  },
+  "resources/css/views/admin-settings.css": {
+    "file": "assets/admin-settings-B76gAMtk.css",
+    "name": "admin-settings",
+    "names": [
+      "admin-settings.css"
+    ],
+    "src": "resources/css/views/admin-settings.css",
+    "isEntry": true
+  },
+  "resources/css/views/admin-users.css": {
+    "file": "assets/admin-users-CTmGmo0L.css",
+    "name": "admin-users",
+    "names": [
+      "admin-users.css"
+    ],
+    "src": "resources/css/views/admin-users.css",
+    "isEntry": true
+  },
+  "resources/css/views/auth-forgot-password.css": {
+    "file": "assets/auth-forgot-password-CIw2d135.css",
+    "name": "auth-forgot-password",
+    "names": [
+      "auth-forgot-password.css"
+    ],
+    "src": "resources/css/views/auth-forgot-password.css",
+    "isEntry": true
+  },
+  "resources/css/views/auth-register.css": {
+    "file": "assets/auth-register-C2NJ-qEC.css",
+    "name": "auth-register",
+    "names": [
+      "auth-register.css"
+    ],
+    "src": "resources/css/views/auth-register.css",
+    "isEntry": true
+  },
+  "resources/css/views/auth-reset-password.css": {
+    "file": "assets/auth-reset-password-Bg-5Om8z.css",
+    "name": "auth-reset-password",
+    "names": [
+      "auth-reset-password.css"
+    ],
+    "src": "resources/css/views/auth-reset-password.css",
+    "isEntry": true
+  },
+  "resources/css/views/buyer-account.css": {
+    "file": "assets/buyer-account-k2O6mhab.css",
+    "name": "buyer-account",
+    "names": [
+      "buyer-account.css"
+    ],
+    "src": "resources/css/views/buyer-account.css",
+    "isEntry": true
+  },
+  "resources/css/views/buyer-cart.css": {
+    "file": "assets/buyer-cart-Bh5yrDmA.css",
+    "name": "buyer-cart",
+    "names": [
+      "buyer-cart.css"
+    ],
+    "src": "resources/css/views/buyer-cart.css",
+    "isEntry": true
+  },
+  "resources/css/views/buyer-chat.css": {
+    "file": "assets/buyer-chat-BihGKvQM.css",
+    "name": "buyer-chat",
+    "names": [
+      "buyer-chat.css"
+    ],
+    "src": "resources/css/views/buyer-chat.css",
+    "isEntry": true
+  },
+  "resources/css/views/buyer-home.css": {
+    "file": "assets/buyer-home-B0lMJnea.css",
+    "name": "buyer-home",
+    "names": [
+      "buyer-home.css"
+    ],
+    "src": "resources/css/views/buyer-home.css",
+    "isEntry": true
+  },
+  "resources/css/views/buyer-layout.css": {
+    "file": "assets/buyer-layout-CAbMKRWt.css",
+    "name": "buyer-layout",
+    "names": [
+      "buyer-layout.css"
+    ],
+    "src": "resources/css/views/buyer-layout.css",
+    "isEntry": true
+  },
+  "resources/css/views/buyer-orders.css": {
+    "file": "assets/buyer-orders-BROMV9Bb.css",
+    "name": "buyer-orders",
+    "names": [
+      "buyer-orders.css"
+    ],
+    "src": "resources/css/views/buyer-orders.css",
+    "isEntry": true
+  },
+  "resources/css/views/buyer-product-detail.css": {
+    "file": "assets/buyer-product-detail-NewPBiWM.css",
+    "name": "buyer-product-detail",
+    "names": [
+      "buyer-product-detail.css"
+    ],
+    "src": "resources/css/views/buyer-product-detail.css",
+    "isEntry": true
+  },
+  "resources/css/views/courier-account.css": {
+    "file": "assets/courier-account-yDCHeAqZ.css",
+    "name": "courier-account",
+    "names": [
+      "courier-account.css"
+    ],
+    "src": "resources/css/views/courier-account.css",
+    "isEntry": true
+  },
+  "resources/css/views/courier-chat.css": {
+    "file": "assets/courier-chat-CddydOAJ.css",
+    "name": "courier-chat",
+    "names": [
+      "courier-chat.css"
+    ],
+    "src": "resources/css/views/courier-chat.css",
+    "isEntry": true
+  },
+  "resources/css/views/courier-dashboard.css": {
+    "file": "assets/courier-dashboard-vkC5jLp-.css",
+    "name": "courier-dashboard",
+    "names": [
+      "courier-dashboard.css"
+    ],
+    "src": "resources/css/views/courier-dashboard.css",
+    "isEntry": true
+  },
+  "resources/css/views/courier-layout.css": {
+    "file": "assets/courier-layout-D1BethD7.css",
+    "name": "courier-layout",
+    "names": [
+      "courier-layout.css"
+    ],
+    "src": "resources/css/views/courier-layout.css",
+    "isEntry": true
+  },
+  "resources/css/views/courier-reports.css": {
+    "file": "assets/courier-reports-D2HNEBcy.css",
+    "name": "courier-reports",
+    "names": [
+      "courier-reports.css"
+    ],
+    "src": "resources/css/views/courier-reports.css",
+    "isEntry": true
+  },
+  "resources/css/views/dashboard.css": {
+    "file": "assets/dashboard-CCNLrAXR.css",
+    "name": "dashboard",
+    "names": [
+      "dashboard.css"
+    ],
+    "src": "resources/css/views/dashboard.css",
+    "isEntry": true
+  },
+  "resources/css/views/logistics-account.css": {
+    "file": "assets/logistics-account-B_S54tro.css",
+    "name": "logistics-account",
+    "names": [
+      "logistics-account.css"
+    ],
+    "src": "resources/css/views/logistics-account.css",
+    "isEntry": true
+  },
+  "resources/css/views/logistics-applications.css": {
+    "file": "assets/logistics-applications-Bs2mpSnG.css",
+    "name": "logistics-applications",
+    "names": [
+      "logistics-applications.css"
+    ],
+    "src": "resources/css/views/logistics-applications.css",
+    "isEntry": true
+  },
+  "resources/css/views/logistics-branch-edit.css": {
+    "file": "assets/logistics-branch-edit-Bd6pnoqX.css",
+    "name": "logistics-branch-edit",
+    "names": [
+      "logistics-branch-edit.css"
+    ],
+    "src": "resources/css/views/logistics-branch-edit.css",
+    "isEntry": true
+  },
+  "resources/css/views/logistics-branches.css": {
+    "file": "assets/logistics-branches-BRWAnC1Y.css",
+    "name": "logistics-branches",
+    "names": [
+      "logistics-branches.css"
+    ],
+    "src": "resources/css/views/logistics-branches.css",
+    "isEntry": true
+  },
+  "resources/css/views/logistics-dashboard.css": {
+    "file": "assets/logistics-dashboard-yExwhNVK.css",
+    "name": "logistics-dashboard",
+    "names": [
+      "logistics-dashboard.css"
+    ],
+    "src": "resources/css/views/logistics-dashboard.css",
+    "isEntry": true
+  },
+  "resources/css/views/logistics-layout.css": {
+    "file": "assets/logistics-layout-D00iR2a5.css",
+    "name": "logistics-layout",
+    "names": [
+      "logistics-layout.css"
+    ],
+    "src": "resources/css/views/logistics-layout.css",
+    "isEntry": true
+  },
+  "resources/css/views/logistics-module.css": {
+    "file": "assets/logistics-module-Ct_JULXX.css",
+    "name": "logistics-module",
+    "names": [
+      "logistics-module.css"
+    ],
+    "src": "resources/css/views/logistics-module.css",
+    "isEntry": true
+  },
+  "resources/css/views/logistics-parcels.css": {
+    "file": "assets/logistics-parcels-D4MwwcoG.css",
+    "name": "logistics-parcels",
+    "names": [
+      "logistics-parcels.css"
+    ],
+    "src": "resources/css/views/logistics-parcels.css",
+    "isEntry": true
+  },
+  "resources/css/views/pages-about.css": {
+    "file": "assets/pages-about-CCWdJQ5n.css",
+    "name": "pages-about",
+    "names": [
+      "pages-about.css"
+    ],
+    "src": "resources/css/views/pages-about.css",
+    "isEntry": true
+  },
+  "resources/css/views/pages-contact.css": {
+    "file": "assets/pages-contact-CpGzF9bI.css",
+    "name": "pages-contact",
+    "names": [
+      "pages-contact.css"
+    ],
+    "src": "resources/css/views/pages-contact.css",
+    "isEntry": true
+  },
+  "resources/css/views/pages-shop.css": {
+    "file": "assets/pages-shop-CUaQ3dqB.css",
+    "name": "pages-shop",
+    "names": [
+      "pages-shop.css"
+    ],
+    "src": "resources/css/views/pages-shop.css",
+    "isEntry": true
+  },
+  "resources/css/views/partials-footer.css": {
+    "file": "assets/partials-footer-DitbyOEE.css",
+    "name": "partials-footer",
+    "names": [
+      "partials-footer.css"
+    ],
+    "src": "resources/css/views/partials-footer.css",
+    "isEntry": true
+  },
+  "resources/css/views/partials-navbar.css": {
+    "file": "assets/partials-navbar-BUTkYgUC.css",
+    "name": "partials-navbar",
+    "names": [
+      "partials-navbar.css"
+    ],
+    "src": "resources/css/views/partials-navbar.css",
+    "isEntry": true
+  },
+  "resources/css/views/partials-pagination-styles.css": {
+    "file": "assets/partials-pagination-styles-B8Hjt5es.css",
+    "name": "partials-pagination-styles",
+    "names": [
+      "partials-pagination-styles.css"
+    ],
+    "src": "resources/css/views/partials-pagination-styles.css",
+    "isEntry": true
+  },
+  "resources/css/views/partials-profile-address-script.css": {
+    "file": "assets/partials-profile-address-script-B2nWeOB5.css",
+    "name": "partials-profile-address-script",
+    "names": [
+      "partials-profile-address-script.css"
+    ],
+    "src": "resources/css/views/partials-profile-address-script.css",
+    "isEntry": true
+  },
+  "resources/css/views/partials-search-suggestions.css": {
+    "file": "assets/partials-search-suggestions-aTZXCVjT.css",
+    "name": "partials-search-suggestions",
+    "names": [
+      "partials-search-suggestions.css"
+    ],
+    "src": "resources/css/views/partials-search-suggestions.css",
+    "isEntry": true
+  },
+  "resources/css/views/seller-account.css": {
+    "file": "assets/seller-account-D_USQWcK.css",
+    "name": "seller-account",
+    "names": [
+      "seller-account.css"
+    ],
+    "src": "resources/css/views/seller-account.css",
+    "isEntry": true
+  },
+  "resources/css/views/seller-chat.css": {
+    "file": "assets/seller-chat-BzHqCa1-.css",
+    "name": "seller-chat",
+    "names": [
+      "seller-chat.css"
+    ],
+    "src": "resources/css/views/seller-chat.css",
+    "isEntry": true
+  },
+  "resources/css/views/seller-dashboard.css": {
+    "file": "assets/seller-dashboard-B96G1LIS.css",
+    "name": "seller-dashboard",
+    "names": [
+      "seller-dashboard.css"
+    ],
+    "src": "resources/css/views/seller-dashboard.css",
+    "isEntry": true
+  },
+  "resources/css/views/seller-inventory.css": {
+    "file": "assets/seller-inventory-D42o9Tac.css",
+    "name": "seller-inventory",
+    "names": [
+      "seller-inventory.css"
+    ],
+    "src": "resources/css/views/seller-inventory.css",
+    "isEntry": true
+  },
+  "resources/css/views/seller-layout.css": {
+    "file": "assets/seller-layout-B2rOC7vD.css",
+    "name": "seller-layout",
+    "names": [
+      "seller-layout.css"
+    ],
+    "src": "resources/css/views/seller-layout.css",
+    "isEntry": true
+  },
+  "resources/css/views/seller-order-detail.css": {
+    "file": "assets/seller-order-detail-5YG-RXNl.css",
+    "name": "seller-order-detail",
+    "names": [
+      "seller-order-detail.css"
+    ],
+    "src": "resources/css/views/seller-order-detail.css",
+    "isEntry": true
+  },
+  "resources/css/views/seller-orders.css": {
+    "file": "assets/seller-orders-Bf-oRPh8.css",
+    "name": "seller-orders",
+    "names": [
+      "seller-orders.css"
+    ],
+    "src": "resources/css/views/seller-orders.css",
+    "isEntry": true
+  },
+  "resources/css/views/seller-reports.css": {
+    "file": "assets/seller-reports-C6wd1OuT.css",
+    "name": "seller-reports",
+    "names": [
+      "seller-reports.css"
+    ],
+    "src": "resources/css/views/seller-reports.css",
+    "isEntry": true
+  },
+  "resources/css/views/welcome.css": {
+    "file": "assets/welcome-BLQz-lCg.css",
+    "name": "welcome",
+    "names": [
+      "welcome.css"
+    ],
+    "src": "resources/css/views/welcome.css",
+    "isEntry": true
+  },
   "resources/js/app.js": {
-    "file": "assets/app-BvRk9kiK.js",
+    "file": "assets/app-YQQsJ1xz.js",
     "name": "app",
     "src": "resources/js/app.js",
+    "isEntry": true,
+    "imports": [
+      "_theme-NvSIFO9h.js"
+    ]
+  },
+  "resources/js/components/dashboard-clock.js": {
+    "file": "assets/dashboard-clock-9MYRPKIz.js",
+    "name": "dashboard-clock",
+    "src": "resources/js/components/dashboard-clock.js",
+    "isEntry": true
+  },
+  "resources/js/components/form-behaviors.js": {
+    "file": "assets/form-behaviors-B_5-BrK8.js",
+    "name": "form-behaviors",
+    "src": "resources/js/components/form-behaviors.js",
+    "isEntry": true
+  },
+  "resources/js/components/navbar.js": {
+    "file": "assets/navbar-DH8m699x.js",
+    "name": "navbar",
+    "src": "resources/js/components/navbar.js",
+    "isEntry": true
+  },
+  "resources/js/components/profile-address.js": {
+    "file": "assets/profile-address-D-EW55mg.js",
+    "name": "profile-address",
+    "src": "resources/js/components/profile-address.js",
+    "isEntry": true
+  },
+  "resources/js/components/search-suggestions.js": {
+    "file": "assets/search-suggestions-di9T9FvU.js",
+    "name": "search-suggestions",
+    "src": "resources/js/components/search-suggestions.js",
+    "isEntry": true
+  },
+  "resources/js/pages/login.js": {
+    "file": "assets/login-mB_zsPVT.js",
+    "name": "login",
+    "src": "resources/js/pages/login.js",
+    "isEntry": true,
+    "imports": [
+      "_theme-NvSIFO9h.js"
+    ]
+  },
+  "resources/js/views/admin-chat.js": {
+    "file": "assets/admin-chat-gExnQVtt.js",
+    "name": "admin-chat",
+    "src": "resources/js/views/admin-chat.js",
+    "isEntry": true
+  },
+  "resources/js/views/admin-commission.js": {
+    "file": "assets/admin-commission-DgfKksKa.js",
+    "name": "admin-commission",
+    "src": "resources/js/views/admin-commission.js",
+    "isEntry": true
+  },
+  "resources/js/views/admin-compliance.js": {
+    "file": "assets/admin-compliance-DdtiBzcI.js",
+    "name": "admin-compliance",
+    "src": "resources/js/views/admin-compliance.js",
+    "isEntry": true
+  },
+  "resources/js/views/admin-dashboard.js": {
+    "file": "assets/admin-dashboard-xXR7GUtf.js",
+    "name": "admin-dashboard",
+    "src": "resources/js/views/admin-dashboard.js",
+    "isEntry": true
+  },
+  "resources/js/views/admin-layout.js": {
+    "file": "assets/admin-layout-Br4rKXMs.js",
+    "name": "admin-layout",
+    "src": "resources/js/views/admin-layout.js",
+    "isEntry": true
+  },
+  "resources/js/views/admin-reports.js": {
+    "file": "assets/admin-reports-818Ymt5B.js",
+    "name": "admin-reports",
+    "src": "resources/js/views/admin-reports.js",
+    "isEntry": true
+  },
+  "resources/js/views/auth-register-wizard.js": {
+    "file": "assets/auth-register-wizard-RXuAjau4.js",
+    "name": "auth-register-wizard",
+    "src": "resources/js/views/auth-register-wizard.js",
+    "isEntry": true
+  },
+  "resources/js/views/auth-register.js": {
+    "file": "assets/auth-register-SjOuYo2F.js",
+    "name": "auth-register",
+    "src": "resources/js/views/auth-register.js",
+    "isEntry": true
+  },
+  "resources/js/views/buyer-cart.js": {
+    "file": "assets/buyer-cart-Y3mCdJ90.js",
+    "name": "buyer-cart",
+    "src": "resources/js/views/buyer-cart.js",
+    "isEntry": true
+  },
+  "resources/js/views/buyer-chat.js": {
+    "file": "assets/buyer-chat-gExnQVtt.js",
+    "name": "buyer-chat",
+    "src": "resources/js/views/buyer-chat.js",
+    "isEntry": true
+  },
+  "resources/js/views/buyer-layout.js": {
+    "file": "assets/buyer-layout-CPgr0H6_.js",
+    "name": "buyer-layout",
+    "src": "resources/js/views/buyer-layout.js",
+    "isEntry": true
+  },
+  "resources/js/views/buyer-orders.js": {
+    "file": "assets/buyer-orders-BtMKasgc.js",
+    "name": "buyer-orders",
+    "src": "resources/js/views/buyer-orders.js",
+    "isEntry": true
+  },
+  "resources/js/views/buyer-product-detail.js": {
+    "file": "assets/buyer-product-detail-2fMgrppw.js",
+    "name": "buyer-product-detail",
+    "src": "resources/js/views/buyer-product-detail.js",
+    "isEntry": true
+  },
+  "resources/js/views/logistics-branches.js": {
+    "file": "assets/logistics-branches-Bm6FDdag.js",
+    "name": "logistics-branches",
+    "src": "resources/js/views/logistics-branches.js",
+    "isEntry": true
+  },
+  "resources/js/views/logistics-layout.js": {
+    "file": "assets/logistics-layout-CeNo_M06.js",
+    "name": "logistics-layout",
+    "src": "resources/js/views/logistics-layout.js",
+    "isEntry": true
+  },
+  "resources/js/views/pages-contact.js": {
+    "file": "assets/pages-contact-BAbr5ZyO.js",
+    "name": "pages-contact",
+    "src": "resources/js/views/pages-contact.js",
+    "isEntry": true
+  },
+  "resources/js/views/seller-chat.js": {
+    "file": "assets/seller-chat-gExnQVtt.js",
+    "name": "seller-chat",
+    "src": "resources/js/views/seller-chat.js",
+    "isEntry": true
+  },
+  "resources/js/views/seller-dashboard.js": {
+    "file": "assets/seller-dashboard-DbYS8SYR.js",
+    "name": "seller-dashboard",
+    "src": "resources/js/views/seller-dashboard.js",
+    "isEntry": true
+  },
+  "resources/js/views/seller-inventory.js": {
+    "file": "assets/seller-inventory-MhPCIw2q.js",
+    "name": "seller-inventory",
+    "src": "resources/js/views/seller-inventory.js",
+    "isEntry": true
+  },
+  "resources/js/views/seller-layout.js": {
+    "file": "assets/seller-layout-ClA3le7w.js",
+    "name": "seller-layout",
+    "src": "resources/js/views/seller-layout.js",
+    "isEntry": true
+  },
+  "resources/js/views/seller-orders.js": {
+    "file": "assets/seller-orders-Bkwoxztc.js",
+    "name": "seller-orders",
+    "src": "resources/js/views/seller-orders.js",
+    "isEntry": true
+  },
+  "resources/js/views/seller-reports.js": {
+    "file": "assets/seller-reports-BToM5v2k.js",
+    "name": "seller-reports",
+    "src": "resources/js/views/seller-reports.js",
+    "isEntry": true
+  },
+  "resources/js/views/welcome.js": {
+    "file": "assets/welcome-Dt4yPlWq.js",
+    "name": "welcome",
+    "src": "resources/js/views/welcome.js",
     "isEntry": true
   }
 }

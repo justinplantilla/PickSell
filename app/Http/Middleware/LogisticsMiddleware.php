@@ -9,7 +9,11 @@ class LogisticsMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
-        if (!auth()->check() || auth()->user()->role !== 'logistics' || !auth()->user()->isApproved()) {
+        if (auth()->check() && auth()->user()->role !== 'logistics') {
+            return redirect('/dashboard')->with('error', 'This page is only available in the logistics portal.');
+        }
+
+        if (!auth()->check() || !auth()->user()->isApproved()) {
             abort(403, 'Logistics access only.');
         }
 

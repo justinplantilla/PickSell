@@ -27,9 +27,9 @@ class CourierController extends Controller
 
         $orders = $query->latest()->paginate(15);
         $stats = [
-            'assigned' => Order::where('courier_id', $courier->id)->whereIn('status', ['shipped', 'processing'])->count(),
-            'in_transit' => Order::where('courier_id', $courier->id)->where('status', 'shipped')->count(),
-            'delivered' => Order::where('courier_id', $courier->id)->where('status', 'completed')->count(),
+            'assigned' => Order::where('courier_id', $courier->id)->whereIn('status', ['assigned_to_rider', 'out_for_delivery'])->count(),
+            'in_transit' => Order::where('courier_id', $courier->id)->where('status', 'out_for_delivery')->count(),
+            'delivered' => Order::where('courier_id', $courier->id)->whereIn('status', ['delivered', 'completed'])->count(),
             'earnings' => Order::where('courier_id', $courier->id)->where('status', 'completed')->sum('commission'),
         ];
 

@@ -12,6 +12,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class SellerController extends Controller
 {
@@ -134,6 +135,7 @@ class SellerController extends Controller
     public function packOrder(Order $order)
     {
         abort_if($order->seller_id !== $this->seller()->id, 403);
+        abort_unless(in_array($order->status, ['placed', 'confirmed', 'pending'], true), 422, 'This order is not ready to be prepared.');
         $order->update([
             'status' => 'preparing',
             'packed_at' => now(),
@@ -142,17 +144,53 @@ class SellerController extends Controller
         return back()->with('success', 'Order marked as being prepared.');
     }
 
-    public function handoverOrder(Request $request, Order $order)
+    public function handoverOrder(Order $order)
     {
         abort_if($order->seller_id !== $this->seller()->id, 403);
-        $data = $request->validate(['waybill_number' => 'required|string|max:100']);
+        abort_unless(in_array($order->status, ['preparing', 'processing'], true), 422, 'Prepare the order before handing it over.');
+
+        $waybillNumber = $order->waybill_number ?: $this->generateWaybill($order);
         $order->update([
             'status'         => 'ready_for_pickup',
-            'waybill_number' => $data['waybill_number'],
+            'waybill_number' => $waybillNumber,
             'handed_over_at' => now(),
             'tracking_status' => 'Pickup requested from seller',
         ]);
-        return back()->with('success', 'Order is ready for pickup.');
+
+        $message = 'Order #' . $order->order_number . ' has been handed over to logistics. Waybill: ' . $waybillNumber . '.';
+        $this->notifyUser($order->buyer, 'Order handed over', $message, $order);
+        $this->notifyUser($order->logistics, 'Parcel ready for pickup', $message, $order);
+        User::where('role', 'admin')->where('status', 'approved')->get()
+            ->each(fn (User $admin) => $this->notifyUser($admin, 'Parcel handed over', $message, $order));
+
+        return back()->with('success', 'Order handed over. Waybill ' . $waybillNumber . ' was generated automatically.');
+    }
+
+    private function generateWaybill(Order $order): string
+    {
+        do {
+            $waybill = 'WB-' . now()->format('ymd') . '-' . strtoupper(Str::random(8));
+        } while (Order::where('waybill_number', $waybill)->exists());
+
+        return $waybill;
+    }
+
+    private function notifyUser(?User $user, string $title, string $message, Order $order): void
+    {
+        $user?->notifications()->create([
+            'id' => (string) Str::uuid(),
+            'type' => 'App\\Notifications\\OrderWorkflowUpdate',
+            'data' => json_encode([
+                'type' => 'order',
+                'icon' => 'package',
+                'title' => $title,
+                'order_id' => $order->id,
+                'order_number' => $order->order_number,
+                'waybill_number' => $order->waybill_number,
+                'status' => $order->status,
+                'message' => $message,
+            ]),
+        ]);
     }
 
     public function showWaybill(Order $order)
@@ -160,7 +198,7 @@ class SellerController extends Controller
         abort_if($order->seller_id !== $this->seller()->id, 403);
 
         $pdf = Pdf::loadView('seller.pdf.waybill', compact('order'))
-            ->setPaper([0, 0, 300, 500], 'portrait');
+            ->setPaper([0, 0, 226.77, 560], 'portrait');
 
         return $pdf->stream('waybill-' . $order->order_number . '.pdf');
     }
@@ -168,11 +206,11 @@ class SellerController extends Controller
     public function confirmDelivery(Order $order)
     {
         abort_if($order->seller_id !== $this->seller()->id, 403);
-        abort_if($order->status !== 'delivered', 422, 'Only delivered orders can be confirmed.');
+        abort_unless(in_array($order->status, ['delivered', 'completed'], true), 422, 'Only delivered orders can be confirmed.');
 
         $order->update([
             'status' => 'completed',
-            'tracking_status' => 'Seller confirmed buyer receipt',
+            'tracking_status' => 'Seller confirmed delivery',
             'confirmed_by_seller_at' => now(),
         ]);
 
@@ -198,9 +236,25 @@ class SellerController extends Controller
     // Reports
     public function reports(Request $request)
     {
-        $seller = $this->seller();
         $from   = $request->get('from', now()->startOfMonth()->format('Y-m-d'));
         $to     = $request->get('to', now()->format('Y-m-d'));
+
+        return view('seller.reports', $this->reportData($from, $to));
+    }
+
+    public function reportPdf(Request $request)
+    {
+        $from = $request->get('from', now()->startOfMonth()->format('Y-m-d'));
+        $to = $request->get('to', now()->format('Y-m-d'));
+        $data = $this->reportData($from, $to);
+
+        $pdf = Pdf::loadView('seller.pdf.report', $data)->setPaper('a4', 'portrait');
+        return $pdf->download('seller-report-' . $from . '-to-' . $to . '.pdf');
+    }
+
+    private function reportData(string $from, string $to): array
+    {
+        $seller = $this->seller();
 
         $orders = Order::where('seller_id', $seller->id)
             ->where('status', 'completed')
@@ -228,7 +282,7 @@ class SellerController extends Controller
             ->map(fn($g) => ['name' => $g->first()->product_name, 'sales' => $g->sum('amount'), 'count' => $g->count()])
             ->sortByDesc('sales')->take(5)->values();
 
-        return view('seller.reports', compact('from', 'to', 'totalSales', 'totalOrders', 'totalProfit', 'days', 'dailySales', 'topProducts'));
+        return compact('from', 'to', 'totalSales', 'totalOrders', 'totalProfit', 'days', 'dailySales', 'topProducts');
     }
 
     // Chat

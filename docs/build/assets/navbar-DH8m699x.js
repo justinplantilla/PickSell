@@ -1,0 +1,1 @@
+var e=document.querySelector(`.nav-top`);if(e){let t=()=>e.classList.toggle(`is-scrolled`,window.scrollY>18);t(),window.addEventListener(`scroll`,t,{passive:!0})}

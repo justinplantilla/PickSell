@@ -106,7 +106,7 @@
                 <p class="blade-inline-12">Permanently delete your seller account and its related records.</p>
                 <form method="POST" action="{{ route('account.delete') }}" data-confirm="Delete your account permanently? This cannot be undone.">
                     @csrf @method('DELETE')
-                    <input type="password" name="password" class="form-control" placeholder="Confirm your password" required class="blade-inline-13">
+                    <input type="password" name="password" class="form-control blade-inline-13" placeholder="Confirm your password" required>
                     <button type="submit" class="btn btn-danger">Delete Account</button>
                 </form>
             </div>

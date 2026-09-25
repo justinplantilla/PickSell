@@ -9,7 +9,11 @@ class CourierMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
-        if (!auth()->check() || auth()->user()->role !== 'courier' || !auth()->user()->isApproved()) {
+        if (auth()->check() && auth()->user()->role !== 'courier') {
+            return redirect('/dashboard')->with('error', 'This page is only available in the courier portal.');
+        }
+
+        if (!auth()->check() || !auth()->user()->isApproved()) {
             abort(403, 'Access denied.');
         }
 

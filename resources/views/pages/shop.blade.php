@@ -3,6 +3,7 @@
 
 @section('styles')
 @vite('resources/css/views/pages-shop.css')
+@include('partials.pagination-styles')
 @endsection
 
 @section('content')
@@ -18,12 +19,12 @@
     <aside class="shop-sidebar">
         <div class="filter-box">
             <h3>Categories</h3>
-            @php $cats = ['Electronics','Fashion','Home & Living','Sports','Beauty','Food & Grocery','Books','Toys']; @endphp
+            @php $cats = $categories; @endphp
             <form method="GET" action="/shop">
-            @foreach($cats as $cat)
+            @foreach($cats as $cat => $count)
             <div class="filter-item">
                 <input type="checkbox" name="cat" id="cat-{{ $loop->index }}" value="{{ strtolower($cat) }}" {{ request('cat') === strtolower($cat) ? 'checked' : '' }}>
-                <label for="cat-{{ $loop->index }}">{{ $cat }}</label>
+                <label for="cat-{{ $loop->index }}">{{ $cat }} <span class="category-count">({{ $count }})</span></label>
             </div>
             @endforeach
 
@@ -34,30 +35,32 @@
                 <span>–</span>
                 <input type="number" name="max" placeholder="Max" value="{{ request('max') }}">
             </div>
-        </div>
             <button type="submit" class="btn-filter">Apply Filters</button>
-            </form>
         </div>
+        </form>
     </aside>
 
     <!-- Products -->
     <div class="shop-main">
         <div class="shop-toolbar">
-            <p class="shop-count">Showing <strong>{{ count($products) }}</strong> products</p>
-            <select class="sort-select">
-                <option>Sort: Featured</option>
-                <option>Price: Low to High</option>
-                <option>Price: High to Low</option>
-                <option>Newest First</option>
-                <option>Best Rated</option>
+            <p class="shop-count">Showing <strong>{{ $products->firstItem() ?? 0 }} to {{ $products->lastItem() ?? 0 }}</strong> of {{ $products->total() }} products</p>
+            <form method="GET" action="/shop">
+                @foreach(request()->except('sort') as $key => $value)
+                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                @endforeach
+            <select class="sort-select" name="sort" onchange="this.form.submit()">
+                <option value="featured" {{ $sort === 'featured' ? 'selected' : '' }}>Sort: Featured</option>
+                <option value="price_asc" {{ $sort === 'price_asc' ? 'selected' : '' }}>Price: Low to High</option>
+                <option value="price_desc" {{ $sort === 'price_desc' ? 'selected' : '' }}>Price: High to Low</option>
             </select>
+            </form>
         </div>
 
         <div class="products-grid">
             @foreach($products as $p)
-            <div class="product-card">
+            @php $productLink = auth()->check() ? '/buyer/product/' . $p->id : '/login'; @endphp
+            <a href="{{ $productLink }}" class="product-card">
                 @if($p->discount > 0)<div class="product-badge">-{{ $p->discount }}%</div>@endif
-                <button class="product-wishlist">🤍</button>
                 <div class="product-img">
                     <img src="{{ Storage::url($p->image) }}" alt="{{ $p->name }}" loading="lazy">
                     <div class="product-image-details">
@@ -73,11 +76,13 @@
                         <span class="product-price">₱{{ number_format($p->effective_price, 2) }}</span>
                         @if($p->discount > 0)<span class="product-old">₱{{ number_format($p->price, 2) }}</span><span class="product-discount">-{{ $p->discount }}%</span>@endif
                     </div>
-                    <a href="/login" class="product-btn">View Product</a>
                 </div>
-            </div>
+            </a>
             @endforeach
         </div>
+        @if($products->hasPages())
+            <div class="shop-pagination dashboard-pagination">{{ $products->withQueryString()->links() }}</div>
+        @endif
     </div>
 </div>
 @endsection

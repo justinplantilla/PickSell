@@ -1,0 +1,24 @@
+.logistics-account-page { max-width:1180px; display:grid; grid-template-columns:minmax(0,1.55fr) minmax(280px,.75fr); gap:1.2rem; align-items:start; }
+.logistics-account-page > div { min-width:0; display:grid; gap:1.2rem; }
+.logistics-account-page .card { margin-bottom:0; }
+.logistics-account-page .form-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.logistics-account-page .profile-name-row { grid-template-columns:1fr 1fr .65fr; }
+.logistics-account-page .form-label { display:block; margin-bottom:.4rem; font-size:.8rem; font-weight:600; color:#4b5563; }
+.logistics-account-page .field-error { color:#dc2626; font-size:.78rem; margin-top:.35rem; }
+.logistics-details-card .card-body { display:grid; gap:0; }
+.account-details-list > div { display:flex; justify-content:space-between; gap:1rem; padding:.75rem 0; border-bottom:1px solid #f0ebe0; font-size:.82rem; }
+.account-details-list > div:last-child { border-bottom:0; }
+.account-details-list span { color:#8b8580; }
+.account-details-list strong { color:#2d2d2d; text-align:right; overflow-wrap:anywhere; }
+.account-details-list a { color:var(--coral); }
+.account-danger-copy { color:#888; font-size:.88rem; margin:0 0 1rem; }
+.logistics-account-page .danger-card .form-control { margin-bottom:.7rem; }
+.logistics-account-page .danger-card .btn-danger { background:#ef4444; color:#fff; border:0; }
+@media(max-width:900px) {
+    .logistics-account-page { grid-template-columns:1fr; }
+}
+@media(max-width:600px) {
+    .logistics-account-page .form-row,.logistics-account-page .profile-name-row { grid-template-columns:1fr; }
+    .account-details-list > div { align-items:flex-start; flex-direction:column; gap:.2rem; }
+    .account-details-list strong { text-align:left; }
+}

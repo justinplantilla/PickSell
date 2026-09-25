@@ -39,15 +39,15 @@
                 <td>
                     <div class="blade-inline-4">
                         <a href="/seller/orders/{{ $order->id }}" class="btn btn-outline btn-sm">View</a>
-                        @if(in_array($order->status, ['shipped', 'completed'], true))
+                        @if($order->waybill_number)
                         <a href="/seller/orders/{{ $order->id }}/waybill" target="_blank" class="btn btn-outline btn-sm">Waybill</a>
                         @endif
-                        @if($order->status === 'pending')
+                        @if(in_array($order->status, ['placed', 'confirmed', 'pending'], true))
                         <form method="POST" action="/seller/orders/{{ $order->id }}/pack">
                             @csrf @method('PATCH')
-                            <button type="submit" class="btn btn-coral btn-sm">Pack</button>
+                            <button type="submit" class="btn btn-coral btn-sm">Prepare</button>
                         </form>
-                        @elseif($order->status === 'processing')
+                        @elseif(in_array($order->status, ['preparing', 'processing'], true))
                         <button class="btn btn-success btn-sm" onclick="openHandover({{ $order->id }})">Hand Over</button>
                         @endif
                     </div>
@@ -67,16 +67,16 @@
 <!-- Handover Modal -->
 <div class="modal-overlay" id="handoverModal">
     <div class="modal">
-        <div class="modal-title">Hand Over to Courier</div>
+        <div class="modal-title">Hand Over to Logistics</div>
         <form method="POST" id="handoverForm">
             @csrf @method('PATCH')
-            <div class="form-group">
-                <label class="form-label">Waybill / Tracking Number *</label>
-                <input type="text" name="waybill_number" class="form-control" required placeholder="Enter waybill number">
+            <div class="waybill-generation-note">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+                <span>PickSell will generate the waybill automatically and notify the buyer, logistics, and admin.</span>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="document.getElementById('handoverModal').classList.remove('open')">Cancel</button>
-                <button type="submit" class="btn btn-coral">Confirm Handover</button>
+                <button type="submit" class="btn btn-coral">Generate Waybill &amp; Confirm</button>
             </div>
         </form>
     </div>

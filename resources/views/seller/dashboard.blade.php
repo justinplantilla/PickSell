@@ -84,7 +84,5 @@
 @endsection
 
 @section('scripts')
-@section('scripts')
 @vite('resources/js/views/seller-dashboard.js')
-@endsection
 @endsection

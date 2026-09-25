@@ -27,11 +27,13 @@ class LogisticsController extends Controller
         $stats = [
             'pending_couriers' => User::where('role', 'courier')->where('status', 'pending')->count(),
             'approved_couriers' => User::where('role', 'courier')->where('status', 'approved')->count(),
-            'to_sort' => Order::where('status', 'shipped')->whereNull('courier_id')->count(),
-            'assigned' => Order::where('status', 'shipped')->whereNotNull('courier_id')->count(),
+            'to_sort' => Order::whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center'])->count(),
+            'assigned' => Order::whereIn('status', ['assigned_to_rider', 'out_for_delivery'])->count(),
         ];
 
-        $orders = Order::with(['buyer', 'courier'])->where('logistics_id', auth()->id())->whereIn('status', ['shipped', 'completed'])->latest()->take(10)->get();
+        $orders = Order::with(['buyer', 'courier'])->where('logistics_id', auth()->id())
+            ->whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed'])
+            ->latest()->take(10)->get();
         return view('logistics.dashboard', compact('stats', 'orders'));
     }
 
@@ -74,8 +76,9 @@ class LogisticsController extends Controller
             $query->where('status', $status);
         }
 
+        $summaryQuery = clone $query;
         $orders = $query->with(['buyer', 'courier'])->latest()->paginate(20)->withQueryString();
-        $summary = (clone $query)->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+        $summary = $summaryQuery->reorder()->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
 
         return view('logistics.delivery-reports', compact('orders', 'summary', 'from', 'to', 'status'));
     }
@@ -121,8 +124,10 @@ class LogisticsController extends Controller
             'first_name' => 'required|string|max:100',
             'last_name' => 'required|string|max:100',
             'middle_initial' => 'nullable|string|max:5',
+            'sex' => 'required|in:Male,Female',
             'email' => 'required|email|unique:users,email,' . auth()->id(),
             'contact_no' => ['required', 'regex:/^09\d{9}$/'],
+            'birthday' => 'required|date',
             'province' => 'required|string|max:120',
             'municipality' => 'required|string|max:120',
             'barangay' => 'required|string|max:120',
@@ -320,14 +325,15 @@ class LogisticsController extends Controller
     public function parcels(Request $request)
     {
         $status = $request->get('status', 'all');
-        $query = Order::with(['buyer', 'seller', 'courier'])->where('logistics_id', auth()->id())->whereIn('status', ['shipped', 'completed']);
+        $query = Order::with(['buyer', 'seller', 'courier'])->where('logistics_id', auth()->id())
+            ->whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed']);
         if ($status !== 'all') {
             $query->where('status', $status);
         }
 
         $orders = $query->latest()->paginate(15);
         $couriers = User::where('role', 'courier')->where('status', 'approved')->orderBy('delivery_area')->orderBy('last_name')->get();
-        return view('logistics.parcels-workflow', compact('orders', 'couriers', 'status'));
+        return view('logistics.sorting-center', compact('orders', 'couriers', 'status'));
     }
 
     public function scanParcel(Order $order)

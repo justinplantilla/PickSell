@@ -1,4 +1,7 @@
+.account-page { display:block !important; max-width:900px; margin:0 auto; }
+.account-page > div { display:grid; gap:1.5rem; }
 .account-page .card { position: relative; border: 1px solid rgba(232,71,42,.28); box-shadow: 0 8px 24px rgba(232,71,42,.08); }
+.account-page .account-profile-card { width:100%; }
     .account-page .card::before { content: ''; position: absolute; inset: 0 0 auto; height: 3px; background: var(--coral); }
     .account-page .btn { box-shadow: 0 0 0 1px rgba(232,71,42,.18), 0 6px 16px rgba(232,71,42,.2); transition: transform .2s, box-shadow .2s, background .2s; }
     .account-page .btn:hover { transform: translateY(-2px); box-shadow: 0 0 0 2px rgba(232,71,42,.2), 0 10px 24px rgba(232,71,42,.32); }
@@ -32,3 +35,32 @@
 .blade-inline-19 { justify-content:flex-start !important;  }
 .blade-inline-20 { font-size:0.88rem !important; color:#888 !important; margin-bottom:1rem !important;  }
 .blade-inline-21 { margin-bottom:.7rem !important;  }
+
+.buyer-account-template { max-width:1180px; margin:0 auto; }
+.buyer-account-section { background:#fff; border:1px solid var(--line); border-radius:14px; padding:1.35rem; margin-bottom:1.2rem; box-shadow:0 10px 26px rgba(31,35,40,.04); }
+.buyer-account-section-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1.25rem; }
+.buyer-account-section-heading h2 { margin:0 0 .25rem; font-size:1rem; font-weight:800; color:var(--ink); }
+.buyer-account-section-heading p { margin:0; color:#8b8580; font-size:.75rem; }
+.buyer-account-section-heading.compact-heading { margin-bottom:1rem; }
+.buyer-account-profile-grid { display:grid; grid-template-columns:100px repeat(3,minmax(0,1fr)); gap:1rem; align-items:end; }
+.buyer-account-avatar { width:76px; height:76px; display:grid; place-items:center; border-radius:18px; background:linear-gradient(145deg,#8c8f7c,#c4bfa7); color:#fff; font-size:1.7rem; font-weight:800; box-shadow:0 8px 18px rgba(45,45,45,.14); }
+.buyer-account-field { min-width:0; margin-bottom:.85rem; }
+.buyer-account-field .form-label { display:block; margin-bottom:.35rem; font-size:.68rem; font-weight:700; text-transform:uppercase; color:#6b6863; }
+.buyer-account-field .form-control { width:100%; min-height:38px; }
+.buyer-account-profile-grid .buyer-account-field:nth-of-type(4) { grid-column:2 / 3; }
+.buyer-account-addresses { padding-bottom:1.2rem; }
+.buyer-account-address-badge { padding:.2rem .5rem; border-radius:5px; background:#fff0eb; color:var(--coral); font-size:.62rem; font-weight:800; }
+.buyer-account-address-card { border:1px solid var(--coral); border-radius:12px; padding:1rem; background:#fffdfc; }
+.buyer-account-address-card-heading { display:flex; justify-content:space-between; gap:1rem; margin-bottom:.9rem; font-size:.8rem; }
+.buyer-account-address-card-heading span { color:#8b8580; font-size:.7rem; }
+.buyer-account-address-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.8rem 1rem; }
+.buyer-account-street-field { grid-column:span 2; }
+.buyer-account-bottom-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; }
+.buyer-account-bottom-grid .buyer-account-section { margin-bottom:0; }
+.buyer-account-danger { border-color:#ef4444; }
+.buyer-account-danger h2 { color:#dc2626; }
+.buyer-account-danger .btn-danger { background:#dc2626; color:#fff; border:0; }
+.buyer-account-danger .btn-danger:hover { background:#b91c1c; }
+.field-error { margin-top:.35rem; color:#dc2626; font-size:.78rem; }
+@media(max-width:900px) { .buyer-account-profile-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.buyer-account-avatar { grid-column:1 / -1; }.buyer-account-profile-grid .buyer-account-field:nth-of-type(4) { grid-column:auto; }.buyer-account-address-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.buyer-account-street-field { grid-column:span 2; } }
+@media(max-width:650px) { .buyer-account-section-heading,.buyer-account-address-card-heading { flex-direction:column; }.buyer-account-profile-grid,.buyer-account-address-grid,.buyer-account-bottom-grid { grid-template-columns:1fr; }.buyer-account-street-field { grid-column:auto; }.buyer-account-avatar { grid-column:auto; } }
