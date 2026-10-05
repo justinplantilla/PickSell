@@ -16,6 +16,10 @@
                     <option value="active" {{ $status==='active'?'selected':'' }}>Active</option>
                     <option value="archived" {{ $status==='archived'?'selected':'' }}>Archived</option>
                 </select>
+                <select name="filter" class="filter-select" data-submit-on-change>
+                    <option value="all" {{ $stockFilter==='all'?'selected':'' }}>All Stock</option>
+                    <option value="low-stock" {{ $stockFilter==='low'?'selected':'' }}>Low Stock ({{ \App\Models\Product::LOW_STOCK_THRESHOLD }} or fewer)</option>
+                </select>
                 <button type="submit" class="btn btn-outline btn-sm">Search</button>
             </form>
             <button class="btn btn-coral btn-sm" onclick="openModal('addModal')">+ Add Product</button>
@@ -33,8 +37,8 @@
             <tr>
                 <td>
                     <div class="blade-inline-3">
-                        @if($product->image)
-                            <img src="{{ Storage::url($product->image) }}" class="blade-inline-4">
+                        @if($product->primary_image)
+                            <img src="{{ Storage::url($product->primary_image) }}" class="blade-inline-4">
                         @else
                             <div class="blade-inline-5">📦</div>
                         @endif
@@ -48,21 +52,24 @@
                 <td>₱{{ number_format($product->price, 2) }}</td>
                 <td>{{ $product->discount > 0 ? $product->discount.'%' : '—' }}</td>
                 <td>{{ $product->voucher_code ? $product->voucher_code.' ('.$product->voucher_discount.'%)' : '—' }}</td>
-                <td>
-                    <span style="font-weight:600;{{ $product->stock <= 5 ? 'color:#dc2626;' : '' }}">{{ $product->stock }}</span>
-                    @if($product->stock <= 5 && $product->stock > 0)<span class="blade-inline-8"> Low</span>@endif
-                    @if($product->stock == 0)<span class="blade-inline-9"> Out</span>@endif
-                </td>
-                <td><span class="badge badge-{{ $product->status }}">{{ $product->status }}</span></td>
+                <td><span class="blade-inline-6">{{ $product->stock }}</span></td>
+                <td><x-stock-status-badge :product="$product" /></td>
                 <td>
                     <div class="blade-inline-10">
                         <button class="btn btn-outline btn-sm" onclick="openEditModal({{ $product->id }}, {{ json_encode($product) }})">Edit</button>
+                        @if($product->isUnderAdminHold())
+                            <span class="admin-hold" title="{{ $product->latestStatusModeration->reason }}">
+                                Archived by Admin
+                                @if($product->latestStatusModeration->reason)<small>{{ $product->latestStatusModeration->reason }}</small>@endif
+                            </span>
+                        @else
                         <form method="POST" action="/seller/inventory/{{ $product->id }}/archive">
                             @csrf @method('PATCH')
                             <button type="submit" class="btn btn-sm {{ $product->status==='archived' ? 'btn-success' : 'btn-danger' }}">
                                 {{ $product->status==='archived' ? 'Restore' : 'Archive' }}
                             </button>
                         </form>
+                        @endif
                     </div>
                 </td>
             </tr>

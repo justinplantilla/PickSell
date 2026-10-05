@@ -1,24 +1,20 @@
-const chartData = document.querySelector('[data-admin-chart-data]');
-if (chartData && window.ApexCharts) {
-    const buyers = Number(chartData.dataset.buyers);
-    const sellers = Number(chartData.dataset.sellers);
-    const couriers = Number(chartData.dataset.couriers);
-    const total = Number(chartData.dataset.total);
-    new ApexCharts(document.getElementById('userChart'), {
-        chart: { type: 'donut', height: 280 },
-        series: [buyers, sellers, couriers],
-        labels: ['Buyers', 'Sellers', 'Couriers'],
-        colors: ['#2563eb', '#16a34a', '#d97706'],
-        legend: { position: 'bottom' },
-        plotOptions: { pie: { donut: { size: '60%' } } },
-    }).render();
-    new ApexCharts(document.getElementById('trendChart'), {
-        chart: { type: 'area', height: 280, toolbar: { show: false } },
-        series: [{ name: 'Registrations', data: [4, 7, 5, 12, 9, total] }],
-        xaxis: { categories: ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan'] },
+// Registration trend: real monthly counts supplied by AdminDashboardService.
+const trend = document.querySelector('[data-admin-trend]');
+const trendTarget = document.getElementById('trendChart');
+if (trend && trendTarget && window.ApexCharts) {
+    const labels = JSON.parse(trend.dataset.labels || '[]');
+    const values = JSON.parse(trend.dataset.values || '[]');
+    new ApexCharts(trendTarget, {
+        chart: { type: 'area', height: 260, toolbar: { show: false }, fontFamily: 'inherit' },
+        series: [{ name: 'New registrations', data: values }],
+        xaxis: { categories: labels },
+        yaxis: { min: 0, forceNiceScale: true, labels: { formatter: value => Math.round(value) } },
         colors: ['#E8472A'],
-        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05 } },
+        fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.3, opacityTo: 0.02 } },
         stroke: { curve: 'smooth', width: 2 },
+        markers: { size: 4, strokeWidth: 2 },
+        grid: { borderColor: 'rgba(0,0,0,0.06)' },
         dataLabels: { enabled: false },
+        tooltip: { y: { formatter: value => `${value} ${value === 1 ? 'account' : 'accounts'}` } },
     }).render();
 }

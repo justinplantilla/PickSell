@@ -12,10 +12,13 @@ use App\Models\ProductReview;
 use App\Models\User;
 use App\Notifications\NewSellerOrder;
 use App\Services\LogisticsRoutingService;
+use App\Services\PlatformCommission;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class BuyerController extends Controller
@@ -105,6 +108,7 @@ class BuyerController extends Controller
             'quantity'     => 'required|integer|min:1',
             'variation_id' => 'nullable|exists:product_variations,id',
         ]);
+        abort_unless($product->isPurchasable(), 404);
 
         $cart = $this->getCart();
 
@@ -156,6 +160,11 @@ class BuyerController extends Controller
             ->get();
 
         if ($items->isEmpty()) return redirect()->route('buyer.cart');
+
+        $unavailable = $items->reject(fn ($item) => $item->product?->isPurchasable());
+        if ($unavailable->isNotEmpty()) {
+            return redirect()->route('buyer.cart')->withErrors(['item_ids' => $this->unavailableMessage($unavailable)]);
+        }
 
         $total = $items->sum(fn($i) => $i->product->effective_price * $i->quantity);
         $cartCount = CartItem::where('cart_id', $cart->id)->count();
@@ -212,47 +221,87 @@ class BuyerController extends Controller
 
         $routing = app(LogisticsRoutingService::class);
 
-        foreach ($items as $item) {
-            $product = $item->product;
-            $price   = $product->effective_price;
+        try {
+            $placed = DB::transaction(function () use ($items, $data, $logisticsProvider, $routing) {
+                // Lock the products so moderation, other buyers and stock changes cannot interleave.
+                $products = Product::whereIn('id', $items->pluck('product_id'))->with('seller')->lockForUpdate()->get()->keyBy('id');
+                $unavailable = $items->filter(fn ($item) => ! $products->get($item->product_id)?->isPurchasable());
+                if ($unavailable->isNotEmpty()) {
+                    throw ValidationException::withMessages(['item_ids' => $this->unavailableMessage($unavailable)]);
+                }
+                // Several cart lines (e.g. variations) can draw on the same product's stock.
+                $shortStock = $items->groupBy('product_id')
+                    ->filter(fn ($lines, $productId) => $products[$productId]->stock < $lines->sum('quantity'));
+                if ($shortStock->isNotEmpty()) {
+                    throw ValidationException::withMessages(['item_ids' => 'Not enough stock for: ' . $shortStock->keys()->map(fn ($productId) => $products[$productId]->name)->join(', ') . '.']);
+                }
 
-            // Apply voucher if valid
-            if (!empty($data['voucher_code']) && $product->voucher_code === $data['voucher_code']) {
-                $price = $price * (1 - $product->voucher_discount / 100);
-            }
+                $placed = [];
+                foreach ($items as $item) {
+                    $item->setRelation('product', $products[$item->product_id]);
+                    $placed[] = $this->createOrderFromCartItem($item, $data, $logisticsProvider, $routing);
+                }
 
-            $amount     = $price * $item->quantity;
-            $commission = $amount * 0.10;
+                return $placed;
+            });
+        } catch (ValidationException $exception) {
+            return redirect()->route('buyer.cart')->withErrors($exception->errors());
+        }
 
-            $order = Order::create([
-                'order_number'   => 'ORD-' . strtoupper(Str::random(8)),
-                'product_id'     => $product->id,
-                'buyer_id'       => $this->buyer()->id,
-                'seller_id'      => $product->seller_id,
-                'logistics_id'   => $logisticsProvider->id,
-                'product_name'   => $product->name,
-                'quantity'       => $item->quantity,
-                'amount'         => $amount,
-                'commission'     => $commission,
-                'status'         => 'placed',
-                'tracking_status' => 'Order placed and awaiting seller preparation',
-            ]);
-            $product->seller->notify(new NewSellerOrder($order));
-            $routing->routeOrder($order, $product->seller, $this->buyer());
-
-            // Deduct stock
-            $product->decrement('stock', $item->quantity);
-            $item->delete();
+        foreach ($placed as $order) {
+            $order->seller?->notify(new NewSellerOrder($order));
         }
 
         return redirect()->route('buyer.orders')->with('success', 'Order placed successfully!');
+    }
+
+    /** Builds one order from a cart line inside placeOrder's transaction. */
+    private function createOrderFromCartItem(CartItem $item, array $data, User $logisticsProvider, LogisticsRoutingService $routing): Order
+    {
+        $product = $item->product;
+        $price   = $product->effective_price;
+
+        // Apply voucher if valid
+        if (!empty($data['voucher_code']) && $product->voucher_code === $data['voucher_code']) {
+            $price = $price * (1 - $product->voucher_discount / 100);
+        }
+
+        $amount     = $price * $item->quantity;
+        $commission = app(PlatformCommission::class)->deduction((float) $amount);
+
+        $order = Order::create([
+            'order_number'   => 'ORD-' . strtoupper(Str::random(8)),
+            'product_id'     => $product->id,
+            'buyer_id'       => $this->buyer()->id,
+            'seller_id'      => $product->seller_id,
+            'logistics_id'   => $logisticsProvider->id,
+            'product_name'   => $product->name,
+            'quantity'       => $item->quantity,
+            'amount'         => $amount,
+            'commission'     => $commission,
+            'status'         => 'placed',
+            'tracking_status' => 'Order placed and awaiting seller preparation',
+        ]);
+        $routing->routeOrder($order, $product->seller, $this->buyer());
+
+        // Deduct stock
+        $product->decrement('stock', $item->quantity);
+        $item->delete();
+
+        return $order;
+    }
+
+    private function unavailableMessage($items): string
+    {
+        return 'No longer available: ' . $items->map(fn ($item) => $item->product?->name ?? 'a removed product')->join(', ')
+            . '. Remove ' . ($items->count() === 1 ? 'it' : 'them') . ' from your cart to continue.';
     }
 
     // Orders
     public function orders(Request $request)
     {
         $status = $request->get('status', 'all');
-        $query  = Order::where('buyer_id', $this->buyer()->id)->with('product', 'seller');
+        $query  = Order::where('buyer_id', $this->buyer()->id)->with('product', 'seller', 'returnRequest');
         if ($status !== 'all') $query->where('status', $status);
         $orders    = $query->latest()->paginate(10);
         $cartCount = CartItem::whereHas('cart', fn($q) => $q->where('buyer_id', $this->buyer()->id))->count();

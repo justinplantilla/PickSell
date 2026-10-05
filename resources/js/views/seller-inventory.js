@@ -1,3 +1,7 @@
+import { initProductGalleries } from '../components/product-gallery.js';
+
+initProductGalleries();
+
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(m => {
@@ -14,8 +18,14 @@ function openEditModal(id, p) {
     f.querySelector('[name=voucher_code]').value = p.voucher_code || '';
     f.querySelector('[name=voucher_discount]').value = p.voucher_discount || 0;
     f.querySelector('[name=stock]').value = p.stock;
+    f.querySelector('[data-product-gallery]').productGallery?.load(p.images || [], p.name);
     openModal('editModal');
 }
+
 window.openModal = openModal;
 window.closeModal = closeModal;
 window.openEditModal = openEditModal;
+
+if (new URLSearchParams(window.location.search).get('action') === 'create') {
+    openModal('addModal');
+}

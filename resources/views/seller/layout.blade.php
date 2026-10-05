@@ -8,6 +8,7 @@
     <title>PickSell Seller — @yield('title')</title>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     @vite('resources/css/views/seller-layout.css')
+    @vite('resources/css/components/stock-status-badge.css')
     @vite('resources/js/components/form-behaviors.js')
     @yield('styles')
     @include('partials.pagination-styles')
@@ -41,12 +42,21 @@
                 <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg></span>
                 <span class="nav-label">Orders</span>
             </a>
+            <a href="{{ route('seller.returns', ['status' => 'requested']) }}" class="nav-item {{ request()->is('seller/returns*') ? 'active' : '' }}">
+                <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5V2L7 7l5 5V8c3.31 0 6 2.69 6 6a6 6 0 0 1-10.24 4.24l-1.42 1.42A8 8 0 0 0 20 14c0-4.42-3.58-8-8-8z"/></svg></span>
+                <span class="nav-label">Returns</span>
+                <span class="nav-badge" id="sellerReturnsBadge" data-count-url="{{ route('seller.returns.count') }}" aria-live="polite" aria-label="{{ $pendingSellerReturnCount }} return requests awaiting response" @if($pendingSellerReturnCount === 0) hidden @endif>{{ $pendingSellerReturnCount }}</span>
+            </a>
 
             <div class="nav-group-label">Analytics</div>
             <hr class="nav-divider">
             <a href="/seller/reports" class="nav-item {{ request()->is('seller/reports*') ? 'active' : '' }}">
                 <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg></span>
                 <span class="nav-label">Reports</span>
+            </a>
+            <a href="{{ route('seller.earnings') }}" class="nav-item {{ request()->is('seller/earnings*') ? 'active' : '' }}">
+                <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15.9V19h-2v-1.1c-1.3-.2-2.3-.9-2.7-2.1l1.8-.7c.3.8.9 1.2 1.9 1.2 1 0 1.6-.4 1.6-1 0-.5-.3-.8-1.8-1.2-1.8-.5-3.1-1.1-3.1-2.8 0-1.3.9-2.3 2.3-2.6V7h2v1.1c1.1.2 1.9.8 2.3 1.8l-1.7.8c-.3-.7-.8-1-1.6-1-.9 0-1.4.4-1.4 1 0 .6.5.8 1.9 1.2 1.7.5 3 1.1 3 2.8 0 1.5-1 2.5-2.5 2.8z"/></svg></span>
+                <span class="nav-label">Earnings</span>
             </a>
 
             <div class="nav-group-label">System</div>

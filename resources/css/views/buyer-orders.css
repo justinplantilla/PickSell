@@ -20,6 +20,26 @@
     .star { color: #ddd; transition: color 0.15s; }
     .star.active { color: #f59e0b; }
 
+    .return-request-panel,
+    .return-request-summary { margin: 0 1.2rem 1rem; padding: 0.85rem 1rem; border: 1px solid #e8e2d8; border-radius: 10px; background: #fff; }
+    .return-request-panel summary { color: var(--coral); font-size: 0.84rem; font-weight: 700; cursor: pointer; }
+    .return-request-form { display: grid; gap: 0.55rem; margin-top: 0.85rem; }
+    .return-request-form .btn { justify-self: start; margin-top: 0.25rem; }
+    .return-request-heading { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.35rem; }
+    .return-request-summary p { margin: 0.35rem 0 0; color: #666; font-size: 0.8rem; line-height: 1.45; }
+    .return-request-summary .return-dispute-note { color: #92400e; font-weight: 600; }
+
+    .return-request-form input[type="file"] { padding: .55rem; font-size: .75rem; }
+    .return-attachment-gallery { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: .7rem; }
+    .return-attachment-thumb { position: relative; display: grid; width: 76px; height: 76px; overflow: hidden; place-items: center; padding: 0; border: 1px solid #e8e2d8; border-radius: 8px; background: #f6f3ee; cursor: zoom-in; }
+    .return-attachment-thumb img, .return-attachment-thumb video { width: 100%; height: 100%; object-fit: cover; }
+    .return-video-thumb { color: var(--coral); font-size: 1.4rem; }
+    .return-attachment-kind { position: absolute; right: 3px; bottom: 3px; padding: 1px 4px; border-radius: 3px; background: rgba(31,35,40,.75); color: #fff; font-size: .58rem; }
+    .return-attachment-lightbox { position: fixed; max-width: min(92vw, 1000px); max-height: 90vh; padding: 2.5rem 1rem 1rem; border: 1px solid #ddd6cf; border-radius: 12px; background: #fff; }
+    .return-attachment-lightbox::backdrop { background: rgba(17,24,39,.78); }
+    .return-attachment-lightbox img, .return-attachment-lightbox video { display: block; max-width: 86vw; max-height: 78vh; margin: auto; object-fit: contain; }
+    .return-lightbox-close { position: absolute; top: .5rem; right: .7rem; width: 34px; height: 34px; border: 0; border-radius: 50%; background: #f4f4f5; color: #27272a; font-size: 1.4rem; cursor: pointer; }
+
 /* Extracted inline declarations */
 .blade-inline-1 { font-size:1.2rem !important; font-weight:800 !important; margin-bottom:1rem !important;  }
 .blade-inline-2 { font-size:0.8rem !important; color:#888 !important;  }

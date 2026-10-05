@@ -99,3 +99,13 @@ document.getElementById('buyNowBtn')?.addEventListener('click', () => addProduct
 window.selectVariation = selectVariation;
 window.changeQty = changeQty;
 window.addProductToCart = addProductToCart;
+
+const galleryMain = document.querySelector('[data-gallery-main]');
+document.querySelectorAll('[data-gallery-thumb]').forEach(thumb => {
+    thumb.addEventListener('click', () => {
+        if (!galleryMain) return;
+        galleryMain.src = thumb.dataset.src;
+        galleryMain.alt = thumb.dataset.alt;
+        document.querySelectorAll('[data-gallery-thumb]').forEach(t => t.classList.toggle('is-active', t === thumb));
+    });
+});

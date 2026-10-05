@@ -30,7 +30,7 @@
                 <article class="product-card">
                     <a href="{{ route('buyer.product', $product) }}" class="product-card-link">
                         <div class="product-img-wrap">
-                            @if($product->image)<img src="{{ Storage::url($product->image) }}" alt="{{ $product->name }}">@else<div class="product-img-placeholder"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4Zm2 2v10h12V7Zm2 2h2v2H8Zm4 0h4v2h-4Z" fill="currentColor"/></svg></div>@endif
+                            @if($product->primary_image)<img src="{{ Storage::url($product->primary_image) }}" alt="{{ $product->name }}">@else<div class="product-img-placeholder"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4Zm2 2v10h12V7Zm2 2h2v2H8Zm4 0h4v2h-4Z" fill="currentColor"/></svg></div>@endif
                             @if($product->discount > 0)<span class="product-discount-badge">-{{ $product->discount }}%</span>@endif
                         </div>
                         <div class="product-info"><div class="product-name">{{ $product->name }}</div><span class="product-price">₱{{ number_format($product->effective_price, 2) }}</span><div class="product-seller">{{ $seller->business_name ?? $seller->full_name }}</div></div>

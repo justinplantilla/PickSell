@@ -7,110 +7,349 @@ use App\Notifications\SellerDeliveryReceived;
 use App\Models\Message;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ReturnRequest;
 use App\Models\User;
+use App\Services\PlatformCommission;
+use App\Services\ProductGallery;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class SellerController extends Controller
 {
+    private const PENDING_ORDER_STATUSES = [
+        'pending',
+        'placed',
+        'confirmed',
+        'preparing',
+        'processing',
+        'ready_for_pickup',
+        'picked_up',
+        'at_sorting_center',
+        'sorted',
+        'assigned_to_rider',
+        'out_for_delivery',
+        'shipped',
+    ];
+
+    private const ORDER_STATUS_GROUPS = [
+        'processing' => [
+            'label' => 'Processing',
+            'tone' => 'processing',
+            'description' => 'Placed through ready for pickup',
+            'statuses' => ['pending', 'placed', 'confirmed', 'preparing', 'processing', 'ready_for_pickup'],
+        ],
+        'shipped' => [
+            'label' => 'Shipped',
+            'tone' => 'shipped',
+            'description' => 'Picked up through out for delivery',
+            'statuses' => ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped'],
+        ],
+        'delivered' => [
+            'label' => 'Delivered',
+            'tone' => 'delivered',
+            'description' => 'Delivered or completed',
+            'statuses' => ['delivered', 'completed'],
+        ],
+        'cancelled' => [
+            'label' => 'Cancelled / returned',
+            'tone' => 'cancelled',
+            'description' => 'Cancelled, delivery failed, or returned',
+            'statuses' => ['cancelled', 'delivery_failed', 'returned'],
+        ],
+    ];
+
     private function seller() { return auth()->user(); }
 
     // Dashboard
-    public function dashboard()
+    public function dashboard(Request $request)
     {
         $seller = $this->seller();
-        $stats = [
-            'total_orders'     => Order::where('seller_id', $seller->id)->count(),
-            'pending_orders'   => Order::where('seller_id', $seller->id)->where('status', 'placed')->count(),
-            'completed_orders' => Order::where('seller_id', $seller->id)->where('status', 'completed')->count(),
-            'total_sales'      => Order::where('seller_id', $seller->id)->where('status', 'completed')->sum('amount'),
-            'total_products'   => Product::where('seller_id', $seller->id)->where('status', 'active')->count(),
-            'low_stock'        => Product::where('seller_id', $seller->id)->where('status', 'active')->where('stock', '<=', 5)->count(),
-        ];
+        $storeName = $seller->business_name ?: trim(($seller->first_name ?? '') . ' ' . ($seller->last_name ?? '')) ?: 'Your Store';
+        $range = in_array($request->query('range', '30D'), ['7D', '30D', '6M'], true) ? $request->query('range', '30D') : '30D';
+        $metric = in_array($request->query('metric', 'sales'), ['sales', 'orders'], true) ? $request->query('metric', 'sales') : 'sales';
 
-        // Monthly sales for chart (last 6 months)
-        $months = [];
-        $sales  = [];
-        for ($i = 5; $i >= 0; $i--) {
-            $date = now()->subMonths($i);
-            $months[] = $date->format('M Y');
-            $sales[]  = Order::where('seller_id', $seller->id)
-                ->where('status', 'completed')
-                ->whereYear('created_at', $date->year)
-                ->whereMonth('created_at', $date->month)
-                ->sum('amount');
+        $totalOrders = Order::where('seller_id', $seller->id)->count();
+        $pendingOrders = Order::where('seller_id', $seller->id)
+            ->whereIn('status', self::PENDING_ORDER_STATUSES)
+            ->count();
+        $completedOrders = Order::where('seller_id', $seller->id)->where('status', 'completed')->count();
+        $totalSales = Order::where('seller_id', $seller->id)->where('status', 'completed')->sum('amount');
+        $activeProducts = Product::where('seller_id', $seller->id)->where('status', 'active')->count();
+        $lowStockCount = Product::where('seller_id', $seller->id)->lowStock()->count();
+
+        $actionRequiredOrders = Order::where('seller_id', $seller->id)
+            ->whereIn('status', ['placed', 'confirmed', 'preparing', 'ready_for_pickup'])
+            ->count();
+        $actionRequiredReturns = Schema::hasTable('return_requests')
+            ? ReturnRequest::where('seller_id', $seller->id)->where('status', 'requested')->count()
+            : 0;
+        $lowStockProducts = Product::where('seller_id', $seller->id)
+            ->lowStock()
+            ->orderBy('stock', 'asc')
+            ->limit(5)
+            ->get();
+
+        $storeStatus = match ($seller->status) {
+            'approved' => $actionRequiredOrders > 0 || $actionRequiredReturns > 0 || $lowStockCount > 0
+                ? ['label' => 'Needs Attention', 'tone' => 'attention']
+                : ['label' => 'Active', 'tone' => 'active'],
+            'suspended' => ['label' => 'Suspended', 'tone' => 'suspended'],
+            default => null,
+        };
+
+        $currentPeriodOrders = $this->orderCountInRange($seller->id, $range);
+        $previousPeriodOrders = $this->orderCountInRange($seller->id, $range, true);
+        $currentPeriodSales = $this->salesInRange($seller->id, $range);
+        $previousPeriodSales = $this->salesInRange($seller->id, $range, true);
+
+        $salesDelta = $this->calculateDelta($currentPeriodSales, $previousPeriodSales);
+        $ordersDelta = $this->calculateDelta($currentPeriodOrders, $previousPeriodOrders);
+
+        $chartData = $this->chartData($seller->id, $range, $metric);
+        $orderStatusCounts = Order::where('seller_id', $seller->id)
+            ->selectRaw('status, COUNT(*) as status_count')
+            ->groupBy('status')
+            ->pluck('status_count', 'status')
+            ->all();
+        $totalStatusOrders = array_sum($orderStatusCounts);
+        $orderBreakdown = [];
+        foreach (self::ORDER_STATUS_GROUPS as $filter => $group) {
+            $count = array_sum(array_map(
+                fn (string $status): int => (int) ($orderStatusCounts[$status] ?? 0),
+                $group['statuses'],
+            ));
+            $orderBreakdown[] = [
+                'filter' => $filter,
+                'label' => $group['label'],
+                'tone' => $group['tone'],
+                'description' => $group['description'],
+                'count' => $count,
+                'percentage' => $totalStatusOrders > 0 ? round(($count / $totalStatusOrders) * 100, 1) : 0,
+            ];
         }
 
-        $recentOrders = Order::where('seller_id', $seller->id)->with('buyer')->latest()->take(5)->get();
+        $stats = [
+            'total_orders' => $totalOrders,
+            'pending_orders' => $pendingOrders,
+            'completed_orders' => $completedOrders,
+            'total_sales' => (float) $totalSales,
+            'total_products' => $activeProducts,
+            'low_stock' => $lowStockCount,
+        ];
 
-        return view('seller.dashboard', compact('stats', 'months', 'sales', 'recentOrders'));
+        $recentOrders = Order::where('seller_id', $seller->id)->with('buyer')->latest()->take(5)->get();
+        $currentDate = now();
+        $greeting = $currentDate->hour < 12 ? 'Good morning' : ($currentDate->hour < 18 ? 'Good afternoon' : 'Good evening');
+
+        return view('seller.dashboard', compact(
+            'seller',
+            'storeName',
+            'greeting',
+            'currentDate',
+            'storeStatus',
+            'stats',
+            'range',
+            'metric',
+            'chartData',
+            'recentOrders',
+            'lowStockProducts',
+            'orderBreakdown',
+            'salesDelta',
+            'ordersDelta',
+            'actionRequiredOrders',
+            'actionRequiredReturns',
+            'lowStockCount',
+            'totalSales',
+            'totalOrders',
+            'completedOrders',
+            'activeProducts',
+            'pendingOrders',
+        ));
+    }
+
+    private function orderCountInRange(int $sellerId, string $range, bool $previous = false): int
+    {
+        [$start, $end] = $this->dateWindow($range, $previous);
+
+        return Order::where('seller_id', $sellerId)
+            ->whereBetween('created_at', [$start, $end])
+            ->count();
+    }
+
+    private function salesInRange(int $sellerId, string $range, bool $previous = false): float
+    {
+        [$start, $end] = $this->dateWindow($range, $previous);
+
+        return (float) Order::where('seller_id', $sellerId)
+            ->where('status', 'completed')
+            ->whereBetween('created_at', [$start, $end])
+            ->sum('amount');
+    }
+
+    private function dateWindow(string $range, bool $previous = false): array
+    {
+        if ($range === '7D') {
+            $days = 7;
+        } elseif ($range === '6M') {
+            $days = 180;
+        } else {
+            $days = 30;
+        }
+
+        if ($previous) {
+            $end = now()->subDays($days)->startOfDay();
+            $start = now()->subDays($days * 2)->startOfDay();
+            return [$start, $end];
+        }
+
+        return [now()->subDays($days - 1)->startOfDay(), now()->endOfDay()];
+    }
+
+    private function calculateDelta(float $current, float $previous): float
+    {
+        if ($previous <= 0) {
+            return $current > 0 ? 100.0 : 0.0;
+        }
+
+        return round((($current - $previous) / $previous) * 100, 1);
+    }
+
+    private function chartData(int $sellerId, string $range, string $metric): array
+    {
+        if ($range === '7D') {
+            $labels = [];
+            $values = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $date = now()->subDays($i);
+                $labels[] = $date->format('D');
+                $query = Order::where('seller_id', $sellerId)
+                    ->whereDate('created_at', $date->toDateString());
+                if ($metric === 'sales') {
+                    $query->where('status', 'completed');
+                    $values[] = (float) $query->sum('amount');
+                } else {
+                    $values[] = $query->count();
+                }
+            }
+
+            return ['labels' => $labels, 'values' => $values];
+        }
+
+        if ($range === '6M') {
+            $labels = [];
+            $values = [];
+            for ($i = 5; $i >= 0; $i--) {
+                $date = now()->subMonths($i);
+                $labels[] = $date->format('M');
+                $query = Order::where('seller_id', $sellerId)
+                    ->whereYear('created_at', $date->year)
+                    ->whereMonth('created_at', $date->month);
+                if ($metric === 'sales') {
+                    $query->where('status', 'completed');
+                    $values[] = (float) $query->sum('amount');
+                } else {
+                    $values[] = $query->count();
+                }
+            }
+
+            return ['labels' => $labels, 'values' => $values];
+        }
+
+        $labels = [];
+        $values = [];
+        for ($i = 29; $i >= 0; $i--) {
+            $date = now()->subDays($i);
+            $labels[] = $date->format('d');
+            $query = Order::where('seller_id', $sellerId)
+                ->whereDate('created_at', $date->toDateString());
+            if ($metric === 'sales') {
+                $query->where('status', 'completed');
+                $values[] = (float) $query->sum('amount');
+            } else {
+                $values[] = $query->count();
+            }
+        }
+
+        return ['labels' => $labels, 'values' => $values];
     }
 
     // Inventory
     public function inventory(Request $request)
     {
         $status = $request->get('status', 'active');
+        $stockFilter = $request->query('filter') === 'low-stock' || $request->query('stock') === 'low' ? 'low' : 'all';
         $search = $request->get('search');
-        $query  = Product::where('seller_id', $this->seller()->id);
-        if ($status !== 'all') $query->where('status', $status);
+        $query  = Product::where('seller_id', $this->seller()->id)->with('latestStatusModeration');
+        if ($stockFilter === 'low') {
+            $status = 'active';
+            $query->lowStock();
+        } elseif ($status !== 'all') {
+            $query->where('status', $status);
+        }
         if ($search) $query->where('name', 'like', "%$search%");
         $products = $query->latest()->paginate(15);
-        return view('seller.inventory', compact('products', 'status', 'search'));
+        return view('seller.inventory', compact('products', 'status', 'stockFilter', 'search'));
     }
 
-    public function storeProduct(Request $request)
-    {
-        $data = $request->validate([
-            'name'             => 'required|string|max:255',
-            'description'      => 'nullable|string',
-            'category'         => 'nullable|string|max:100',
-            'price'            => 'required|numeric|min:0',
-            'discount'         => 'nullable|numeric|min:0|max:100',
-            'voucher_code'     => 'nullable|string|max:50',
-            'voucher_discount' => 'nullable|numeric|min:0|max:100',
-            'stock'            => 'required|integer|min:0',
-            'image'            => 'nullable|image|max:2048',
-        ]);
-        if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('products', 'public');
-        }
+    private const PRODUCT_RULES = [
+        'name'             => 'required|string|max:255',
+        'description'      => 'nullable|string',
+        'category'         => 'nullable|string|max:100',
+        'price'            => 'required|numeric|min:0',
+        'discount'         => 'nullable|numeric|min:0|max:100',
+        'voucher_code'     => 'nullable|string|max:50',
+        'voucher_discount' => 'nullable|numeric|min:0|max:100',
+        'stock'            => 'required|integer|min:0',
+        'gallery'          => 'nullable|array',
+        'gallery.*'        => 'string|max:64',
+        'gallery_cover'    => 'nullable|string|max:64',
+        'gallery_managed'  => 'nullable|boolean',
+        'gallery_alt'      => 'nullable|array',
+        'gallery_alt.*'    => 'nullable|string|max:255',
+    ];
 
+    public function storeProduct(Request $request, ProductGallery $gallery)
+    {
+        $data = $request->validate(self::PRODUCT_RULES);
         $data['seller_id'] = $this->seller()->id;
-        Product::create($data);
+
+        $managed = $request->boolean('gallery_managed');
+        DB::transaction(function () use ($data, $gallery, $managed) {
+            $product = Product::create(collect($data)->except(['gallery', 'gallery_cover', 'gallery_managed', 'gallery_alt'])->all());
+            // Only the JS gallery control sets gallery_managed, so a no-JS submit never wipes images.
+            if ($managed) $gallery->sync($product, $data['gallery'] ?? [], $data['gallery_cover'] ?? null, $data['gallery_alt'] ?? []);
+        });
 
         return back()->with('success', 'Product added successfully.');
     }
 
-    public function updateProduct(Request $request, Product $product)
+    public function updateProduct(Request $request, Product $product, ProductGallery $gallery)
     {
         abort_if($product->seller_id !== $this->seller()->id, 403);
 
-        $data = $request->validate([
-            'name'             => 'required|string|max:255',
-            'description'      => 'nullable|string',
-            'category'         => 'nullable|string|max:100',
-            'price'            => 'required|numeric|min:0',
-            'discount'         => 'nullable|numeric|min:0|max:100',
-            'voucher_code'     => 'nullable|string|max:50',
-            'voucher_discount' => 'nullable|numeric|min:0|max:100',
-            'stock'            => 'required|integer|min:0',
-            'image'            => 'nullable|image|max:2048',
-        ]);
-        if ($request->hasFile('image')) {
-            if ($product->image) Storage::disk('public')->delete($product->image);
-            $data['image'] = $request->file('image')->store('products', 'public');
-        }
+        $data = $request->validate(self::PRODUCT_RULES);
 
-        $product->update($data);
+        $managed = $request->boolean('gallery_managed');
+        DB::transaction(function () use ($product, $data, $gallery, $managed) {
+            $product->update(collect($data)->except(['gallery', 'gallery_cover', 'gallery_managed', 'gallery_alt'])->all());
+            // Only the JS gallery control sets gallery_managed, so a no-JS submit never wipes images.
+            if ($managed) $gallery->sync($product, $data['gallery'] ?? [], $data['gallery_cover'] ?? null, $data['gallery_alt'] ?? []);
+        });
+
         return back()->with('success', 'Product updated.');
     }
 
     public function archiveProduct(Product $product)
     {
         abort_if($product->seller_id !== $this->seller()->id, 403);
+        if ($product->isUnderAdminHold()) {
+            return back()->withErrors(['product' => 'This product was archived by PickSell Admin and can only be restored by an admin. Contact support if you believe this is a mistake.']);
+        }
         $product->update(['status' => $product->status === 'archived' ? 'active' : 'archived']);
         return back()->with('success', 'Product status updated.');
     }
@@ -120,7 +359,15 @@ class SellerController extends Controller
     {
         $status = $request->get('status', 'all');
         $query  = Order::where('seller_id', $this->seller()->id)->with('buyer');
-        if ($status !== 'all') $query->where('status', $status);
+        if ($status === 'pending') {
+            $query->whereIn('status', self::PENDING_ORDER_STATUSES);
+        } elseif ($status === 'action_required') {
+            $query->whereIn('status', ['placed', 'confirmed', 'preparing', 'ready_for_pickup']);
+        } elseif (array_key_exists($status, self::ORDER_STATUS_GROUPS)) {
+            $query->whereIn('status', self::ORDER_STATUS_GROUPS[$status]['statuses']);
+        } elseif ($status !== 'all') {
+            $query->where('status', $status);
+        }
         $orders = $query->latest()->paginate(15);
         return view('seller.orders', compact('orders', 'status'));
     }
@@ -129,7 +376,10 @@ class SellerController extends Controller
     {
         abort_if($order->seller_id !== $this->seller()->id, 403);
         $order->load('buyer', 'courier');
-        return view('seller.order-detail', compact('order'));
+        $platformCommission = app(PlatformCommission::class);
+        $commissionRate = $platformCommission->rate();
+        $commission = $platformCommission->deduction((float) $order->amount);
+        return view('seller.order-detail', compact('order', 'commissionRate', 'commission'));
     }
 
     public function packOrder(Order $order)
@@ -233,28 +483,193 @@ class SellerController extends Controller
         return response()->json(['success' => true]);
     }
 
+    // Earnings visibility
+    public function earnings(Request $request)
+    {
+        return view('seller.earnings', $this->earningsData($request));
+    }
+
+    public function earningsCsv(Request $request)
+    {
+        $data = $this->earningsData($request);
+
+        return response()->streamDownload(function () use ($data): void {
+            $handle = fopen('php://output', 'w');
+            if ($handle === false) {
+                throw new \RuntimeException('Unable to open the CSV output stream.');
+            }
+
+            try {
+                if (fputcsv($handle, ['Order Number', 'Date', 'Gross Sales (PHP)', 'Commission Rate (%)', 'Commission (PHP)', 'Net Earnings (PHP)', 'Status']) === false) {
+                    throw new \RuntimeException('Unable to write the CSV header.');
+                }
+
+                foreach ($data['orders'] as $order) {
+                    $written = fputcsv($handle, [
+                        $order['order_number'],
+                        $order['created_at']->format('Y-m-d'),
+                        number_format($order['amount'], 2, '.', ''),
+                        number_format($order['commission_rate'], 2, '.', ''),
+                        number_format($order['commission'], 2, '.', ''),
+                        number_format($order['net_earnings'], 2, '.', ''),
+                        $order['status'],
+                    ]);
+                    if ($written === false) {
+                        throw new \RuntimeException('Unable to write a seller earnings CSV row.');
+                    }
+                }
+            } finally {
+                fclose($handle);
+            }
+        }, 'seller-earnings-' . $data['from'] . '-to-' . $data['to'] . '.csv', [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    public function earningsPdf(Request $request)
+    {
+        $data = $this->earningsData($request);
+        $pdf = Pdf::loadView('seller.pdf.earnings', $data)->setPaper('a4', 'portrait');
+
+        return $pdf->download('seller-earnings-' . $data['from'] . '-to-' . $data['to'] . '.pdf');
+    }
+
+    private function earningsData(Request $request): array
+    {
+        $commissionRate = app(PlatformCommission::class)->rate();
+        $validated = $request->validate([
+            'preset' => ['nullable', 'in:today,last_7_days,last_30_days,this_month,last_month,custom'],
+            'from' => ['required_if:preset,custom', 'required_with:to', 'nullable', 'date_format:Y-m-d'],
+            'to' => ['required_if:preset,custom', 'required_with:from', 'nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
+        ]);
+
+        $preset = $validated['preset'] ?? (isset($validated['from']) ? 'custom' : 'this_month');
+        $today = now()->startOfDay();
+
+        if ($preset === 'custom') {
+            $start = \Carbon\Carbon::createFromFormat('Y-m-d', $validated['from'])->startOfDay();
+            $end = \Carbon\Carbon::createFromFormat('Y-m-d', $validated['to'])->endOfDay();
+        } else {
+            [$start, $end] = match ($preset) {
+                'today' => [$today->copy(), $today->copy()->endOfDay()],
+                'last_7_days' => [$today->copy()->subDays(6), $today->copy()->endOfDay()],
+                'last_30_days' => [$today->copy()->subDays(29), $today->copy()->endOfDay()],
+                'last_month' => [$today->copy()->subMonthNoOverflow()->startOfMonth(), $today->copy()->subMonthNoOverflow()->endOfMonth()],
+                default => [$today->copy()->startOfMonth(), $today->copy()->endOfDay()],
+            };
+        }
+
+        $from = $start->toDateString();
+        $to = $end->toDateString();
+        $orders = Order::where('seller_id', $this->seller()->id)
+            ->where('status', 'completed')
+            ->whereBetween('created_at', [$start, $end])
+            ->latest()
+            ->get()
+            ->map(fn (Order $order): array => [
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'created_at' => $order->created_at,
+                'amount' => (float) $order->amount,
+                'commission' => round((float) $order->amount * $commissionRate / 100, 2),
+                'commission_rate' => $commissionRate,
+                'net_earnings' => round((float) $order->amount - round((float) $order->amount * $commissionRate / 100, 2), 2),
+                'status' => $order->status,
+            ]);
+
+        $totalSales = (float) $orders->sum('amount');
+        $totalCommission = (float) $orders->sum('commission');
+
+        return [
+            'from' => $from,
+            'to' => $to,
+            'preset' => $preset,
+            'orders' => $orders,
+            'totalOrders' => $orders->count(),
+            'totalSales' => $totalSales,
+            'totalCommission' => $totalCommission,
+            'totalNetEarnings' => $totalSales - $totalCommission,
+            'averageCommissionRate' => $commissionRate,
+        ];
+    }
+
     // Reports
     public function reports(Request $request)
     {
-        $from   = $request->get('from', now()->startOfMonth()->format('Y-m-d'));
-        $to     = $request->get('to', now()->format('Y-m-d'));
+        [$from, $to] = $this->reportDateRange($request);
 
         return view('seller.reports', $this->reportData($from, $to));
     }
 
     public function reportPdf(Request $request)
     {
-        $from = $request->get('from', now()->startOfMonth()->format('Y-m-d'));
-        $to = $request->get('to', now()->format('Y-m-d'));
+        [$from, $to] = $this->reportDateRange($request);
         $data = $this->reportData($from, $to);
 
         $pdf = Pdf::loadView('seller.pdf.report', $data)->setPaper('a4', 'portrait');
         return $pdf->download('seller-report-' . $from . '-to-' . $to . '.pdf');
     }
 
+    public function reportCsv(Request $request)
+    {
+        [$from, $to] = $this->reportDateRange($request);
+        $data = $this->reportData($from, $to);
+
+        return response()->streamDownload(function () use ($data): void {
+            $handle = fopen('php://output', 'w');
+            if ($handle === false) {
+                throw new \RuntimeException('Unable to open the CSV output stream.');
+            }
+
+            try {
+                if (fputcsv($handle, ['Order ID', 'Order Number', 'Transaction Date', 'Sale Amount (Gross PHP)', 'Commission Rate (%)', 'Commission Deducted (PHP)', 'Net Earnings (PHP)', 'Order Status']) === false) {
+                    throw new \RuntimeException('Unable to write the seller report CSV header.');
+                }
+
+                foreach ($data['financialOrders'] as $order) {
+                    $written = fputcsv($handle, [
+                        $order['id'],
+                        $order['order_number'],
+                        $order['created_at']->format('Y-m-d H:i:s'),
+                        number_format($order['amount'], 2, '.', ''),
+                        number_format($order['commission_rate'], 2, '.', ''),
+                        number_format($order['commission'], 2, '.', ''),
+                        number_format($order['net_earnings'], 2, '.', ''),
+                        $order['status'],
+                    ]);
+                    if ($written === false) {
+                        throw new \RuntimeException('Unable to write a seller report CSV row.');
+                    }
+                }
+            } finally {
+                fclose($handle);
+            }
+        }, 'seller-report-' . $from . '-to-' . $to . '.csv', [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    private function reportDateRange(Request $request): array
+    {
+        $validated = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+
+        $from = $validated['from'] ?? now()->startOfMonth()->format('Y-m-d');
+        $to = $validated['to'] ?? now()->format('Y-m-d');
+
+        validator(compact('from', 'to'), [
+            'to' => ['after_or_equal:from'],
+        ])->validate();
+
+        return [$from, $to];
+    }
+
     private function reportData(string $from, string $to): array
     {
         $seller = $this->seller();
+        $commissionRate = app(PlatformCommission::class)->rate();
 
         $orders = Order::where('seller_id', $seller->id)
             ->where('status', 'completed')
@@ -263,7 +678,19 @@ class SellerController extends Controller
 
         $totalSales  = $orders->sum('amount');
         $totalOrders = $orders->count();
-        $totalProfit = $orders->sum(fn($o) => $o->amount - $o->commission);
+        $financialOrders = $orders->map(fn (Order $order): array => [
+            'id' => $order->id,
+            'order_number' => $order->order_number,
+            'created_at' => $order->created_at,
+            'amount' => (float) $order->amount,
+            'commission_rate' => $commissionRate,
+            'commission' => round((float) $order->amount * $commissionRate / 100, 2),
+            'net_earnings' => round((float) $order->amount - round((float) $order->amount * $commissionRate / 100, 2), 2),
+            'status' => $order->status,
+        ]);
+        $totalCommission = $financialOrders->sum('commission');
+        $totalNetEarnings = $totalSales - $totalCommission;
+        $totalProfit = $totalNetEarnings;
 
         // Daily breakdown
         $days   = [];
@@ -282,7 +709,20 @@ class SellerController extends Controller
             ->map(fn($g) => ['name' => $g->first()->product_name, 'sales' => $g->sum('amount'), 'count' => $g->count()])
             ->sortByDesc('sales')->take(5)->values();
 
-        return compact('from', 'to', 'totalSales', 'totalOrders', 'totalProfit', 'days', 'dailySales', 'topProducts');
+        return compact(
+            'from',
+            'to',
+            'totalSales',
+            'totalOrders',
+            'totalCommission',
+            'totalNetEarnings',
+            'totalProfit',
+            'commissionRate',
+            'financialOrders',
+            'days',
+            'dailySales',
+            'topProducts',
+        );
     }
 
     // Chat

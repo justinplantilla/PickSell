@@ -62,7 +62,7 @@
             <a href="{{ $productLink }}" class="product-card">
                 @if($p->discount > 0)<div class="product-badge">-{{ $p->discount }}%</div>@endif
                 <div class="product-img">
-                    <img src="{{ Storage::url($p->image) }}" alt="{{ $p->name }}" loading="lazy">
+                    <img src="{{ Storage::url($p->primary_image) }}" alt="{{ $p->name }}" loading="lazy">
                     <div class="product-image-details">
                         <small>{{ $p->category }}</small>
                         <strong>{{ $p->name }}</strong>

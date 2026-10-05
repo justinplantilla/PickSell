@@ -1,17 +1,42 @@
+/* Registration review page */
+.review-back { margin: 0 0 1rem; }
+/* One column in review order: information → requirements → checklist & decision → history → audit. */
+.review-layout { display: grid; gap: 1rem; max-width: 920px; }
+.review-layout > .card { margin-bottom: 0; }
 
-/* Extracted inline declarations */
-.blade-inline-1 { margin-bottom:1rem !important;  }
-.blade-inline-2 { font-size:0.88rem !important;  }
-.blade-inline-3 { font-weight:600 !important; color:#888 !important; padding:0.4rem 0.8rem 0.4rem 0 !important; width:140px !important;  }
-.blade-inline-4 { padding:0.4rem 0 !important;  }
-.blade-inline-5 { margin-bottom:1rem !important;  }
-.blade-inline-6 { display:flex !important; flex-direction:column !important; gap:0.8rem !important;  }
-.blade-inline-7 { font-size:0.82rem !important; font-weight:600 !important; margin-bottom:0.3rem !important;  }
-.blade-inline-8 { font-size:0.82rem !important; font-weight:600 !important; margin-bottom:0.3rem !important;  }
-.blade-inline-9 { font-size:0.82rem !important; font-weight:600 !important; margin-bottom:0.3rem !important;  }
-.blade-inline-10 { margin-bottom:1rem !important;  }
-.blade-inline-11 { font-size:0.85rem !important; color:#555 !important; margin-bottom:0.8rem !important;  }
-.blade-inline-12 { border:none !important; border-top:1px solid #f0ebe0 !important; margin-bottom:1rem !important;  }
-.blade-inline-13 { color:var(--coral) !important }
-.blade-inline-14 { font-size:0.88rem !important;  }
-.action-icon { display:inline-block; vertical-align:middle; margin-right:.3rem; }
+.review-fields { margin: 0; padding: 0.4rem 1.2rem 1rem; display: grid; gap: 0.1rem; font-size: 0.86rem; }
+.review-fields > div { display: grid; grid-template-columns: 9rem 1fr; gap: 0.6rem; padding: 0.35rem 0; border-bottom: 1px solid #f4efe6; }
+.review-fields > div:last-child { border-bottom: 0; }
+.review-fields dt { font-weight: 600; color: #6b6b6b; }
+.review-fields dd { margin: 0; overflow-wrap: anywhere; }
+
+.review-documents { list-style: none; margin: 0; padding: 0.4rem 1.2rem 1rem; display: grid; gap: 0.5rem; }
+.review-documents li { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; font-size: 0.86rem; font-weight: 600; }
+
+.review-form { padding: 0.8rem 1.2rem 1.2rem; display: grid; gap: 1rem; }
+.review-checklist { border: 1px solid #ece6db; border-radius: 10px; padding: 0.8rem 1rem 0.9rem; margin: 0; display: grid; gap: 0.55rem; }
+.review-checklist legend { font-weight: 700; font-size: 0.86rem; padding: 0 0.3rem; }
+.review-check { display: grid; grid-template-columns: auto 1fr; gap: 0.6rem; align-items: start; font-size: 0.85rem; cursor: pointer; }
+.review-check input { width: 1.05rem; height: 1.05rem; margin-top: 0.1rem; accent-color: var(--coral); }
+.review-check.is-unavailable { cursor: not-allowed; color: #6b6b6b; }
+.review-missing, .review-error { display: block; font-size: 0.75rem; font-weight: 600; margin-top: 0.15rem; }
+.review-missing { color: #b45309; }
+.review-error { color: #b91c1c; }
+.review-hint { font-weight: 400; color: #6b6b6b; font-size: 0.75rem; }
+.review-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.review-outcome p { margin: 0 0 0.5rem; font-size: 0.86rem; }
+.review-reason { margin: 0.35rem 0 0; font-size: 0.85rem; white-space: pre-line; }
+
+.review-history { list-style: none; margin: 0; padding: 0.3rem 1.2rem 1rem; display: grid; gap: 0.8rem; }
+.review-history li { padding-bottom: 0.8rem; border-bottom: 1px solid #f0ebe0; }
+.review-history li:last-child { border-bottom: 0; padding-bottom: 0; }
+.review-history-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; font-size: 0.85rem; font-weight: 600; }
+
+.review-audit { list-style: none; margin: 0; padding: 0.3rem 1.2rem 1rem; display: grid; gap: 0.5rem; font-size: 0.82rem; }
+.review-audit li { display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; align-items: baseline; }
+
+body.dark .review-fields > div, body.dark .review-history li { border-color: #2a2a2a; }
+body.dark .review-fields dt, body.dark .review-hint, body.dark .review-check.is-unavailable { color: #a3a3a3; }
+body.dark .review-checklist { border-color: #2f2f2f; }
+body.dark .review-missing { color: #fbbf24; }
+body.dark .review-error { color: #fca5a5; }

@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\AccountStatusChangedMail;
+use App\Auth\Permission;
 use App\Mail\RegistrationApprovedMail;
-use App\Mail\RegistrationDisapprovedMail;
-use App\Mail\SellerWarningMail;
 use App\Models\Announcement;
 use App\Models\Complaint;
 use App\Models\PlatformSetting;
@@ -13,164 +11,19 @@ use App\Models\Message;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\Admin\ComplaintResolution;
+use App\Services\Admin\PlatformSettingsService;
+use App\Services\Finance\FinancialSummary;
+use App\Services\PlatformCommission;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Gate;
 
 class AdminController extends Controller
 {
-    // Dashboard
-    public function dashboard()
-    {
-        $stats = [
-            'pending'   => User::where('status', 'pending')->count(),
-            'buyers'    => User::where('role', 'buyer')->where('status', 'approved')->count(),
-            'sellers'   => User::where('role', 'seller')->where('status', 'approved')->count(),
-            'logistics' => User::where('role', 'logistics')->where('status', 'approved')->count(),
-            'couriers'  => User::where('role', 'courier')->where('status', 'approved')->count(),
-            'total'     => User::whereIn('role', ['buyer', 'seller', 'logistics', 'courier'])->count(),
-            'suspended' => User::where('status', 'suspended')->count(),
-        ];
-        $recentApps = User::whereIn('role', ['buyer', 'seller', 'courier'])
-            ->where('status', 'pending')->latest()->take(5)->get();
-        return view('admin.dashboard', compact('stats', 'recentApps'));
-    }
-
-    public function products(Request $request)
-    {
-        $search = $request->get('search');
-        $query = Product::with('seller')->latest();
-        if ($search) $query->where('name', 'like', "%{$search}%");
-        $products = $query->paginate(15);
-        return view('admin.products', compact('products', 'search'));
-    }
-
-    public function toggleFeatured(Product $product)
-    {
-        $product->update(['is_featured' => !$product->is_featured]);
-        return back()->with('success', $product->is_featured
-            ? 'Product added to Featured Products.'
-            : 'Product removed from Featured Products.');
-    }
-
-    public function moderateProduct(Request $request, Product $product)
-    {
-        $data = $request->validate(['status' => 'required|in:active,archived']);
-        $product->update(['status' => $data['status']]);
-        $product->seller?->notifications()->create([
-            'id' => \Illuminate\Support\Str::uuid(),
-            'type' => 'App\\Notifications\\ProductModeration',
-            'data' => json_encode(['message' => "Your product '{$product->name}' was marked {$data['status']} by Admin."]),
-        ]);
-        return back()->with('success', "Product {$product->name} marked {$data['status']}.");
-    }
-
-    // Registrations
-    public function registrations(Request $request)
-    {
-        $role   = $request->get('role', 'all');
-        $status = $request->get('status', 'pending');
-        $query  = User::whereIn('role', ['buyer', 'seller', 'courier', 'logistics']);
-        if ($role !== 'all') $query->where('role', $role);
-        if ($status !== 'all') $query->where('status', $status);
-        $users = $query->latest()->paginate(15);
-        return view('admin.registrations', compact('users', 'role', 'status'));
-    }
-
-    public function showApplication(User $user)
-    {
-        return view('admin.application-detail', compact('user'));
-    }
-
-    public function approveUser(User $user)
-    {
-        abort_if($user->role === 'courier', 403, 'Courier applications must be reviewed by Logistics.');
-        $user->update(['status' => 'approved']);
-        Mail::to($user->email)->send(new RegistrationApprovedMail($user));
-        $this->notifyAdmin("Registration approved for {$user->full_name} ({$user->email})");
-        return back()->with('success', "Account of {$user->full_name} approved. Notification sent to {$user->email}.");
-    }
-
-    public function disapproveUser(Request $request, User $user)
-    {
-        abort_if($user->role === 'courier', 403, 'Courier applications must be reviewed by Logistics.');
-        $request->validate(['reason' => 'required|string|max:500']);
-        $user->update(['status' => 'disapproved']);
-        $emailSent = true;
-        try {
-            Mail::to($user->email)->send(new RegistrationDisapprovedMail($user, $request->reason));
-        } catch (\Throwable $exception) {
-            $emailSent = false;
-            Log::warning('Registration disapproval email could not be sent.', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'error' => $exception->getMessage(),
-            ]);
-        }
-        $this->notifyAdmin("Registration disapproved for {$user->full_name} ({$user->email})");
-        $response = back()->with('success', "Account of {$user->full_name} disapproved.");
-        return $emailSent
-            ? $response->with('success', "Account of {$user->full_name} disapproved. Notification sent.")
-            : $response->with('warning', 'The account was disapproved, but the notification email could not be sent. Check the mail settings.');
-    }
-
-    // User Accounts
-    public function users(Request $request)
-    {
-        $role   = $request->get('role', 'all');
-        $status = $request->get('status', 'all');
-        $search = $request->get('search');
-        $query  = User::whereIn('role', ['buyer', 'seller', 'courier', 'logistics']);
-        if ($role !== 'all') $query->where('role', $role);
-        if ($status !== 'all') $query->where('status', $status);
-        if ($search) $query->where(function ($q) use ($search) {
-            $q->where('first_name', 'like', "%$search%")
-              ->orWhere('last_name', 'like', "%$search%")
-              ->orWhere('email', 'like', "%$search%");
-        });
-        $users = $query->latest()->paginate(15);
-        return view('admin.users', compact('users', 'role', 'status', 'search'));
-    }
-
-    public function updateUserStatus(Request $request, User $user)
-    {
-        $request->validate(['status' => 'required|in:approved,suspended,deactivated']);
-        $user->update(['status' => $request->status]);
-        $emailSent = true;
-        try {
-            Mail::to($user->email)->send(new AccountStatusChangedMail($user, $request->status));
-        } catch (\Throwable $exception) {
-            $emailSent = false;
-            Log::warning('Account status email could not be sent.', [
-                'user_id' => $user->id,
-                'status' => $request->status,
-                'email' => $user->email,
-                'error' => $exception->getMessage(),
-            ]);
-        }
-        $this->notifyAdmin("Account of {$user->full_name} set to {$request->status}");
-        $response = back()->with('success', "Account status updated to {$request->status}.");
-        return $emailSent
-            ? $response
-            : $response->with('warning', 'The account status was updated, but the notification email could not be sent. Check the mail settings.');
-    }
-
-    // Seller Compliance
-    public function compliance(Request $request)
-    {
-        $sellers = User::where('role', 'seller')->where('status', 'approved')->latest()->paginate(15);
-        return view('admin.compliance', compact('sellers'));
-    }
-
-    public function warnSeller(Request $request, User $user)
-    {
-        $request->validate(['warning' => 'required|string|max:500']);
-        Mail::to($user->email)->send(new SellerWarningMail($user, $request->warning));
-        $this->notifyAdmin("Warning issued to seller {$user->full_name}");
-        return back()->with('success', "Warning issued to {$user->full_name} and email sent.");
-    }
-
     // Complaints
     public function complaints(Request $request)
     {
@@ -184,39 +37,27 @@ class AdminController extends Controller
 
     public function showComplaint(Complaint $complaint)
     {
+        Gate::authorize('view', $complaint);
         $complaint->load(['filer', 'against']);
         return view('admin.complaint-detail', compact('complaint'));
     }
 
-    public function updateComplaint(Request $request, Complaint $complaint)
+    public function updateComplaint(Request $request, Complaint $complaint, ComplaintResolution $resolution)
     {
-        $request->validate([
+        Gate::authorize('update', $complaint);
+        $data = $request->validate([
             'status'      => 'required|in:open,under_review,resolved,dismissed',
             'admin_notes' => 'nullable|string|max:2000',
         ]);
-        $complaint->update($request->only('status', 'admin_notes'));
-
-        $participants = collect([$complaint->filer, $complaint->against])->filter()->unique('id');
-        foreach ($participants as $participant) {
-            $participant->notifications()->create([
-                'id' => \Illuminate\Support\Str::uuid(),
-                'type' => 'App\\Notifications\\ComplaintStatusUpdate',
-                'data' => json_encode([
-                    'complaint_id' => $complaint->id,
-                    'subject' => $complaint->subject,
-                    'status' => $complaint->status,
-                    'message' => 'Your complaint #'.$complaint->id.' has been updated to '.str_replace('_', ' ', $complaint->status).'.',
-                ]),
-            ]);
-        }
+        $resolution->update($complaint, $data['status'], $data['admin_notes'] ?? null);
 
         return back()->with('success', 'Complaint updated successfully.');
     }
 
     // Commission
-    public function commission(Request $request)
+    public function commission(Request $request, PlatformCommission $platformCommission)
     {
-        $rate = 10;
+        $rate = $platformCommission->rate();
         $from = $request->get('from', now()->startOfMonth()->format('Y-m-d'));
         $to   = $request->get('to', now()->format('Y-m-d'));
 
@@ -225,8 +66,14 @@ class AdminController extends Controller
             ->whereBetween('created_at', [$from, $to . ' 23:59:59'])
             ->latest()->get();
 
-        $totalSales      = $orders->sum('amount');
-        $totalCommission = $orders->sum('commission');
+        $orders->each(function (Order $order) use ($platformCommission): void {
+            $order->setAttribute('calculated_commission', $platformCommission->deduction((float) $order->amount));
+        });
+
+        // Totals come from the Finance layer so they match the dashboard and Financial Reports.
+        $summary = app(FinancialSummary::class)->forPeriod(Carbon::parse($from)->startOfDay(), Carbon::parse($to)->endOfDay());
+        $totalSales      = $summary['gross_sales'];
+        $totalCommission = $summary['commission'];
 
         return view('admin.commission', compact('orders', 'rate', 'totalSales', 'totalCommission', 'from', 'to'));
     }
@@ -253,105 +100,58 @@ class AdminController extends Controller
 
     private function getReportData($from, $to): array
     {
+        $platformCommission = app(PlatformCommission::class);
         $orders = Order::where('status', 'completed')
             ->whereBetween('created_at', [$from, $to . ' 23:59:59'])
             ->with('seller')->get();
 
-        $topSellers = Order::where('status', 'completed')
-            ->whereBetween('created_at', [$from, $to . ' 23:59:59'])
-            ->with('seller')
-            ->get()
+        $orders->each(function (Order $order) use ($platformCommission): void {
+            $order->setAttribute('calculated_commission', $platformCommission->deduction((float) $order->amount));
+        });
+
+        $topSellers = $orders
             ->groupBy('seller_id')
             ->map(fn($g) => [
                 'name'       => $g->first()->seller->full_name ?? '—',
                 'sales'      => $g->sum('amount'),
                 'orders'     => $g->count(),
-                'commission' => $g->sum('commission'),
+                'commission' => $g->sum('calculated_commission'),
             ])->sortByDesc('sales')->take(5)->values()->toArray();
 
         // Weekly breakdown for current period
         $weeklySales = [];
+        $weeklyCommissions = [];
         $weekLabels  = [];
         $start = \Carbon\Carbon::parse($from);
         $end   = \Carbon\Carbon::parse($to);
         $week  = 1;
         while ($start->lte($end)) {
-            $weekEnd = $start->copy()->addDays(6)->min($end);
-            $weeklySales[] = Order::where('status', 'completed')
-                ->whereBetween('created_at', [$start->format('Y-m-d'), $weekEnd->format('Y-m-d') . ' 23:59:59'])
-                ->sum('amount');
+            $weekStart = $start->copy()->startOfDay();
+            $weekEnd = $start->copy()->addDays(6)->endOfDay()->min($end->copy()->endOfDay());
+            $weeklyOrders = $orders->filter(fn (Order $order): bool => $order->created_at->betweenIncluded($weekStart, $weekEnd));
+            $weeklySales[] = $weeklyOrders->sum('amount');
+            $weeklyCommissions[] = $weeklyOrders->sum('calculated_commission');
             $weekLabels[] = 'Week ' . $week++;
             $start->addDays(7);
         }
 
+        $summary = app(FinancialSummary::class)->forPeriod(Carbon::parse($from)->startOfDay(), Carbon::parse($to)->endOfDay());
+
         return [
-            'total_sales'      => $orders->sum('amount'),
-            'total_orders'     => $orders->count(),
-            'total_commission' => $orders->sum('commission'),
+            'total_sales'      => $summary['gross_sales'],
+            'total_orders'     => $summary['completed_orders'],
+            'total_commission' => $summary['commission'],
+            'total_net_earnings' => $summary['net_to_sellers'],
+            'commission_rate'  => $summary['commission_rate'],
             'new_buyers'       => User::where('role', 'buyer')->whereBetween('created_at', [$from, $to . ' 23:59:59'])->count(),
             'new_sellers'      => User::where('role', 'seller')->whereBetween('created_at', [$from, $to . ' 23:59:59'])->count(),
             'monthly_sales'    => $weeklySales ?: [0],
+            'monthly_commissions' => $weeklyCommissions ?: [0],
             'months'           => $weekLabels ?: ['No Data'],
             'top_sellers'      => $topSellers,
         ];
     }
 
-    // Sorting Center / Logistics
-    public function logistics(Request $request)
-    {
-        $status = $request->get('status', 'all');
-        $query = Order::with(['buyer', 'seller', 'courier'])
-            ->whereIn('status', ['shipped', 'completed']);
-        if ($status !== 'all') {
-            $query->where('status', $status);
-        }
-
-        $orders = $query->latest()->paginate(15);
-        $couriers = User::where('role', 'courier')
-            ->where('status', 'approved')
-            ->orderBy('delivery_area')
-            ->orderBy('last_name')
-            ->get();
-
-        return view('admin.logistics', compact('orders', 'couriers', 'status'));
-    }
-
-    public function assignCourier(Request $request, Order $order)
-    {
-        $data = $request->validate([
-            'courier_id' => 'required|exists:users,id',
-        ]);
-
-        $courier = User::where('id', $data['courier_id'])
-            ->where('role', 'courier')
-            ->where('status', 'approved')
-            ->firstOrFail();
-
-        abort_if(!in_array($order->status, ['shipped', 'processing'], true), 422, 'Only prepared parcels can be assigned.');
-        abort_if($order->status === 'shipped' && $order->tracking_status !== 'Received and scanned at sorting center' && !$order->courier_id, 422, 'Scan the parcel before assigning it to a rider.');
-
-        $area = $order->buyer
-            ? trim(collect([$order->buyer->municipality, $order->buyer->province])->filter()->join(', '))
-            : 'Unspecified area';
-
-        $order->update([
-            'courier_id' => $courier->id,
-            'tracking_status' => 'Sorted for ' . $area . '; assigned to ' . $courier->full_name,
-        ]);
-
-        return back()->with('success', "Parcel {$order->order_number} assigned to {$courier->full_name}.");
-    }
-
-    public function scanParcel(Order $order)
-    {
-        abort_if($order->status !== 'shipped', 422, 'Only parcels handed over by the seller can be scanned.');
-
-        $order->update([
-            'tracking_status' => 'Received and scanned at sorting center',
-        ]);
-
-        return back()->with('success', "Parcel {$order->order_number} received and scanned.");
-    }
 
     // Settings
     public function settings()
@@ -375,7 +175,7 @@ class AdminController extends Controller
         ));
     }
 
-    public function saveSettings(Request $request)
+    public function saveSettings(Request $request, PlatformSettingsService $settings, PlatformCommission $platformCommission)
     {
         if ($request->has('announcement_title')) {
             $request->validate([
@@ -383,11 +183,10 @@ class AdminController extends Controller
                 'announcement'       => 'required|string|max:1000',
                 'audience'           => 'required|in:all,buyer,seller,courier',
             ]);
-            Announcement::create([
+            $settings->postAnnouncement([
                 'title'    => $request->announcement_title,
                 'message'  => $request->announcement,
                 'audience' => $request->audience,
-                'active'   => true,
             ]);
             return back()->with('success', 'Announcement posted successfully.');
         }
@@ -400,10 +199,17 @@ class AdminController extends Controller
                 'max_file_upload_mb' => 'nullable|integer|min:1|max:500',
             ]);
 
-            PlatformSetting::set('platform_name', (string) $request->input('platform_name', 'PickSell'));
-            PlatformSetting::set('support_email', (string) $request->input('support_email', 'support@picksell.ph'));
-            PlatformSetting::set('commission_rate', (string) $request->input('commission_rate', '10'));
-            PlatformSetting::set('max_file_upload_mb', (string) $request->input('max_file_upload_mb', '5'));
+            // The commission rate lives on this form but belongs to manage-commission. A missing
+            // field (e.g. disabled for an admin without that permission) keeps the current rate.
+            if ($request->filled('commission_rate') && (float) $request->input('commission_rate') !== $platformCommission->rate()) {
+                Gate::authorize(Permission::COMMISSION_MANAGE);
+                $settings->save(['commission_rate' => (string) (float) $request->input('commission_rate')], 'settings.commission_rate_changed', Permission::COMMISSION_MANAGE);
+            }
+            $settings->save([
+                'platform_name' => (string) $request->input('platform_name', 'PickSell'),
+                'support_email' => (string) $request->input('support_email', 'support@picksell.ph'),
+                'max_file_upload_mb' => (string) $request->input('max_file_upload_mb', '5'),
+            ], 'settings.general_updated');
 
             return back()->with('success', 'General settings saved successfully.');
         }
@@ -413,20 +219,22 @@ class AdminController extends Controller
             'policy'  => 'nullable|string',
             'privacy' => 'nullable|string',
         ]);
-        PlatformSetting::set('terms_of_service', $request->policy ?? '');
-        PlatformSetting::set('privacy_policy', $request->privacy ?? '');
+        $settings->save([
+            'terms_of_service' => $request->policy ?? '',
+            'privacy_policy' => $request->privacy ?? '',
+        ], 'settings.policies_updated');
         return back()->with('success', 'Policies saved successfully.');
     }
 
-    public function toggleAnnouncement(Announcement $announcement)
+    public function toggleAnnouncement(Announcement $announcement, PlatformSettingsService $settings)
     {
-        $announcement->update(['active' => !$announcement->active]);
+        $settings->toggleAnnouncement($announcement);
         return back()->with('success', 'Announcement updated.');
     }
 
-    public function deleteAnnouncement(Announcement $announcement)
+    public function deleteAnnouncement(Announcement $announcement, PlatformSettingsService $settings)
     {
-        $announcement->delete();
+        $settings->deleteAnnouncement($announcement);
         return back()->with('success', 'Announcement deleted.');
     }
 
@@ -484,6 +292,21 @@ class AdminController extends Controller
     }
 
     // Notifications
+    public function notificationCenter()
+    {
+        $notifications = auth()->user()->notifications()->latest()->paginate(25);
+        $notifications->getCollection()->each(function ($notification): void {
+            $data = $notification->data;
+            if (is_string($data)) {
+                $data = json_decode($data, true) ?: [];
+            }
+            $notification->setAttribute('message', $data['message'] ?? 'Notification');
+        });
+
+        return view('admin.notifications', compact('notifications'));
+    }
+
+    /** JSON feed for the header bell. */
     public function notifications()
     {
         $notifications = auth()->user()->notifications()->latest()->take(20)->get();

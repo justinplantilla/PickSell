@@ -28,8 +28,8 @@
         </div>
     </div>
     <div class="order-card-body">
-        @if($order->product && $order->product->image)
-            <img src="{{ Storage::url($order->product->image) }}" class="blade-inline-6">
+        @if($order->product && $order->product->primary_image)
+            <img src="{{ Storage::url($order->product->primary_image) }}" class="blade-inline-6">
         @else
             <div class="blade-inline-7"></div>
         @endif
@@ -73,6 +73,56 @@
         </div>
     </div>
     @endif
+
+    @if($order->returnRequest)
+        @php
+            $returnStatus = $order->returnRequest->status;
+            $returnBadgeClass = match ($returnStatus) {
+                'completed' => 'badge-approved',
+                'rejected' => 'badge-cancelled',
+                default => 'badge-pending',
+            };
+        @endphp
+        <div class="return-request-summary">
+            <div class="return-request-heading">
+                <strong>Return / refund</strong>
+                <span class="badge {{ $returnBadgeClass }}">{{ ucfirst(str_replace('_', ' ', $returnStatus)) }}</span>
+            </div>
+            <p>Reason: {{ ucfirst(str_replace('_', ' ', $order->returnRequest->reason)) }}</p>
+            @if($order->returnRequest->seller_note)
+                <p>Seller response: {{ $order->returnRequest->seller_note }}</p>
+            @endif
+            <x-return-attachment-gallery :attachments="$order->returnRequest->attachments ?? []" gallery-id="buyer-return-attachments-{{ $order->id }}" />
+            @if($order->returnRequest->dispute_status === 'open')
+                <p class="return-dispute-note">The seller rejected this request. It has been sent to Admin for dispute review.</p>
+            @elseif($order->returnRequest->dispute_status === 'resolved' && $order->returnRequest->admin_notes)
+                <p>Admin resolution: {{ $order->returnRequest->admin_notes }}</p>
+            @endif
+        </div>
+    @elseif(in_array($order->status, ['delivered', 'completed'], true))
+        <details class="return-request-panel">
+            <summary>Request return or refund</summary>
+            <form method="POST" action="{{ route('buyer.orders.returns.store', $order) }}" class="return-request-form" enctype="multipart/form-data">
+                @csrf
+                <label class="form-label" for="return-reason-{{ $order->id }}">Reason</label>
+                <select class="form-control" id="return-reason-{{ $order->id }}" name="reason" required>
+                    <option value="">Choose a reason</option>
+                    <option value="damaged">Item arrived damaged</option>
+                    <option value="wrong_item">Wrong item received</option>
+                    <option value="wrong_size">Wrong size</option>
+                    <option value="not_as_described">Item not as described</option>
+                    <option value="other">Other</option>
+                </select>
+                <label class="form-label" for="return-quantity-{{ $order->id }}">Quantity to return</label>
+                <input class="form-control" type="number" id="return-quantity-{{ $order->id }}" name="quantity" min="1" max="{{ $order->quantity }}" value="{{ $order->quantity }}" required>
+                <label class="form-label" for="return-details-{{ $order->id }}">What happened?</label>
+                <textarea class="form-control" id="return-details-{{ $order->id }}" name="details" rows="3" maxlength="2000" required></textarea>
+                <label class="form-label" for="return-attachments-{{ $order->id }}">Photos or videos (up to 5)</label>
+                <input class="form-control" type="file" id="return-attachments-{{ $order->id }}" name="attachments[]" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" multiple>
+                <button class="btn btn-coral btn-sm" type="submit">Submit return request</button>
+            </form>
+        </details>
+    @endif
 </div>
 @empty
 <div class="blade-inline-16">No orders found.</div>
@@ -112,4 +162,5 @@
 
 @section('scripts')
 @vite('resources/js/views/buyer-orders.js')
+@vite('resources/js/components/return-attachment-lightbox.js')
 @endsection

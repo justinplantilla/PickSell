@@ -1,0 +1,27 @@
+/* Shared stock / archival status badge (<x-stock-status-badge>) */
+.stock-badge {
+    --stock-badge-bg: #E6F4EA;
+    --stock-badge-fg: #137333;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    background: var(--stock-badge-bg);
+    color: var(--stock-badge-fg);
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+.stock-badge-icon { width: 0.85rem; height: 0.85rem; flex-shrink: 0; }
+
+.stock-badge--in-stock     { --stock-badge-bg: #E6F4EA; --stock-badge-fg: #137333; }
+.stock-badge--low-stock    { --stock-badge-bg: #FEF7E0; --stock-badge-fg: #B06000; }
+.stock-badge--out-of-stock { --stock-badge-bg: #FCE8E6; --stock-badge-fg: #C5221F; }
+.stock-badge--archived     { --stock-badge-bg: #F1F3F4; --stock-badge-fg: #5F6368; }
+
+body.dark .stock-badge--in-stock     { --stock-badge-bg: #0d2b17; --stock-badge-fg: #81c995; }
+body.dark .stock-badge--low-stock    { --stock-badge-bg: #2d2100; --stock-badge-fg: #fdd663; }
+body.dark .stock-badge--out-of-stock { --stock-badge-bg: #2d0f0d; --stock-badge-fg: #f28b82; }
+body.dark .stock-badge--archived     { --stock-badge-bg: #26282b; --stock-badge-fg: #bdc1c6; }

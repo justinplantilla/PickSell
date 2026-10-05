@@ -19,8 +19,8 @@
                     <tr>
                         <td>
                             <div class="blade-inline-9">
-                                @if($item->product->image)
-                                    <img src="{{ Storage::url($item->product->image) }}" class="blade-inline-10">
+                                @if($item->product->primary_image)
+                                    <img src="{{ Storage::url($item->product->primary_image) }}" class="blade-inline-10">
                                 @else
                                     <div class="blade-inline-11"></div>
                                 @endif

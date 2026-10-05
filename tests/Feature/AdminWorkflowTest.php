@@ -43,6 +43,16 @@ class AdminWorkflowTest extends TestCase
         $this->assertSame('support@example.com', PlatformSetting::get('support_email'));
         $this->assertSame('12.5', PlatformSetting::get('commission_rate'));
         $this->assertSame('10', PlatformSetting::get('max_file_upload_mb'));
+        $this->assertSame(12.5, config('app.platform_commission_rate'));
+
+        $this->actingAs($admin)
+            ->get('/admin/commission')
+            ->assertOk()
+            ->assertSee('12.5%');
+
+        $this->get('/admin/reports')
+            ->assertOk()
+            ->assertSee('12.50%');
     }
 
     public function test_complaint_update_notifies_filer_and_accused(): void

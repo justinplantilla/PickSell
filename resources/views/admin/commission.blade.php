@@ -71,7 +71,7 @@
             <td>{{ $order->seller->full_name ?? '—' }}</td>
             <td>{{ $order->product_name }}</td>
             <td>₱{{ number_format($order->amount, 2) }}</td>
-            <td class="blade-inline-11">₱{{ number_format($order->commission, 2) }}</td>
+            <td class="blade-inline-11">₱{{ number_format($order->calculated_commission, 2) }}</td>
             <td>{{ $order->created_at->format('M d, Y') }}</td>
         </tr>
         @endforeach
@@ -80,7 +80,7 @@
     @endif
 </div>
 
-<div data-commission-chart data-commissions='@json($orders->pluck("commission")->values())' data-orders='@json($orders->map(fn($order) => $order->order_number)->values())' hidden></div>
+<div data-commission-chart data-commissions='@json($orders->pluck("calculated_commission")->values())' data-orders='@json($orders->map(fn($order) => $order->order_number)->values())' hidden></div>
 @section('scripts')
 @vite('resources/js/views/admin-commission.js')
 @endsection

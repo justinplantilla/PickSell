@@ -2,3 +2,59 @@
 /* Extracted inline declarations */
 .blade-inline-1 { font-size:0.75rem !important; color:#aaa !important;  }
 .blade-inline-2 { text-align:center !important; color:#888 !important; padding:2rem !important;  }
+
+.return-page-description,
+.return-help { margin-top:0.3rem; color:#777; font-size:0.78rem; line-height:1.45; }
+.return-request-list { display:grid; }
+.return-request-list-row { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1rem 1.2rem; border-bottom:1px solid #f0ebe0; text-decoration:none; }
+.return-request-list-row:hover { background:#fafaf8; }
+.return-request-list-row > div:first-child,
+.return-request-list-meta { display:flex; flex-direction:column; gap:0.3rem; }
+.return-request-list-row strong { color:#1d2430; font-size:0.88rem; }
+.return-request-list-row span,
+.return-request-list-meta time { color:#777; font-size:0.75rem; }
+.return-request-list-meta { align-items:flex-end; }
+.return-empty-state { padding:2rem 1.2rem; text-align:center; }
+.return-empty-state p { margin-top:0.35rem; color:#777; font-size:0.8rem; }
+.return-back-link { margin-bottom:1rem; }
+.return-detail-grid { display:grid; grid-template-columns:minmax(0, 1.2fr) minmax(280px, 0.8fr); gap:1rem; }
+.return-detail-list { display:grid; gap:0.7rem; margin:0; }
+.return-detail-list > div { display:grid; grid-template-columns:minmax(100px, 0.45fr) minmax(0, 1fr); gap:1rem; }
+.return-detail-list dt { color:#777; font-size:0.78rem; }
+.return-detail-list dd { margin:0; color:#1d2430; font-size:0.82rem; overflow-wrap:anywhere; }
+.return-detail-copy { margin-top:1.2rem; padding-top:1rem; border-top:1px solid #f0ebe0; }
+.return-detail-copy strong { font-size:0.82rem; }
+.return-detail-copy p,
+.return-workflow-body > p { margin:0.35rem 0 0; color:#555; font-size:0.82rem; line-height:1.55; white-space:pre-wrap; }
+.return-transition-form { display:grid; gap:0.5rem; margin-top:1.2rem; padding-top:1rem; border-top:1px solid #f0ebe0; }
+.return-transition-form button { justify-self:start; }
+.return-workflow-body > form { margin-top:1rem; }
+.return-attachment-gallery { display:flex; flex-wrap:wrap; gap:.55rem; margin-top:.7rem; }
+.return-attachment-thumb { position:relative; display:grid; width:76px; height:76px; overflow:hidden; place-items:center; padding:0; border:1px solid #e8e2d8; border-radius:8px; background:#f6f3ee; cursor:zoom-in; }
+.return-attachment-thumb img,.return-attachment-thumb video { width:100%; height:100%; object-fit:cover; }
+.return-video-thumb { color:var(--coral); font-size:1.4rem; }
+.return-attachment-kind { position:absolute; right:3px; bottom:3px; padding:1px 4px; border-radius:3px; background:rgba(31,35,40,.75); color:#fff; font-size:.58rem; }
+.return-attachment-lightbox { position:fixed; max-width:min(92vw,1000px); max-height:90vh; padding:2.5rem 1rem 1rem; border:1px solid #ddd6cf; border-radius:12px; background:#fff; }
+.return-attachment-lightbox::backdrop { background:rgba(17,24,39,.78); }
+.return-attachment-lightbox img,.return-attachment-lightbox video { display:block; max-width:86vw; max-height:78vh; margin:auto; object-fit:contain; }
+.return-lightbox-close { position:absolute; top:.5rem; right:.7rem; width:34px; height:34px; border:0; border-radius:50%; background:#f4f4f5; color:#27272a; font-size:1.4rem; cursor:pointer; }
+body.dark .return-request-list-row:hover { background:#252525; }
+body.dark .return-request-list-row strong,
+body.dark .return-detail-list dd,
+body.dark .return-detail-copy strong { color:#f3f4f6; }
+body.dark .return-page-description,
+body.dark .return-help,
+body.dark .return-request-list-row span,
+body.dark .return-request-list-meta time,
+body.dark .return-empty-state p,
+body.dark .return-detail-list dt,
+body.dark .return-detail-copy p,
+body.dark .return-workflow-body > p { color:#aaa; }
+body.dark .return-detail-copy,
+body.dark .return-transition-form,
+body.dark .return-request-list-row { border-color:#333; }
+@media (max-width:760px) {
+	.return-detail-grid { grid-template-columns:1fr; }
+	.return-request-list-row { align-items:flex-start; flex-direction:column; }
+	.return-request-list-meta { align-items:flex-start; }
+}

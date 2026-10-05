@@ -31,13 +31,14 @@
                         <td><input type="checkbox" name="item_ids[]" value="{{ $item->id }}" class="item-check"></td>
                         <td>
                             <div class="blade-inline-9">
-                                @if($item->product->image)
-                                    <img src="{{ Storage::url($item->product->image) }}" class="blade-inline-10">
+                                @if($item->product->primary_image)
+                                    <img src="{{ Storage::url($item->product->primary_image) }}" class="blade-inline-10">
                                 @else
                                     <div class="blade-inline-11"></div>
                                 @endif
                                 <div>
                                     <div class="blade-inline-12">{{ $item->product->name }}</div>
+                                    @unless($item->product->isPurchasable())<div class="cart-unavailable" role="note">No longer available — remove it to check out</div>@endunless
                                     <div class="blade-inline-13">{{ $item->product->seller->business_name ?? $item->product->seller->full_name }}</div>
                                 </div>
                             </div>
@@ -83,7 +84,7 @@
             <div class="card-body">
                 @foreach($recommendations as $recommendation)
                 <a href="{{ route('buyer.product', $recommendation) }}" class="cart-recommendation">
-                    @if($recommendation->image)<img src="{{ Storage::url($recommendation->image) }}" alt="{{ $recommendation->name }}">@endif
+                    @if($recommendation->primary_image)<img src="{{ Storage::url($recommendation->primary_image) }}" alt="{{ $recommendation->name }}">@endif
                     <span><strong>{{ $recommendation->name }}</strong><small>₱{{ number_format($recommendation->effective_price, 2) }}</small></span>
                 </a>
                 @endforeach

@@ -37,7 +37,7 @@ function toggleNotif() {
     if (dd.classList.contains('open')) loadNotifs();
 }
 function loadNotifs() {
-    fetch('/admin/notifications')
+    fetch('/admin/notifications/feed')
         .then(response => response.json().then(data => ({ data, unread: Number(response.headers.get('X-Unread-Count') || 0) })))
         .then(({ data, unread }) => {
             adminNotifications = data;
@@ -78,7 +78,7 @@ document.addEventListener('click', e => {
     }
 });
 // Check unread on load
-fetch('/admin/notifications').then(response => {
+fetch('/admin/notifications/feed').then(response => {
     const unread = Number(response.headers.get('X-Unread-Count') || 0);
     document.getElementById('notifDot').style.display = unread ? 'block' : 'none';
 });

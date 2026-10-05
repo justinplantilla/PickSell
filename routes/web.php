@@ -2,11 +2,26 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Auth\Permission;
+use App\Http\Controllers\AdminAnalyticsController;
+use App\Http\Controllers\AdminAuditLogController;
+use App\Http\Controllers\AdminComplianceController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AdminLogisticsController;
+use App\Http\Controllers\AdminOrderController;
+use App\Http\Controllers\AdminProductController;
+use App\Http\Controllers\AdminRegistrationController;
+use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\AdminReturnController;
+use App\Http\Controllers\AdminReturnDisputeController;
 use App\Http\Controllers\SellerController;
+use App\Http\Controllers\SellerProductImageController;
 use App\Http\Controllers\BuyerController;
+use App\Http\Controllers\BuyerReturnRequestController;
 use App\Http\Controllers\CourierController;
 use App\Http\Controllers\LogisticsController;
+use App\Http\Controllers\SellerReturnRequestController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\CourierMiddleware;
 use App\Http\Middleware\LogisticsMiddleware;
@@ -25,7 +40,7 @@ Route::get('/', function () {
     return view('welcome', compact('featuredProducts'));
 });
 Route::get('/shop', function (Request $request) {
-    $query = Product::where('status', 'active')->where('stock', '>', 0)->whereNotNull('image')->with('seller');
+    $query = Product::where('status', 'active')->where('stock', '>', 0)->whereHas('images')->with('seller');
     $search = trim((string) $request->get('q', ''));
     if ($search) {
         $query->where(function ($builder) use ($search) {
@@ -138,6 +153,7 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
     // Cart
     Route::get('/cart',                             [BuyerController::class, 'cart'])->name('buyer.cart');
     Route::get('/checkout',                         [BuyerController::class, 'checkout'])->name('buyer.checkout.page');
+    Route::get('/cart/checkout',                    [BuyerController::class, 'checkout'])->name('buyer.checkout.start');
     Route::post('/cart/checkout',                   [BuyerController::class, 'placeOrder'])->name('buyer.checkout');
     Route::post('/cart/{product}',                  [BuyerController::class, 'addToCart'])->name('buyer.cart.add');
     Route::patch('/cart/item/{item}',               [BuyerController::class, 'updateCart'])->name('buyer.cart.update');
@@ -145,6 +161,7 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
 
     // Orders
     Route::get('/orders',                           [BuyerController::class, 'orders'])->name('buyer.orders');
+    Route::post('/orders/{order}/returns',           [BuyerReturnRequestController::class, 'store'])->name('buyer.orders.returns.store');
     Route::post('/orders/{order}/feedback',         [BuyerController::class, 'submitFeedback'])->name('buyer.feedback');
     Route::get('/notifications',                    [BuyerController::class, 'notifications'])->name('buyer.notifications');
     Route::post('/notifications/read',              [BuyerController::class, 'markNotificationsRead'])->name('buyer.notifications.read');
@@ -162,12 +179,17 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
 // Seller Routes
 Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(function () {
     Route::get('/dashboard', [SellerController::class, 'dashboard'])->name('seller.dashboard');
+    Route::get('/earnings', [SellerController::class, 'earnings'])->name('seller.earnings');
+    Route::get('/earnings/csv', [SellerController::class, 'earningsCsv'])->name('seller.earnings.csv');
+    Route::get('/earnings/pdf', [SellerController::class, 'earningsPdf'])->name('seller.earnings.pdf');
 
     // Inventory
     Route::get('/inventory',                        [SellerController::class, 'inventory'])->name('seller.inventory');
     Route::post('/inventory',                       [SellerController::class, 'storeProduct'])->name('seller.inventory.store');
     Route::patch('/inventory/{product}',            [SellerController::class, 'updateProduct'])->name('seller.inventory.update');
     Route::patch('/inventory/{product}/archive',    [SellerController::class, 'archiveProduct'])->name('seller.inventory.archive');
+    Route::post('/inventory/images',                [SellerProductImageController::class, 'store'])->name('seller.inventory.images.store');
+    Route::delete('/inventory/images/{token}',      [SellerProductImageController::class, 'destroy'])->name('seller.inventory.images.destroy');
 
     // Orders
     Route::get('/orders',                           [SellerController::class, 'orders'])->name('seller.orders');
@@ -176,11 +198,23 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     Route::patch('/orders/{order}/pack',            [SellerController::class, 'packOrder'])->name('seller.orders.pack');
     Route::patch('/orders/{order}/handover',        [SellerController::class, 'handoverOrder'])->name('seller.orders.handover');
     Route::patch('/orders/{order}/confirm-delivery', [SellerController::class, 'confirmDelivery'])->name('seller.orders.confirm-delivery');
+
+    // Returns and refunds
+    Route::get('/returns/count', [SellerReturnRequestController::class, 'pendingCount'])->name('seller.returns.count');
+    Route::get('/returns', [SellerReturnRequestController::class, 'index'])->name('seller.returns');
+    Route::get('/returns/{returnRequest}', [SellerReturnRequestController::class, 'show'])->name('seller.returns.show');
+    Route::patch('/returns/{returnRequest}/approve', [SellerReturnRequestController::class, 'approve'])->name('seller.returns.approve');
+    Route::patch('/returns/{returnRequest}/reject', [SellerReturnRequestController::class, 'reject'])->name('seller.returns.reject');
+    Route::patch('/returns/{returnRequest}/receive', [SellerReturnRequestController::class, 'markReceived'])->name('seller.returns.receive');
+    Route::patch('/returns/{returnRequest}/tracking', [SellerReturnRequestController::class, 'updateTracking'])->name('seller.returns.tracking');
+    Route::patch('/returns/{returnRequest}/refund-due', [SellerReturnRequestController::class, 'markRefundDue'])->name('seller.returns.refund-due');
+    Route::patch('/returns/{returnRequest}/complete', [SellerReturnRequestController::class, 'complete'])->name('seller.returns.complete');
     Route::get('/notifications',                    [SellerController::class, 'notifications'])->name('seller.notifications');
     Route::post('/notifications/read',              [SellerController::class, 'markNotificationsRead'])->name('seller.notifications.read');
 
     // Reports
     Route::get('/reports', [SellerController::class, 'reports'])->name('seller.reports');
+    Route::get('/reports/csv', [SellerController::class, 'reportCsv'])->name('seller.reports.csv');
     Route::get('/reports/pdf', [SellerController::class, 'reportPdf'])->name('seller.reports.pdf');
 
     // Chat
@@ -193,55 +227,106 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     Route::patch('/account/password', [SellerController::class, 'updatePassword'])->name('seller.account.password');
 });
 
-// Admin Routes
+// Admin Routes: the single Super Admin holds every permission (config/permissions.php).
+// Deny by default: every route declares an explicit permission (AdminMiddleware rejects any that
+// don't); resource and business rules are enforced by Policies inside the controllers.
 Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(function () {
-    Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
-    Route::get('/products', [AdminController::class, 'products'])->name('admin.products');
-    Route::patch('/products/{product}/featured', [AdminController::class, 'toggleFeatured'])->name('admin.products.featured');
-    Route::patch('/products/{product}/status', [AdminController::class, 'moderateProduct'])->name('admin.products.status');
+    $can = fn (string $permission) => 'can:' . $permission;
 
-    // Registrations
-    Route::get('/registrations',                     [AdminController::class, 'registrations'])->name('admin.registrations');
-    Route::get('/registrations/{user}',              [AdminController::class, 'showApplication'])->name('admin.registrations.show');
-    Route::patch('/registrations/{user}/approve',    [AdminController::class, 'approveUser'])->name('admin.registrations.approve');
-    Route::patch('/registrations/{user}/disapprove', [AdminController::class, 'disapproveUser'])->name('admin.registrations.disapprove');
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->middleware($can(Permission::DASHBOARD_VIEW))->name('admin.dashboard');
 
-    // Users
-    Route::get('/users',                  [AdminController::class, 'users'])->name('admin.users');
-    Route::patch('/users/{user}/status',  [AdminController::class, 'updateUserStatus'])->name('admin.users.status');
+    // Own notifications and account
+    Route::get('/notifications', [AdminController::class, 'notificationCenter'])->middleware($can(Permission::ACCOUNT_VIEW))->name('admin.notifications');
+    Route::get('/notifications/feed', [AdminController::class, 'notifications'])->middleware($can(Permission::ACCOUNT_VIEW))->name('admin.notifications.feed');
+    Route::post('/notifications/read', [AdminController::class, 'markNotificationsRead'])->middleware($can(Permission::ACCOUNT_MANAGE))->name('admin.notifications.read');
+    Route::get('/account',             [AdminController::class, 'account'])->middleware($can(Permission::ACCOUNT_VIEW))->name('admin.account');
+    Route::patch('/account',           [AdminController::class, 'updateAccount'])->middleware($can(Permission::ACCOUNT_MANAGE))->name('admin.account.update');
+    Route::patch('/account/password',  [AdminController::class, 'updatePassword'])->middleware($can(Permission::ACCOUNT_MANAGE))->name('admin.account.password');
 
-    // Compliance
-    Route::get('/compliance',               [AdminController::class, 'compliance'])->name('admin.compliance');
-    Route::patch('/compliance/{user}/warn', [AdminController::class, 'warnSeller'])->name('admin.compliance.warn');
+    Route::middleware($can(Permission::ORDERS_VIEW))->group(function () {
+        Route::get('/orders', [AdminOrderController::class, 'index'])->name('admin.orders');
+        Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('admin.orders.show');
+    });
+    Route::patch('/orders/{order}/status', [AdminOrderController::class, 'overrideStatus'])->middleware($can(Permission::ORDERS_OVERRIDE_STATUS))->name('admin.orders.status');
+    Route::patch('/orders/{order}/resolve', [AdminOrderController::class, 'resolveException'])->middleware($can(Permission::ORDERS_MANAGE))->name('admin.orders.resolve');
 
-    // Complaints
-    Route::get('/complaints',                        [AdminController::class, 'complaints'])->name('admin.complaints');
-    Route::get('/complaints/{complaint}',            [AdminController::class, 'showComplaint'])->name('admin.complaints.show');
-    Route::patch('/complaints/{complaint}',          [AdminController::class, 'updateComplaint'])->name('admin.complaints.update');
+    Route::middleware($can(Permission::PRODUCTS_VIEW))->group(function () {
+        Route::get('/products', [AdminProductController::class, 'index'])->name('admin.products');
+        Route::get('/products/{product}', [AdminProductController::class, 'show'])->name('admin.products.show');
+    });
+    Route::middleware($can(Permission::PRODUCTS_MODERATE))->group(function () {
+        Route::patch('/products/{product}/featured', [AdminProductController::class, 'toggleFeatured'])->name('admin.products.featured');
+        Route::patch('/products/{product}/status', [AdminProductController::class, 'moderate'])->name('admin.products.status');
+    });
 
-    // Commission
-    Route::get('/commission', [AdminController::class, 'commission'])->name('admin.commission');
+    Route::middleware($can(Permission::REGISTRATIONS_VIEW))->group(function () {
+        Route::get('/registrations',        [AdminRegistrationController::class, 'index'])->name('admin.registrations');
+        Route::get('/registrations/{user}', [AdminRegistrationController::class, 'show'])->name('admin.registrations.show');
+    });
+    Route::middleware($can(Permission::REGISTRATIONS_MANAGE))->group(function () {
+        Route::patch('/registrations/{user}/approve',    [AdminRegistrationController::class, 'approve'])->name('admin.registrations.approve');
+        Route::patch('/registrations/{user}/disapprove', [AdminRegistrationController::class, 'disapprove'])->name('admin.registrations.disapprove');
+    });
 
-    // Reports
-    Route::get('/reports',        [AdminController::class, 'reports'])->name('admin.reports');
-    Route::get('/reports/export', [AdminController::class, 'exportPdf'])->name('admin.reports.export');
+    Route::middleware($can(Permission::USERS_VIEW))->group(function () {
+        Route::get('/users',        [AdminUserController::class, 'index'])->name('admin.users');
+        Route::get('/users/{user}', [AdminUserController::class, 'show'])->name('admin.users.show');
+    });
+    Route::patch('/users/{user}/status', [AdminUserController::class, 'updateStatus'])->middleware($can(Permission::USERS_MANAGE))->name('admin.users.status');
 
-    // Settings
-    Route::get('/settings',  [AdminController::class, 'settings'])->name('admin.settings.index');
-    Route::post('/settings', [AdminController::class, 'saveSettings'])->name('admin.settings.save');
-    Route::patch('/settings/announcements/{announcement}/toggle', [AdminController::class, 'toggleAnnouncement'])->name('admin.announcements.toggle');
-    Route::delete('/settings/announcements/{announcement}', [AdminController::class, 'deleteAnnouncement'])->name('admin.announcements.delete');
+    Route::middleware($can(Permission::SELLER_COMPLIANCE_VIEW))->group(function () {
+        Route::get('/compliance',                       [AdminComplianceController::class, 'index'])->name('admin.compliance');
+        Route::get('/compliance/cases',                 [AdminComplianceController::class, 'cases'])->name('admin.compliance.cases');
+        Route::get('/compliance/cases/{case}',          [AdminComplianceController::class, 'showCase'])->name('admin.compliance.cases.show');
+        Route::get('/compliance/sellers/{user}',        [AdminComplianceController::class, 'seller'])->name('admin.compliance.seller');
+        Route::get('/compliance/evidence/{action}/{index}', [AdminComplianceController::class, 'evidence'])->whereNumber('index')->name('admin.compliance.evidence');
+    });
+    Route::middleware($can(Permission::SELLER_COMPLIANCE_MANAGE))->group(function () {
+        Route::post('/compliance/sellers/{user}/cases',     [AdminComplianceController::class, 'openCase'])->name('admin.compliance.cases.store');
+        Route::post('/compliance/cases/{case}/notes',       [AdminComplianceController::class, 'addNote'])->name('admin.compliance.cases.notes');
+        Route::patch('/compliance/cases/{case}/resolve',    [AdminComplianceController::class, 'resolveCase'])->name('admin.compliance.cases.resolve');
+        Route::patch('/compliance/{user}/warn',             [AdminComplianceController::class, 'warn'])->name('admin.compliance.warn');
+        Route::patch('/compliance/sellers/{user}/suspend',  [AdminComplianceController::class, 'suspend'])->name('admin.compliance.suspend');
+        Route::patch('/compliance/sellers/{user}/reinstate', [AdminComplianceController::class, 'suspend'])->name('admin.compliance.reinstate');
+    });
 
-    // Chat
-    Route::get('/chat',         [AdminController::class, 'chat'])->name('admin.chat');
-    Route::post('/chat/send',   [AdminController::class, 'sendMessage'])->name('admin.chat.send');
+    Route::middleware($can(Permission::RETURNS_VIEW))->group(function () {
+        Route::get('/returns', [AdminReturnController::class, 'index'])->name('admin.returns');
+        Route::get('/disputes', [AdminReturnDisputeController::class, 'index'])->name('admin.disputes');
+        Route::get('/returns/{returnRequest}', [AdminReturnDisputeController::class, 'show'])->name('admin.returns.show');
+    });
+    Route::get('/refunds', [AdminReturnController::class, 'refunds'])->middleware($can(Permission::REFUNDS_VIEW))->name('admin.refunds');
+    Route::patch('/returns/{returnRequest}/resolve', [AdminReturnDisputeController::class, 'resolve'])->middleware($can(Permission::RETURNS_MANAGE))->name('admin.returns.resolve');
 
-    // Notifications (JSON)
-    Route::get('/notifications', [AdminController::class, 'notifications'])->name('admin.notifications');
-    Route::post('/notifications/read', [AdminController::class, 'markNotificationsRead'])->name('admin.notifications.read');
+    Route::middleware($can(Permission::COMPLAINTS_VIEW))->group(function () {
+        Route::get('/complaints',             [AdminController::class, 'complaints'])->name('admin.complaints');
+        Route::get('/complaints/{complaint}', [AdminController::class, 'showComplaint'])->name('admin.complaints.show');
+    });
+    Route::patch('/complaints/{complaint}', [AdminController::class, 'updateComplaint'])->middleware($can(Permission::COMPLAINTS_MANAGE))->name('admin.complaints.update');
 
-    // Account
-    Route::get('/account',             [AdminController::class, 'account'])->name('admin.account');
-    Route::patch('/account',           [AdminController::class, 'updateAccount'])->name('admin.account.update');
-    Route::patch('/account/password',  [AdminController::class, 'updatePassword'])->name('admin.account.password');
+    Route::middleware($can(Permission::LOGISTICS_VIEW))->group(function () {
+        Route::get('/logistics', [AdminLogisticsController::class, 'overview'])->name('admin.logistics');
+        Route::get('/logistics/sorting-center', [AdminLogisticsController::class, 'sorting'])->name('admin.logistics.sorting');
+        Route::get('/logistics/rider-assignment', [AdminLogisticsController::class, 'riders'])->name('admin.logistics.riders');
+    });
+
+    Route::get('/commission', [AdminController::class, 'commission'])->middleware($can(Permission::COMMISSION_VIEW))->name('admin.commission');
+
+    Route::get('/reports',        [AdminController::class, 'reports'])->middleware($can(Permission::REPORTS_VIEW))->name('admin.reports');
+    Route::get('/reports/export', [AdminController::class, 'exportPdf'])->middleware($can(Permission::REPORTS_EXPORT))->name('admin.reports.export');
+    Route::get('/analytics', [AdminAnalyticsController::class, 'index'])->middleware($can(Permission::REPORTS_VIEW))->name('admin.analytics');
+
+    Route::get('/audit-logs', [AdminAuditLogController::class, 'index'])->middleware($can(Permission::AUDIT_VIEW))->name('admin.audit');
+    Route::get('/audit-logs/export', [AdminAuditLogController::class, 'export'])->middleware($can(Permission::AUDIT_EXPORT))->name('admin.audit.export');
+
+    // Changing the commission rate on this form additionally requires commission.manage (checked in saveSettings).
+    Route::get('/settings', [AdminController::class, 'settings'])->middleware($can(Permission::SETTINGS_VIEW))->name('admin.settings.index');
+    Route::middleware($can(Permission::SETTINGS_MANAGE))->group(function () {
+        Route::post('/settings', [AdminController::class, 'saveSettings'])->name('admin.settings.save');
+        Route::patch('/settings/announcements/{announcement}/toggle', [AdminController::class, 'toggleAnnouncement'])->name('admin.announcements.toggle');
+        Route::delete('/settings/announcements/{announcement}', [AdminController::class, 'deleteAnnouncement'])->name('admin.announcements.delete');
+    });
+
+    Route::get('/chat',       [AdminController::class, 'chat'])->middleware($can(Permission::MESSAGING_VIEW))->name('admin.chat');
+    Route::post('/chat/send', [AdminController::class, 'sendMessage'])->middleware($can(Permission::MESSAGING_MANAGE))->name('admin.chat.send');
 });

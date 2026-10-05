@@ -1,0 +1,74 @@
+/* Shared styles for the Admin supervision pages: orders, logistics, returns, refunds, analytics, audit logs, notifications. */
+.oversight-description { margin: 0.25rem 0 0; font-size: 0.8rem; color: #6b6b6b; }
+.oversight-table-wrap { overflow-x: auto; }
+.oversight-table-wrap table { width: 100%; }
+.oversight-meta { display: block; font-size: 0.74rem; color: #6b6b6b; margin-top: 0.15rem; }
+.oversight-empty { padding: 2rem 1.2rem; text-align: center; color: #6b6b6b; font-size: 0.85rem; }
+.oversight-empty strong { display: block; color: var(--charcoal); margin-bottom: 0.25rem; }
+.oversight-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.oversight-filters label { font-size: 0.75rem; color: #6b6b6b; display: inline-flex; align-items: center; gap: 0.35rem; }
+.oversight-number { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Tabs (stage filters / sibling pages) */
+.oversight-tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.9rem 1.2rem 0; }
+.oversight-tab { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.8rem; border: 1px solid #e8e2d8; border-radius: 999px; font-size: 0.78rem; font-weight: 600; color: var(--charcoal); text-decoration: none; background: #fff; }
+.oversight-tab:hover { border-color: var(--coral); color: var(--coral-dark); }
+.oversight-tab.is-active { background: var(--charcoal); border-color: var(--charcoal); color: #fff; }
+.oversight-tab-count { font-variant-numeric: tabular-nums; font-size: 0.7rem; opacity: 0.8; }
+
+/* Pipeline strip */
+.oversight-pipeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.6rem; padding: 1rem 1.2rem; }
+.oversight-stage { border: 1px solid #ece6db; border-radius: 10px; padding: 0.7rem 0.8rem; background: #fff; text-decoration: none; color: inherit; }
+.oversight-stage strong { display: block; font-size: 1.3rem; font-variant-numeric: tabular-nums; color: var(--charcoal); }
+.oversight-stage span { font-size: 0.72rem; color: #6b6b6b; }
+a.oversight-stage:hover { border-color: var(--coral); }
+.oversight-stage.is-alert { border-color: #f3c9c4; background: #fef6f5; }
+.oversight-stage.is-alert strong { color: #b91c1c; }
+
+/* Stale / exception rows: icon + text, never color alone */
+.oversight-flag { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.72rem; font-weight: 700; color: #b45309; }
+.oversight-flag svg { width: 0.85rem; height: 0.85rem; }
+tr.is-stale td { background: #fffaf0; }
+
+/* Single-series horizontal bars (analytics). Values are text, so the bar is never the only carrier. */
+.oversight-bars { list-style: none; margin: 0; padding: 0.4rem 1.2rem 1.1rem; display: grid; gap: 0.45rem; }
+.oversight-bar-row { display: grid; grid-template-columns: minmax(110px, 160px) 1fr minmax(48px, auto); gap: 0.7rem; align-items: center; font-size: 0.8rem; }
+.oversight-bar-label { color: var(--charcoal); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oversight-bar-track { display: block; height: 10px; border-radius: 0 4px 4px 0; background: transparent; }
+.oversight-bar-fill { display: block; height: 100%; min-width: 2px; border-radius: 0 4px 4px 0; background: var(--coral); }
+.oversight-bar-value { text-align: right; font-variant-numeric: tabular-nums; color: #4b4b4b; }
+.oversight-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
+
+/* Audit log */
+.audit-changes { margin: 0; padding: 0; list-style: none; font-size: 0.74rem; color: #4b4b4b; }
+.audit-changes code { font-size: 0.72rem; background: #f6f3ee; padding: 0 0.25rem; border-radius: 4px; }
+.audit-action { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.76rem; }
+
+/* Notifications page */
+.notification-row { display: flex; gap: 0.8rem; align-items: flex-start; padding: 0.85rem 1.2rem; border-bottom: 1px solid #f0ebe0; }
+.notification-row:last-child { border-bottom: 0; }
+.notification-row.is-unread { background: #fff7f5; }
+.notification-row-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 0.4rem; flex-shrink: 0; background: transparent; }
+.notification-row.is-unread .notification-row-dot { background: var(--coral); }
+.notification-row p { margin: 0; font-size: 0.85rem; }
+
+@media (max-width: 640px) {
+    .oversight-bar-row { grid-template-columns: 1fr minmax(48px, auto); }
+    .oversight-bar-track { grid-column: 1 / -1; grid-row: 2; }
+}
+
+body.dark .oversight-tab, body.dark .oversight-stage { background: #1e1e1e; border-color: #2f2f2f; color: #e5e7eb; }
+body.dark .oversight-tab.is-active { background: #e5e7eb; color: #111; border-color: #e5e7eb; }
+body.dark .oversight-stage strong, body.dark .oversight-bar-label, body.dark .oversight-empty strong { color: #e5e7eb; }
+body.dark .oversight-description, body.dark .oversight-meta, body.dark .oversight-stage span, body.dark .oversight-empty, body.dark .oversight-bar-value, body.dark .audit-changes { color: #a3a3a3; }
+body.dark .oversight-stage.is-alert { background: #2d0a0a; border-color: #5b1d1d; }
+body.dark .oversight-stage.is-alert strong { color: #fca5a5; }
+body.dark tr.is-stale td { background: #2a2310; }
+body.dark .oversight-flag { color: #fbbf24; }
+body.dark .audit-changes code { background: #2a2a2a; }
+body.dark .notification-row { border-color: #2a2a2a; }
+body.dark .notification-row.is-unread { background: #2a1a17; }
+
+.oversight-list { list-style: none; margin: 0; padding: 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.oversight-note { padding: 0.5rem 1.2rem 0; }

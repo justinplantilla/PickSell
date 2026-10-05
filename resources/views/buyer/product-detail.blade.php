@@ -11,18 +11,20 @@
 <div class="product-detail">
     <section class="product-gallery" aria-label="Product images">
         <div class="product-detail-img">
-            @if($product->image)
-                <img src="{{ Storage::url($product->image) }}" alt="{{ $product->name }}">
+            @if($product->primary_image)
+                <img src="{{ Storage::url($product->primary_image) }}" alt="{{ $product->name }}" data-gallery-main>
             @else
                 <svg class="product-image-fallback" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4Zm2 2v10h12V7Zm2 2h2v2H8Zm4 0h4v2h-4Z" fill="currentColor"/></svg>
             @endif
             @if($product->discount > 0)<span class="product-hero-badge">-{{ $product->discount }}%</span>@endif
         </div>
+        @if($product->images->count() > 1)
         <div class="product-thumbnails" aria-label="Product thumbnails">
-            @for($thumbnail = 0; $thumbnail < 4; $thumbnail++)
-                <div class="product-thumbnail {{ $thumbnail === 0 ? 'is-active' : '' }}">@if($product->image)<img src="{{ Storage::url($product->image) }}" alt="{{ $product->name }} thumbnail">@endif</div>
-            @endfor
+            @foreach($product->images as $image)
+                <button type="button" class="product-thumbnail {{ $image->image_url === $product->primary_image ? 'is-active' : '' }}" data-gallery-thumb data-src="{{ $image->url }}" data-alt="{{ $image->alt_text ?: $product->name }}" aria-label="Show image {{ $loop->iteration }}"><img src="{{ $image->url }}" alt="{{ $image->alt_text ?: $product->name }} thumbnail"></button>
+            @endforeach
         </div>
+        @endif
         <div class="product-assurance"><span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v5c0 5-3.4 8.8-8 10-4.6-1.2-8-5-8-10V6Z" fill="none" stroke="currentColor" stroke-width="1.7"/></svg> Buyer protection</span><span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v10H3zM14 10h4l3 3v3h-7zM7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm10 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg> Tracked delivery</span></div>
     </section>
 
@@ -60,7 +62,7 @@
 <section class="product-reviews" id="reviews"><div class="reviews-header"><div><span class="detail-eyebrow">Customer feedback</span><h2>Product reviews</h2></div><div class="review-summary"><strong>{{ $reviewAverage ?: '—' }}</strong><span>{{ $reviewCount }} {{ $reviewCount === 1 ? 'review' : 'reviews' }}</span></div></div>@if($product->reviews->isEmpty())<div class="reviews-empty"><svg class="reviews-empty-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><strong>No reviews yet</strong><span>Completed buyers will be able to share their experience here.</span></div>@else<div class="review-list">@foreach($product->reviews as $review)<article class="review-item"><div class="review-item-head"><strong>{{ $review->buyer->first_name ?? 'Buyer' }}</strong><span>{{ str_repeat('★', $review->rating) }}{{ str_repeat('☆', 5 - $review->rating) }}</span></div>@if($review->body)<p>{{ $review->body }}</p>@endif<small>{{ $review->created_at->format('M d, Y') }}</small></article>@endforeach</div>@endif</section>
 
 @php $recommendations = $product->seller->products->where('id', '!=', $product->id)->where('status', 'active')->take(5); @endphp
-@if($recommendations->isNotEmpty())<section class="related-products"><div class="related-heading"><div><span class="detail-eyebrow">Keep exploring</span><h2>You might also like</h2></div><a href="/buyer/shop?category={{ urlencode($product->category ?? '') }}">View more</a></div><div class="related-grid">@foreach($recommendations as $recommendation)<a href="{{ route('buyer.product', $recommendation) }}" class="related-card">@if($recommendation->image)<img src="{{ Storage::url($recommendation->image) }}" alt="{{ $recommendation->name }}">@endif<div><strong>{{ $recommendation->name }}</strong><span>₱{{ number_format($recommendation->effective_price, 2) }}</span></div></a>@endforeach</div></section>@endif
+@if($recommendations->isNotEmpty())<section class="related-products"><div class="related-heading"><div><span class="detail-eyebrow">Keep exploring</span><h2>You might also like</h2></div><a href="/buyer/shop?category={{ urlencode($product->category ?? '') }}">View more</a></div><div class="related-grid">@foreach($recommendations as $recommendation)<a href="{{ route('buyer.product', $recommendation) }}" class="related-card">@if($recommendation->primary_image)<img src="{{ Storage::url($recommendation->primary_image) }}" alt="{{ $recommendation->name }}">@endif<div><strong>{{ $recommendation->name }}</strong><span>₱{{ number_format($recommendation->effective_price, 2) }}</span></div></a>@endforeach</div></section>@endif
 @endsection
 
 @section('scripts')

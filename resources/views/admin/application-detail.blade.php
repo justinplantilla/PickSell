@@ -1,114 +1,162 @@
 @extends('admin.layout')
 @section('styles')
-@vite('resources/css/views/admin-application-detail.css')
+@vite(['resources/css/views/admin-oversight.css', 'resources/css/views/admin-application-detail.css'])
 @endsection
 @section('title', 'Review Application')
 
 @section('content')
-<div class="blade-inline-1">
-    <a href="/admin/registrations" class="btn btn-outline btn-sm">← Back to Registrations</a>
-</div>
+@php
+    $canDecide = auth()->user()->can('approveRegistration', $user);
+    $latest = $reviews->first();
+@endphp
+<p class="review-back"><a href="{{ route('admin.registrations') }}" class="btn btn-outline btn-sm">← Back to registrations</a></p>
 
-<div class="grid-2">
-    <!-- Applicant Info -->
-    <div class="card">
+<div class="review-layout">
+    {{-- 1. Applicant information --}}
+    <section class="card" aria-labelledby="applicant-heading">
         <div class="card-header">
-            <span class="card-title">Applicant Information</span>
-            <span class="badge badge-{{ $user->role }}">{{ ucfirst($user->role) }}</span>
+            <span class="card-title" id="applicant-heading">Applicant information</span>
+            <span>
+                <span class="badge badge-{{ $user->role }}">{{ ucfirst($user->role) }}</span>
+                <span class="badge badge-{{ $user->status }}">{{ ucfirst($user->status) }}</span>
+            </span>
         </div>
-        <div class="card-body">
-            @php
-            $fields = [
-                'Full Name'    => $user->full_name,
-                'Sex'          => $user->sex,
-                'Birthday'     => $user->birthday->format('F d, Y'),
-                'Age'          => $user->age . ' years old',
-                'Email'        => $user->email,
-                'Contact No.'  => $user->contact_no,
-                'Province'     => $user->province,
-                'Municipality' => $user->municipality,
-                'Barangay'     => $user->barangay,
-                'Street'       => $user->street ?? '—',
-                'House No.'    => $user->house_no ?? '—',
-                'Applied'      => $user->created_at->format('M d, Y h:i A'),
-            ];
-            if ($user->role === 'seller') {
-                $fields['Business Name']    = $user->business_name;
-                $fields['Line of Business'] = $user->line_of_business;
-            }
-            if ($user->role === 'courier') {
-                $fields['Vehicle Type'] = $user->vehicle_type;
-                $fields['Plate Number'] = $user->plate_number;
-                $fields['Delivery Area'] = $user->delivery_area ?? '—';
-            }
-            @endphp
-            <table class="blade-inline-2">
-                @foreach($fields as $label => $value)
-                <tr>
-                    <td class="blade-inline-3">{{ $label }}</td>
-                    <td class="blade-inline-4">{{ $value }}</td>
-                </tr>
+        @php
+            $fields = array_filter([
+                'Full name' => $user->full_name,
+                'Sex' => $user->sex,
+                'Birthday' => $user->birthday ? $user->birthday->format('F d, Y') . ' (' . $user->age . ' years old)' : null,
+                'Email' => $user->email,
+                'Contact no.' => $user->contact_no,
+                'Address' => collect([$user->house_no, $user->street, $user->barangay, $user->municipality, $user->province])->filter()->join(', '),
+                'Business name' => $user->business_name,
+                'Line of business' => $user->line_of_business,
+                'Provider type' => $user->provider_type ? ucfirst($user->provider_type) : null,
+                'Vehicle' => $user->vehicle_type ? $user->vehicle_type . ($user->plate_number ? ' · ' . $user->plate_number : '') : null,
+                'Delivery area' => $user->delivery_area,
+                'Submitted' => $user->created_at->format('M d, Y h:i A') . ' (' . $user->created_at->diffForHumans() . ')',
+            ]);
+        @endphp
+        <dl class="review-fields">
+            @foreach($fields as $label => $value)
+                <div><dt>{{ $label }}</dt><dd>{{ $value }}</dd></div>
+            @endforeach
+        </dl>
+    </section>
+
+    {{-- 2. Submitted requirements --}}
+    <section class="card" aria-labelledby="requirements-heading">
+        <div class="card-header"><span class="card-title" id="requirements-heading">Submitted requirements</span></div>
+        @if($documents)
+            <ul class="review-documents">
+                @foreach($documents as $document)
+                    <li>
+                        <span>{{ $document['label'] }}</span>
+                        <a href="{{ asset('storage/' . $document['path']) }}" target="_blank" rel="noopener" class="btn btn-outline btn-sm">Open<span class="sr-only"> {{ $document['label'] }} (opens in new tab)</span></a>
+                    </li>
                 @endforeach
-            </table>
-        </div>
-    </div>
-
-    <!-- Uploaded Documents -->
-    <div>
-        <div class="card blade-inline-5">
-            <div class="card-header"><span class="card-title">Uploaded Documents</span></div>
-            <div class="card-body blade-inline-6">
-                @if($user->id_upload)
-                <div>
-                    <div class="blade-inline-7">Government-Issued ID</div>
-                    <a href="{{ asset('storage/'.$user->id_upload) }}" target="_blank" class="btn btn-outline btn-sm">📎 View ID</a>
-                </div>
-                @endif
-                @if($user->business_permit)
-                <div>
-                    <div class="blade-inline-8">Business Permit</div>
-                    <a href="{{ asset('storage/'.$user->business_permit) }}" target="_blank" class="btn btn-outline btn-sm">📎 View Permit</a>
-                </div>
-                @endif
-                @if($user->or_cr_upload)
-                <div>
-                    <div class="blade-inline-9">OR/CR & Driver's License</div>
-                    <a href="{{ asset('storage/'.$user->or_cr_upload) }}" target="_blank" class="btn btn-outline btn-sm">📎 View OR/CR</a>
-                </div>
-                @endif
-            </div>
-        </div>
-
-        <!-- Decision -->
-        @if($user->status === 'pending')
-        <div class="card">
-            <div class="card-header"><span class="card-title">Decision</span></div>
-            <div class="card-body">
-                <!-- Approve -->
-                <form method="POST" action="/admin/registrations/{{ $user->id }}/approve" class="blade-inline-10">
-                    @csrf @method('PATCH')
-                    <p class="blade-inline-11">Approving will activate the account and notify the applicant via email.</p>
-                    <button type="submit" class="btn btn-success" onclick="return confirm('Approve this application?')"><svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 16.2-3.5-3.5L4.1 14.1 9 19l11-11-1.4-1.4z"/></svg>Approve Registration</button>
-                </form>
-                <hr class="blade-inline-12">
-                <!-- Disapprove -->
-                <form method="POST" action="/admin/registrations/{{ $user->id }}/disapprove">
-                    @csrf @method('PATCH')
-                    <div class="form-group">
-                        <label class="form-label">Reason for Disapproval <span class="blade-inline-13">*</span></label>
-                        <textarea name="reason" class="form-control" placeholder="State the reason..." required></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-danger" onclick="return confirm('Disapprove this application?')"><svg class="action-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.4 5 5 6.4l5.6 5.6L5 17.6 6.4 19l5.6-5.6 5.6 5.6 1.4-1.4-5.6-5.6L19 6.4 17.6 5 12 10.6 6.4 5z"/></svg>Disapprove Registration</button>
-                </form>
-            </div>
-        </div>
+            </ul>
         @else
-        <div class="card">
-            <div class="card-body">
-                <p class="blade-inline-14">Status: <span class="badge badge-{{ $user->status }}">{{ ucfirst($user->status) }}</span></p>
-            </div>
-        </div>
+            <div class="oversight-empty"><strong>No documents uploaded</strong></div>
         @endif
-    </div>
+    </section>
+
+    {{-- 3–5. Verification checklist, admin decision, decision reason --}}
+    <section class="card review-decision" aria-labelledby="decision-heading">
+        <div class="card-header"><span class="card-title" id="decision-heading">{{ $canDecide ? 'Verification & decision' : 'Decision' }}</span></div>
+        @if($canDecide)
+            <form method="POST" action="{{ route('admin.registrations.approve', $user) }}" class="review-form" novalidate>
+                @csrf @method('PATCH')
+                <fieldset class="review-checklist">
+                    <legend>Verification checklist</legend>
+                    <p class="oversight-description">Every item must be confirmed to approve. Unconfirmed items are recorded with a disapproval.</p>
+                    @foreach($checklist as $key => $item)
+                        <label class="review-check {{ $item['available'] ? '' : 'is-unavailable' }}">
+                            <input type="checkbox" name="checklist[{{ $key }}]" value="1" @checked(old("checklist.{$key}")) @disabled(! $item['available'])
+                                @error("checklist.{$key}") aria-invalid="true" aria-describedby="check-error-{{ $key }}" @enderror>
+                            <span>
+                                {{ $item['label'] }}
+                                @unless($item['available'])<span class="review-missing">Document not uploaded — cannot be confirmed</span>@endunless
+                                @error("checklist.{$key}")<span class="review-error" id="check-error-{{ $key }}">{{ $message }}</span>@enderror
+                            </span>
+                        </label>
+                    @endforeach
+                </fieldset>
+
+                <div class="form-group">
+                    <label class="form-label" for="decision-reason">Decision reason <span class="review-hint">— required to disapprove; sent to the applicant</span></label>
+                    <textarea id="decision-reason" name="reason" class="form-control" rows="3" maxlength="1000" @error('reason') aria-invalid="true" aria-describedby="reason-error" @enderror>{{ old('reason') }}</textarea>
+                    @error('reason')<span class="review-error" id="reason-error">{{ $message }}</span>@enderror
+                </div>
+
+                <div class="review-actions">
+                    <button type="submit" class="btn btn-success" onclick="return confirm('Approve this application and notify the applicant?')">Approve</button>
+                    <button type="submit" class="btn btn-danger" formaction="{{ route('admin.registrations.disapprove', $user) }}" onclick="return confirm('Disapprove this application and send the reason to the applicant?')">Disapprove</button>
+                </div>
+            </form>
+        @elseif($user->status === 'pending' && $user->role === 'courier')
+            <div class="card-body"><p>Courier applications are reviewed in the Logistics portal.</p></div>
+        @elseif($user->status === 'pending')
+            <div class="card-body"><p>This application is pending. Deciding it requires the registrations management permission.</p></div>
+        @elseif($latest)
+            <div class="card-body review-outcome">
+                <p><span class="badge badge-{{ $latest->decision }}">{{ ucfirst($latest->decision) }}</span> by {{ $latest->reviewer?->full_name ?? 'Admin' }} on {{ $latest->reviewed_at->format('M d, Y h:i A') }}</p>
+                @if($latest->reason)<p class="review-reason"><strong>Reason:</strong> {{ $latest->reason }}</p>@endif
+            </div>
+        @else
+            <div class="card-body"><p>Status: <span class="badge badge-{{ $user->status }}">{{ ucfirst($user->status) }}</span>. This decision was made before review history was recorded.</p></div>
+        @endif
+    </section>
+
+    {{-- 6. Previous review history --}}
+    <section class="card" aria-labelledby="history-heading">
+        <div class="card-header"><span class="card-title" id="history-heading">Review history</span></div>
+        @if($reviews->isEmpty())
+            <div class="oversight-empty"><strong>No reviews yet</strong></div>
+        @else
+            <ol class="review-history">
+                @foreach($reviews as $review)
+                    <li>
+                        <div class="review-history-head">
+                            <span class="badge badge-{{ $review->decision }}">{{ ucfirst($review->decision) }}</span>
+                            <span>{{ $review->reviewer?->full_name ?? 'Admin' }}</span>
+                            <time class="oversight-meta" datetime="{{ $review->reviewed_at->toIso8601String() }}">{{ $review->reviewed_at->format('M d, Y h:i A') }}</time>
+                        </div>
+                        @if($review->reason)<p class="review-reason">{{ $review->reason }}</p>@endif
+                        @php $checks = collect($review->verification_snapshot['checklist'] ?? []); @endphp
+                        @if($checks->isNotEmpty())
+                            <p class="oversight-meta">Checklist: {{ $checks->where('confirmed', true)->count() }} of {{ $checks->count() }} confirmed
+                                @if($checks->where('confirmed', false)->isNotEmpty()) · not confirmed: {{ $checks->where('confirmed', false)->pluck('label')->join('; ') }}@endif
+                            </p>
+                        @endif
+                    </li>
+                @endforeach
+            </ol>
+        @endif
+    </section>
+
+    {{-- 7. Audit history --}}
+    <section class="card" aria-labelledby="audit-heading">
+        <div class="card-header">
+            <span class="card-title" id="audit-heading">Audit history</span>
+            @can(\App\Auth\Permission::AUDIT_VIEW)<a href="{{ route('admin.audit') }}" class="oversight-description">All audit logs</a>@endcan
+        </div>
+        @if($auditHistory->isEmpty())
+            <div class="oversight-empty"><strong>No audited actions on this account</strong></div>
+        @else
+            <ul class="review-audit">
+                @foreach($auditHistory as $entry)
+                    <li>
+                        <span class="audit-action">{{ $entry->action }}</span>
+                        <span>{{ $entry->actor?->full_name ?? 'System' }}</span>
+                        @foreach($entry->changes ?? [] as $field => $change)
+                            <span class="oversight-meta">{{ $field }}: {{ $change['from'] ?? '—' }} → {{ $change['to'] ?? '—' }}</span>
+                        @endforeach
+                        <time class="oversight-meta" datetime="{{ $entry->created_at?->toIso8601String() }}">{{ $entry->created_at?->format('M d, Y h:i A') }}</time>
+                    </li>
+                @endforeach
+            </ul>
+        @endif
+    </section>
 </div>
 @endsection

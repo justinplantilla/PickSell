@@ -12,11 +12,13 @@
             <form method="GET">
                 <select name="status" class="filter-select" data-submit-on-change>
                     <option value="all" {{ $status==='all'?'selected':'' }}>All Orders</option>
+                    <option value="action_required" {{ $status==='action_required'?'selected':'' }}>Needs Processing</option>
                     <option value="pending" {{ $status==='pending'?'selected':'' }}>Pending</option>
                     <option value="processing" {{ $status==='processing'?'selected':'' }}>Processing</option>
                     <option value="shipped" {{ $status==='shipped'?'selected':'' }}>Shipped</option>
+                    <option value="delivered" {{ $status==='delivered'?'selected':'' }}>Delivered</option>
                     <option value="completed" {{ $status==='completed'?'selected':'' }}>Completed</option>
-                    <option value="cancelled" {{ $status==='cancelled'?'selected':'' }}>Cancelled</option>
+                    <option value="cancelled" {{ $status==='cancelled'?'selected':'' }}>Cancelled / returned</option>
                 </select>
             </form>
         </div>
@@ -34,7 +36,7 @@
                 <td>{{ $order->product_name }}</td>
                 <td>{{ $order->quantity }}</td>
                 <td>₱{{ number_format($order->amount, 2) }}</td>
-                <td><span class="badge badge-{{ $order->status }}">{{ $order->status }}</span></td>
+                <td><x-order-status-badge :status="$order->status" /></td>
                 <td class="blade-inline-3">{{ $order->created_at->format('M d, Y') }}</td>
                 <td>
                     <div class="blade-inline-4">

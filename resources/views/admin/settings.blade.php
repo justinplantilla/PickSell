@@ -93,7 +93,8 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Commission Rate (%)</label>
-                    <input type="number" name="commission_rate" class="form-control" value="{{ $commissionRate ?? 10 }}" min="0" max="100" step="0.01">
+                    <input type="number" name="commission_rate" class="form-control" value="{{ $commissionRate ?? 10 }}" min="0" max="100" step="0.01" @cannot(\App\Auth\Permission::COMMISSION_MANAGE) disabled aria-describedby="commission-rate-locked" @endcannot>
+                    @cannot(\App\Auth\Permission::COMMISSION_MANAGE)<small id="commission-rate-locked" class="form-hint">Requires commission management permission.</small>@endcannot
                 </div>
                 <div class="form-group">
                     <label class="form-label">Max File Upload Size (MB)</label>

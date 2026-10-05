@@ -46,6 +46,46 @@ function toggleSellerNotif() {
     if (dd.classList.contains('open')) loadSellerNotifs();
 }
 
+function refreshSellerReturnCount() {
+    const badge = document.getElementById('sellerReturnsBadge');
+    if (!badge) return;
+
+    fetch(badge.dataset.countUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' })
+        .then(response => {
+            if (!response.ok) throw new Error('Unable to load return request count');
+            return response.json();
+        })
+        .then(({ count: rawCount }) => {
+            const count = Math.max(0, Number(rawCount) || 0);
+            badge.textContent = count > 99 ? '99+' : String(count);
+            badge.hidden = count === 0;
+            badge.setAttribute('aria-label', `${count} return request${count === 1 ? '' : 's'} awaiting response`);
+
+            const alert = document.querySelector('[data-seller-return-alert]');
+            const emptyState = document.querySelector('[data-return-action-empty]');
+            if (alert) {
+                alert.hidden = count === 0;
+                const counter = alert.querySelector('[data-pending-return-count]');
+                const message = alert.querySelector('[data-pending-return-count-text]');
+                if (counter) counter.textContent = String(count);
+                if (message) message.textContent = `${count} return request${count === 1 ? '' : 's'} awaiting response`;
+            }
+            if (emptyState) {
+                const hasOtherActions = [...document.querySelectorAll('.action-item')].some(item => item !== alert && !item.hidden);
+                emptyState.hidden = count > 0 || hasOtherActions;
+            }
+        })
+        .catch(() => {});
+}
+
+refreshSellerReturnCount();
+window.setInterval(() => {
+    if (!document.hidden) refreshSellerReturnCount();
+}, 30000);
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshSellerReturnCount();
+});
+
 function loadSellerNotifs() {
     fetch('/seller/notifications')
         .then(response => {

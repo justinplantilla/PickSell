@@ -1,86 +1,175 @@
 @extends('admin.layout')
 @section('styles')
-@vite('resources/css/views/admin-dashboard.css')
+@vite(['resources/css/views/admin-oversight.css', 'resources/css/views/admin-dashboard.css'])
 @endsection
 @section('title', 'Dashboard')
 
 @section('content')
-<div class="stat-grid">
-    <div class="stat-card coral">
-        <div class="stat-card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M6 2v6l2 2-2 2v6h12v-6l-2-2 2-2V2H6zm10 14.5V20H8v-3.5l4-4 4 4zm0-9L12 11.5 8 7.5V4h8v3.5z"/></svg></div>
-        <div class="stat-card-num">{{ $stats['pending'] }}</div>
-        <div class="stat-card-label">Pending Approvals</div>
-    </div>
-    <div class="stat-card blue">
-        <div class="stat-card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM5.2 5H2V3H0v2h2l3.6 7.59L4.25 15A2 2 0 0 0 6 18h14v-2H6.42a.25.25 0 0 1-.25-.25l.03-.12L7.1 14h9.45c.75 0 1.41-.41 1.75-1.03L21.7 6.5A1 1 0 0 0 20.83 5H5.2z"/></svg></div>
-        <div class="stat-card-num">{{ $stats['buyers'] }}</div>
-        <div class="stat-card-label">Active Buyers</div>
-    </div>
-    <div class="stat-card green">
-        <div class="stat-card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-9 3h2v2h-2V7zm0 4h2v6h-2v-6zM7 7h2v2H7V7zm0 4h2v6H7v-6zm10 6h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg></div>
-        <div class="stat-card-num">{{ $stats['sellers'] }}</div>
-        <div class="stat-card-label">Active Sellers</div>
-    </div>
-    <div class="stat-card blue">
-        <div class="stat-card-icon">⚙</div>
-        <div class="stat-card-num">{{ $stats['logistics'] }}</div>
-        <div class="stat-card-label">Active Logistics</div>
-    </div>
-    <div class="stat-card orange">
-        <div class="stat-card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2a3 3 0 0 0 6 0h6a3 3 0 0 0 6 0h2v-5l-3-4zM6 18.5A1.5 1.5 0 1 1 7.5 17 1.5 1.5 0 0 1 6 18.5zm13.5-9 1.96 2.5H17V9.5h2.5zm-1.5 9A1.5 1.5 0 1 1 19.5 17a1.5 1.5 0 0 1-1.5 1.5z"/></svg></div>
-        <div class="stat-card-num">{{ $stats['couriers'] }}</div>
-        <div class="stat-card-label">Active Couriers</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg></div>
-        <div class="stat-card-num">{{ $stats['total'] }}</div>
-        <div class="stat-card-label">Total Users</div>
-    </div>
-    <div class="stat-card red">
-        <div class="stat-card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9A7.902 7.902 0 0 1 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1A7.902 7.902 0 0 1 20 12c0 4.42-3.58 8-8 8z"/></svg></div>
-        <div class="stat-card-num">{{ $stats['suspended'] }}</div>
-        <div class="stat-card-label">Suspended</div>
-    </div>
-</div>
+@if($kpis)
+<section class="command-kpis" aria-label="Key indicators">
+    @foreach($kpis as $kpi)
+        <a href="{{ $kpi['url'] }}" class="stat-card command-kpi {{ ($kpi['alert'] ?? false) ? 'is-alert' : '' }}" data-kpi="{{ $kpi['key'] }}">
+            <span class="stat-card-label command-kpi-label">{{ $kpi['label'] }}</span>
+            <span class="stat-card-num oversight-number">{{ number_format($kpi['value']) }}</span>
+            <span class="command-kpi-detail">
+                @if($kpi['alert'] ?? false)<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>@endif
+                {{ $kpi['detail'] }}
+            </span>
+        </a>
+    @endforeach
+</section>
+@endif
 
-<div class="grid-2">
-    <div class="card">
-        <div class="card-header"><span class="card-title">User Distribution</span></div>
-        <div class="card-body"><div id="userChart"></div></div>
-    </div>
-    <div class="card">
-        <div class="card-header"><span class="card-title">Registration Trend (Last 6 Months)</span></div>
-        <div class="card-body"><div id="trendChart"></div></div>
-    </div>
-</div>
-
-<div class="card">
+@if($lifecycle)
+<section class="card" aria-labelledby="lifecycle-heading">
     <div class="card-header">
-        <span class="card-title">Pending Applications</span>
-        <a href="/admin/registrations" class="btn btn-outline btn-sm">View All</a>
+        <span class="card-title" id="lifecycle-heading">Marketplace lifecycle</span>
+        <span class="oversight-description">Orders currently at each stage</span>
     </div>
-    @if($recentApps->isEmpty())
-        <div class="card-body blade-inline-1">No pending applications.</div>
-    @else
-    <table>
-        <thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Applied</th><th>Action</th></tr></thead>
-        <tbody>
-        @foreach($recentApps as $app)
-        <tr>
-            <td>{{ $app->full_name }}</td>
-            <td><span class="badge badge-{{ $app->role }}">{{ ucfirst($app->role) }}</span></td>
-            <td>{{ $app->email }}</td>
-            <td>{{ $app->created_at->diffForHumans() }}</td>
-            <td><a href="/admin/registrations/{{ $app->id }}" class="btn btn-coral btn-sm">Review</a></td>
-        </tr>
+    <ol class="command-lifecycle">
+        @foreach($lifecycle as $stage)
+            <li>
+                <a href="{{ $stage['url'] }}" class="command-stage">
+                    <strong class="oversight-number">{{ number_format($stage['count']) }}</strong>
+                    <span>{{ $stage['label'] }}</span>
+                </a>
+            </li>
         @endforeach
-        </tbody>
-    </table>
+    </ol>
+</section>
+@endif
+
+@if($pendingActions || $exceptions)
+<div class="command-panels">
+    @if($pendingActions)
+    <section class="card" aria-labelledby="pending-heading">
+        <div class="card-header"><span class="card-title" id="pending-heading">Pending actions</span></div>
+        <ul class="command-list">
+            @foreach($pendingActions as $action)
+                <li class="command-row">
+                    <span class="command-count oversight-number {{ $action['count'] ? '' : 'is-zero' }}">{{ number_format($action['count']) }}</span>
+                    <span class="command-row-copy"><strong>{{ $action['label'] }}</strong></span>
+                    @if($action['count'])
+                        <a href="{{ $action['url'] }}" class="btn btn-coral btn-sm">{{ $action['cta'] }}</a>
+                    @else
+                        <span class="command-done">Clear</span>
+                    @endif
+                </li>
+            @endforeach
+        </ul>
+    </section>
+    @endif
+
+    @if($exceptions)
+    <section class="card" id="exceptions" aria-labelledby="exceptions-heading">
+        <div class="card-header"><span class="card-title" id="exceptions-heading">Operational exceptions</span></div>
+        <ul class="command-list">
+            @foreach($exceptions as $exception)
+                <li class="command-row {{ $exception['count'] ? 'is-exception' : '' }}">
+                    <span class="command-count oversight-number {{ $exception['count'] ? '' : 'is-zero' }}">{{ number_format($exception['count']) }}</span>
+                    <span class="command-row-copy">
+                        <strong>
+                            @if($exception['count'])<svg class="command-alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>@endif
+                            {{ $exception['label'] }}
+                        </strong>
+                        <span class="oversight-meta">{{ $exception['detail'] }}</span>
+                    </span>
+                    @if($exception['count'])
+                        <a href="{{ $exception['url'] }}" class="btn btn-outline btn-sm">View</a>
+                    @else
+                        <span class="command-done">None</span>
+                    @endif
+                </li>
+            @endforeach
+        </ul>
+    </section>
     @endif
 </div>
+@endif
 
-<div data-admin-chart-data data-buyers="{{ $stats['buyers'] }}" data-sellers="{{ $stats['sellers'] }}" data-logistics="{{ $stats['logistics'] }}" data-couriers="{{ $stats['couriers'] }}" data-total="{{ $stats['total'] }}" hidden></div>
+@if($finance)
+<section class="card" aria-labelledby="finance-heading">
+    <div class="card-header">
+        <span class="card-title" id="finance-heading">Finance snapshot</span>
+        <span class="oversight-description">Completed orders · {{ rtrim(rtrim(number_format($finance['month']['commission_rate'], 2), '0'), '.') }}% commission</span>
+    </div>
+    <div class="oversight-table-wrap">
+        <table>
+            <thead><tr><th scope="col">Period</th><th scope="col">Gross sales</th><th scope="col">Platform commission</th><th scope="col">Net to sellers</th><th scope="col">Orders</th></tr></thead>
+            <tbody>
+                @foreach(['today' => 'Today', 'month' => 'This month'] as $key => $label)
+                    <tr>
+                        <th scope="row">{{ $label }}</th>
+                        <td class="oversight-number">₱{{ number_format($finance[$key]['gross_sales'], 2) }}</td>
+                        <td class="oversight-number">₱{{ number_format($finance[$key]['commission'], 2) }}</td>
+                        <td class="oversight-number">₱{{ number_format($finance[$key]['net_to_sellers'], 2) }}</td>
+                        <td class="oversight-number">{{ number_format($finance[$key]['completed_orders']) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+    <div class="command-links">
+        @can(\App\Auth\Permission::REPORTS_VIEW)<a href="{{ route('admin.reports') }}">Financial reports</a>@endcan
+        @can(\App\Auth\Permission::COMMISSION_VIEW)<a href="{{ route('admin.commission') }}">Commission</a>@endcan
+    </div>
+</section>
+@endif
+
+@if($pendingApplications->isNotEmpty())
+<section class="card" aria-labelledby="applications-heading">
+    <div class="card-header">
+        <span class="card-title" id="applications-heading">Oldest pending applications</span>
+        <a href="{{ route('admin.registrations', ['status' => 'pending']) }}" class="btn btn-outline btn-sm">View all</a>
+    </div>
+    <div class="oversight-table-wrap">
+        <table>
+            <thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Waiting</th><th>Action</th></tr></thead>
+            <tbody>
+            @foreach($pendingApplications as $application)
+                <tr>
+                    <td>{{ $application->full_name }}</td>
+                    <td><span class="badge badge-{{ $application->role }}">{{ ucfirst($application->role) }}</span></td>
+                    <td>{{ $application->email }}</td>
+                    <td>{{ $application->created_at->diffForHumans(null, true) }}</td>
+                    <td><a href="{{ route('admin.registrations.show', $application) }}" class="btn btn-coral btn-sm">Review</a></td>
+                </tr>
+            @endforeach
+            </tbody>
+        </table>
+    </div>
+</section>
+@endif
+
+@if($users)
+<div class="oversight-grid-2">
+    <section class="card" aria-labelledby="distribution-heading">
+        <div class="card-header">
+            <span class="card-title" id="distribution-heading">Active accounts</span>
+            @if($users['suspended'])<a href="{{ route('admin.users', ['status' => 'suspended']) }}" class="oversight-description">{{ number_format($users['suspended']) }} suspended</a>@endif
+        </div>
+        @php $distributionMax = max(1, max($users['distribution'])); @endphp
+        <ul class="oversight-bars">
+            @foreach($users['distribution'] as $label => $count)
+                <li class="oversight-bar-row" title="{{ $label }}: {{ number_format($count) }}">
+                    <span class="oversight-bar-label">{{ $label }}</span>
+                    <span class="oversight-bar-track" aria-hidden="true"><span class="oversight-bar-fill" style="width: {{ $count ? max(1, round($count / $distributionMax * 100, 1)) : 0 }}%; {{ $count ? '' : 'min-width:0' }}"></span></span>
+                    <span class="oversight-bar-value">{{ number_format($count) }}</span>
+                </li>
+            @endforeach
+        </ul>
+    </section>
+    <section class="card" aria-labelledby="trend-heading">
+        <div class="card-header"><span class="card-title" id="trend-heading">New registrations, last 6 months</span></div>
+        <div class="card-body">
+            <div id="trendChart" role="img" aria-label="New registrations per month: {{ collect($users['trend']['labels'])->zip($users['trend']['values'])->map(fn ($pair) => $pair[0] . ' ' . $pair[1])->join(', ') }}"></div>
+        </div>
+    </section>
+</div>
+<div data-admin-trend data-labels='@json($users['trend']['labels'])' data-values='@json($users['trend']['values'])' hidden></div>
+@endif
+@endsection
+
 @section('scripts')
 @vite('resources/js/views/admin-dashboard.js')
-@endsection
 @endsection

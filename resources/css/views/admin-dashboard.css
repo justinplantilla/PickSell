@@ -1,3 +1,48 @@
+/* Admin command center */
+.command-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
+.command-kpi { display: flex; flex-direction: column; gap: 0.2rem; text-decoration: none; color: inherit; transition: border-color 0.15s, box-shadow 0.15s; }
+.command-kpi:hover, .command-kpi:focus-visible { border-color: var(--coral); box-shadow: 0 6px 18px rgba(31, 35, 40, 0.08); }
+.command-kpi:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+.command-kpi-label { order: -1; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.7rem; color: #6b6b6b; }
+.command-kpi-detail { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.76rem; color: #6b6b6b; }
+.command-kpi-detail svg { width: 0.9rem; height: 0.9rem; flex-shrink: 0; }
+.command-kpi.is-alert { border-color: #f3c9c4; }
+.command-kpi.is-alert .stat-card-num, .command-kpi.is-alert .command-kpi-detail { color: #b91c1c; }
 
-/* Extracted inline declarations */
-.blade-inline-1 { color:#888 !important; font-size:0.88rem !important;  }
+.command-lifecycle { list-style: none; margin: 0; padding: 1rem 1.2rem 1.2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1.4rem; counter-reset: stage; }
+.command-lifecycle li { position: relative; }
+.command-lifecycle li:not(:last-child)::after { content: '→'; position: absolute; right: -1.05rem; top: 50%; transform: translateY(-50%); color: #b5ab9a; font-size: 0.9rem; }
+.command-stage { display: block; padding: 0.75rem 0.85rem; border: 1px solid #ece6db; border-radius: 10px; text-decoration: none; color: inherit; background: #fff; }
+.command-stage:hover, .command-stage:focus-visible { border-color: var(--coral); }
+.command-stage strong { display: block; font-size: 1.45rem; color: var(--charcoal); }
+.command-stage span { font-size: 0.76rem; color: #6b6b6b; }
+
+.command-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
+.command-list { list-style: none; margin: 0; padding: 0.3rem 0; }
+.command-row { display: grid; grid-template-columns: 3rem 1fr auto; align-items: center; gap: 0.8rem; padding: 0.7rem 1.2rem; border-bottom: 1px solid #f0ebe0; }
+.command-row:last-child { border-bottom: 0; }
+.command-count { font-size: 1.25rem; font-weight: 800; text-align: right; color: var(--charcoal); }
+.command-count.is-zero { color: #9a9a9a; font-weight: 600; }
+.command-row-copy strong { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.86rem; }
+.command-row.is-exception .command-count, .command-row.is-exception .command-row-copy strong { color: #b91c1c; }
+.command-alert-icon { width: 0.95rem; height: 0.95rem; flex-shrink: 0; }
+.command-done { font-size: 0.75rem; font-weight: 600; color: #15803d; }
+.command-links { display: flex; gap: 1rem; padding: 0.7rem 1.2rem 1rem; font-size: 0.8rem; }
+.command-links a { color: var(--coral-dark); font-weight: 600; }
+
+@media (max-width: 640px) {
+    .command-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+    .command-lifecycle { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+    .command-lifecycle li::after { display: none; }
+    .command-row { grid-template-columns: 2.4rem 1fr; }
+    .command-row > .btn, .command-row > .command-done { grid-column: 2; justify-self: start; }
+}
+
+body.dark .command-kpi-label, body.dark .command-kpi-detail, body.dark .command-stage span { color: #a3a3a3; }
+body.dark .command-stage { background: #1e1e1e; border-color: #2f2f2f; }
+body.dark .command-stage strong, body.dark .command-count { color: #e5e7eb; }
+body.dark .command-row { border-color: #2a2a2a; }
+body.dark .command-kpi.is-alert { border-color: #5b1d1d; }
+body.dark .command-kpi.is-alert .stat-card-num, body.dark .command-kpi.is-alert .command-kpi-detail,
+body.dark .command-row.is-exception .command-count, body.dark .command-row.is-exception .command-row-copy strong { color: #fca5a5; }
+body.dark .command-done { color: #86efac; }

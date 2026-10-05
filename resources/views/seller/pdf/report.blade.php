@@ -14,7 +14,7 @@
         .period { margin-top: 4px; color: #6b7280; font-size: 10px; }
         .seller { margin-top: 12px; color: #4b5563; }
         .summary { width: 100%; border-collapse: separate; border-spacing: 8px; margin: 15px -8px 12px; }
-        .summary td { width: 25%; padding: 11px; border: 1px solid #e5e7eb; border-radius: 7px; background: #f9fafb; }
+        .summary td { width: 20%; padding: 9px; border: 1px solid #e5e7eb; border-radius: 7px; background: #f9fafb; }
         .summary-label { color: #6b7280; font-size: 8px; text-transform: uppercase; letter-spacing: .6px; }
         .summary-value { margin-top: 5px; color: #e8472a; font-size: 15px; font-weight: 800; }
         .section-title { margin: 18px 0 7px; color: #e8472a; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .7px; }
@@ -36,9 +36,10 @@
 
     <table class="summary">
         <tr>
-            <td><div class="summary-label">Total sales</div><div class="summary-value">PHP {{ number_format($totalSales, 2) }}</div></td>
+            <td><div class="summary-label">Gross sales</div><div class="summary-value">PHP {{ number_format($totalSales, 2) }}</div></td>
+            <td><div class="summary-label">Commission ({{ number_format($commissionRate, 2) }}%)</div><div class="summary-value">-PHP {{ number_format($totalCommission, 2) }}</div></td>
+            <td><div class="summary-label">Net earnings</div><div class="summary-value">PHP {{ number_format($totalNetEarnings, 2) }}</div></td>
             <td><div class="summary-label">Completed orders</div><div class="summary-value">{{ $totalOrders }}</div></td>
-            <td><div class="summary-label">Net profit</div><div class="summary-value">PHP {{ number_format($totalProfit, 2) }}</div></td>
             <td><div class="summary-label">Average order</div><div class="summary-value">PHP {{ $totalOrders ? number_format($totalSales / $totalOrders, 2) : '0.00' }}</div></td>
         </tr>
     </table>
@@ -55,6 +56,26 @@
     </table>
     @else
         <div class="empty">No sales data for this period.</div>
+    @endif
+
+    <div class="section-title">Sales and net earnings by order</div>
+    @if($financialOrders->isNotEmpty())
+    <table class="data">
+        <thead><tr><th>Order ID / date</th><th>Gross sale</th><th>Commission ({{ number_format($commissionRate, 2) }}%)</th><th>Net earnings</th><th>Status</th></tr></thead>
+        <tbody>
+        @foreach($financialOrders as $order)
+            <tr>
+                <td>{{ $order['order_number'] }}<br>{{ $order['created_at']->format('M d, Y') }}</td>
+                <td>PHP {{ number_format($order['amount'], 2) }}</td>
+                <td>-PHP {{ number_format($order['commission'], 2) }}</td>
+                <td>PHP {{ number_format($order['net_earnings'], 2) }}</td>
+                <td>{{ ucfirst($order['status']) }}</td>
+            </tr>
+        @endforeach
+        </tbody>
+    </table>
+    @else
+        <div class="empty">No completed orders for this period.</div>
     @endif
 
     <div class="section-title">Top products</div>

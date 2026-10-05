@@ -48,8 +48,8 @@
         </div>
         @if(isset($product) && $product)
         <div class="chat-product-context">
-            @if($product->image)
-            <img src="{{ Storage::url($product->image) }}" alt="{{ $product->name }}">
+            @if($product->primary_image)
+            <img src="{{ Storage::url($product->primary_image) }}" alt="{{ $product->name }}">
             @endif
             <div class="chat-product-copy">
                 <span class="chat-product-kicker">Product inquiry</span>

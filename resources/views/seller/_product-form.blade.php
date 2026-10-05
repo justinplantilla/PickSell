@@ -50,8 +50,16 @@
         <label class="form-label">Stock *</label>
         <input type="number" name="stock" class="form-control" min="0" required>
     </div>
-    <div class="form-group">
-        <label class="form-label">Product Image</label>
-        <input type="file" name="image" class="form-control" accept="image/*">
+</div>
+<div class="form-group product-gallery" data-product-gallery data-max="{{ \App\Models\Product::MAX_IMAGES }}" data-upload-url="{{ route('seller.inventory.images.store') }}" data-discard-url="{{ url('/seller/inventory/images') }}">
+    <div class="product-gallery-head">
+        <span class="form-label" id="gallery-label-{{ !empty($edit) ? 'edit' : 'add' }}">Product Images</span>
+        <span class="product-gallery-count" data-gallery-count>0 / {{ \App\Models\Product::MAX_IMAGES }}</span>
     </div>
+    <ul class="product-gallery-grid" data-gallery-grid aria-labelledby="gallery-label-{{ !empty($edit) ? 'edit' : 'add' }}"></ul>
+    <input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden data-gallery-input>
+    <div data-gallery-fields hidden></div>
+    <small class="product-images-hint">Up to {{ \App\Models\Product::MAX_IMAGES }} images · JPG, PNG or WEBP · 2MB each. The first image is the cover unless you choose another. Use the arrow buttons to reorder.</small>
+    <p class="product-gallery-message" data-gallery-message></p>
+    <p class="product-gallery-sr" data-gallery-live role="status" aria-live="polite" aria-atomic="true"></p>
 </div>

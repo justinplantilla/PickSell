@@ -1,12 +1,45 @@
+/* User account detail */
+.account-back { margin: 0 0 1rem; }
+.account-layout { display: grid; gap: 1rem; max-width: 960px; }
+.account-layout > .card { margin-bottom: 0; }
+.account-pad { padding: 0.2rem 1.2rem 1rem; margin: 0; }
 
-.user-actions-cell { min-width: 238px; vertical-align: middle; }
-.user-actions { display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap; }
-.user-actions form { margin: 0; }
-.user-actions .btn { min-width: 76px; white-space: nowrap; text-align: center; }
-.user-actions .btn-outline { min-width: 88px; }
-.users-empty-state { text-align: center; color: #888; padding: 2rem; }
-@media (max-width: 900px) {
-	.user-actions-cell { min-width: 210px; }
-	.user-actions .btn { min-width: 72px; }
-	.user-actions .btn-outline { min-width: 84px; }
-}
+.account-fields { margin: 0; padding: 0.4rem 1.2rem 1rem; font-size: 0.86rem; }
+.account-fields > div { display: grid; grid-template-columns: 8rem 1fr; gap: 0.6rem; padding: 0.35rem 0; border-bottom: 1px solid #f4efe6; }
+.account-fields > div:last-child { border-bottom: 0; }
+.account-fields dt { font-weight: 600; color: #6b6b6b; }
+.account-fields dd { margin: 0; overflow-wrap: anywhere; }
+
+.account-subheading { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #6b6b6b; margin: 0 0 0.5rem; }
+.account-subheading-padded { padding: 0.6rem 1.2rem 0; border-top: 1px solid #f0ebe0; }
+.account-actions { padding: 0.9rem 1.2rem; display: grid; gap: 0.6rem; }
+.account-action { border: 1px solid #ece6db; border-radius: 10px; }
+.account-action > summary { cursor: pointer; padding: 0.65rem 0.9rem; font-weight: 700; font-size: 0.86rem; list-style-position: inside; }
+.account-action > summary:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; border-radius: 10px; }
+.account-action.is-blocking > summary { color: #b91c1c; }
+.account-action[open] { border-color: #d9cfbf; }
+.account-action-form { display: grid; gap: 0.5rem; padding: 0 0.9rem 0.9rem; }
+.account-action-form .btn { justify-self: start; }
+.account-warning { display: flex; gap: 0.45rem; align-items: flex-start; margin: 0; padding: 0.6rem 0.7rem; border-radius: 8px; background: #fef6f5; color: #8a1c1c; font-size: 0.8rem; }
+.account-warning svg { width: 1rem; height: 1rem; flex-shrink: 0; margin-top: 0.05rem; }
+.account-confirm { display: flex; gap: 0.5rem; align-items: flex-start; font-size: 0.82rem; cursor: pointer; }
+.account-confirm input { width: 1rem; height: 1rem; margin-top: 0.1rem; accent-color: #b91c1c; }
+.account-error { font-size: 0.75rem; font-weight: 600; color: #b91c1c; }
+
+.account-timeline, .account-list { list-style: none; margin: 0; padding: 0.3rem 1.2rem 1rem; display: grid; gap: 0.7rem; }
+.account-timeline li { display: grid; gap: 0.15rem; padding-left: 0.9rem; border-left: 2px solid #ece6db; }
+.account-transition { font-size: 0.86rem; }
+.account-reason { margin: 0.2rem 0 0; font-size: 0.82rem; white-space: pre-line; }
+.account-list li { display: flex; justify-content: space-between; gap: 0.8rem; align-items: flex-start; font-size: 0.85rem; padding-bottom: 0.7rem; border-bottom: 1px solid #f0ebe0; }
+.account-list li:last-child { border-bottom: 0; padding-bottom: 0; }
+
+.account-stats { margin: 0; padding: 0.5rem 1.2rem 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.6rem; }
+.account-stats > div { border: 1px solid #ece6db; border-radius: 10px; padding: 0.6rem 0.75rem; }
+.account-stats dt { font-size: 0.72rem; color: #6b6b6b; }
+.account-stats dd { margin: 0.15rem 0 0; font-size: 1.15rem; font-weight: 800; }
+
+body.dark .account-fields > div, body.dark .account-subheading-padded, body.dark .account-list li { border-color: #2a2a2a; }
+body.dark .account-fields dt, body.dark .account-subheading, body.dark .account-stats dt { color: #a3a3a3; }
+body.dark .account-action, body.dark .account-stats > div, body.dark .account-timeline li { border-color: #2f2f2f; }
+body.dark .account-warning { background: #2d0a0a; color: #fca5a5; }
+body.dark .account-action.is-blocking > summary, body.dark .account-error { color: #fca5a5; }

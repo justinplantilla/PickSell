@@ -58,17 +58,24 @@ class ProductSeeder extends Seeder
         ];
 
         foreach ($products as $product) {
-            Product::updateOrCreate(
+            $image = $product['image'];
+            unset($product['image']);
+
+            $model = Product::updateOrCreate(
                 ['seller_id' => $seller->id, 'name' => $product['name']],
                 array_merge($product, [
                     'seller_id' => $seller->id,
                     'description' => 'A quality PickSell find from our demo catalog.',
                     'voucher_code' => null,
                     'voucher_discount' => 0,
-                    'image' => $product['image'],
                     'is_featured' => $product['is_featured'] ?? false,
                     'status' => 'active',
                 ])
+            );
+
+            $model->images()->updateOrCreate(
+                ['is_primary' => true],
+                ['image_url' => $image, 'display_order' => 1, 'alt_text' => $model->name]
             );
         }
 

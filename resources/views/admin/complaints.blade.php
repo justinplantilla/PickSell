@@ -1,6 +1,6 @@
 @extends('admin.layout')
 @section('styles')
-@vite('resources/css/views/admin-complaints.css')
+@vite(['resources/css/views/admin-complaints.css', 'resources/css/views/admin-oversight.css'])
 @endsection
 @section('title', 'Complaints & Disputes')
 
@@ -18,6 +18,7 @@
             </select>
         </form>
     </div>
+    @include('admin.returns._care_tabs')
     <table>
         <thead>
             <tr><th>#</th><th>Filed By</th><th>Against</th><th>Subject</th><th>Status</th><th>Date</th><th>Action</th></tr>

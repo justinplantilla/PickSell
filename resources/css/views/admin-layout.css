@@ -56,6 +56,7 @@
         body.dark .badge-archived   { background: #1f1f1f; color: #9ca3af; }
         body.dark .badge-buyer      { background: #0c1a3a; color: #93c5fd; }
         body.dark .badge-seller     { background: #052e16; color: #86efac; }
+        body.dark .badge-logistics  { background: #1e1536; color: #c4b5fd; }
         body.dark .badge-courier    { background: #2d1500; color: #fdba74; }
         body.dark .badge-processing { background: #0c1a3a; color: #93c5fd; }
         .dm-toggle { position: fixed; bottom: 1.2rem; right: 1.2rem; width: 42px; height: 42px; border-radius: 50%; background: #2D2D2D; color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 12px rgba(0,0,0,0.25); z-index: 9999; transition: background 0.2s; }
@@ -184,6 +185,14 @@
         .badge-buyer   { background: #eff6ff; color: #2563eb; }
         .badge-seller  { background: #f0fdf4; color: #16a34a; }
         .badge-courier { background: #fff7ed; color: #d97706; }
+        .badge-logistics { background: #f5f3ff; color: #6d28d9; }
+        /* Light-mode tones that previously existed only for dark mode */
+        .badge-processing { background: #eff6ff; color: #1d4ed8; }
+        .badge-shipped,
+        .badge-active,
+        .badge-completed { background: #f0fdf4; color: #15803d; }
+        .badge-cancelled { background: #fef2f0; color: #b91c1c; }
+        .badge-archived { background: #f4f4f4; color: #6b6b6b; }
 
         /* Buttons */
         .btn { display: inline-block; padding: 0.4rem 0.9rem; border-radius: 6px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }

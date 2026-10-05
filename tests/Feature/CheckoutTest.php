@@ -69,7 +69,6 @@ class CheckoutTest extends TestCase
             'voucher_code' => null,
             'voucher_discount' => 0,
             'stock' => 10,
-            'image' => null,
             'status' => 'active',
         ]);
 
@@ -79,6 +78,7 @@ class CheckoutTest extends TestCase
             'product_id' => $product->id,
             'quantity' => 1,
         ]);
+        config()->set('app.platform_commission_rate', 12.5);
 
         $logistics = User::create([
             'role' => 'logistics',
@@ -101,6 +101,11 @@ class CheckoutTest extends TestCase
             'business_name' => 'Fast Route Logistics',
         ]);
 
+        $this->actingAs($buyer)
+            ->get('/buyer/cart/checkout?' . http_build_query(['item_ids' => [$item->id]]))
+            ->assertOk()
+            ->assertSee('Checkout');
+
         $response = $this->actingAs($buyer)
             ->from('/buyer/cart')
             ->post('/buyer/cart/checkout', [
@@ -117,6 +122,7 @@ class CheckoutTest extends TestCase
             'logistics_id' => $logistics->id,
             'quantity' => 1,
             'status' => 'placed',
+            'commission' => 62.50,
         ]);
     }
 }

@@ -54,6 +54,8 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'platform_commission_rate' => (float) env('PLATFORM_COMMISSION_RATE', 10),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

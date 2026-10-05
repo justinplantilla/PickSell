@@ -5,78 +5,231 @@
 @section('title', 'Dashboard')
 
 @section('content')
-<div class="stat-grid">
-    <div class="stat-card coral">
-        <div class="stat-card-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.36C18 2.06 15.94 0 13.36 0c-1.3 0-2.48.52-3.36 1.36C9.12.52 7.94 0 6.64 0 4.06 0 2 2.06 2 4.64c0 .48.11.92.18 1.36H0v14c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 14H4V8h16v10z"/></svg>
+@php
+    $periodLabel = ['7D' => '7 days', '30D' => '30 days', '6M' => '6 months'][$range];
+    $rangeLabels = ['7D' => '7 Days', '30D' => '30 Days', '6M' => '6 Months'];
+@endphp
+<div class="seller-dashboard-shell">
+    <div class="dashboard-status-band">
+        <div class="store-greeting">
+            <span class="eyebrow">Seller overview</span>
+            <h2>{{ $greeting }}, {{ $storeName }}</h2>
+            <div class="greeting-meta">
+                <time class="store-date" datetime="{{ $currentDate->toDateString() }}">{{ $currentDate->format('l, F j, Y') }}</time>
+                @if($storeStatus)
+                    <span class="store-status store-status-{{ $storeStatus['tone'] }}">{{ $storeStatus['label'] }}</span>
+                @endif
+            </div>
         </div>
-        <div class="stat-card-num">{{ $stats['total_orders'] }}</div>
-        <div class="stat-card-label">Total Orders</div>
+        <a href="{{ route('seller.inventory', ['action' => 'create']) }}" class="btn btn-coral dashboard-cta">+ Add Product</a>
     </div>
-    <div class="stat-card orange">
-        <div class="stat-card-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-        </div>
-        <div class="stat-card-num">{{ $stats['pending_orders'] }}</div>
-        <div class="stat-card-label">Pending Orders</div>
-    </div>
-    <div class="stat-card green">
-        <div class="stat-card-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-        </div>
-        <div class="stat-card-num">{{ $stats['completed_orders'] }}</div>
-        <div class="stat-card-label">Completed Orders</div>
-    </div>
-    <div class="stat-card blue">
-        <div class="stat-card-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
-        </div>
-        <div class="stat-card-num">₱{{ number_format($stats['total_sales'], 2) }}</div>
-        <div class="stat-card-label">Total Sales</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-card-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M19 6H5c-1.1 0-2 .9-2 2v9c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 11H5V8h14v9zM5 4h14v1H5zm2-2h10v1H7z"/></svg>
-        </div>
-        <div class="stat-card-num">{{ $stats['total_products'] }}</div>
-        <div class="stat-card-label">Active Products</div>
-    </div>
-    <div class="stat-card red">
-        <div class="stat-card-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
-        </div>
-        <div class="stat-card-num">{{ $stats['low_stock'] }}</div>
-        <div class="stat-card-label">Low Stock Items</div>
-    </div>
-</div>
 
-<div class="grid-2">
-    <div class="card">
-        <div class="card-header"><span class="card-title">Monthly Sales (Last 6 Months)</span></div>
-        <div class="card-body"><div id="salesChart" data-seller-sales-chart data-sales='@json($sales)' data-months='@json($months)'></div></div>
-    </div>
-    <div class="card">
-        <div class="card-header">
-            <span class="card-title">Recent Orders</span>
-            <a href="/seller/orders" class="btn btn-outline btn-sm">View All</a>
+    <div class="action-panel">
+        <div class="section-heading">
+            <span class="panel-title">Needs your attention</span>
+            <p class="panel-description">Quick actions to keep orders moving and products available.</p>
         </div>
-        <div class="card-body blade-inline-1">
-            @if($recentOrders->isEmpty())
-                <div class="blade-inline-2">No orders yet.</div>
+        <div class="action-list">
+            @if($actionRequiredOrders > 0)
+            <div class="action-item action-item--orders">
+                <div class="action-copy">
+                    <span class="action-count">{{ $actionRequiredOrders }}</span>
+                    <div>
+                        <strong>Unfulfilled orders</strong>
+                        <small>New and in-progress orders need preparation or handoff.</small>
+                    </div>
+                </div>
+                <a href="{{ route('seller.orders', ['status' => 'action_required']) }}" class="btn btn-outline btn-sm dashboard-action-link">Process orders &rarr;</a>
+            </div>
+            @endif
+            <div class="action-item action-item--orders" data-seller-return-alert @if($actionRequiredReturns === 0) hidden @endif>
+                <div class="action-copy">
+                    <span class="action-count" data-pending-return-count>{{ $actionRequiredReturns }}</span>
+                    <div>
+                        <strong><span data-pending-return-count-text>{{ $actionRequiredReturns }} return request{{ $actionRequiredReturns === 1 ? '' : 's' }} awaiting response</span></strong>
+                        <small>Review the buyer's request and decide on the return.</small>
+                    </div>
+                </div>
+                <a href="{{ route('seller.returns', ['status' => 'requested']) }}" class="btn btn-outline btn-sm dashboard-action-link">Review &rarr;</a>
+            </div>
+            @if($lowStockCount > 0)
+            <div class="action-item action-item--stock">
+                <div class="action-copy">
+                    <span class="action-count">{{ $lowStockCount }}</span>
+                    <div>
+                        <strong>Inventory below threshold</strong>
+                        <small>Active products with 5 or fewer units remaining.</small>
+                    </div>
+                </div>
+                <a href="{{ route('seller.inventory', ['filter' => 'low-stock']) }}" class="btn btn-outline btn-sm dashboard-action-link">Restock &rarr;</a>
+            </div>
+            @endif
+            <x-dashboard-empty-state icon="complete" title="You're all caught up" description="No orders need processing and no active products are below the stock threshold." data-return-action-empty :hidden="$actionRequiredOrders > 0 || $actionRequiredReturns > 0 || $lowStockCount > 0" />
+        </div>
+    </div>
+
+    <div class="kpi-grid">
+        <div class="kpi-block">
+            <div class="kpi-title">Business health</div>
+            <div class="kpi-list">
+                <a href="{{ route('seller.orders', ['status' => 'completed']) }}" class="kpi-item kpi-link">
+                    <span>Total sales</span>
+                    <strong>₱{{ number_format($totalSales, 2) }}</strong>
+                    <small>{{ $salesDelta > 0 ? '↑' : ($salesDelta < 0 ? '↓' : '→') }} {{ number_format(abs($salesDelta), 1) }}% vs previous {{ $periodLabel }}</small>
+                </a>
+                <a href="{{ route('seller.orders') }}" class="kpi-item kpi-link">
+                    <span>Total orders</span>
+                    <strong>{{ $totalOrders }}</strong>
+                    <small>{{ $ordersDelta > 0 ? '↑' : ($ordersDelta < 0 ? '↓' : '→') }} {{ number_format(abs($ordersDelta), 1) }}% vs previous {{ $periodLabel }}</small>
+                </a>
+            </div>
+        </div>
+
+        <div class="kpi-block">
+            <div class="kpi-title">Order pipeline</div>
+            <div class="kpi-list">
+                <a href="{{ route('seller.orders', ['status' => 'completed']) }}" class="kpi-item kpi-link">
+                    <span>Completed orders</span>
+                    <strong>{{ $completedOrders }}</strong>
+                </a>
+                <a href="{{ route('seller.orders', ['status' => 'pending']) }}" class="kpi-item kpi-link">
+                    <span>Pending orders</span>
+                    <strong>{{ $pendingOrders }}</strong>
+                </a>
+            </div>
+        </div>
+
+        <div class="kpi-block">
+            <div class="kpi-title">Catalog health</div>
+            <div class="kpi-list">
+                <a href="{{ route('seller.inventory', ['status' => 'active']) }}" class="kpi-item kpi-link">
+                    <span>Active products</span>
+                    <strong>{{ $activeProducts }}</strong>
+                </a>
+                <a href="{{ route('seller.inventory', ['filter' => 'low-stock']) }}" class="kpi-item kpi-link">
+                    <span>Low-stock products</span>
+                    <strong>{{ $lowStockCount }}</strong>
+                    <small>5 or fewer units remaining</small>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-grid">
+        <div class="panel chart-panel">
+            <div class="panel-header">
+                <div>
+                    <span class="panel-title">Sales and order trends</span>
+                    <p class="panel-description">{{ $metric === 'sales' ? 'Completed sales' : 'Order count' }} across the last {{ $periodLabel }}.</p>
+                </div>
+                <div class="segmented-control">
+                    @foreach(['7D', '30D', '6M'] as $option)
+                        <a href="{{ route('seller.dashboard', ['range' => $option, 'metric' => $metric]) }}" class="range-pill {{ $range === $option ? 'active' : '' }}" aria-label="Show {{ $rangeLabels[$option] }}" aria-current="{{ $range === $option ? 'true' : 'false' }}">{{ $rangeLabels[$option] }}</a>
+                    @endforeach
+                </div>
+            </div>
+            <div class="chart-toolbar">
+                <div class="toolbar-group">
+                    <a href="{{ route('seller.dashboard', ['range' => $range, 'metric' => 'sales']) }}" class="metric-pill {{ $metric === 'sales' ? 'active' : '' }}" aria-current="{{ $metric === 'sales' ? 'true' : 'false' }}">Sales (PHP)</a>
+                    <a href="{{ route('seller.dashboard', ['range' => $range, 'metric' => 'orders']) }}" class="metric-pill {{ $metric === 'orders' ? 'active' : '' }}" aria-current="{{ $metric === 'orders' ? 'true' : 'false' }}">Orders (count)</a>
+                </div>
+            </div>
+            @if(array_sum($chartData['values']) > 0)
+                <div class="chart-visual" data-chart-visual data-chart-state="loading">
+                    <div class="chart-skeleton" role="status" aria-label="Loading analytics chart">
+                        <div class="chart-skeleton-bars">
+                            @foreach([34, 57, 43, 76, 52, 88, 66] as $height)
+                                <span style="height: {{ $height }}%"></span>
+                            @endforeach
+                        </div>
+                        <span class="chart-skeleton-label">Preparing chart...</span>
+                    </div>
+                    <div id="salesChart" data-seller-sales-chart data-chart-metric="{{ $metric }}" data-chart-values='@json($chartData["values"])' data-chart-labels='@json($chartData["labels"])' aria-label="{{ $metric === 'sales' ? 'Sales' : 'Order count' }} for the last {{ $periodLabel }}"></div>
+                    <div class="chart-fallback">
+                        <x-dashboard-empty-state icon="analytics" title="Chart unavailable" description="The analytics chart could not be loaded. Refresh to try again." />
+                    </div>
+                </div>
             @else
-            <table>
-                <thead><tr><th>Order #</th><th>Buyer</th><th>Amount</th><th>Status</th></tr></thead>
-                <tbody>
-                @foreach($recentOrders as $order)
-                <tr>
-                    <td><a href="/seller/orders/{{ $order->id }}" class="blade-inline-3">{{ $order->order_number }}</a></td>
-                    <td>{{ $order->buyer->full_name ?? '—' }}</td>
-                    <td>₱{{ number_format($order->amount, 2) }}</td>
-                    <td><span class="badge badge-{{ $order->status }}">{{ $order->status }}</span></td>
-                </tr>
-                @endforeach
-                </tbody>
-            </table>
+                <x-dashboard-empty-state icon="analytics" title="No activity for this period" description="Sales and order activity will appear here when you receive orders." />
+            @endif
+        </div>
+
+        <div class="panel breakdown-panel">
+            <div class="panel-header">
+                <div>
+                    <span class="panel-title">Orders by status</span>
+                    <p class="panel-description">A snapshot of your current order pipeline.</p>
+                </div>
+            </div>
+            @if($totalOrders === 0)
+                <x-dashboard-empty-state icon="orders" title="No order activity yet" description="Order status distribution will appear when your first order arrives." />
+            @else
+                <div class="status-list">
+                    @foreach($orderBreakdown as $status)
+                    <a href="{{ route('seller.orders', ['status' => $status['filter']]) }}" class="status-row status-row-link">
+                        <div class="status-row-heading">
+                            <span>{{ $status['label'] }}</span>
+                            <strong>{{ $status['count'] }}</strong>
+                        </div>
+                        <div class="status-track" role="img" aria-label="{{ $status['label'] }}: {{ $status['count'] }} orders, {{ number_format($status['percentage'], 1) }} percent">
+                            <span class="status-bar status-bar-{{ $status['tone'] }}" style="width: {{ $status['percentage'] }}%"></span>
+                        </div>
+                        <small class="status-description">{{ $status['description'] }} · {{ number_format($status['percentage'], 1) }}%</small>
+                    </a>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+    </div>
+
+    <div class="content-grid lower-grid">
+        <div class="panel recent-orders-panel">
+            <div class="panel-header">
+                <div>
+                    <span class="panel-title">Recent orders</span>
+                    <p class="panel-description">Your latest orders, buyers, totals, and fulfillment status.</p>
+                </div>
+                <a href="{{ route('seller.orders') }}" class="btn btn-outline btn-sm">View all</a>
+            </div>
+            @if($recentOrders->isEmpty())
+                <x-dashboard-empty-state icon="orders" title="No recent orders" description="Customer orders will appear here as soon as your store receives them." />
+            @else
+                <div class="recent-orders-table">
+                    @foreach($recentOrders as $order)
+                        <a href="{{ route('seller.orders.show', $order->id) }}" class="order-row" aria-label="View order {{ $order->order_number }} for {{ $order->buyer->full_name ?? 'Customer' }}">
+                            <span class="order-number">{{ $order->order_number }}</span>
+                            <div class="order-meta">
+                                <span>{{ $order->buyer->full_name ?? 'Customer' }}</span>
+                                <span>₱{{ number_format($order->amount, 2) }}</span>
+                            </div>
+                            <x-order-status-badge :status="$order->status" />
+                        </a>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+
+        <div class="panel inventory-panel">
+            <div class="panel-header">
+                <div>
+                    <span class="panel-title">Low-stock inventory</span>
+                    <p class="panel-description">Active products with 5 or fewer units in stock.</p>
+                </div>
+            </div>
+            @if($lowStockProducts->isEmpty())
+                <x-dashboard-empty-state icon="catalog" title="Catalog fully stocked" description="All active products have more than {{ \App\Models\Product::LOW_STOCK_THRESHOLD }} units available." />
+            @else
+                <div class="inventory-list">
+                    @foreach($lowStockProducts as $product)
+                        <div class="inventory-item">
+                            <span>{{ $product->name }}</span>
+                            <span class="inventory-item-stock"><strong>{{ $product->stock }} {{ $product->stock === 1 ? 'unit' : 'units' }} left</strong><x-stock-status-badge :product="$product" /></span>
+                        </div>
+                    @endforeach
+                    @if($lowStockCount > $lowStockProducts->count())
+                        <a href="{{ route('seller.inventory', ['filter' => 'low-stock']) }}" class="inventory-more">+ {{ $lowStockCount - $lowStockProducts->count() }} more</a>
+                    @endif
+                </div>
             @endif
         </div>
     </div>

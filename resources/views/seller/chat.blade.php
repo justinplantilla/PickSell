@@ -41,8 +41,8 @@
         <div class="chat-messages" id="chatMessages">
             @if(isset($product) && $product)
             <div class="blade-inline-4">
-                @if($product->image)
-                <img src="{{ Storage::url($product->image) }}" class="blade-inline-5">
+                @if($product->primary_image)
+                <img src="{{ Storage::url($product->primary_image) }}" class="blade-inline-5">
                 @endif
                 <div class="blade-inline-6">
                     <div class="blade-inline-7">Inquiring about</div>
