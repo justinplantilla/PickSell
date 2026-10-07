@@ -180,19 +180,33 @@ class UserAccountModerationTest extends TestCase
     {
         $active = $this->user('buyer');
         $suspended = $this->user('seller', 'suspended');
+        $pending = $this->user('buyer', 'pending');
+        $pendingCourier = $this->user('courier', 'pending');
 
         $this->actingAs($this->admin)->get(route('admin.users'))
             ->assertOk()
+            ->assertSee('Review &amp; approve', false)
+            ->assertSee(route('admin.registrations.show', $pending), false)
+            ->assertSee('Review application')
             ->assertSee('Suspend', false)
             ->assertSee('Deactivate', false)
             ->assertSee('Reactivate', false)
             ->assertSee('name="confirm"', false);
+
+        $this->actingAs($this->admin)->get(route('admin.registrations.show', $pending))
+            ->assertOk()
+            ->assertSee('>Approve</button>', false);
+        $this->actingAs($this->admin)->get(route('admin.registrations.show', $pendingCourier))
+            ->assertOk()
+            ->assertSee('Courier applications are reviewed in the Logistics portal.');
 
         config(['permissions.roles.admin' => [Permission::USERS_VIEW]]);
         $this->actingAs($this->admin)->get(route('admin.users'))
             ->assertOk()
             ->assertSee($active->email)
             ->assertSee($suspended->email)
+            ->assertSee($pending->email)
+            ->assertDontSee('Review &amp; approve', false)
             ->assertDontSee('Suspend account')
             ->assertDontSee('Deactivate account')
             ->assertDontSee('Reactivate account');
