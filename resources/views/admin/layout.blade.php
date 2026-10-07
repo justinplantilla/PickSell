@@ -10,13 +10,15 @@
     @vite('resources/css/views/admin-layout.css')
     @vite('resources/css/components/stock-status-badge.css')
     @vite('resources/js/components/form-behaviors.js')
+    @vite('resources/js/components/admin-saved-filters.js')
     @yield('styles')
     @include('partials.pagination-styles')
 </head>
-<body>
+<body data-confirm-mutations>
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-logo">
+            <img class="sidebar-mark" src="{{ asset('images/transparent logo.png') }}" alt="PickSell">
             <div class="sidebar-logo-text">
                 <a href="/admin/dashboard">Pick<span>Sell</span></a>
                 <small>Admin Panel</small>
@@ -69,6 +71,12 @@
         <div class="topbar">
             <div class="topbar-title">@yield('title')</div>
             <div class="topbar-right blade-inline-2">
+                @can(\App\Auth\Permission::ADMIN_SEARCH)
+                    <form method="GET" action="{{ route('admin.search') }}" class="admin-global-search" role="search">
+                        <input id="admin-global-search" type="search" name="q" value="{{ request()->routeIs('admin.search') ? request('q') : '' }}" placeholder="Search admin…" aria-label="Search users, products and orders" minlength="2" maxlength="100">
+                        <button type="submit" aria-label="Search">Search</button>
+                    </form>
+                @endcan
                 <button class="notif-btn" id="notifBtn" onclick="toggleNotif()"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4a2 2 0 0 0 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span class="notif-dot" id="notifDot"></span></button>
                 <div class="notif-dropdown" id="notifDropdown">
                     <div class="notif-header"><span>Notifications <span id="notifCount" class="blade-inline-3"></span></span><button type="button" class="notif-mark-read" id="markAdminNotificationsRead">Mark all as read</button></div>
@@ -87,6 +95,7 @@
             @if($errors->any())
                 <div class="alert alert-error">{{ $errors->first() }}</div>
             @endif
+            @include('partials.page-intro')
             @yield('content')
         </div>
     </div>

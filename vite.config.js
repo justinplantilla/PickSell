@@ -19,6 +19,7 @@ export default defineConfig({
                 'resources/js/components/profile-address.js',
                 'resources/js/components/navbar.js',
                 'resources/js/components/form-behaviors.js',
+                'resources/js/components/admin-saved-filters.js',
                 'resources/js/components/return-attachment-lightbox.js',
                 'resources/js/views/buyer-cart.js',
                 'resources/js/views/admin-dashboard.js',

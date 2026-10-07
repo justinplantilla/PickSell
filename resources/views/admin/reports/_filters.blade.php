@@ -1,6 +1,6 @@
 <div class="card report-filter-card">
     <div class="card-body">
-        <form method="GET" action="{{ route('admin.reports') }}" class="report-filters">
+        <form method="GET" action="{{ route('admin.reports') }}" class="report-filters" data-saved-filter-scope="reports-{{ $tab }}" data-saved-filter-user="{{ auth()->id() }}">
             <input type="hidden" name="tab" value="{{ $tab }}">
             <div class="form-group">
                 <label class="form-label" for="report-from">From</label>

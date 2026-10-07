@@ -8,6 +8,7 @@ use App\Models\BranchRider;
 use App\Models\LogisticsBranch;
 use App\Models\Municipality;
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\Refund;
 use App\Models\ReturnRequest;
 use App\Models\User;
@@ -54,6 +55,7 @@ class AdminNavigationTest extends TestCase
     }
 
     private User $buyer;
+
     private User $seller;
 
     private function seedMarketplace(): array
@@ -91,9 +93,9 @@ class AdminNavigationTest extends TestCase
 
         $expected = [];
         foreach (AdminNavigation::groups() as $group) {
-            $expected[] = '>' . $group['label'] . '</div>';
+            $expected[] = '>'.$group['label'].'</div>';
             foreach ($group['items'] as $item) {
-                $expected[] = '<span class="nav-label">' . e($item['label']) . '</span>';
+                $expected[] = '<span class="nav-label">'.e($item['label']).'</span>';
             }
         }
         $this->assertSame([
@@ -123,7 +125,7 @@ class AdminNavigationTest extends TestCase
             foreach ($group['items'] as $item) {
                 $route = Route::getRoutes()->getByName($item['route']);
                 $this->assertNotNull($route, "Route {$item['route']} does not exist.");
-                $this->assertContains('can:' . $item['permission'], $route->gatherMiddleware(), "{$item['label']} link and route disagree on permission.");
+                $this->assertContains('can:'.$item['permission'], $route->gatherMiddleware(), "{$item['label']} link and route disagree on permission.");
             }
         }
     }
@@ -147,7 +149,7 @@ class AdminNavigationTest extends TestCase
 
         $this->assertStringContainsString('<span class="nav-label">Sorting Center</span>', $html);
         foreach (['Marketplace', 'Customer Care', 'Finance', 'System'] as $hiddenGroup) {
-            $this->assertStringNotContainsString('>' . $hiddenGroup . '</div>', $html);
+            $this->assertStringNotContainsString('>'.$hiddenGroup.'</div>', $html);
         }
         $this->actingAs($this->admin)->get('/admin/orders')->assertForbidden();
     }
@@ -211,5 +213,46 @@ class AdminNavigationTest extends TestCase
         config(['permissions.roles.admin' => [Permission::AUDIT_VIEW]]);
         $this->actingAs($this->admin)->get('/admin/audit-logs')->assertOk()->assertDontSee('Export CSV');
         $this->actingAs($this->admin)->get('/admin/audit-logs/export')->assertForbidden();
+    }
+
+    public function test_audit_log_filters_by_target_type_and_id(): void
+    {
+        $seller = $this->user('seller');
+        $product = Product::create([
+            'seller_id' => $seller->id,
+            'name' => 'Audit target product',
+            'category' => 'Fashion',
+            'price' => 500,
+            'stock' => 2,
+            'status' => 'active',
+        ]);
+        AuditLog::create([
+            'actor_id' => $this->admin->id,
+            'actor_role' => 'admin',
+            'action' => 'product.status_changed',
+            'module' => 'product',
+            'result' => 'success',
+            'subject_type' => $product->getMorphClass(),
+            'subject_id' => $product->id,
+            'metadata' => ['filter_marker' => 'matched-target'],
+        ]);
+        AuditLog::create([
+            'actor_id' => $this->admin->id,
+            'actor_role' => 'admin',
+            'action' => 'product.featured',
+            'module' => 'product',
+            'result' => 'success',
+            'subject_type' => $product->getMorphClass(),
+            'subject_id' => $product->id + 1,
+            'metadata' => ['filter_marker' => 'unmatched-target'],
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.audit', ['target_type' => $product->getMorphClass(), 'target_id' => $product->id]))
+            ->assertOk()
+            ->assertSee('matched-target')
+            ->assertDontSee('unmatched-target')
+            ->assertSee('name="target_type"', false)
+            ->assertSee('name="target_id"', false);
     }
 }

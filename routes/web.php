@@ -1,9 +1,9 @@
 <?php
 
 use App\Auth\Permission;
+use App\Http\Controllers\AdminAccountController;
 use App\Http\Controllers\AdminAnalyticsController;
 use App\Http\Controllers\AdminAuditLogController;
-use App\Http\Controllers\AdminAccountController;
 use App\Http\Controllers\AdminChatController;
 use App\Http\Controllers\AdminComplaintController;
 use App\Http\Controllers\AdminComplianceController;
@@ -17,6 +17,7 @@ use App\Http\Controllers\AdminRegistrationController;
 use App\Http\Controllers\AdminReportController;
 use App\Http\Controllers\AdminReturnController;
 use App\Http\Controllers\AdminReturnDisputeController;
+use App\Http\Controllers\AdminSearchController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AdminSortingCenterController;
 use App\Http\Controllers\AdminUserController;
@@ -265,6 +266,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
     $can = fn (string $permission) => 'can:'.$permission;
 
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->middleware($can(Permission::DASHBOARD_VIEW))->name('admin.dashboard');
+    Route::get('/search', AdminSearchController::class)->middleware($can(Permission::ADMIN_SEARCH))->name('admin.search');
 
     // Own notifications and account
     Route::get('/notifications', [AdminController::class, 'notificationCenter'])->middleware($can(Permission::ACCOUNT_VIEW))->name('admin.notifications');
@@ -280,6 +282,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
         Route::get('/orders', [AdminOrderController::class, 'index'])->name('admin.orders');
         Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('admin.orders.show');
     });
+    Route::post('/orders/bulk-status', [AdminOrderController::class, 'bulkOverrideStatus'])->middleware($can(Permission::ORDERS_OVERRIDE_STATUS))->name('admin.orders.bulk-status');
     Route::patch('/orders/{order}/status', [AdminOrderController::class, 'overrideStatus'])->middleware($can(Permission::ORDERS_OVERRIDE_STATUS))->name('admin.orders.status');
     Route::patch('/orders/{order}/resolve', [AdminOrderController::class, 'resolveException'])->middleware($can(Permission::ORDERS_MANAGE))->name('admin.orders.resolve');
 
@@ -288,6 +291,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
         Route::get('/products/{product}', [AdminProductController::class, 'show'])->name('admin.products.show');
     });
     Route::middleware($can(Permission::PRODUCTS_MODERATE))->group(function () {
+        Route::post('/products/bulk-status', [AdminProductController::class, 'bulkModerate'])->name('admin.products.bulk-status');
         Route::patch('/products/{product}/featured', [AdminProductController::class, 'toggleFeatured'])->name('admin.products.featured');
         Route::patch('/products/{product}/status', [AdminProductController::class, 'moderate'])->name('admin.products.status');
     });
@@ -306,6 +310,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
         Route::get('/users/{user}', [AdminUserController::class, 'show'])->name('admin.users.show');
     });
     Route::patch('/users/{user}/status', [AdminUserController::class, 'updateStatus'])->middleware($can(Permission::USERS_MANAGE))->name('admin.users.status');
+    Route::post('/users/bulk-status', [AdminUserController::class, 'bulkStatus'])->middleware($can(Permission::USERS_MANAGE))->name('admin.users.bulk-status');
 
     Route::middleware($can(Permission::SELLER_COMPLIANCE_VIEW))->group(function () {
         Route::get('/compliance', [AdminComplianceController::class, 'index'])->name('admin.compliance');

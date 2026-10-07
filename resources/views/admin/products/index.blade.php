@@ -12,7 +12,7 @@
             <p class="oversight-description">Open a product to archive, restore or feature it. Every action is recorded with its reason and the seller is notified.</p>
         </div>
     </div>
-    <form method="GET" class="oversight-filters oversight-note" role="search" aria-label="Filter products">
+    <form method="GET" class="oversight-filters oversight-note" role="search" aria-label="Filter products" data-saved-filter-scope="products" data-saved-filter-user="{{ auth()->id() }}">
         <input type="search" name="search" value="{{ $search }}" class="search-input" placeholder="Product name" aria-label="Search products">
         <select name="seller" class="filter-select" aria-label="Seller" data-submit-on-change>
             <option value="">All sellers</option>
@@ -45,6 +45,36 @@
     @if($products->isEmpty())
         <div class="oversight-empty"><strong>No products found</strong>Try different filters.</div>
     @else
+        @can(\App\Auth\Permission::PRODUCTS_MODERATE)
+        <details class="bulk-action-panel oversight-note">
+            <summary class="btn btn-outline btn-sm">Bulk moderation · {{ number_format($matchingCount) }} matching</summary>
+            <form method="POST" action="{{ route('admin.products.bulk-status') }}" class="bulk-action-form">
+                @csrf
+                <input type="hidden" name="search" value="{{ $search }}">
+                <input type="hidden" name="seller" value="{{ $seller }}">
+                <input type="hidden" name="category" value="{{ $category }}">
+                <input type="hidden" name="filter_status" value="{{ $status }}">
+                <input type="hidden" name="featured" value="{{ $featured }}">
+                <input type="hidden" name="matching_count" value="{{ $matchingCount }}">
+                <label class="form-label" for="bulk-product-status">New status</label>
+                <select id="bulk-product-status" name="to_status" class="form-control" required>
+                    <option value="archived">Archive</option>
+                    <option value="active">Restore</option>
+                </select>
+                <label class="form-label" for="bulk-product-reason">Reason</label>
+                <textarea id="bulk-product-reason" name="reason" class="form-control" minlength="10" maxlength="1000" required></textarea>
+                <label class="account-confirm"><input type="checkbox" name="confirm" value="1" required> Apply to all {{ number_format($matchingCount) }} products matching these filters; invalid products will be skipped.</label>
+                <button type="submit" class="btn btn-coral" @disabled($matchingCount === 0)>Apply to filtered products</button>
+            </form>
+        </details>
+        @endcan
+        @if(session('bulkSkippedCount', 0) > 0)
+            <div class="alert alert-warning" role="status">
+                {{ session('bulkSkippedCount') }} product(s) were skipped:
+                <ul>@foreach(session('bulkSkipped', []) as $skipped)<li>{{ $skipped }}</li>@endforeach</ul>
+                @if(session('bulkSkippedCount') > count(session('bulkSkipped', [])))<p>Additional skipped products are omitted from this summary.</p>@endif
+            </div>
+        @endif
         <div class="oversight-table-wrap">
             <table>
                 <thead><tr><th>Product</th><th>Seller</th><th>Category</th><th>Status</th><th>Actions</th></tr></thead>

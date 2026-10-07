@@ -12,7 +12,7 @@
             <p class="oversight-description">Buyers, sellers, riders and logistics partners. Open an account to see its history and manage its status.</p>
         </div>
     </div>
-    <form method="GET" class="oversight-filters oversight-note" role="search" aria-label="Filter user accounts">
+    <form method="GET" class="oversight-filters oversight-note" role="search" aria-label="Filter user accounts" data-saved-filter-scope="users" data-saved-filter-user="{{ auth()->id() }}">
         <input type="search" name="search" value="{{ $search }}" class="search-input" placeholder="Name, email, business or phone" aria-label="Search users">
         <select name="role" class="filter-select" aria-label="Role" data-submit-on-change>
             <option value="all" {{ $role === 'all' ? 'selected' : '' }}>All roles</option>
@@ -41,6 +41,36 @@
     @if($users->isEmpty())
         <div class="oversight-empty"><strong>No accounts found</strong>Try different filters.</div>
     @else
+        @can(\App\Auth\Permission::USERS_MANAGE)
+        <details class="bulk-action-panel oversight-note">
+            <summary class="btn btn-outline btn-sm">Bulk account action · {{ number_format($matchingCount) }} matching</summary>
+            <form method="POST" action="{{ route('admin.users.bulk-status') }}" class="bulk-action-form">
+                @csrf
+                <input type="hidden" name="role" value="{{ $role }}">
+                <input type="hidden" name="filter_status" value="{{ $status }}">
+                <input type="hidden" name="joined" value="{{ $joined }}">
+                <input type="hidden" name="search" value="{{ $search }}">
+                <input type="hidden" name="matching_count" value="{{ $matchingCount }}">
+                <label class="form-label" for="bulk-user-status">New status</label>
+                <select id="bulk-user-status" name="to_status" class="form-control" required>
+                    @foreach(['approved' => 'Reactivate', 'suspended' => 'Suspend', 'deactivated' => 'Deactivate'] as $value => $label)
+                        <option value="{{ $value }}">{{ $label }}</option>
+                    @endforeach
+                </select>
+                <label class="form-label" for="bulk-user-reason">Reason (required)</label>
+                <textarea id="bulk-user-reason" name="reason" class="form-control" minlength="10" maxlength="1000" required></textarea>
+                <label class="account-confirm"><input type="checkbox" name="confirm" value="1" required> Apply to all {{ number_format($matchingCount) }} accounts matching these filters; invalid accounts will be skipped.</label>
+                <button type="submit" class="btn btn-coral" @disabled($matchingCount === 0)>Apply to filtered accounts</button>
+            </form>
+        </details>
+        @endcan
+        @if(session('bulkSkippedCount', 0) > 0)
+            <div class="alert alert-warning" role="status">
+                {{ session('bulkSkippedCount') }} account(s) were skipped:
+                <ul>@foreach(session('bulkSkipped', []) as $skipped)<li>{{ $skipped }}</li>@endforeach</ul>
+                @if(session('bulkSkippedCount') > count(session('bulkSkipped', [])))<p>Additional skipped accounts are omitted from this summary.</p>@endif
+            </div>
+        @endif
         <div class="oversight-table-wrap">
             <table>
                 <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Orders</th><th>Joined</th><th>Actions</th></tr></thead>

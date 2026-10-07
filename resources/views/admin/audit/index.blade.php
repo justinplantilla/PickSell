@@ -34,6 +34,13 @@
                 <option value="{{ $value }}" {{ $filters['result'] === $value ? 'selected' : '' }}>{{ $label }}</option>
             @endforeach
         </select>
+        <select name="target_type" class="filter-select" aria-label="Target type">
+            <option value="">All target types</option>
+            @foreach($targetTypes as $targetType)
+                <option value="{{ $targetType }}" {{ $filters['target_type'] === $targetType ? 'selected' : '' }}>{{ class_basename($targetType) }}</option>
+            @endforeach
+        </select>
+        <label>Target ID <input type="number" name="target_id" min="1" value="{{ $filters['target_id'] }}" class="form-control"></label>
         <label>From <input type="date" name="from" value="{{ $filters['from'] }}" class="form-control"></label>
         <label>To <input type="date" name="to" value="{{ $filters['to'] }}" class="form-control"></label>
         <label><input type="checkbox" name="denied" value="1" {{ $filters['denied'] ? 'checked' : '' }}> Denied requests only</label>

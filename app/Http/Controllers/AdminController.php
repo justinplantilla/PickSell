@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CommissionRateHistory;
 use App\Models\Order;
 use App\Services\CommissionService;
+use App\Services\Finance\CommissionReconciliationService;
 use App\Services\Finance\FinancialSummary;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -14,8 +15,11 @@ use Illuminate\Support\Facades\Schema;
 class AdminController extends Controller
 {
     // Commission
-    public function commission(Request $request, CommissionService $commission)
-    {
+    public function commission(
+        Request $request,
+        CommissionService $commission,
+        CommissionReconciliationService $reconciliationService,
+    ) {
         $rate = $commission->rate();
         $request->merge([
             'from' => $request->query('from', now()->startOfMonth()->toDateString()),
@@ -48,10 +52,12 @@ class AdminController extends Controller
             $missingTables[] = 'commission_rate_histories';
         }
         $migrationWarning = null;
+        $reconciliation = null;
         if ($hasFinancialTransactions) {
             $summary = app(FinancialSummary::class)->forPeriod(Carbon::parse($from)->startOfDay(), Carbon::parse($to)->endOfDay());
             $totalSales = $summary['gross_sales'];
             $totalCommission = $summary['commission'];
+            $reconciliation = $reconciliationService->reconcile($orders);
         } else {
             $totalSales = $commission->sum($orders->pluck('amount'));
             $totalCommission = $commission->sum($orders->pluck('calculated_commission'));
@@ -73,7 +79,7 @@ class AdminController extends Controller
             $migrationWarning = implode(' ', $warnings);
         }
 
-        return view('admin.commission', compact('orders', 'rate', 'totalSales', 'totalCommission', 'from', 'to', 'rateHistory', 'migrationWarning'));
+        return view('admin.commission', compact('orders', 'rate', 'totalSales', 'totalCommission', 'from', 'to', 'rateHistory', 'migrationWarning', 'reconciliation'));
     }
 
     // Notifications

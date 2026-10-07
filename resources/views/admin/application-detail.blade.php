@@ -90,8 +90,8 @@
                 </div>
 
                 <div class="review-actions">
-                    <button type="submit" class="btn registration-approve" onclick="return confirm('Approve this application and notify the applicant?')">Approve</button>
-                    <button type="submit" class="btn registration-disapprove" formaction="{{ route('admin.registrations.disapprove', $user) }}" onclick="return confirm('Disapprove this application and send the reason to the applicant?')">Disapprove</button>
+                    <button type="submit" class="btn registration-approve" data-confirm="Approve this application and notify the applicant?">Approve</button>
+                    <button type="submit" class="btn registration-disapprove" formaction="{{ route('admin.registrations.disapprove', $user) }}" data-confirm="Disapprove this application and send the reason to the applicant?">Disapprove</button>
                 </div>
             </form>
         @elseif($user->status === 'pending' && $user->role === 'courier')

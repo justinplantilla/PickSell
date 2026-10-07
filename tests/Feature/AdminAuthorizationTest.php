@@ -62,6 +62,7 @@ class AdminAuthorizationTest extends TestCase
     {
         $this->assertSame([
             'dashboard.view',
+            'admin.search',
             'registrations.view', 'registrations.manage',
             'users.view', 'users.manage',
             'products.view', 'products.moderate',
@@ -95,7 +96,7 @@ class AdminAuthorizationTest extends TestCase
                 }
                 $code = file_get_contents($file->getPathname());
                 if (preg_match('/isSuperAdmin\(|isAdmin\(|role\s*[!=]==?\s*[\'"]admin[\'"]/', $code)) {
-                    $offenders[] = str_replace(base_path() . DIRECTORY_SEPARATOR, '', $file->getPathname());
+                    $offenders[] = str_replace(base_path().DIRECTORY_SEPARATOR, '', $file->getPathname());
                 }
             }
         }
@@ -115,7 +116,7 @@ class AdminAuthorizationTest extends TestCase
                 ->map(fn ($middleware) => substr($middleware, 4));
 
             if ($permissions->isEmpty() || $permissions->diff(Permission::ALL)->isNotEmpty()) {
-                $unguarded[] = $route->methods()[0] . ' ' . $route->uri();
+                $unguarded[] = $route->methods()[0].' '.$route->uri();
             }
         }
 
@@ -171,9 +172,9 @@ class AdminAuthorizationTest extends TestCase
         $this->assertSame('approved', $admin->fresh()->status);
 
         $sidebar = $this->actingAs($admin)->get('/admin/dashboard')->assertOk()->getContent();
-        $this->assertStringContainsString('href="' . route('admin.complaints') . '"', $sidebar);
-        $this->assertStringNotContainsString('href="' . route('admin.users') . '"', $sidebar);
-        $this->assertStringNotContainsString('href="' . route('admin.commission') . '"', $sidebar);
+        $this->assertStringContainsString('href="'.route('admin.complaints').'"', $sidebar);
+        $this->assertStringNotContainsString('href="'.route('admin.users').'"', $sidebar);
+        $this->assertStringNotContainsString('href="'.route('admin.commission').'"', $sidebar);
         $this->assertStringNotContainsString('Pending Applications', $sidebar);
     }
 

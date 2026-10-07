@@ -20,7 +20,7 @@
         @endforeach
     </nav>
 
-    <form method="GET" class="oversight-filters oversight-note" role="search" aria-label="Filter orders">
+    <form method="GET" class="oversight-filters oversight-note" role="search" aria-label="Filter orders" data-saved-filter-scope="orders" data-saved-filter-user="{{ auth()->id() }}">
         @if($stage !== 'all')<input type="hidden" name="stage" value="{{ $stage }}">@endif
         <input type="search" name="search" value="{{ $search }}" class="search-input" placeholder="Order ID, number, waybill or product" aria-label="Search orders">
         <select name="status" class="filter-select" aria-label="Status" data-submit-on-change>
@@ -56,6 +56,42 @@
 
     @if($activeFilter)
         <p class="oversight-description oversight-note">Showing: <strong>{{ $activeFilter }}</strong> · <a href="{{ route('admin.orders') }}">Clear filter</a></p>
+    @endif
+
+    @can(\App\Auth\Permission::ORDERS_OVERRIDE_STATUS)
+    @if($matchingCount > 0)
+        <details class="bulk-action-panel oversight-note">
+            <summary class="btn btn-outline btn-sm">Bulk order action · {{ number_format($matchingCount) }} matching</summary>
+            <form method="POST" action="{{ route('admin.orders.bulk-status') }}" class="bulk-action-form">
+                @csrf
+                <input type="hidden" name="stage" value="{{ $stage }}">
+                <input type="hidden" name="search" value="{{ $search }}">
+                <input type="hidden" name="filter_status" value="{{ implode(',', $statuses) }}">
+                <input type="hidden" name="date" value="{{ $date }}">
+                @foreach($filters as $key => $value)<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endforeach
+                @if(request()->boolean('stuck'))<input type="hidden" name="stuck" value="1">@endif
+                @if(request()->boolean('issues'))<input type="hidden" name="issues" value="1">@endif
+                <input type="hidden" name="matching_count" value="{{ $matchingCount }}">
+                <label class="form-label" for="bulk-order-status">Target status</label>
+                <select id="bulk-order-status" name="to_status" class="form-control" required>
+                    @foreach(\App\Models\Order::STATUS_LIFECYCLE as $value)
+                        <option value="{{ $value }}">{{ \App\Services\Orders\OrderLifecycleService::label($value) }}</option>
+                    @endforeach
+                </select>
+                <label class="form-label" for="bulk-order-reason">Reason shown to buyer and seller (required)</label>
+                <textarea id="bulk-order-reason" name="reason" class="form-control" minlength="10" maxlength="1000" required></textarea>
+                <label class="account-confirm"><input type="checkbox" name="confirm" value="1" required> Apply to all {{ number_format($matchingCount) }} orders matching these filters. Only permitted lifecycle transitions will run; others will be skipped.</label>
+                <button type="submit" class="btn btn-coral">Apply to filtered orders</button>
+            </form>
+        </details>
+    @endif
+    @endcan
+    @if(session('bulkSkippedCount', 0) > 0)
+        <div class="alert alert-warning" role="status">
+            {{ session('bulkSkippedCount') }} order(s) were skipped:
+            <ul>@foreach(session('bulkSkipped', []) as $skipped)<li>{{ $skipped }}</li>@endforeach</ul>
+            @if(session('bulkSkippedCount') > count(session('bulkSkipped', [])))<p>Additional skipped orders are omitted from this summary.</p>@endif
+        </div>
     @endif
 
     @if($orders->isEmpty())

@@ -20,6 +20,7 @@ class AdminAuditLogController extends Controller
             'filters' => $filters,
             'actions' => AuditLog::query()->distinct()->orderBy('action')->pluck('action'),
             'modules' => AuditLog::query()->whereNotNull('module')->distinct()->orderBy('module')->pluck('module'),
+            'targetTypes' => AuditLog::query()->whereNotNull('subject_type')->distinct()->orderBy('subject_type')->pluck('subject_type'),
         ]);
     }
 
@@ -69,6 +70,12 @@ class AdminAuditLogController extends Controller
             'module' => is_string($request->query('module')) ? $request->query('module') : null,
             'result' => in_array($request->query('result'), ['success', 'denied', 'failure'], true) ? $request->query('result') : null,
             'actor' => is_numeric($request->query('actor')) ? (int) $request->query('actor') : null,
+            'target_type' => is_string($request->query('target_type')) && mb_strlen($request->query('target_type')) <= 255
+                ? $request->query('target_type')
+                : null,
+            'target_id' => ctype_digit((string) $request->query('target_id')) && (int) $request->query('target_id') > 0
+                ? (int) $request->query('target_id')
+                : null,
             'from' => $date($request->query('from')),
             'to' => $date($request->query('to')),
             'denied' => $request->boolean('denied'),
@@ -82,6 +89,8 @@ class AdminAuditLogController extends Controller
             ->when($filters['module'], fn ($q, $module) => $q->where('module', $module))
             ->when($filters['result'], fn ($q, $result) => $q->where('result', $result))
             ->when($filters['actor'], fn ($q, $actor) => $q->where('actor_id', $actor))
+            ->when($filters['target_type'], fn ($q, $targetType) => $q->where('subject_type', $targetType))
+            ->when($filters['target_id'], fn ($q, $targetId) => $q->where('subject_id', $targetId))
             ->when($filters['from'], fn ($q, $from) => $q->where('created_at', '>=', $from.' 00:00:00'))
             ->when($filters['to'], fn ($q, $to) => $q->where('created_at', '<=', $to.' 23:59:59'))
             ->when($filters['denied'], fn ($q) => $q->where('action', 'authorization.denied'))

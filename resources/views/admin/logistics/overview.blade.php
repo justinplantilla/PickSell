@@ -34,6 +34,25 @@
     </div>
 </div>
 
+<section class="card">
+    <div class="card-header"><span class="card-title">Sorting-center workload</span></div>
+    @php $branchWorkloadMax = max(1, (int) max($branches->map(fn ($branch) => max($inbound[$branch->id] ?? 0, $outbound[$branch->id] ?? 0))->all() ?: [0])); @endphp
+    @if($branches->isEmpty())
+        <div class="oversight-empty"><strong>No branch workload yet</strong>Inbound and outbound parcel totals appear when branches are processing orders.</div>
+    @else
+        <ul class="oversight-bars" aria-label="Inbound and outbound parcel workload by branch">
+            @foreach($branches as $branch)
+                @php $branchInbound = (int) ($inbound[$branch->id] ?? 0); $branchOutbound = (int) ($outbound[$branch->id] ?? 0); @endphp
+                <li class="branch-workload-row">
+                    <strong>{{ $branch->name }}</strong>
+                    <span class="branch-workload-direction">Inbound <span class="oversight-bar-track" role="img" aria-label="{{ $branchInbound }} inbound parcels"><span class="oversight-bar-fill" style="width: {{ $branchInbound ? max(1, round($branchInbound / $branchWorkloadMax * 100)) : 0 }}%"></span></span><span class="oversight-bar-value">{{ number_format($branchInbound) }}</span></span>
+                    <span class="branch-workload-direction">Outbound <span class="oversight-bar-track" role="img" aria-label="{{ $branchOutbound }} outbound parcels"><span class="oversight-bar-fill branch-workload-outbound" style="width: {{ $branchOutbound ? max(1, round($branchOutbound / $branchWorkloadMax * 100)) : 0 }}%"></span></span><span class="oversight-bar-value">{{ number_format($branchOutbound) }}</span></span>
+                </li>
+            @endforeach
+        </ul>
+    @endif
+</section>
+
 <div class="card">
     <div class="card-header"><span class="card-title">Branches</span></div>
     @if($branches->isEmpty())
