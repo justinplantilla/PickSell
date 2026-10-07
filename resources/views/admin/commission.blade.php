@@ -43,6 +43,33 @@
     </div>
 </div>
 
+@if($reconciliation)
+<div class="card">
+    <div class="card-header"><span class="card-title">Commission reconciliation</span></div>
+    <div class="card-body">
+        <p>{{ $reconciliation['reconciled'] }} of {{ $reconciliation['checked'] }} completed orders and approved refunds match their posted ledger entries.</p>
+        @if($reconciliation['discrepancies']->isEmpty())
+            <div class="alert alert-success" role="status">All source records in this period reconcile with the financial ledger.</div>
+        @else
+            <div class="alert alert-warning" role="status">{{ $reconciliation['discrepancies']->count() }} source record(s) need review.</div>
+            <table>
+                <thead><tr><th>Reference</th><th>Order</th><th>Seller</th><th>Discrepancy</th></tr></thead>
+                <tbody>
+                @foreach($reconciliation['discrepancies'] as $finding)
+                    <tr>
+                        <td>{{ $finding['reference'] }}</td>
+                        <td>{{ $finding['order_number'] }}</td>
+                        <td>{{ $finding['seller'] }}</td>
+                        <td>{{ implode(' ', $finding['issues']) }}</td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        @endif
+    </div>
+</div>
+@endif
+
 <div class="grid-2">
     <div class="card">
         <div class="card-header"><span class="card-title">Commission by Seller</span></div>
