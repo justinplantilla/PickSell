@@ -1,5 +1,6 @@
 @extends('seller.layout')
 @section('title', 'Chat / Messaging')
+@section('body-class', 'seller-chat-screen')
 
 @section('styles')
 @vite('resources/css/views/seller-chat.css')
@@ -69,7 +70,14 @@
             </form>
         </div>
         @else
-        <div class="chat-empty">💬 Select a contact to start messaging</div>
+        <div class="chat-empty">
+            <svg class="seller-chat-empty-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+                <path d="M10 12h44v31H29L16 54V43h-6z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>
+                <path d="M21 25h22M21 33h15" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            <strong>PickSell Messages</strong>
+            <span>Select a buyer or PickSell Support to view and send messages.</span>
+        </div>
         @endif
     </div>
 </div>

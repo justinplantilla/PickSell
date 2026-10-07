@@ -13,9 +13,10 @@
     @yield('styles')
     @include('partials.pagination-styles')
 </head>
-<body>
+<body class="@yield('body-class')" data-confirm-mutations>
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-logo">
+            <img class="sidebar-mark" src="{{ asset('images/transparent logo.png') }}" alt="PickSell">
             <div class="sidebar-logo-text">
                 <a href="/seller/dashboard">Pick<span>Sell</span></a>
                 <small>Seller Panel</small>
@@ -125,6 +126,7 @@
             @if($errors->any())
                 <div class="alert alert-error">{{ $errors->first() }}</div>
             @endif
+            @include('partials.page-intro')
             @yield('content')
         </div>
     </div>

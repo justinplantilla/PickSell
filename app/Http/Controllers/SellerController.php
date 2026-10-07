@@ -19,9 +19,11 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Throwable;
 
 class SellerController extends Controller
 {
@@ -292,6 +294,20 @@ class SellerController extends Controller
         $status = $request->get('status', 'active');
         $stockFilter = $request->query('filter') === 'low-stock' || $request->query('stock') === 'low' ? 'low' : 'all';
         $search = $request->get('search');
+        $sort = $request->query('sort', 'newest');
+        $sortOptions = [
+            'newest' => ['created_at', 'desc'],
+            'oldest' => ['created_at', 'asc'],
+            'name_asc' => ['name', 'asc'],
+            'name_desc' => ['name', 'desc'],
+            'price_asc' => ['price', 'asc'],
+            'price_desc' => ['price', 'desc'],
+            'stock_asc' => ['stock', 'asc'],
+            'stock_desc' => ['stock', 'desc'],
+        ];
+        if (! array_key_exists($sort, $sortOptions)) {
+            $sort = 'newest';
+        }
         $query = Product::where('seller_id', $this->seller()->id)->with('latestStatusModeration');
         if ($stockFilter === 'low') {
             $status = 'active';
@@ -302,9 +318,12 @@ class SellerController extends Controller
         if ($search) {
             $query->where('name', 'like', "%$search%");
         }
-        $products = $query->latest()->paginate(15);
+        [$sortColumn, $sortDirection] = $sortOptions[$sort];
+        $products = $query->orderBy($sortColumn, $sortDirection)
+            ->orderBy('id', $sortDirection)
+            ->paginate(15);
 
-        return view('seller.inventory', compact('products', 'status', 'stockFilter', 'search'));
+        return view('seller.inventory', compact('products', 'status', 'stockFilter', 'search', 'sort'));
     }
 
     private const PRODUCT_RULES = [
@@ -729,7 +748,7 @@ class SellerController extends Controller
     {
         $seller = $this->seller();
 
-        // Show only buyers who have messaged the seller or placed an order.
+        // Show buyers connected to the seller, plus support so sellers can start a conversation.
         $chattedBuyerIds = Message::where(function ($q) use ($seller) {
             $q->where('sender_id', $seller->id)->orWhere('receiver_id', $seller->id);
         })->get()->map(fn ($m) => $m->sender_id === $seller->id ? $m->receiver_id : $m->sender_id)
@@ -743,14 +762,13 @@ class SellerController extends Controller
         $users = User::whereIn('id', $contactIds)
             ->where('role', 'buyer')->where('status', 'approved')->get();
 
-        // Include admin only if seller has already messaged them
-        $admin = User::where('role', 'admin')->first();
-        if ($admin && $chattedBuyerIds->contains($admin->id)) {
-            $users->prepend($admin);
-        }
+        $supportUsers = User::where('role', 'admin')->where('status', 'approved')->get();
+        $users = $users->concat($supportUsers)->unique('id')->values();
 
         $activeUserId = $request->get('user');
-        $activeUser = $activeUserId ? User::find($activeUserId) : null;
+        $activeUser = is_string($activeUserId) && ctype_digit($activeUserId)
+            ? $users->firstWhere('id', (int) $activeUserId)
+            : null;
         $messages = collect();
 
         if ($activeUser) {
@@ -776,12 +794,42 @@ class SellerController extends Controller
 
     public function sendMessage(Request $request)
     {
-        $request->validate(['receiver_id' => 'required|exists:users,id', 'body' => 'required|string|max:2000']);
-        $msg = Message::create(['sender_id' => auth()->id(), 'receiver_id' => $request->receiver_id, 'body' => $request->body, 'read' => false]);
-        $msg->load('sender', 'receiver', 'product');
-        Mail::to($msg->receiver->email)->send(new NewMessageMail($msg));
+        $data = $request->validate([
+            'receiver_id' => ['required', 'integer', 'exists:users,id'],
+            'body' => ['required', 'string', 'max:2000'],
+        ]);
+        $seller = $this->seller();
+        $receiver = User::query()->whereKey($data['receiver_id'])
+            ->where('status', 'approved')
+            ->where(function ($query) use ($seller): void {
+                $query->where('role', 'admin')
+                    ->orWhere(function ($buyer) use ($seller): void {
+                        $buyer->where('role', 'buyer')->where(function ($contact) use ($seller): void {
+                            $contact->whereHas('ordersAsBuyer', fn ($orders) => $orders->where('seller_id', $seller->id))
+                                ->orWhereHas('sentMessages', fn ($messages) => $messages->where('receiver_id', $seller->id))
+                                ->orWhereHas('receivedMessages', fn ($messages) => $messages->where('sender_id', $seller->id));
+                        });
+                    });
+            })->firstOrFail();
+        abort_if($receiver->is($seller), 422, 'You cannot message your own account.');
 
-        return back();
+        $msg = Message::create([
+            'sender_id' => $seller->id,
+            'receiver_id' => $receiver->id,
+            'body' => trim($data['body']),
+            'read' => false,
+        ]);
+        $msg->load('sender', 'receiver', 'product');
+        try {
+            Mail::to($msg->receiver->email)->send(new NewMessageMail($msg));
+        } catch (Throwable $exception) {
+            Log::warning('Chat message email notification failed.', [
+                'message_id' => $msg->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
+        return redirect()->route('seller.chat', ['user' => $receiver->id])->with('success', 'Message sent.');
     }
 
     // Account

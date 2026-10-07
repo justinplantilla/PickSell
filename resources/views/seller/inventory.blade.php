@@ -9,8 +9,11 @@
     <div class="card-header">
         <span class="card-title">Product Inventory</span>
         <div class="filters">
-            <form method="GET" class="blade-inline-1">
+        <form method="GET" class="blade-inline-1 inventory-filters">
+            <div class="inventory-search-group">
                 <input type="text" name="search" data-product-search value="{{ $search }}" placeholder="Search products..." class="search-input">
+                <button type="submit" class="btn btn-outline btn-sm">Search</button>
+            </div>
                 <select name="status" class="filter-select" data-submit-on-change>
                     <option value="all" {{ $status==='all'?'selected':'' }}>All Status</option>
                     <option value="active" {{ $status==='active'?'selected':'' }}>Active</option>
@@ -20,7 +23,16 @@
                     <option value="all" {{ $stockFilter==='all'?'selected':'' }}>All Stock</option>
                     <option value="low-stock" {{ $stockFilter==='low'?'selected':'' }}>Low Stock ({{ \App\Models\Product::LOW_STOCK_THRESHOLD }} or fewer)</option>
                 </select>
-                <button type="submit" class="btn btn-outline btn-sm">Search</button>
+                <select name="sort" class="filter-select" aria-label="Sort products" data-submit-on-change>
+                    <option value="newest" {{ $sort === 'newest' ? 'selected' : '' }}>Newest first</option>
+                    <option value="oldest" {{ $sort === 'oldest' ? 'selected' : '' }}>Oldest first</option>
+                    <option value="name_asc" {{ $sort === 'name_asc' ? 'selected' : '' }}>Name: A to Z</option>
+                    <option value="name_desc" {{ $sort === 'name_desc' ? 'selected' : '' }}>Name: Z to A</option>
+                    <option value="price_asc" {{ $sort === 'price_asc' ? 'selected' : '' }}>Price: Low to high</option>
+                    <option value="price_desc" {{ $sort === 'price_desc' ? 'selected' : '' }}>Price: High to low</option>
+                    <option value="stock_asc" {{ $sort === 'stock_asc' ? 'selected' : '' }}>Stock: Low to high</option>
+                    <option value="stock_desc" {{ $sort === 'stock_desc' ? 'selected' : '' }}>Stock: High to low</option>
+                </select>
             </form>
             <button class="btn btn-coral btn-sm" onclick="openModal('addModal')">+ Add Product</button>
         </div>

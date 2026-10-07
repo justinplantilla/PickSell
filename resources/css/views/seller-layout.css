@@ -60,11 +60,14 @@
         .sidebar { width: var(--sidebar-w); background: var(--charcoal); color: #fff; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 50; overflow: hidden; transition: width 0.25s ease; }
         .sidebar.mini { width: var(--sidebar-mini); }
         .sidebar-logo { padding: 1rem 1.2rem; border-bottom: 1px solid #3a3a3a; display: flex; align-items: center; justify-content: space-between; min-height: 60px; }
+        .sidebar-mark { width: 28px; height: 28px; flex: 0 0 auto; object-fit: contain; }
         .sidebar-logo-text { display: flex; flex-direction: column; overflow: hidden; }
         .sidebar-logo a { color: var(--coral); font-size: 1.4rem; font-weight: 800; letter-spacing: -1px; white-space: nowrap; }
         .sidebar-logo a span { color: #fff; }
         .sidebar-logo small { display: block; color: #888; font-size: 0.72rem; margin-top: 0.1rem; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap; }
         .sidebar.mini .sidebar-logo-text { display: none; }
+        .sidebar.mini .sidebar-logo { flex-direction: column; gap: 0; padding: 0.25rem 0; }
+        .sidebar.mini .sidebar-mark { width: 20px; height: 20px; }
         .hamburger { background: none; border: none; color: #aaa; cursor: pointer; padding: 0.3rem; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: color 0.2s; }
         .hamburger:hover { color: #fff; }
 
@@ -97,7 +100,8 @@
         .admin-role { font-size: 0.72rem; color: #888; white-space: nowrap; }
         .sidebar.mini .admin-text { opacity: 0; width: 0; }
         .sidebar.mini .btn-logout { display: none; }
-        .sidebar.mini .admin-card { padding: 0.5rem; display: flex; justify-content: center; }
+        .sidebar.mini .admin-card { padding: 0.5rem; display: flex; justify-content: center; background: transparent; }
+        .sidebar.mini .admin-info { justify-content: center; }
         .btn-logout { background: transparent; border: 1px solid #555; color: #aaa; border-radius: 8px; padding: 0.35rem 0.5rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .btn-logout:hover { border-color: var(--coral); color: var(--coral); }
 
@@ -109,6 +113,8 @@
         .topbar-right { display: flex; align-items: center; gap: 1rem; }
 
         .content { padding: 1.5rem; flex: 1; }
+        .page-intro { margin: 0 0 1rem; color: #777; font-size: 0.88rem; line-height: 1.5; }
+        body.dark .page-intro { color: #9ca3af; }
 
         .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
         .stat-card { background: #fff; border-radius: 12px; padding: 1.2rem; border: 1px solid #e8e2d8; }

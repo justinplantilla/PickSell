@@ -21,7 +21,10 @@
                 @endif
             </div>
         </div>
-        <a href="{{ route('seller.inventory', ['action' => 'create']) }}" class="btn btn-coral dashboard-cta">+ Add Product</a>
+        <a href="{{ route('seller.inventory', ['action' => 'create']) }}" class="btn btn-coral dashboard-cta">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span>Add Product</span>
+        </a>
     </div>
 
     <div class="action-panel">
@@ -31,7 +34,7 @@
         </div>
         <div class="action-list">
             @if($actionRequiredOrders > 0)
-            <div class="action-item action-item--orders">
+            <a href="{{ route('seller.orders', ['status' => 'action_required']) }}" class="action-item action-item--orders action-item--link">
                 <div class="action-copy">
                     <span class="action-count">{{ $actionRequiredOrders }}</span>
                     <div>
@@ -39,10 +42,10 @@
                         <small>New and in-progress orders need preparation or handoff.</small>
                     </div>
                 </div>
-                <a href="{{ route('seller.orders', ['status' => 'action_required']) }}" class="btn btn-outline btn-sm dashboard-action-link">Process orders &rarr;</a>
-            </div>
+                <span class="action-arrow" aria-hidden="true">→</span>
+            </a>
             @endif
-            <div class="action-item action-item--orders" data-seller-return-alert @if($actionRequiredReturns === 0) hidden @endif>
+            <a href="{{ route('seller.returns', ['status' => 'requested']) }}" class="action-item action-item--returns action-item--link" data-seller-return-alert @if($actionRequiredReturns === 0) hidden @endif>
                 <div class="action-copy">
                     <span class="action-count" data-pending-return-count>{{ $actionRequiredReturns }}</span>
                     <div>
@@ -50,10 +53,10 @@
                         <small>Review the buyer's request and decide on the return.</small>
                     </div>
                 </div>
-                <a href="{{ route('seller.returns', ['status' => 'requested']) }}" class="btn btn-outline btn-sm dashboard-action-link">Review &rarr;</a>
-            </div>
+                <span class="action-arrow" aria-hidden="true">→</span>
+            </a>
             @if($lowStockCount > 0)
-            <div class="action-item action-item--stock">
+            <a href="{{ route('seller.inventory', ['filter' => 'low-stock']) }}" class="action-item action-item--stock action-item--link">
                 <div class="action-copy">
                     <span class="action-count">{{ $lowStockCount }}</span>
                     <div>
@@ -61,14 +64,28 @@
                         <small>Active products with 5 or fewer units remaining.</small>
                     </div>
                 </div>
-                <a href="{{ route('seller.inventory', ['filter' => 'low-stock']) }}" class="btn btn-outline btn-sm dashboard-action-link">Restock &rarr;</a>
-            </div>
+                <span class="action-arrow" aria-hidden="true">→</span>
+            </a>
             @endif
             <x-dashboard-empty-state icon="complete" title="You're all caught up" description="No orders need processing and no active products are below the stock threshold." data-return-action-empty :hidden="$actionRequiredOrders > 0 || $actionRequiredReturns > 0 || $lowStockCount > 0" />
         </div>
     </div>
 
     <div class="kpi-grid">
+        <div class="kpi-block">
+            <div class="kpi-title">Order pipeline</div>
+            <div class="kpi-list">
+                <a href="{{ route('seller.orders', ['status' => 'completed']) }}" class="kpi-item kpi-link">
+                    <span>Completed orders</span>
+                    <strong>{{ $completedOrders }}</strong>
+                </a>
+                <a href="{{ route('seller.orders', ['status' => 'pending']) }}" class="kpi-item kpi-link">
+                    <span>Pending orders</span>
+                    <strong>{{ $pendingOrders }}</strong>
+                </a>
+            </div>
+        </div>
+
         <div class="kpi-block">
             <div class="kpi-title">Business health</div>
             <div class="kpi-list">
@@ -81,20 +98,6 @@
                     <span>Total orders</span>
                     <strong>{{ $totalOrders }}</strong>
                     <small>{{ $ordersDelta > 0 ? '↑' : ($ordersDelta < 0 ? '↓' : '→') }} {{ number_format(abs($ordersDelta), 1) }}% vs previous {{ $periodLabel }}</small>
-                </a>
-            </div>
-        </div>
-
-        <div class="kpi-block">
-            <div class="kpi-title">Order pipeline</div>
-            <div class="kpi-list">
-                <a href="{{ route('seller.orders', ['status' => 'completed']) }}" class="kpi-item kpi-link">
-                    <span>Completed orders</span>
-                    <strong>{{ $completedOrders }}</strong>
-                </a>
-                <a href="{{ route('seller.orders', ['status' => 'pending']) }}" class="kpi-item kpi-link">
-                    <span>Pending orders</span>
-                    <strong>{{ $pendingOrders }}</strong>
                 </a>
             </div>
         </div>
@@ -150,7 +153,7 @@
                     </div>
                 </div>
             @else
-                <x-dashboard-empty-state icon="analytics" title="No activity for this period" description="Sales and order activity will appear here when you receive orders." />
+                <x-dashboard-empty-state icon="none" title="No activity for this period" description="Sales and order activity will appear here when you receive orders." />
             @endif
         </div>
 

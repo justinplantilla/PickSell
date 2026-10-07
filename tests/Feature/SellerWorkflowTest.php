@@ -262,6 +262,7 @@ class SellerWorkflowTest extends TestCase
             ->assertSee('Business health')
             ->assertSee('Order pipeline')
             ->assertSee('Catalog health')
+            ->assertSeeInOrder(['Needs your attention', 'Order pipeline', 'Business health', 'Catalog health'])
             ->assertSee('Processing')
             ->assertSee('Shipped')
             ->assertSee('Delivered')
@@ -279,6 +280,9 @@ class SellerWorkflowTest extends TestCase
             ->assertSee('Unfulfilled orders')
             ->assertSee('Inventory below threshold')
             ->assertSee('Needs your attention')
+            ->assertSee('class="action-item action-item--orders action-item--link"', false)
+            ->assertSee('class="action-item action-item--stock action-item--link"', false)
+            ->assertSee('class="action-arrow"', false)
             ->assertSee('Recent orders')
             ->assertSee('Low-stock inventory');
 

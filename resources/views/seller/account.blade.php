@@ -8,7 +8,13 @@
 @section('content')
 <div class="account-page grid-2">
     <div class="card">
-        <div class="card-header"><span class="card-title">Profile Information</span></div>
+        <div class="card-header profile-card-header">
+            <span class="card-title">Profile Information</span>
+            <div class="account-status">
+                <span class="badge badge-seller">Seller</span>
+                <span class="badge badge-{{ auth()->user()->status }}">{{ ucfirst(auth()->user()->status) }}</span>
+            </div>
+        </div>
         <div class="card-body">
             <form method="POST" action="/seller/account">
                 @csrf @method('PATCH')
@@ -79,24 +85,6 @@
                     </div>
                     <button type="submit" class="btn btn-coral">Update Password</button>
                 </form>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header"><span class="card-title">Account Info</span></div>
-            <div class="card-body">
-                <table>
-                    <tr><td class="blade-inline-2">Role</td><td><span class="badge badge-active">Seller</span></td></tr>
-                    <tr><td class="blade-inline-3">Status</td><td><span class="badge badge-{{ auth()->user()->status }}">{{ auth()->user()->status }}</span></td></tr>
-                    <tr><td class="blade-inline-4">Email</td><td>{{ auth()->user()->email }}</td></tr>
-                    <tr><td class="blade-inline-5">Contact</td><td>{{ auth()->user()->contact_no }}</td></tr>
-                    <tr><td class="blade-inline-6">Business</td><td>{{ auth()->user()->business_name ?? '—' }}</td></tr>
-                    <tr><td class="blade-inline-7">Line of Business</td><td>{{ auth()->user()->line_of_business ?? '—' }}</td></tr>
-                    <tr><td class="blade-inline-8">Sex</td><td>{{ auth()->user()->sex }}</td></tr>
-                    <tr><td class="blade-inline-9">Birthday</td><td>{{ auth()->user()->birthday ? auth()->user()->birthday->format('M d, Y').' (Age '.auth()->user()->age.')' : '—' }}</td></tr>
-                    <tr><td class="blade-inline-10">Address</td><td>{{ implode(', ', array_filter([auth()->user()->house_no, auth()->user()->street, auth()->user()->barangay, auth()->user()->municipality, auth()->user()->province])) }}</td></tr>
-                    <tr><td class="blade-inline-11">Member Since</td><td>{{ auth()->user()->created_at->format('M d, Y') }}</td></tr>
-                </table>
             </div>
         </div>
 

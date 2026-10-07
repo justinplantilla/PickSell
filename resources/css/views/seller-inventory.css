@@ -1,6 +1,10 @@
 
 /* Extracted inline declarations */
 .blade-inline-1 { display:flex !important; gap:0.5rem !important; flex-wrap:wrap !important;  }
+.inventory-filters { align-items: center; }
+.inventory-search-group { display: inline-flex; align-items: stretch; gap: 0.35rem; }
+.inventory-search-group .search-input { min-width: 180px; }
+.inventory-filters select { flex: 0 0 auto; }
 .inventory-table-wrap { overflow-x:auto; }
 .blade-inline-3 { display:flex !important; align-items:center !important; gap:0.6rem !important;  }
 .blade-inline-4 { width:36px !important; height:36px !important; object-fit:cover !important; border-radius:6px !important;  }
@@ -78,3 +82,8 @@ body.dark .gallery-tile.is-failed .gallery-tile-overlay { background:rgba(45,15,
 .admin-hold small { font-weight: 400; color: #6b6b6b; white-space: normal; }
 body.dark .admin-hold { color: #fca5a5; }
 body.dark .admin-hold small { color: #a3a3a3; }
+
+@media (max-width: 640px) {
+    .inventory-search-group { flex: 1 1 100%; }
+    .inventory-search-group .search-input { flex: 1 1 auto; min-width: 0; }
+}
