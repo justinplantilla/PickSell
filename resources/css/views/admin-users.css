@@ -4,6 +4,8 @@
 .user-row-actions .account-action { position: relative; }
 .user-row-actions .account-action > summary { cursor: pointer; list-style: none; padding: 0.35rem 0.55rem; }
 .user-row-actions .account-action > summary::-webkit-details-marker { display: none; }
+.user-row-actions .btn-suspend { background: #d97706; color: #fff; }
+.user-row-actions .btn-suspend:hover { background: #b45309; }
 .user-row-actions .account-action-form { position: absolute; z-index: 5; top: calc(100% + 0.3rem); right: 0; width: min(19rem, 78vw); padding: 0.8rem; border: 1px solid #ece6db; border-radius: 10px; background: #fff; box-shadow: 0 8px 24px rgb(0 0 0 / 14%); }
 .user-row-actions .account-warning { font-size: 0.75rem; }
 body.dark .user-row-actions .account-action-form { border-color: #2f2f2f; background: #1d1d1d; }

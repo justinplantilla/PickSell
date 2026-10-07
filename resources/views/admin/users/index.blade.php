@@ -75,7 +75,7 @@
                                 @foreach($userActions as $to)
                                     @php $confirm = in_array($to, $needsConfirmation, true); @endphp
                                     <details class="account-action {{ $confirm ? 'is-blocking' : '' }}" @if(old('user_id') == $user->id && old('status') === $to) open @endif>
-                                        <summary class="btn btn-sm {{ $confirm ? 'btn-danger' : 'btn-success' }}">{{ $actionLabels[$to] }}<span class="sr-only"> {{ $user->full_name }}</span></summary>
+                                        <summary class="btn btn-sm {{ $to === 'suspended' ? 'btn-suspend' : ($confirm ? 'btn-danger' : 'btn-success') }}">{{ $actionLabels[$to] }}<span class="sr-only"> {{ $user->full_name }}</span></summary>
                                         <form method="POST" action="{{ route('admin.users.status', $user) }}" class="account-action-form">
                                             @csrf @method('PATCH')
                                             <input type="hidden" name="user_id" value="{{ $user->id }}">

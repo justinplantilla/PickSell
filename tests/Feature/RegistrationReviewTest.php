@@ -240,9 +240,20 @@ class RegistrationReviewTest extends TestCase
         User::whereKey($old->id)->update(['created_at' => now()->subDays(10)]);
         $new = $this->user('buyer');
         $approved = $this->user('seller', 'approved', ['business_name' => 'Done Shop']);
+        $courier = $this->user('courier');
 
         $this->actingAs($this->admin)->get(route('admin.registrations'))->assertOk()
-            ->assertSeeInOrder([$old->email, $new->email])->assertDontSee($approved->email);
+            ->assertSeeInOrder([$old->email, $new->email])
+            ->assertSee('Review application')
+            ->assertSee('View Logistics review')
+            ->assertDontSee($approved->email);
+        $this->actingAs($this->admin)->get(route('admin.registrations.show', $old))->assertOk()
+            ->assertSee('>Approve</button>', false)
+            ->assertSee('>Disapprove</button>', false);
+        $this->actingAs($this->admin)->get(route('admin.registrations.show', $courier))->assertOk()
+            ->assertSee('Courier applications are reviewed in the Logistics portal.')
+            ->assertDontSee('>Approve</button>', false)
+            ->assertDontSee('>Disapprove</button>', false);
         $this->actingAs($this->admin)->get(route('admin.registrations', ['search' => 'Old Shop']))
             ->assertSee($old->email)->assertDontSee($new->email);
         $this->actingAs($this->admin)->get(route('admin.registrations', ['role' => 'buyer']))

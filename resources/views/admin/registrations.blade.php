@@ -66,9 +66,21 @@
                             @endif
                         </td>
                         <td>
-                            <a href="{{ route('admin.registrations.show', $user) }}" class="btn btn-sm {{ $user->status === 'pending' && $user->role !== 'courier' ? 'btn-coral' : 'btn-outline' }}">
-                                {{ $user->status === 'pending' && $user->role !== 'courier' ? 'Review' : 'View' }}<span class="sr-only"> {{ $user->full_name }}</span>
-                            </a>
+                            <div class="registration-row-actions">
+                                @if($user->status === 'pending' && $user->role !== 'courier')
+                                    <a href="{{ route('admin.registrations.show', $user) }}" class="btn btn-coral btn-sm">
+                                        Review application<span class="sr-only"> for {{ $user->full_name }}</span>
+                                    </a>
+                                @elseif($user->status === 'pending')
+                                    <a href="{{ route('admin.registrations.show', $user) }}" class="btn btn-outline btn-sm">
+                                        View Logistics review<span class="sr-only"> for {{ $user->full_name }}</span>
+                                    </a>
+                                @else
+                                    <a href="{{ route('admin.registrations.show', $user) }}" class="btn btn-outline btn-sm">
+                                        View review<span class="sr-only"> for {{ $user->full_name }}</span>
+                                    </a>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 @endforeach
