@@ -2,7 +2,7 @@
 .user-row-actions { min-width: 12rem; }
 .user-row-actions-inner { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0.35rem; }
 .user-row-actions .account-action { position: relative; }
-.user-row-actions .account-action > summary { cursor: pointer; list-style: none; padding: 0.35rem 0.55rem; }
+.user-row-actions .account-action > summary { cursor: pointer; list-style: none; }
 .user-row-actions .account-action > summary::-webkit-details-marker { display: none; }
 .user-row-actions .account-action > summary.btn-suspend { background: #b8863b; color: #fff; }
 .user-row-actions .account-action > summary.btn-suspend:hover { background: #976d2f; color: #fff; }
