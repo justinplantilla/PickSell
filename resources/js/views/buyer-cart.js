@@ -72,14 +72,27 @@ document.querySelectorAll('.qty-input').forEach(input => input.addEventListener(
     const itemId = this.dataset.itemId;
     const quantity = Number(this.value || 1);
     if (!itemId || quantity < 1) return;
-    fetch(`/buyer/cart/item/${itemId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' },
-        body: JSON.stringify({ quantity })
-    }).then(response => {
-        if (!response.ok) throw new Error();
-        window.location.reload();
-    }).catch(() => showToast('Unable to update quantity. Please try again.', 'error'));
+    const previousQuantity = input.dataset.savedQuantity || input.defaultValue;
+    input.disabled = true;
+    window.showConfirm('Update this cart item quantity?').then(confirmed => {
+        if (!confirmed) {
+            input.value = previousQuantity;
+            input.disabled = false;
+            return;
+        }
+        fetch(`/buyer/cart/item/${itemId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' },
+            body: JSON.stringify({ quantity })
+        }).then(response => {
+            if (!response.ok) throw new Error();
+            window.location.reload();
+        }).catch(() => {
+            input.value = previousQuantity;
+            input.disabled = false;
+            showToast('Unable to update quantity. Please try again.', 'error');
+        });
+    });
 }));
 
 document.querySelectorAll('.remove-item-btn').forEach(button => button.addEventListener('click', function () {

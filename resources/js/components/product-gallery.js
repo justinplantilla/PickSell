@@ -219,7 +219,13 @@ export class ProductGallery {
         return [...this.grid.children].find(tile => tile.dataset.key === key);
     }
 
-    remove(item) {
+    remove(item, confirmed = false) {
+        if (item.key.startsWith('upload:') && !confirmed) {
+            window.showConfirm('Delete this uploaded product image?').then(accepted => {
+                if (accepted) this.remove(item, true);
+            });
+            return;
+        }
         const wasUploading = item.state === 'uploading';
         item.xhr?.abort();
         if (item.preview) URL.revokeObjectURL(item.preview);

@@ -9,6 +9,8 @@
         nav a { color:#ddd; font-size:0.85rem; }
         nav a:hover, nav a.active { color:#ff927d; }
         .page { max-width:1200px; margin:0 auto; padding:1.5rem; }
+        .page-intro { margin:0 0 1rem; color:#777; font-size:.88rem; line-height:1.5; }
+        body.dark .page-intro { color:#9ca3af; }
         .card { background:#fff; border:1px solid #e8e2d8; border-radius:10px; margin-bottom:1.2rem; overflow:hidden; }
         .card-header { padding:1rem 1.2rem; border-bottom:1px solid #f0ebe0; display:flex; justify-content:space-between; gap:1rem; align-items:center; flex-wrap:wrap; }
         .card-body { padding:1.2rem; }

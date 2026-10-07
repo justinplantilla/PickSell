@@ -11,7 +11,7 @@
     @yield('styles')
     @include('partials.pagination-styles')
 </head>
-<body>
+<body data-confirm-mutations>
     <nav class="navbar">
         <a href="/buyer/shop" class="navbar-brand"><img src="{{ asset('images/transparent logo.png') }}" alt="PickSell logo"><span>Pick<span>Sell</span></span></a>
         <form class="navbar-search" method="GET" action="/buyer/shop">
@@ -105,6 +105,7 @@
         @if($errors->any())
             <div class="alert alert-error">{{ $errors->first() }}</div>
         @endif
+        @include('partials.page-intro')
         @yield('content')
     </div>
 

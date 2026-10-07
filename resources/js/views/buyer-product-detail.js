@@ -93,8 +93,21 @@ async function addProductToCart({ redirectToCheckout = false } = {}) {
     }
 }
 
-document.getElementById('addToCartBtn')?.addEventListener('click', () => addProductToCart());
-document.getElementById('buyNowBtn')?.addEventListener('click', () => addProductToCart({ redirectToCheckout: true }));
+function confirmCartAction(button, message, options) {
+    if (button.disabled) return;
+    button.disabled = true;
+    window.showConfirm(message).then(confirmed => {
+        if (confirmed) addProductToCart(options);
+        else button.disabled = false;
+    });
+}
+
+document.getElementById('addToCartBtn')?.addEventListener('click', event => {
+    confirmCartAction(event.currentTarget, 'Add this product to your cart?');
+});
+document.getElementById('buyNowBtn')?.addEventListener('click', event => {
+    confirmCartAction(event.currentTarget, 'Add this product and continue to checkout?', { redirectToCheckout: true });
+});
 
 window.selectVariation = selectVariation;
 window.changeQty = changeQty;

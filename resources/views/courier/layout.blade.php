@@ -8,7 +8,7 @@
     @vite('resources/js/components/form-behaviors.js')
     @include('partials.pagination-styles')
 </head>
-<body>
+<body data-confirm-mutations>
 <header class="topbar">
     <a class="brand" href="{{ route('courier.orders') }}">Pick<span>Sell</span> <small class="blade-inline-1">COURIER</small></a>
     @include('partials.dashboard-clock')
@@ -23,6 +23,7 @@
 <main class="page">
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
     @if($errors->any())<div class="alert alert-error">{{ $errors->first() }}</div>@endif
+    @include('partials.page-intro')
     @yield('content')
 </main>
 @yield('scripts')

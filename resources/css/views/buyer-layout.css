@@ -101,6 +101,8 @@
 
         /* Content */
         .page-content { padding: 1.5rem; max-width: 1200px; margin: 0 auto; }
+        .page-intro { margin:0 0 1rem; color:#777; font-size:.88rem; line-height:1.5; }
+        body.dark .page-intro { color:#9ca3af; }
 
         /* Product Grid */
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; }
