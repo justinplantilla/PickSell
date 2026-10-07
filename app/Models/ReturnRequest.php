@@ -39,12 +39,48 @@ class ReturnRequest extends Model
         'reviewed_at' => 'datetime',
     ];
 
-    public function order() { return $this->belongsTo(Order::class); }
-    public function buyer() { return $this->belongsTo(User::class, 'buyer_id'); }
-    public function seller() { return $this->belongsTo(User::class, 'seller_id'); }
-    public function resolver() { return $this->belongsTo(User::class, 'resolved_by'); }
-    public function reviewer() { return $this->belongsTo(User::class, 'reviewed_by'); }
-    public function events() { return $this->hasMany(ReturnRequestEvent::class)->oldest(); }
-    public function refunds() { return $this->hasMany(Refund::class); }
-    public function latestRefund() { return $this->hasOne(Refund::class)->latestOfMany(); }
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+    public function buyer()
+    {
+        return $this->belongsTo(User::class, 'buyer_id');
+    }
+
+    public function seller()
+    {
+        return $this->belongsTo(User::class, 'seller_id');
+    }
+
+    public function resolver()
+    {
+        return $this->belongsTo(User::class, 'resolved_by');
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function events()
+    {
+        return $this->hasMany(ReturnRequestEvent::class)->oldest();
+    }
+
+    public function refunds()
+    {
+        return $this->hasMany(Refund::class);
+    }
+
+    public function refund()
+    {
+        return $this->hasOne(Refund::class)->latestOfMany();
+    }
+
+    public function latestRefund()
+    {
+        return $this->hasOne(Refund::class)->latestOfMany();
+    }
 }

@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use App\Services\Orders\OrderLifecycleService;
 use App\Services\AdminNotificationService;
+use App\Services\Orders\OrderLifecycleService;
 use Illuminate\Database\Eloquent\Model;
 
 class Order extends Model
@@ -56,7 +56,9 @@ class Order extends Model
 
     /** Context for the next status change (not persisted on orders); see OrderLifecycleService. */
     public ?int $statusChangedBy = null;
+
     public ?string $statusChangeSource = null;
+
     public ?string $statusChangeReason = null;
 
     /**
@@ -118,18 +120,83 @@ class Order extends Model
         return self::STATUS_LIFECYCLE;
     }
 
-    public function buyer()   { return $this->belongsTo(User::class, 'buyer_id'); }
-    public function seller()  { return $this->belongsTo(User::class, 'seller_id'); }
-    public function logistics() { return $this->belongsTo(User::class, 'logistics_id'); }
-    public function courier() { return $this->belongsTo(User::class, 'courier_id'); }
-    public function product() { return $this->belongsTo(Product::class); }
-    public function originBranch() { return $this->belongsTo(LogisticsBranch::class, 'origin_branch_id'); }
-    public function destinationBranch() { return $this->belongsTo(LogisticsBranch::class, 'destination_branch_id'); }
-    public function destinationBarangay() { return $this->belongsTo(Barangay::class, 'destination_barangay_id'); }
-    public function returnRequest() { return $this->hasOne(ReturnRequest::class); }
-    public function complaints() { return $this->hasMany(Complaint::class); }
-    public function parcelScans() { return $this->hasMany(ParcelScan::class)->latest('scanned_at')->latest('id'); }
-    public function logisticsExceptions() { return $this->hasMany(LogisticsException::class)->latest(); }
-    public function financialTransactions() { return $this->hasMany(FinancialTransaction::class); }
-    public function statusHistories() { return $this->hasMany(OrderStatusHistory::class)->oldest()->oldest('id'); }
+    public function buyer()
+    {
+        return $this->belongsTo(User::class, 'buyer_id');
+    }
+
+    public function seller()
+    {
+        return $this->belongsTo(User::class, 'seller_id');
+    }
+
+    public function logistics()
+    {
+        return $this->belongsTo(User::class, 'logistics_id');
+    }
+
+    public function courier()
+    {
+        return $this->belongsTo(User::class, 'courier_id');
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function originBranch()
+    {
+        return $this->belongsTo(LogisticsBranch::class, 'origin_branch_id');
+    }
+
+    public function destinationBranch()
+    {
+        return $this->belongsTo(LogisticsBranch::class, 'destination_branch_id');
+    }
+
+    public function destinationBarangay()
+    {
+        return $this->belongsTo(Barangay::class, 'destination_barangay_id');
+    }
+
+    public function returnRequest()
+    {
+        return $this->returns();
+    }
+
+    public function returns()
+    {
+        return $this->hasOne(ReturnRequest::class);
+    }
+
+    public function complaints()
+    {
+        return $this->hasMany(Complaint::class);
+    }
+
+    public function parcelScans()
+    {
+        return $this->hasMany(ParcelScan::class)->latest('scanned_at')->latest('id');
+    }
+
+    public function logisticsExceptions()
+    {
+        return $this->hasMany(LogisticsException::class)->latest();
+    }
+
+    public function refunds()
+    {
+        return $this->hasMany(Refund::class);
+    }
+
+    public function financialTransactions()
+    {
+        return $this->hasMany(FinancialTransaction::class);
+    }
+
+    public function statusHistories()
+    {
+        return $this->hasMany(OrderStatusHistory::class)->oldest()->oldest('id');
+    }
 }
