@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Mail\NewMessageMail;
 use App\Models\Message;
 use App\Models\Order;
+use App\Services\Orders\OrderLifecycleService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 
@@ -21,8 +23,12 @@ class CourierController extends Controller
         $courier = $this->courier();
         $status = $request->get('status', 'all');
         $query = Order::where('courier_id', $courier->id)->with(['buyer', 'seller']);
-        if ($status !== 'all') {
+        if ($status === 'delivered') {
+            $query->whereIn('status', ['delivered', 'completed']);
+        } elseif (in_array($status, ['assigned_to_rider', 'out_for_delivery', 'delivery_failed', 'returned'], true)) {
             $query->where('status', $status);
+        } else {
+            $status = 'all';
         }
 
         $orders = $query->latest()->paginate(15);
@@ -36,27 +42,37 @@ class CourierController extends Controller
         return view('courier.dashboard', compact('orders', 'status', 'stats'));
     }
 
-    public function updateStatus(Request $request, Order $order)
+    public function updateStatus(Request $request, Order $order, OrderLifecycleService $lifecycle)
     {
-        abort_if($order->courier_id !== $this->courier()->id, 403);
-
         $data = $request->validate([
-            'status' => 'required|in:out_for_delivery,delivered',
+            'status' => 'required|in:out_for_delivery,delivered,delivery_failed',
+            'failure_reason' => 'required_if:status,delivery_failed|nullable|string|min:5|max:1000',
         ]);
 
-        $updates = ['status' => $data['status']];
-        if ($data['status'] === 'out_for_delivery') {
-            $updates['tracking_status'] = 'Out for delivery';
-        } else {
-            $updates['tracking_status'] = 'Delivered';
-            $updates['delivered_at'] = now();
-        }
+        DB::transaction(function () use ($order, $data, $lifecycle): void {
+            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            abort_if($locked->courier_id !== $this->courier()->id, 403);
+            $trackingStatus = match ($data['status']) {
+                'out_for_delivery' => 'Out for delivery',
+                'delivered' => 'Delivered',
+                'delivery_failed' => 'Delivery failed',
+            };
+            $lifecycle->transition(
+                $locked,
+                $data['status'],
+                $this->courier()->id,
+                'courier',
+                $data['failure_reason'] ?? null,
+                ['tracking_status' => $trackingStatus],
+            );
+            $order->setRawAttributes($locked->getAttributes(), true);
+        });
 
-        $order->update($updates);
-
-        $message = $data['status'] === 'delivered'
-            ? 'Your order #' . $order->order_number . ' has been delivered.'
-            : 'Your order #' . $order->order_number . ' is now out for delivery.';
+        $message = match ($data['status']) {
+            'delivered' => 'Your order #'.$order->order_number.' has been delivered.',
+            'delivery_failed' => 'Delivery of your order #'.$order->order_number.' could not be completed. Reason: '.$data['failure_reason'],
+            default => 'Your order #'.$order->order_number.' is now out for delivery.',
+        };
 
         $order->buyer?->notifications()->create([
             'id' => \Illuminate\Support\Str::uuid(),
@@ -69,9 +85,11 @@ class CourierController extends Controller
             ]),
         ]);
 
-        return back()->with('success', $data['status'] === 'delivered'
-            ? 'Parcel marked as delivered.'
-            : 'Parcel marked as out for delivery.');
+        return back()->with('success', match ($data['status']) {
+            'delivered' => 'Parcel marked as delivered.',
+            'delivery_failed' => 'Delivery failure recorded for review.',
+            default => 'Parcel marked as out for delivery.',
+        });
     }
 
     public function reports(Request $request)
@@ -88,7 +106,7 @@ class CourierController extends Controller
             'to' => $to,
             'orders' => $orders,
             'totalOrders' => $orders->count(),
-            'deliveredOrders' => $orders->where('status', 'completed')->count(),
+            'deliveredOrders' => $orders->whereIn('status', ['delivered', 'completed'])->count(),
             'earnings' => $orders->where('status', 'completed')->sum('commission'),
         ]);
     }

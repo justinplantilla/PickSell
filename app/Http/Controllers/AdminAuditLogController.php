@@ -19,6 +19,7 @@ class AdminAuditLogController extends Controller
             'logs' => $this->query($filters)->paginate(30)->withQueryString(),
             'filters' => $filters,
             'actions' => AuditLog::query()->distinct()->orderBy('action')->pluck('action'),
+            'modules' => AuditLog::query()->whereNotNull('module')->distinct()->orderBy('module')->pluck('module'),
         ]);
     }
 
@@ -33,27 +34,30 @@ class AdminAuditLogController extends Controller
 
         return response()->streamDownload(function () use ($query) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['id', 'created_at', 'actor_id', 'actor', 'actor_role', 'action', 'permission', 'subject_type', 'subject_id', 'changes', 'metadata', 'ip_address']);
+            fputcsv($out, ['id', 'created_at', 'actor_id', 'actor', 'actor_role', 'module', 'action', 'result', 'permission', 'subject_type', 'subject_id', 'changes', 'metadata', 'ip_address', 'user_agent']);
             $query->chunk(500, function ($logs) use ($out) {
                 foreach ($logs as $log) {
                     fputcsv($out, [
                         $log->id,
                         $log->created_at?->toIso8601String(),
                         $log->actor_id,
-                        $log->actor?->full_name,
+                        $this->csvSafe($this->actorLabel($log)),
                         $log->actor_role,
+                        $this->csvSafe($log->module),
                         $log->action,
+                        $log->result,
                         $log->permission,
                         $log->subject_type,
                         $log->subject_id,
-                        $log->changes ? json_encode($log->changes) : '',
-                        $log->metadata ? json_encode($log->metadata) : '',
+                        $log->changes ? $this->csvSafe(json_encode($log->changes, JSON_INVALID_UTF8_SUBSTITUTE)) : '',
+                        $log->metadata ? $this->csvSafe(json_encode($log->metadata, JSON_INVALID_UTF8_SUBSTITUTE)) : '',
                         $log->ip_address,
+                        $this->csvSafe($log->user_agent),
                     ]);
                 }
             });
             fclose($out);
-        }, 'picksell-audit-log-' . now()->format('Ymd-His') . '.csv', ['Content-Type' => 'text/csv']);
+        }, 'picksell-audit-log-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv']);
     }
 
     private function filters(Request $request): array
@@ -62,6 +66,8 @@ class AdminAuditLogController extends Controller
 
         return [
             'action' => is_string($request->query('action')) ? $request->query('action') : null,
+            'module' => is_string($request->query('module')) ? $request->query('module') : null,
+            'result' => in_array($request->query('result'), ['success', 'denied', 'failure'], true) ? $request->query('result') : null,
             'actor' => is_numeric($request->query('actor')) ? (int) $request->query('actor') : null,
             'from' => $date($request->query('from')),
             'to' => $date($request->query('to')),
@@ -73,10 +79,34 @@ class AdminAuditLogController extends Controller
     {
         return AuditLog::with('actor')
             ->when($filters['action'], fn ($q, $action) => $q->where('action', $action))
+            ->when($filters['module'], fn ($q, $module) => $q->where('module', $module))
+            ->when($filters['result'], fn ($q, $result) => $q->where('result', $result))
             ->when($filters['actor'], fn ($q, $actor) => $q->where('actor_id', $actor))
-            ->when($filters['from'], fn ($q, $from) => $q->where('created_at', '>=', $from . ' 00:00:00'))
-            ->when($filters['to'], fn ($q, $to) => $q->where('created_at', '<=', $to . ' 23:59:59'))
+            ->when($filters['from'], fn ($q, $from) => $q->where('created_at', '>=', $from.' 00:00:00'))
+            ->when($filters['to'], fn ($q, $to) => $q->where('created_at', '<=', $to.' 23:59:59'))
             ->when($filters['denied'], fn ($q) => $q->where('action', 'authorization.denied'))
             ->orderByDesc('id');
+    }
+
+    private function csvSafe(?string $value): ?string
+    {
+        if ($value !== null && preg_match('/^[\s]*[=+\-@]/', $value)) {
+            return "'".$value;
+        }
+
+        return $value;
+    }
+
+    private function actorLabel(AuditLog $log): string
+    {
+        if ($log->actor) {
+            return $log->actor->full_name;
+        }
+
+        $deletedActorId = $log->metadata['deleted_actor_id'] ?? null;
+
+        return $log->actor_id
+            ? 'User #'.$log->actor_id
+            : ($deletedActorId ? 'Deleted user #'.$deletedActorId : 'System');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Carbon\Carbon;
@@ -128,7 +129,7 @@ class AuthController extends Controller
             $extra['delivery_area'] = $data['delivery_area'];
         }
 
-        User::create(array_merge([
+        $applicant = User::create(array_merge([
             'role'           => $role,
             'provider_type'  => $role === 'logistics' ? $data['provider_type'] : null,
             'status'         => 'pending',
@@ -148,6 +149,12 @@ class AuthController extends Controller
             'house_no'       => $data['house_no'] ?? null,
             'id_upload'      => $idPath,
         ], $extra));
+        app(\App\Services\AdminNotificationService::class)->notifyAdmins(
+            'registration.pending',
+            'Pending registration',
+            "{$applicant->first_name} {$applicant->last_name} submitted a {$applicant->role} registration.",
+            route('admin.registrations.show', $applicant, false),
+        );
 
         return redirect('/login')->with('success', 'Registration submitted! Please wait for admin approval. You will be notified via email.');
     }
@@ -212,8 +219,16 @@ class AuthController extends Controller
             return back()->withErrors(['password' => 'The password is incorrect.']);
         }
 
+        DB::transaction(function () use ($user): void {
+            app(\App\Services\AuditLogger::class)->record(
+                'user.deleted',
+                $user,
+                [],
+                ['deleted_actor_id' => $user->id],
+            );
+            $user->delete();
+        });
         Auth::logout();
-        $user->delete();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

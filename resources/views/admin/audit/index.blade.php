@@ -16,10 +16,22 @@
         @endcan
     </div>
     <form method="GET" class="oversight-filters oversight-note" aria-label="Filter audit logs">
+        <select name="module" class="filter-select" aria-label="Module">
+            <option value="">All modules</option>
+            @foreach($modules as $module)
+                <option value="{{ $module }}" {{ $filters['module'] === $module ? 'selected' : '' }}>{{ ucfirst($module) }}</option>
+            @endforeach
+        </select>
         <select name="action" class="filter-select" aria-label="Action">
             <option value="">All actions</option>
             @foreach($actions as $action)
                 <option value="{{ $action }}" {{ $filters['action'] === $action ? 'selected' : '' }}>{{ $action }}</option>
+            @endforeach
+        </select>
+        <select name="result" class="filter-select" aria-label="Result">
+            <option value="">All results</option>
+            @foreach(['success' => 'Success', 'denied' => 'Denied', 'failure' => 'Failure'] as $value => $label)
+                <option value="{{ $value }}" {{ $filters['result'] === $value ? 'selected' : '' }}>{{ $label }}</option>
             @endforeach
         </select>
         <label>From <input type="date" name="from" value="{{ $filters['from'] }}" class="form-control"></label>
@@ -35,7 +47,7 @@
     @else
         <div class="oversight-table-wrap">
             <table>
-                <thead><tr><th>When</th><th>Actor</th><th>Action</th><th>Subject</th><th>Details</th></tr></thead>
+                <thead><tr><th>When</th><th>Actor</th><th>Module / action</th><th>Result</th><th>Subject</th><th>Details</th></tr></thead>
                 <tbody>
                 @foreach($logs as $log)
                     <tr>
@@ -43,16 +55,20 @@
                         <td>
                             @if($log->actor_id)
                                 <a href="{{ route('admin.audit', array_merge(request()->query(), ['actor' => $log->actor_id])) }}">{{ $log->actor?->full_name ?? 'User #' . $log->actor_id }}</a>
+                            @elseif($log->action === 'user.deleted' && !empty($log->metadata['deleted_actor_id']))
+                                Deleted user #{{ $log->metadata['deleted_actor_id'] }}
                             @else
                                 System
                             @endif
                             <span class="oversight-meta">{{ $log->actor_role }}</span>
                         </td>
                         <td>
+                            <span class="oversight-meta">{{ $log->module }}</span>
                             <span class="audit-action">{{ $log->action }}</span>
                             @if($log->action === 'authorization.denied')<span class="badge badge-cancelled">Denied</span>@endif
                             @if($log->permission)<span class="oversight-meta">{{ $log->permission }}</span>@endif
                         </td>
+                        <td>{{ ucfirst($log->result) }}</td>
                         <td>@if($log->subject_type){{ class_basename($log->subject_type) }} #{{ $log->subject_id }}@else — @endif</td>
                         <td>
                             <ul class="audit-changes">

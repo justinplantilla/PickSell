@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Complaint;
+use App\Models\CommissionRateHistory;
 use App\Models\PlatformSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -41,16 +42,23 @@ class AdminWorkflowTest extends TestCase
 
         $this->assertSame('PickSell Pro', PlatformSetting::get('platform_name'));
         $this->assertSame('support@example.com', PlatformSetting::get('support_email'));
-        $this->assertSame('12.5', PlatformSetting::get('commission_rate'));
+        $this->assertSame('12.50', PlatformSetting::get('commission_rate'));
         $this->assertSame('10', PlatformSetting::get('max_file_upload_mb'));
         $this->assertSame(12.5, config('app.platform_commission_rate'));
+        $this->assertSame(2, CommissionRateHistory::count());
+        $this->assertNotNull(CommissionRateHistory::where('rate', '10.00')->sole()->effective_until);
+        $this->assertDatabaseHas('commission_rate_histories', [
+            'rate' => '12.50',
+            'changed_by' => $admin->id,
+            'effective_until' => null,
+        ]);
 
         $this->actingAs($admin)
             ->get('/admin/commission')
             ->assertOk()
             ->assertSee('12.5%');
 
-        $this->get('/admin/reports')
+        $this->get('/admin/reports?tab=financial')
             ->assertOk()
             ->assertSee('12.50%');
     }

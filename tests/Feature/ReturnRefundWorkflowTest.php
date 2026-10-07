@@ -136,14 +136,33 @@ class ReturnRefundWorkflowTest extends TestCase
         $this->assertSame('received', $returnRequest->fresh()->status);
         $this->assertSame('delivered_to_seller', $returnRequest->fresh()->tracking_status);
 
-        $this->patch(route('seller.returns.refund-due', $returnRequest))->assertRedirect();
-        $this->assertSame('refund_due', $returnRequest->fresh()->status);
+        $this->patch(route('seller.returns.refund-due', $returnRequest))->assertStatus(422);
+        $this->assertSame('received', $returnRequest->fresh()->status);
 
-        $this->patch(route('seller.returns.complete', $returnRequest))->assertRedirect();
+        $admin = $this->makeUser('admin');
+        $this->actingAs($admin)
+            ->patch(route('admin.returns.inspect', $returnRequest), ['admin_notes' => 'Item condition matches the buyer evidence.'])
+            ->assertRedirect();
+        $this->assertSame('inspected', $returnRequest->fresh()->status);
+        $this->assertSame($admin->id, $returnRequest->fresh()->reviewed_by);
+
+        $this->patch(route('admin.returns.approve-refund', $returnRequest), [
+            'admin_notes' => 'Refund approved after inspection.',
+            'refund_amount' => 900,
+        ])->assertRedirect();
+        $this->assertSame('approved_for_refund', $returnRequest->fresh()->status);
+        $refund = $returnRequest->refunds()->sole();
+        $this->assertSame('requested', $refund->status);
+        $this->actingAs($admin)->patch(route('admin.refunds.approve', $refund), [
+            'reason' => 'Refund amount approved for payout.',
+        ])->assertRedirect();
+        $this->assertSame('approved', $refund->fresh()->status);
+
+        $this->actingAs($seller)->patch(route('seller.returns.complete', $returnRequest))->assertRedirect();
         $this->assertSame('completed', $returnRequest->fresh()->status);
         $this->assertNotNull($returnRequest->fresh()->completed_at);
         $this->assertSame('completed', $order->fresh()->status);
-        $this->assertSame(5, $returnRequest->events()->count());
+        $this->assertSame(7, $returnRequest->events()->count());
     }
 
     public function test_rejection_escalates_to_admin_and_admin_can_approve_or_uphold_it(): void

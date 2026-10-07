@@ -25,7 +25,20 @@
                 <li class="notification-row {{ $notification->read_at ? '' : 'is-unread' }}">
                     <span class="notification-row-dot" aria-hidden="true"></span>
                     <div>
-                        <p>@unless($notification->read_at)<span class="sr-only">Unread: </span>@endunless{{ $notification->message }}</p>
+                        <p>
+                            @unless($notification->read_at)<span class="sr-only">Unread: </span>@endunless
+                            @if($notification->priority === 'critical')<strong class="notification-critical-label">Critical alert:</strong> @endif
+                            <button
+                                type="button"
+                                class="notification-detail-trigger"
+                                data-notification-id="{{ $notification->id }}"
+                                data-notification-title="{{ $notification->title }}"
+                                data-notification-message="{{ $notification->message }}"
+                                data-notification-url="{{ $notification->resourceUrl }}"
+                                data-notification-priority="{{ $notification->priority }}"
+                                data-notification-created-at="{{ $notification->created_at->toIso8601String() }}"
+                            >{{ $notification->title }}: {{ $notification->message }}</button>
+                        </p>
                         <time class="oversight-meta" datetime="{{ $notification->created_at->toIso8601String() }}">{{ $notification->created_at->format('M d, Y h:i A') }} · {{ $notification->created_at->diffForHumans() }}</time>
                     </div>
                 </li>

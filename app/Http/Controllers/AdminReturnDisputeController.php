@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Admin\ResolveReturnDisputeRequest;
 use App\Models\ReturnRequest;
 use App\Services\Admin\ReturnDisputeResolution;
 use Illuminate\Http\Request;
@@ -36,14 +37,9 @@ class AdminReturnDisputeController extends Controller
         return view('admin.returns.show', compact('returnRequest'));
     }
 
-    public function resolve(Request $request, ReturnRequest $returnRequest, ReturnDisputeResolution $resolution)
+    public function resolve(ResolveReturnDisputeRequest $request, ReturnRequest $returnRequest, ReturnDisputeResolution $resolution)
     {
-        Gate::authorize('resolveDispute', $returnRequest);
-
-        $data = $request->validate([
-            'decision' => 'required|in:approve_return,uphold_rejection',
-            'admin_notes' => 'required|string|max:2000',
-        ]);
+        $data = $request->validated();
         $resolution->resolve($returnRequest, $data['decision'], $data['admin_notes']);
 
         return redirect()->route('admin.returns.show', $returnRequest)->with('success', 'Return dispute resolved.');

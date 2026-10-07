@@ -3,21 +3,44 @@ function confirmLogout() {
 }
 let adminNotifications = [];
 const adminNotificationIcon = '<svg class="notification-item-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>';
+function safeAdminNotificationHref(value) {
+    if (typeof value !== 'string' || !value.startsWith('/')) return null;
+    try {
+        const target = new URL(value, window.location.origin);
+        return target.origin === window.location.origin ? target.href : null;
+    } catch {
+        return null;
+    }
+}
 function showAdminNotificationDetail(notification) {
-    const payload = typeof notification.data === 'string' ? JSON.parse(notification.data || '{}') : (notification.data || notification);
+    let payload = notification.data || notification;
+    if (typeof payload === 'string') {
+        try { payload = JSON.parse(payload || '{}'); } catch { payload = {}; }
+    }
     const existing = document.getElementById('notificationDetailModal');
     if (existing) existing.remove();
     const modal = document.createElement('div');
     modal.id = 'notificationDetailModal';
     modal.className = 'notification-detail-modal';
-    modal.innerHTML = '<div class="notification-detail-card" role="dialog" aria-modal="true" aria-labelledby="notificationDetailTitle"><button type="button" class="notification-detail-close" aria-label="Close notification">&times;</button><div class="notification-detail-kicker">Notification details</div><h2 id="notificationDetailTitle"></h2><p class="notification-detail-message"></p><time class="notification-detail-time"></time></div>';
+    modal.innerHTML = '<div class="notification-detail-card" role="dialog" aria-modal="true" aria-labelledby="notificationDetailTitle"><button type="button" class="notification-detail-close" aria-label="Close notification">&times;</button><div class="notification-detail-kicker">Notification details</div><h2 id="notificationDetailTitle"></h2><p class="notification-detail-message"></p><time class="notification-detail-time"></time><a class="notification-detail-link" hidden></a></div>';
     modal.querySelector('h2').textContent = payload.title || notification.type || 'PickSell notification';
     modal.querySelector('.notification-detail-message').textContent = payload.message || 'No additional details available.';
     modal.querySelector('.notification-detail-time').textContent = new Date(notification.created_at).toLocaleString();
+    if (payload.priority === 'critical') {
+        modal.querySelector('.notification-detail-kicker').textContent = 'Critical alert';
+    }
+    const resourceLink = modal.querySelector('.notification-detail-link');
+    const resourceHref = safeAdminNotificationHref(payload.url);
+    if (resourceHref) {
+        resourceLink.href = resourceHref;
+        resourceLink.textContent = 'Open related item';
+        resourceLink.hidden = false;
+    }
     document.body.appendChild(modal);
     const close = () => modal.remove();
     modal.querySelector('.notification-detail-close').addEventListener('click', close);
     modal.addEventListener('click', event => { if (event.target === modal) close(); });
+    modal.addEventListener('keydown', event => { if (event.key === 'Escape') close(); });
 }
 function toggleSidebar() {
     const s = document.getElementById('sidebar');
@@ -45,20 +68,78 @@ function loadNotifs() {
             document.getElementById('notifCount').textContent = unread ? `(${unread})` : '';
             document.getElementById('notifDot').style.display = unread ? 'block' : 'none';
             if (!data.length) { list.innerHTML = '<div class="notif-empty">No notifications</div>'; return; }
-            list.innerHTML = data.map((n, index) => {
+            list.replaceChildren(...data.map((n, index) => {
                 let payload = n.data || {};
                 if (typeof payload === 'string') {
                     try { payload = JSON.parse(payload); } catch { payload = {}; }
                 }
-                const msg = payload.message || '';
-                const time = new Date(n.created_at).toLocaleString();
-                return `<button type="button" class="notif-item" data-notification-index="${index}">${adminNotificationIcon}<span class="notification-item-copy"><span>${msg}</span><span class="notif-item-time">${time}</span></span></button>`;
-            }).join('');
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = `notif-item${n.read_at ? '' : ' is-unread'}`;
+                item.dataset.notificationIndex = String(index);
+                const icon = document.createElement('span');
+                icon.innerHTML = adminNotificationIcon;
+                const copy = document.createElement('span');
+                copy.className = 'notification-item-copy';
+                const message = document.createElement('span');
+                message.textContent = payload.message || 'Notification';
+                if (payload.priority === 'critical') {
+                    const critical = document.createElement('strong');
+                    critical.className = 'notification-critical-label';
+                    critical.textContent = 'Critical: ';
+                    message.prepend(critical);
+                }
+                const time = document.createElement('span');
+                time.className = 'notif-item-time';
+                time.textContent = new Date(n.created_at).toLocaleString();
+                copy.append(message, time);
+                item.append(icon.firstElementChild, copy);
+                return item;
+            }));
         });
 }
 document.getElementById('notifList')?.addEventListener('click', event => {
     const item = event.target.closest('[data-notification-index]');
-    if (item) showAdminNotificationDetail(adminNotifications[Number(item.dataset.notificationIndex)] || {});
+    if (!item) return;
+    const notification = adminNotifications[Number(item.dataset.notificationIndex)] || {};
+    showAdminNotificationDetail(notification);
+    if (!notification.read_at) {
+        fetch(`/admin/notifications/${encodeURIComponent(notification.id)}/read`, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, Accept: 'application/json' }
+        }).then(response => {
+            if (!response.ok) throw new Error('Unable to mark notification as read');
+            notification.read_at = new Date().toISOString();
+            item.classList.remove('is-unread');
+            document.getElementById('notifDot').style.display = 'none';
+        }).catch(error => console.error(error));
+    }
+});
+document.querySelector('.oversight-list')?.addEventListener('click', event => {
+    const item = event.target.closest('.notification-detail-trigger');
+    if (!item) return;
+    const notification = {
+        id: item.dataset.notificationId,
+        created_at: item.dataset.notificationCreatedAt,
+        read_at: item.closest('.notification-row')?.classList.contains('is-unread') ? null : new Date().toISOString(),
+        data: {
+            title: item.dataset.notificationTitle,
+            message: item.dataset.notificationMessage,
+            url: item.dataset.notificationUrl || null,
+            priority: item.dataset.notificationPriority
+        }
+    };
+    showAdminNotificationDetail(notification);
+    if (!notification.read_at) {
+        fetch(`/admin/notifications/${encodeURIComponent(item.dataset.notificationId)}/read`, {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, Accept: 'application/json' }
+        }).then(response => {
+            if (!response.ok) throw new Error('Unable to mark notification as read');
+            item.closest('.notification-row')?.classList.remove('is-unread');
+            notification.read_at = new Date().toISOString();
+        }).catch(error => console.error(error));
+    }
 });
 function markAdminNotificationsRead() {
     fetch('/admin/notifications/read', {

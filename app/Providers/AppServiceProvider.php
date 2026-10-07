@@ -3,24 +3,30 @@
 namespace App\Providers;
 
 use App\Auth\Permission;
-use App\Models\ReturnRequest;
-use App\Models\PlatformSetting;
 use App\Models\Complaint;
 use App\Models\ComplianceCase;
+use App\Models\Message;
 use App\Models\Order;
+use App\Models\PlatformSetting;
 use App\Models\Product;
+use App\Models\Refund;
+use App\Models\ReturnRequest;
 use App\Models\User;
 use App\Policies\ComplaintPolicy;
+use App\Policies\LogisticsPolicy;
+use App\Policies\MessagePolicy;
 use App\Policies\OrderPolicy;
+use App\Policies\PlatformSettingsPolicy;
 use App\Policies\ProductPolicy;
+use App\Policies\RefundPolicy;
 use App\Policies\RegistrationPolicy;
-use App\Policies\SellerCompliancePolicy;
 use App\Policies\ReturnRequestPolicy;
+use App\Policies\SellerCompliancePolicy;
 use App\Policies\UserPolicy;
 use App\Services\Admin\AdminDashboardService;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -46,10 +52,22 @@ class AppServiceProvider extends ServiceProvider
 
         // Resource + business-rule authorization for admin operations (permission checked inside each).
         Gate::policy(User::class, UserPolicy::class);
+        Gate::define('viewAdminAccount', [\App\Policies\AdminAccountPolicy::class, 'view']);
+        Gate::define('updateAdminAccount', [\App\Policies\AdminAccountPolicy::class, 'update']);
+        Gate::define('changeAdminPassword', [\App\Policies\AdminAccountPolicy::class, 'changePassword']);
+        Gate::define('deleteAdminAccount', [\App\Policies\AdminAccountPolicy::class, 'delete']);
         Gate::policy(Product::class, ProductPolicy::class);
         Gate::policy(Order::class, OrderPolicy::class);
+        Gate::define('scanParcel', [LogisticsPolicy::class, 'scanParcel']);
+        Gate::define('assignCourier', [LogisticsPolicy::class, 'assignCourier']);
+        Gate::define('openException', [LogisticsPolicy::class, 'openException']);
+        Gate::define('resolveParcelException', [LogisticsPolicy::class, 'resolveParcelException']);
+        Gate::define('resolveLogisticsException', [LogisticsPolicy::class, 'resolveLogisticsException']);
         Gate::policy(Complaint::class, ComplaintPolicy::class);
         Gate::policy(ReturnRequest::class, ReturnRequestPolicy::class);
+        Gate::policy(Refund::class, RefundPolicy::class);
+        Gate::policy(PlatformSetting::class, PlatformSettingsPolicy::class);
+        Gate::policy(Message::class, MessagePolicy::class);
         Gate::define('viewRegistration', [RegistrationPolicy::class, 'view']);
         Gate::define('approveRegistration', [RegistrationPolicy::class, 'approve']);
         Gate::define('disapproveRegistration', [RegistrationPolicy::class, 'disapprove']);

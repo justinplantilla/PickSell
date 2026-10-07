@@ -3,10 +3,12 @@
 @php
     [$label, $badgeClass] = match ($status) {
         'requested' => ['Requested', 'badge-pending'],
-        'awaiting_item' => ['Awaiting item', 'badge-processing'],
+        'awaiting_item' => ['Approved · Awaiting Parcel', 'badge-processing'],
         'received' => ['Received', 'badge-shipped'],
-        'refund_due' => ['Refund due', 'badge-pending'],
-        'completed' => ['Completed', 'badge-approved'],
+        'inspected' => ['Inspected', 'badge-shipped'],
+        'approved_for_refund' => ['Refund requested', 'badge-pending'],
+        'refund_due' => ['Refund Ready · Refund due', 'badge-pending'],
+        'completed' => ['Closed', 'badge-approved'],
         'rejected' => ['Rejected', 'badge-cancelled'],
         default => [ucfirst(str_replace('_', ' ', $status)), 'badge-deactivated'],
     };

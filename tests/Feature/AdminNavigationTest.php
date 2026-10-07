@@ -8,6 +8,7 @@ use App\Models\BranchRider;
 use App\Models\LogisticsBranch;
 use App\Models\Municipality;
 use App\Models\Order;
+use App\Models\Refund;
 use App\Models\ReturnRequest;
 use App\Models\User;
 use App\Support\AdminNavigation;
@@ -73,6 +74,12 @@ class AdminNavigationTest extends TestCase
         $return = ReturnRequest::create([
             'order_id' => $completed->id, 'buyer_id' => $this->buyer->id, 'seller_id' => $this->seller->id,
             'reason' => 'damaged', 'details' => 'Broken', 'status' => 'refund_due', 'refund_amount' => 500, 'refund_due_at' => now(),
+        ]);
+        Refund::create([
+            'order_id' => $completed->id, 'return_request_id' => $return->id,
+            'requested_by' => $this->buyer->id, 'amount' => 500,
+            'commission_reversal' => 50, 'seller_adjustment' => 450,
+            'status' => 'approved', 'approved_at' => now(),
         ]);
 
         return compact('branch', 'rider', 'stale', 'out', 'completed', 'return');
@@ -191,13 +198,14 @@ class AdminNavigationTest extends TestCase
     {
         $this->actingAs($this->admin)->patch("/admin/users/{$this->admin->id}/status", ['status' => 'suspended'])->assertForbidden();
 
-        $this->actingAs($this->admin)->get('/admin/audit-logs?denied=1')->assertOk()
-            ->assertSee('authorization.denied')->assertSee('Denied');
+        $this->actingAs($this->admin)->get('/admin/audit-logs?denied=1&module=authorization&result=denied')->assertOk()
+            ->assertSee('authorization.denied')->assertSee('Denied')->assertSee('authorization');
 
         $response = $this->actingAs($this->admin)->get('/admin/audit-logs/export?denied=1')->assertOk();
         $csv = $response->streamedContent();
         $this->assertStringStartsWith('id,created_at,actor_id', $csv);
         $this->assertStringContainsString('authorization.denied', $csv);
+        $this->assertStringContainsString('authorization,authorization.denied,denied', $csv);
         $this->assertSame(1, AuditLog::where('action', 'audit.exported')->count());
 
         config(['permissions.roles.admin' => [Permission::AUDIT_VIEW]]);

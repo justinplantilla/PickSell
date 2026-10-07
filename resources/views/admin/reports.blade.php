@@ -41,7 +41,8 @@
     <div class="stat-card coral">
         <div class="stat-card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h4v8H3v-8zm7-6h4v14h-4V7zm7-4h4v18h-4V3z"/></svg></div>
         <div class="stat-card-num">₱{{ number_format($data['total_commission']) }}</div>
-        <div class="stat-card-label">Total Commission ({{ number_format($data['commission_rate'], 2) }}%)</div>
+        <div class="stat-card-label">Total Commission (historical rates)</div>
+        <small>Current rate for new orders: {{ number_format($data['commission_rate'], 2) }}%</small>
     </div>
     <div class="stat-card">
         <div class="stat-card-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM5.2 5H2V3H0v2h2l3.6 7.59L4.25 15A2 2 0 0 0 6 18h14v-2H6.42a.25.25 0 0 1-.25-.25l.03-.12L7.1 14h9.45c.75 0 1.41-.41 1.75-1.03L21.7 6.5A1 1 0 0 0 20.83 5H5.2z"/></svg></div>
@@ -73,7 +74,7 @@
                 <td>₱{{ number_format($s['sales']) }}</td>
                 <td>{{ $s['orders'] }}</td>
                 <td class="blade-inline-7">₱{{ number_format($s['commission']) }}</td>
-                <td>₱{{ number_format($s['sales'] - $s['commission']) }}</td>
+                <td>₱{{ number_format($s['net']) }}</td>
             </tr>
             @endforeach
             </tbody>

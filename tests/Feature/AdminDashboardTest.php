@@ -12,8 +12,10 @@ use App\Models\PlatformSetting;
 use App\Models\ReturnRequest;
 use App\Models\User;
 use App\Services\Admin\AdminDashboardService;
+use App\Services\Finance\FinancialLedgerService;
 use App\Services\Finance\FinancialSummary;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /** Module 1 — Admin dashboard as an operational command center. */
@@ -22,7 +24,9 @@ class AdminDashboardTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $buyer;
+
     private User $seller;
 
     protected function setUp(): void
@@ -65,7 +69,7 @@ class AdminDashboardTest extends TestCase
     /** Read a KPI's rendered value from the dashboard HTML. */
     private function kpi(string $html, string $key): ?int
     {
-        return preg_match('/data-kpi="' . $key . '".*?stat-card-num[^>]*>([\d,]+)</s', $html, $m) ? (int) str_replace(',', '', $m[1]) : null;
+        return preg_match('/data-kpi="'.$key.'".*?stat-card-num[^>]*>([\d,]+)</s', $html, $m) ? (int) str_replace(',', '', $m[1]) : null;
     }
 
     private function seedOperations(): array
@@ -132,7 +136,7 @@ class AdminDashboardTest extends TestCase
         $html = $this->actingAs($this->admin)->get('/admin/dashboard')->getContent();
 
         foreach (['Placed' => 1, 'Preparing' => 1, 'Sorting' => 2, 'Delivery' => 1] as $label => $count) {
-            $this->assertMatchesRegularExpression('/<strong class="oversight-number">' . $count . '<\/strong>\s*<span>' . $label . '<\/span>/', $html);
+            $this->assertMatchesRegularExpression('/<strong class="oversight-number">'.$count.'<\/strong>\s*<span>'.$label.'<\/span>/', $html);
         }
         $this->actingAs($this->admin)->get(route('admin.orders', ['status' => 'picked_up,at_sorting_center,sorted']))->assertOk()
             ->assertSee($seeded['stuck']->order_number)->assertSee($seeded['unassigned']->order_number)->assertDontSee($seeded['today']->order_number);
@@ -144,14 +148,14 @@ class AdminDashboardTest extends TestCase
         Complaint::create(['filed_by' => $this->buyer->id, 'against_user_id' => $this->seller->id, 'subject' => 'Late', 'details' => 'x', 'status' => 'open']);
 
         $response = $this->actingAs($this->admin)->get('/admin/dashboard')->assertOk();
-        $response->assertSee('href="' . route('admin.registrations', ['status' => 'pending']) . '"', false)->assertSee('Review applications');
-        $response->assertSee('href="' . route('admin.complaints', ['status' => 'open']) . '"', false)->assertSee('Review complaints');
+        $response->assertSee('href="'.route('admin.registrations', ['status' => 'pending']).'"', false)->assertSee('Review applications');
+        $response->assertSee('href="'.route('admin.complaints', ['status' => 'open']).'"', false)->assertSee('Review complaints');
         $response->assertDontSee('Resolve disputes')->assertSee('Clear');
 
         $completed = $this->order('completed');
         ReturnRequest::create(['order_id' => $completed->id, 'buyer_id' => $this->buyer->id, 'seller_id' => $this->seller->id,
             'reason' => 'damaged', 'details' => 'x', 'status' => 'rejected', 'dispute_status' => 'open']);
-        $this->actingAs($this->admin)->get('/admin/dashboard')->assertSee('href="' . route('admin.disputes', ['status' => 'open']) . '"', false);
+        $this->actingAs($this->admin)->get('/admin/dashboard')->assertSee('href="'.route('admin.disputes', ['status' => 'open']).'"', false);
     }
 
     public function test_exceptions_are_visible_with_links(): void
@@ -160,15 +164,19 @@ class AdminDashboardTest extends TestCase
 
         $this->actingAs($this->admin)->get('/admin/dashboard')->assertOk()
             ->assertSee('Operational exceptions')
-            ->assertSee('Stuck orders')->assertSee('href="' . route('admin.orders', ['stuck' => 1]) . '"', false)
-            ->assertSee('Failed deliveries')->assertSee('href="' . route('admin.orders', ['status' => 'delivery_failed']) . '"', false)
-            ->assertSee('Unassigned parcels')->assertSee('href="' . route('admin.logistics.sorting', ['status' => 'sorted']) . '"', false);
+            ->assertSee('Stuck orders')->assertSee('href="'.route('admin.orders', ['stuck' => 1]).'"', false)
+            ->assertSee('Failed deliveries')->assertSee('href="'.route('admin.orders', ['status' => 'delivery_failed']).'"', false)
+            ->assertSee('Unassigned parcels')->assertSee('href="'.route('admin.logistics.sorting', ['status' => 'sorted']).'"', false);
     }
 
     public function test_financial_figures_come_from_the_finance_layer(): void
     {
-        $this->order('completed', ['amount' => 2500]);
-        $this->order('completed', ['amount' => 1500], ['created_at' => now()->startOfMonth()->addHour()]);
+        $completed = $this->order('completed', ['amount' => 2500, 'commission' => 250]);
+        $secondCompleted = $this->order('completed', ['amount' => 1500, 'commission' => 150], ['created_at' => now()->startOfMonth()->addHour()]);
+        app(FinancialLedgerService::class)->postCompletedOrder($completed);
+        app(FinancialLedgerService::class)->postCompletedOrder($secondCompleted);
+        app(FinancialLedgerService::class)->postCompletedOrder($completed);
+        $this->assertDatabaseCount('financial_transactions', 6);
         $this->order('delivered', ['amount' => 9999]); // not completed: excluded everywhere
 
         $month = app(FinancialSummary::class)->forPeriod(now()->startOfMonth(), now());
@@ -177,13 +185,35 @@ class AdminDashboardTest extends TestCase
 
         $this->actingAs($this->admin)->get('/admin/dashboard')->assertOk()
             ->assertSee('₱4,000.00')->assertSee('₱400.00')->assertSee('₱3,600.00')->assertDontSee('₱9,999');
-        $this->actingAs($this->admin)->get(route('admin.reports', ['from' => now()->startOfMonth()->toDateString(), 'to' => now()->toDateString()]))
+        $this->actingAs($this->admin)->get(route('admin.reports', ['tab' => 'financial', 'from' => now()->startOfMonth()->toDateString(), 'to' => now()->toDateString()]))
             ->assertOk()->assertSee('₱4,000');
 
-        // A commission-rate change flows through the same layer.
+        // A commission-rate change applies to new orders without rewriting completed ones.
         PlatformSetting::set('commission_rate', '15');
         config(['app.platform_commission_rate' => 15.0]);
-        $this->actingAs($this->admin)->get('/admin/dashboard')->assertSee('₱600.00')->assertSee('15% commission');
+        $this->actingAs($this->admin)->get('/admin/dashboard')->assertSee('₱400.00')->assertSee('15% commission');
+    }
+
+    public function test_commission_page_remains_available_when_finance_migrations_are_missing(): void
+    {
+        $this->order('completed', ['amount' => 1250, 'commission' => 125]);
+        Schema::partialMock()
+            ->shouldReceive('hasTable')
+            ->with('financial_transactions')
+            ->once()
+            ->andReturnFalse();
+        Schema::shouldReceive('hasTable')
+            ->with('commission_rate_histories')
+            ->once()
+            ->andReturnFalse();
+
+        $this->actingAs($this->admin)
+            ->get('/admin/commission')
+            ->assertOk()
+            ->assertSee('Financial ledger migration is not applied.')
+            ->assertSee('₱1,250.00')
+            ->assertSee('₱125.00')
+            ->assertSee('No rate changes have been recorded.');
     }
 
     public function test_registration_trend_uses_real_monthly_counts(): void

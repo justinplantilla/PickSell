@@ -5,12 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\ReturnRequest;
 use App\Models\ReturnRequestEvent;
+use App\Services\AdminNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class BuyerReturnRequestController extends Controller
 {
-    public function store(Request $request, Order $order)
+    public function store(Request $request, Order $order, AdminNotificationService $notifications)
     {
         abort_if($order->buyer_id !== auth()->id(), 404);
         abort_unless(in_array($order->status, ['delivered', 'completed'], true), 422, 'Returns can only be requested for delivered orders.');
@@ -50,6 +51,12 @@ class BuyerReturnRequestController extends Controller
             'notes' => $data['details'],
             'metadata' => ['reason' => $data['reason'], 'quantity' => $quantity],
         ]);
+        $notifications->notifyAdmins(
+            'return.requested',
+            'Return/refund requested',
+            "A buyer requested a return for order {$order->order_number}.",
+            route('admin.returns.show', $returnRequest, false),
+        );
 
         return redirect()->route('buyer.orders')->with('success', 'Return/refund request sent to the seller.');
     }

@@ -10,6 +10,8 @@ class ReturnRequest extends Model
         'requested',
         'awaiting_item',
         'received',
+        'inspected',
+        'approved_for_refund',
         'refund_due',
         'completed',
         'rejected',
@@ -21,7 +23,7 @@ class ReturnRequest extends Model
         'resolved_by', 'approved_at', 'rejected_at', 'received_at',
         'refund_due_at', 'completed_at', 'admin_resolved_at', 'quantity',
         'refund_amount', 'attachments', 'carrier', 'tracking_number',
-        'tracking_status', 'tracking_updated_at',
+        'tracking_status', 'tracking_updated_at', 'reviewed_by', 'reviewed_at',
     ];
 
     protected $casts = [
@@ -34,11 +36,15 @@ class ReturnRequest extends Model
         'refund_amount' => 'decimal:2',
         'attachments' => 'array',
         'tracking_updated_at' => 'datetime',
+        'reviewed_at' => 'datetime',
     ];
 
     public function order() { return $this->belongsTo(Order::class); }
     public function buyer() { return $this->belongsTo(User::class, 'buyer_id'); }
     public function seller() { return $this->belongsTo(User::class, 'seller_id'); }
     public function resolver() { return $this->belongsTo(User::class, 'resolved_by'); }
+    public function reviewer() { return $this->belongsTo(User::class, 'reviewed_by'); }
     public function events() { return $this->hasMany(ReturnRequestEvent::class)->oldest(); }
+    public function refunds() { return $this->hasMany(Refund::class); }
+    public function latestRefund() { return $this->hasOne(Refund::class)->latestOfMany(); }
 }

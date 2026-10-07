@@ -10,3 +10,5 @@
 .blade-inline-8 { font-size:0.75rem !important; color:#888 !important; margin-top:0.2rem !important;  }
 .blade-inline-9 { color:#16a34a !important; font-size:0.8rem !important;  }
 .blade-inline-10 { text-align:center !important; color:#888 !important; padding:2rem !important;  }
+.courier-failure-form { display:grid; gap:0.4rem; margin-top:0.5rem; min-width:12rem; }
+.courier-failure-form textarea { width:100%; resize:vertical; }

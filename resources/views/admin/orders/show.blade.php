@@ -45,9 +45,7 @@
                 <div><dt>Order amount</dt><dd>₱{{ number_format($money['amount'], 2) }}</dd></div>
                 <div><dt>Platform commission ({{ rtrim(rtrim(number_format($money['commission_rate'], 2), '0'), '.') }}%)</dt><dd>₱{{ number_format($money['commission'], 2) }}</dd></div>
                 <div><dt>Net to seller</dt><dd>₱{{ number_format($money['net_to_seller'], 2) }}</dd></div>
-                @if(abs($money['commission'] - $money['commission_at_placement']) >= 0.01)
-                    <p class="oversight-meta">Recorded at placement: ₱{{ number_format($money['commission_at_placement'], 2) }} (rate has changed since).</p>
-                @endif
+                <p class="oversight-meta">Commission and rate are recorded when the order is placed.</p>
                 <p class="oversight-meta">{{ $money['counts_toward_sales'] ? 'Counts toward completed sales.' : 'Counts toward sales once the order is completed.' }}</p>
             </dl>
         </div>
@@ -189,9 +187,9 @@
                     <div><dt>Reason</dt><dd>{{ ucfirst(str_replace('_', ' ', $return->reason)) }}</dd></div>
                     @if($return->dispute_status !== 'not_open')<div><dt>Dispute</dt><dd>{{ ucfirst($return->dispute_status) }}</dd></div>@endif
                     <div><dt>Refund</dt><dd>
-                        @if(in_array($return->status, ['refund_due', 'completed'], true))
+                        @if(in_array($return->status, ['approved_for_refund', 'refund_due', 'completed'], true))
                             {{ $return->refund_amount !== null ? '₱' . number_format((float) $return->refund_amount, 2) : 'Amount not set' }}
-                            · {{ $return->status === 'completed' ? 'refunded ' . $return->completed_at?->format('M d, Y') : 'due since ' . $return->refund_due_at?->format('M d, Y') }}
+                            · {{ $return->status === 'completed' ? 'refunded ' . $return->completed_at?->format('M d, Y') : ($return->status === 'approved_for_refund' ? 'approved for refund ' : 'due since ') . $return->refund_due_at?->format('M d, Y') }}
                         @else
                             Not yet due
                         @endif

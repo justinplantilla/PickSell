@@ -242,11 +242,16 @@ class AdminOrderControlTest extends TestCase
     {
         $order = $this->order('completed', ['amount' => 1000, 'commission' => 80]); // placed when the rate was 8%
         $money = app(\App\Services\Finance\FinancialSummary::class)->forOrder($order);
-        $this->assertSame([1000.0, 100.0, 900.0, 80.0], [$money['amount'], $money['commission'], $money['net_to_seller'], $money['commission_at_placement']]);
+        $this->assertSame([1000.0, 80.0, 920.0, 8.0], [
+            $money['amount'],
+            $money['commission'],
+            $money['net_to_seller'],
+            $money['commission_rate'],
+        ]);
 
         $this->actingAs($this->admin)->get(route('admin.orders.show', $order))
-            ->assertSeeInOrder(['Order amount', '₱1,000.00', 'Platform commission (10%)', '₱100.00', 'Net to seller', '₱900.00'])
-            ->assertSee('Recorded at placement: ₱80.00');
+            ->assertSeeInOrder(['Order amount', '₱1,000.00', 'Platform commission (8%)', '₱80.00', 'Net to seller', '₱920.00'])
+            ->assertSee('Commission and rate are recorded when the order is placed.');
     }
 
     public function test_legacy_statuses_can_be_moved_onto_the_lifecycle(): void

@@ -123,6 +123,64 @@ class CheckoutTest extends TestCase
             'quantity' => 1,
             'status' => 'placed',
             'commission' => 62.50,
+            'commission_rate' => 12.50,
         ]);
+        $orderId = \App\Models\Order::where('buyer_id', $buyer->id)->value('id');
+
+        $this->assertDatabaseCount('financial_transactions', 0);
+        \Illuminate\Support\Facades\DB::table('orders')->where('id', $orderId)->update(['status' => 'delivered']);
+        $this->actingAs($seller)
+            ->patch(route('seller.orders.confirm-delivery', $orderId))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('financial_transactions', [
+            'order_id' => $orderId,
+            'seller_id' => $seller->id,
+            'type' => 'order_gross',
+            'debit' => 500,
+            'credit' => 0,
+            'amount' => 500,
+            'reference_type' => 'order',
+            'reference_id' => $orderId,
+            'status' => 'posted',
+        ]);
+        $this->assertDatabaseHas('financial_transactions', [
+            'order_id' => $orderId,
+            'seller_id' => $seller->id,
+            'type' => 'commission',
+            'debit' => 0,
+            'credit' => 62.50,
+            'amount' => 62.50,
+        ]);
+        $this->assertDatabaseHas('financial_transactions', [
+            'order_id' => $orderId,
+            'seller_id' => $seller->id,
+            'type' => 'seller_net',
+            'debit' => 0,
+            'credit' => 437.50,
+            'amount' => 437.50,
+        ]);
+        $debits = \App\Models\FinancialTransaction::where('order_id', $orderId)->sum('debit');
+        $credits = \App\Models\FinancialTransaction::where('order_id', $orderId)->sum('credit');
+        $this->assertSame(500.0, (float) $debits);
+        $this->assertSame(500.0, (float) $credits);
+
+        config(['app.platform_commission_rate' => 20]);
+        $money = app(\App\Services\Finance\FinancialSummary::class)->forOrder(\App\Models\Order::findOrFail($orderId));
+        $this->assertSame(12.5, $money['commission_rate']);
+        $this->assertSame(62.5, $money['commission']);
+        $this->assertSame(437.5, $money['net_to_seller']);
+    }
+
+    public function test_commission_rounds_to_minor_units_before_calculating_seller_net(): void
+    {
+        config(['app.platform_commission_rate' => 10]);
+        $calculation = app(\App\Services\CommissionService::class)->calculate('0.05');
+
+        $this->assertSame([
+            'rate' => '10.00',
+            'commission' => '0.01',
+            'seller_net' => '0.04',
+        ], $calculation);
     }
 }

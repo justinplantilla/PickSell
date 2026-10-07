@@ -89,6 +89,8 @@ class AdminOperationAuthorizationTest extends TestCase
         $log = AuditLog::where('action', 'authorization.denied')->sole();
         $this->assertSame($this->admin->id, $log->actor_id);
         $this->assertSame('admin.forgotten-tool', $log->metadata['route']);
+        $this->assertSame('authorization', $log->module);
+        $this->assertSame('denied', $log->result);
     }
 
     // Resource checks ---------------------------------------------------------------------
@@ -184,6 +186,44 @@ class AdminOperationAuthorizationTest extends TestCase
         $this->assertTrue($log->subject->is($pending));
         $this->assertSame(['status' => ['from' => 'pending', 'to' => 'approved']], $log->changes);
         $this->assertNotNull($log->ip_address);
+        $this->assertSame('user', $log->module);
+        $this->assertSame('success', $log->result);
+    }
+
+    public function test_sensitive_audit_values_are_redacted_without_losing_change_fields(): void
+    {
+        $log = app(AuditLogger::class)->record(
+            'user.status_changed',
+            $this->admin,
+            [
+                'email' => ['from' => 'old@example.com', 'to' => 'new@example.com'],
+                'status' => ['from' => 'approved', 'to' => 'suspended'],
+            ],
+            ['api_token' => 'do-not-store', 'reason' => 'Repeated policy violations.'],
+            Permission::USERS_MANAGE,
+        );
+
+        $this->assertSame([
+            'email' => ['from' => '[redacted]', 'to' => '[redacted]'],
+            'status' => ['from' => 'approved', 'to' => 'suspended'],
+        ], $log->changes);
+        $this->assertSame('[redacted]', $log->metadata['api_token']);
+        $this->assertSame('Repeated policy violations.', $log->metadata['reason']);
+    }
+
+    public function test_account_deletion_is_audited_before_the_actor_is_removed(): void
+    {
+        $buyer = $this->user('buyer');
+
+        $this->actingAs($buyer)->delete('/account', ['password' => 'password'])->assertRedirect('/');
+
+        $log = AuditLog::where('action', 'user.deleted')->sole();
+        $this->assertSame($buyer->id, $log->subject_id);
+        $this->assertSame($buyer->id, $log->metadata['deleted_actor_id']);
+        $this->assertSame('buyer', $log->actor_role);
+        $this->assertSame('success', $log->result);
+        $this->assertNull($log->actor_id);
+        $this->assertDatabaseMissing('users', ['id' => $buyer->id]);
     }
 
     public function test_policy_denials_are_audited_with_their_reason(): void
@@ -197,9 +237,16 @@ class AdminOperationAuthorizationTest extends TestCase
 
     public function test_change_rolls_back_when_its_audit_entry_cannot_be_written(): void
     {
-        $this->app->instance(AuditLogger::class, new class extends AuditLogger {
-            public function record(string $action, ?Model $subject = null, array $changes = [], array $metadata = [], ?string $permission = null): AuditLog
-            {
+        $this->app->instance(AuditLogger::class, new class extends AuditLogger
+        {
+            public function record(
+                string $action,
+                ?Model $subject = null,
+                array $changes = [],
+                array $metadata = [],
+                ?string $permission = null,
+                string $result = 'success',
+            ): AuditLog {
                 throw new RuntimeException('audit store unavailable');
             }
         });

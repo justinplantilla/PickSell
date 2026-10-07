@@ -51,6 +51,14 @@ tr.is-stale td { background: #fffaf0; }
 .notification-row-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 0.4rem; flex-shrink: 0; background: transparent; }
 .notification-row.is-unread .notification-row-dot { background: var(--coral); }
 .notification-row p { margin: 0; font-size: 0.85rem; }
+.notification-row > div { flex: 1; min-width: 0; }
+.notification-detail-trigger { appearance: none; display: inline; border: 0; padding: 0; background: none; color: var(--charcoal); font: inherit; line-height: 1.5; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+.notification-detail-trigger:hover { color: var(--coral-dark); text-decoration: underline; text-underline-offset: 2px; }
+.notification-detail-trigger:focus-visible { outline: 2px solid var(--coral); outline-offset: 3px; border-radius: 2px; }
+.notification-critical-label { color: #b91c1c; }
+body.dark .notification-detail-trigger { color: #e5e7eb; }
+body.dark .notification-detail-trigger:hover { color: #ff8d78; }
+body.dark .notification-critical-label { color: #fca5a5; }
 
 @media (max-width: 640px) {
     .oversight-bar-row { grid-template-columns: 1fr minmax(48px, auto); }

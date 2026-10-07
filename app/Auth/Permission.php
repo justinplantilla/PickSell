@@ -8,7 +8,7 @@ namespace App\Auth;
  * isSuperAdmin() only tells which role a user has; config/permissions.php maps roles to
  * permissions, so future admin roles need no business-logic changes.
  *
- * Permissions marked "reserved" are part of the vocabulary but no admin route uses them yet.
+ * Each operation is authorized through its matching permission gate or policy.
  */
 final class Permission
 {
@@ -30,11 +30,11 @@ final class Permission
     public const ORDERS_MANAGE = 'orders.manage';                   // reserved
     public const ORDERS_OVERRIDE_STATUS = 'orders.override-status'; // reserved
 
-    public const LOGISTICS_VIEW = 'logistics.view';                         // reserved
-    public const LOGISTICS_MANAGE = 'logistics.manage';                     // reserved
-    public const LOGISTICS_SCAN = 'logistics.scan';                         // reserved
-    public const LOGISTICS_ASSIGN_RIDER = 'logistics.assign-rider';         // reserved
-    public const LOGISTICS_RESOLVE_EXCEPTION = 'logistics.resolve-exception'; // reserved
+    public const LOGISTICS_VIEW = 'logistics.view';
+    public const LOGISTICS_MANAGE = 'logistics.manage';
+    public const LOGISTICS_SCAN = 'logistics.scan';
+    public const LOGISTICS_ASSIGN_RIDER = 'logistics.assign-rider';
+    public const LOGISTICS_RESOLVE_EXCEPTION = 'logistics.resolve-exception';
 
     public const COMPLAINTS_VIEW = 'complaints.view';
     public const COMPLAINTS_MANAGE = 'complaints.manage';
@@ -42,9 +42,9 @@ final class Permission
     public const RETURNS_VIEW = 'returns.view';
     public const RETURNS_MANAGE = 'returns.manage';
 
-    public const REFUNDS_VIEW = 'refunds.view';       // reserved
-    public const REFUNDS_MANAGE = 'refunds.manage';   // reserved
-    public const REFUNDS_APPROVE = 'refunds.approve'; // reserved
+    public const REFUNDS_VIEW = 'refunds.view';
+    public const REFUNDS_MANAGE = 'refunds.manage';
+    public const REFUNDS_APPROVE = 'refunds.approve';
 
     public const COMMISSION_VIEW = 'commission.view';
     public const COMMISSION_MANAGE = 'commission.manage';

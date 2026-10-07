@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Admin\CreateComplianceCaseRequest;
+use App\Http\Requests\Admin\AddComplianceNoteRequest;
 use App\Http\Requests\Admin\ResolveComplianceCaseRequest;
+use App\Http\Requests\Admin\WarnSellerRequest;
 use App\Http\Requests\Admin\SuspendSellerRequest;
 use App\Models\ComplianceAction;
 use App\Models\ComplianceCase;
@@ -13,7 +15,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 
 class AdminComplianceController extends Controller
 {
@@ -125,16 +126,9 @@ class AdminComplianceController extends Controller
         return redirect()->route('admin.compliance.cases.show', $case)->with('success', "Compliance case #{$case->id} opened for {$user->business_name}.");
     }
 
-    public function addNote(Request $request, ComplianceCase $case, ComplianceService $compliance)
+    public function addNote(AddComplianceNoteRequest $request, ComplianceCase $case, ComplianceService $compliance)
     {
-        Gate::authorize('addNote', $case);
-        $data = $request->validate([
-            'note' => ['required', 'string', 'min:5', 'max:5000'],
-            'severity' => ['nullable', Rule::in(array_keys(ComplianceCase::SEVERITIES))],
-            'investigate' => ['nullable', 'boolean'],
-            'evidence' => ['nullable', 'array', 'max:5'],
-            'evidence.*' => CreateComplianceCaseRequest::EVIDENCE_RULES,
-        ]);
+        $data = $request->validated();
         $compliance->addNote($case, $request->user(), $data['note'], $request->file('evidence', []), $data['severity'] ?? null, $request->boolean('investigate'));
 
         return back()->with('success', 'Note added to the case.');
@@ -147,14 +141,16 @@ class AdminComplianceController extends Controller
         return back()->with('success', "Case #{$case->id} {$request->validated('outcome')}.");
     }
 
-    public function warn(Request $request, User $user, ComplianceService $compliance)
+    public function warn(WarnSellerRequest $request, User $user, ComplianceService $compliance)
     {
-        Gate::authorize('warnSeller', $user);
-        $data = $request->validate([
-            'warning' => ['required', 'string', 'min:10', 'max:1000'],
-            'case_id' => ['nullable', 'integer', Rule::exists('compliance_cases', 'id')->where('seller_id', $user->id)->whereIn('status', ComplianceCase::OPEN_STATUSES)],
-        ]);
-        $compliance->warn($user, $request->user(), $data['warning'], isset($data['case_id']) ? ComplianceCase::find($data['case_id']) : null);
+        $data = $request->validated();
+        $case = isset($data['case_id'])
+            ? ComplianceCase::query()
+                ->where('seller_id', $user->id)
+                ->whereIn('status', ComplianceCase::OPEN_STATUSES)
+                ->findOrFail($data['case_id'])
+            : null;
+        $compliance->warn($user, $request->user(), $data['warning'], $case);
 
         return $this->done($compliance, "Warning issued to {$user->business_name}.");
     }

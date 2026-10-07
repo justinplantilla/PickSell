@@ -59,16 +59,33 @@ class LogisticsRoutingService
 
         return User::query()
             ->where('role', 'courier')->where('status', 'approved')
-            ->whereHas('branchAssignments', function ($query) use ($order) {
-                $query->where('branch_id', $order->destination_branch_id)
-                    ->where('status', 'active')
-                    ->whereHas('barangays', function ($barangays) use ($order) {
-                        $barangays->where('barangay_id', $order->destination_barangay_id);
-                    });
-            })
+            ->whereHas('branchAssignments', fn ($query) => $this->constrainAssignmentToOrder($query, $order))
             ->withCount(['ordersAsCourier as active_parcels' => function ($query) {
                 $query->whereIn('status', ['assigned_to_rider', 'out_for_delivery']);
             }])
             ->orderBy('active_parcels')->first();
+    }
+
+    public function courierCoversOrder(User $courier, Order $order): bool
+    {
+        if (!$order->destination_branch_id || !$order->destination_barangay_id) {
+            return false;
+        }
+
+        return $courier->role === 'courier'
+            && $courier->status === 'approved'
+            && $courier->branchAssignments()
+                ->where(fn ($query) => $this->constrainAssignmentToOrder($query, $order))
+                ->exists();
+    }
+
+    private function constrainAssignmentToOrder($query, Order $order)
+    {
+        return $query->where('branch_id', $order->destination_branch_id)
+            ->where('status', 'active')
+            ->whereHas('branch.municipality', function ($municipality) use ($order) {
+                $municipality->whereHas('barangays', fn ($barangay) => $barangay->whereKey($order->destination_barangay_id));
+            })
+            ->whereHas('barangays', fn ($barangays) => $barangays->where('barangay_id', $order->destination_barangay_id));
     }
 }

@@ -8,7 +8,7 @@ use App\Models\Product;
 /**
  * The order lifecycle: which status may follow which, the timestamp column each status sets, and
  * the side effects a transition carries. Order::booted() applies timestamps and history for every
- * status change; transition() is the guarded path used by Admin.
+ * status change; every portal uses transition() as the guarded state-change authority.
  */
 class OrderLifecycleService
 {
@@ -19,7 +19,7 @@ class OrderLifecycleService
         'preparing' => ['ready_for_pickup', 'cancelled'],
         'ready_for_pickup' => ['picked_up', 'cancelled'],
         'picked_up' => ['at_sorting_center'],
-        'at_sorting_center' => ['sorted', 'assigned_to_rider'],
+        'at_sorting_center' => ['sorted'],
         'sorted' => ['assigned_to_rider'],
         'assigned_to_rider' => ['out_for_delivery', 'at_sorting_center'],
         'out_for_delivery' => ['delivered', 'delivery_failed'],
@@ -31,8 +31,8 @@ class OrderLifecycleService
 
         // Legacy statuses from before the lifecycle was formalised: Admin moves them onto the
         // current lifecycle (with a reason) to the step that matches where the parcel really is.
-        'pending' => ['placed', 'cancelled'],
-        'processing' => ['preparing', 'cancelled'],
+        'pending' => ['placed', 'preparing', 'cancelled'],
+        'processing' => ['preparing', 'ready_for_pickup', 'cancelled'],
         'shipped' => ['at_sorting_center', 'out_for_delivery', 'delivered'],
     ];
 
@@ -92,7 +92,10 @@ class OrderLifecycleService
         $order->statusChangedBy = $actorId;
         $order->statusChangeSource = $source;
         $order->statusChangeReason = $reason;
-        $order->update(['status' => $to, 'tracking_status' => $extra['tracking_status'] ?? self::label($to)] + $extra);
+        unset($extra['status']);
+        $extra['status'] = $to;
+        $extra['tracking_status'] ??= self::label($to);
+        $order->update($extra);
 
         if (in_array($to, self::RESTOCK_ON, true) && $order->product_id) {
             Product::whereKey($order->product_id)->increment('stock', (int) $order->quantity);

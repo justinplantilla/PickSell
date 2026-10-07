@@ -22,8 +22,15 @@ class ComplaintPolicy
             return Response::deny('You do not have permission to perform this action.');
         }
 
-        // An admin who filed the complaint, or is its subject, must not decide it.
-        return in_array((int) $admin->id, array_map('intval', array_filter([$complaint->filed_by, $complaint->against_user_id])), true)
+        $orderPartyIds = $complaint->order
+            ? [$complaint->order->buyer_id, $complaint->order->seller_id, $complaint->order->courier_id]
+            : [];
+
+        return in_array((int) $admin->id, array_map('intval', array_filter([
+            $complaint->filed_by,
+            $complaint->against_user_id,
+            ...$orderPartyIds,
+        ])), true)
             ? Response::deny('You cannot decide a complaint you are a party to.')
             : Response::allow();
     }

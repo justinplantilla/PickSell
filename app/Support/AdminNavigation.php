@@ -30,7 +30,7 @@ final class AdminNavigation
                 self::item('users', 'User Accounts', 'admin.users', Permission::USERS_VIEW, ['admin/users*']),
             ]],
             ['label' => 'Operations', 'items' => [
-                self::item('logistics', 'Logistics', 'admin.logistics', Permission::LOGISTICS_VIEW, ['admin/logistics']),
+                self::item('logistics', 'Logistics', 'admin.logistics.index', Permission::LOGISTICS_VIEW, ['admin/logistics']),
                 self::item('sorting', 'Sorting Center', 'admin.logistics.sorting', Permission::LOGISTICS_VIEW, ['admin/logistics/sorting-center*']),
                 self::item('riders', 'Rider Assignment', 'admin.logistics.riders', Permission::LOGISTICS_VIEW, ['admin/logistics/rider-assignment*']),
             ]],

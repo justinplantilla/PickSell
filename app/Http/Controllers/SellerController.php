@@ -3,20 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\Mail\NewMessageMail;
-use App\Notifications\SellerDeliveryReceived;
 use App\Models\Message;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ReturnRequest;
 use App\Models\User;
-use App\Services\PlatformCommission;
+use App\Notifications\SellerDeliveryReceived;
+use App\Services\CommissionService;
+use App\Services\Finance\FinancialLedgerService;
+use App\Services\Orders\OrderLifecycleService;
 use App\Services\ProductGallery;
+use App\Services\Reports\FinancialReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class SellerController extends Controller
@@ -63,13 +67,16 @@ class SellerController extends Controller
         ],
     ];
 
-    private function seller() { return auth()->user(); }
+    private function seller()
+    {
+        return auth()->user();
+    }
 
     // Dashboard
     public function dashboard(Request $request)
     {
         $seller = $this->seller();
-        $storeName = $seller->business_name ?: trim(($seller->first_name ?? '') . ' ' . ($seller->last_name ?? '')) ?: 'Your Store';
+        $storeName = $seller->business_name ?: trim(($seller->first_name ?? '').' '.($seller->last_name ?? '')) ?: 'Your Store';
         $range = in_array($request->query('range', '30D'), ['7D', '30D', '6M'], true) ? $request->query('range', '30D') : '30D';
         $metric = in_array($request->query('metric', 'sales'), ['sales', 'orders'], true) ? $request->query('metric', 'sales') : 'sales';
 
@@ -204,6 +211,7 @@ class SellerController extends Controller
         if ($previous) {
             $end = now()->subDays($days)->startOfDay();
             $start = now()->subDays($days * 2)->startOfDay();
+
             return [$start, $end];
         }
 
@@ -284,33 +292,36 @@ class SellerController extends Controller
         $status = $request->get('status', 'active');
         $stockFilter = $request->query('filter') === 'low-stock' || $request->query('stock') === 'low' ? 'low' : 'all';
         $search = $request->get('search');
-        $query  = Product::where('seller_id', $this->seller()->id)->with('latestStatusModeration');
+        $query = Product::where('seller_id', $this->seller()->id)->with('latestStatusModeration');
         if ($stockFilter === 'low') {
             $status = 'active';
             $query->lowStock();
         } elseif ($status !== 'all') {
             $query->where('status', $status);
         }
-        if ($search) $query->where('name', 'like', "%$search%");
+        if ($search) {
+            $query->where('name', 'like', "%$search%");
+        }
         $products = $query->latest()->paginate(15);
+
         return view('seller.inventory', compact('products', 'status', 'stockFilter', 'search'));
     }
 
     private const PRODUCT_RULES = [
-        'name'             => 'required|string|max:255',
-        'description'      => 'nullable|string',
-        'category'         => 'nullable|string|max:100',
-        'price'            => 'required|numeric|min:0',
-        'discount'         => 'nullable|numeric|min:0|max:100',
-        'voucher_code'     => 'nullable|string|max:50',
+        'name' => 'required|string|max:255',
+        'description' => 'nullable|string',
+        'category' => 'nullable|string|max:100',
+        'price' => 'required|numeric|min:0',
+        'discount' => 'nullable|numeric|min:0|max:100',
+        'voucher_code' => 'nullable|string|max:50',
         'voucher_discount' => 'nullable|numeric|min:0|max:100',
-        'stock'            => 'required|integer|min:0',
-        'gallery'          => 'nullable|array',
-        'gallery.*'        => 'string|max:64',
-        'gallery_cover'    => 'nullable|string|max:64',
-        'gallery_managed'  => 'nullable|boolean',
-        'gallery_alt'      => 'nullable|array',
-        'gallery_alt.*'    => 'nullable|string|max:255',
+        'stock' => 'required|integer|min:0',
+        'gallery' => 'nullable|array',
+        'gallery.*' => 'string|max:64',
+        'gallery_cover' => 'nullable|string|max:64',
+        'gallery_managed' => 'nullable|boolean',
+        'gallery_alt' => 'nullable|array',
+        'gallery_alt.*' => 'nullable|string|max:255',
     ];
 
     public function storeProduct(Request $request, ProductGallery $gallery)
@@ -322,7 +333,9 @@ class SellerController extends Controller
         DB::transaction(function () use ($data, $gallery, $managed) {
             $product = Product::create(collect($data)->except(['gallery', 'gallery_cover', 'gallery_managed', 'gallery_alt'])->all());
             // Only the JS gallery control sets gallery_managed, so a no-JS submit never wipes images.
-            if ($managed) $gallery->sync($product, $data['gallery'] ?? [], $data['gallery_cover'] ?? null, $data['gallery_alt'] ?? []);
+            if ($managed) {
+                $gallery->sync($product, $data['gallery'] ?? [], $data['gallery_cover'] ?? null, $data['gallery_alt'] ?? []);
+            }
         });
 
         return back()->with('success', 'Product added successfully.');
@@ -338,7 +351,9 @@ class SellerController extends Controller
         DB::transaction(function () use ($product, $data, $gallery, $managed) {
             $product->update(collect($data)->except(['gallery', 'gallery_cover', 'gallery_managed', 'gallery_alt'])->all());
             // Only the JS gallery control sets gallery_managed, so a no-JS submit never wipes images.
-            if ($managed) $gallery->sync($product, $data['gallery'] ?? [], $data['gallery_cover'] ?? null, $data['gallery_alt'] ?? []);
+            if ($managed) {
+                $gallery->sync($product, $data['gallery'] ?? [], $data['gallery_cover'] ?? null, $data['gallery_alt'] ?? []);
+            }
         });
 
         return back()->with('success', 'Product updated.');
@@ -351,6 +366,7 @@ class SellerController extends Controller
             return back()->withErrors(['product' => 'This product was archived by PickSell Admin and can only be restored by an admin. Contact support if you believe this is a mistake.']);
         }
         $product->update(['status' => $product->status === 'archived' ? 'active' : 'archived']);
+
         return back()->with('success', 'Product status updated.');
     }
 
@@ -358,7 +374,7 @@ class SellerController extends Controller
     public function orders(Request $request)
     {
         $status = $request->get('status', 'all');
-        $query  = Order::where('seller_id', $this->seller()->id)->with('buyer');
+        $query = Order::where('seller_id', $this->seller()->id)->with('buyer');
         if ($status === 'pending') {
             $query->whereIn('status', self::PENDING_ORDER_STATUSES);
         } elseif ($status === 'action_required') {
@@ -369,6 +385,7 @@ class SellerController extends Controller
             $query->where('status', $status);
         }
         $orders = $query->latest()->paginate(15);
+
         return view('seller.orders', compact('orders', 'status'));
     }
 
@@ -376,50 +393,61 @@ class SellerController extends Controller
     {
         abort_if($order->seller_id !== $this->seller()->id, 403);
         $order->load('buyer', 'courier');
-        $platformCommission = app(PlatformCommission::class);
-        $commissionRate = $platformCommission->rate();
-        $commission = $platformCommission->deduction((float) $order->amount);
-        return view('seller.order-detail', compact('order', 'commissionRate', 'commission'));
+        $commissionService = app(CommissionService::class);
+        $commissionRate = $commissionService->rateForOrder($order);
+        $commission = $commissionService->commissionForOrder($order);
+        $netEarnings = $commissionService->sellerNet($order->amount, $commission);
+
+        return view('seller.order-detail', compact('order', 'commissionRate', 'commission', 'netEarnings'));
     }
 
-    public function packOrder(Order $order)
+    public function packOrder(Order $order, OrderLifecycleService $lifecycle)
     {
-        abort_if($order->seller_id !== $this->seller()->id, 403);
-        abort_unless(in_array($order->status, ['placed', 'confirmed', 'pending'], true), 422, 'This order is not ready to be prepared.');
-        $order->update([
-            'status' => 'preparing',
-            'packed_at' => now(),
-            'tracking_status' => 'Seller is preparing the order',
-        ]);
+        DB::transaction(function () use ($order, $lifecycle): void {
+            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            abort_if($locked->seller_id !== $this->seller()->id, 403);
+            abort_unless(in_array($locked->status, ['placed', 'confirmed', 'pending'], true), 422, 'This order is not ready to be prepared.');
+            $lifecycle->transition($locked, 'preparing', $this->seller()->id, 'seller', null, [
+                'packed_at' => now(),
+                'tracking_status' => 'Seller is preparing the order',
+            ]);
+            $order->setRawAttributes($locked->getAttributes(), true);
+        });
+
         return back()->with('success', 'Order marked as being prepared.');
     }
 
-    public function handoverOrder(Order $order)
+    public function handoverOrder(Order $order, OrderLifecycleService $lifecycle)
     {
-        abort_if($order->seller_id !== $this->seller()->id, 403);
-        abort_unless(in_array($order->status, ['preparing', 'processing'], true), 422, 'Prepare the order before handing it over.');
+        $waybillNumber = DB::transaction(function () use ($order, $lifecycle): string {
+            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            abort_if($locked->seller_id !== $this->seller()->id, 403);
+            abort_unless(in_array($locked->status, ['preparing', 'processing'], true), 422, 'Prepare the order before handing it over.');
 
-        $waybillNumber = $order->waybill_number ?: $this->generateWaybill($order);
-        $order->update([
-            'status'         => 'ready_for_pickup',
-            'waybill_number' => $waybillNumber,
-            'handed_over_at' => now(),
-            'tracking_status' => 'Pickup requested from seller',
-        ]);
+            $waybillNumber = $locked->waybill_number ?: $this->generateWaybill($locked);
+            $lifecycle->transition($locked, 'ready_for_pickup', $this->seller()->id, 'seller', null, [
+                'waybill_number' => $waybillNumber,
+                'handed_over_at' => now(),
+                'tracking_status' => 'Pickup requested from seller',
+            ]);
+            $order->setRawAttributes($locked->getAttributes(), true);
 
-        $message = 'Order #' . $order->order_number . ' has been handed over to logistics. Waybill: ' . $waybillNumber . '.';
+            return $waybillNumber;
+        });
+
+        $message = 'Order #'.$order->order_number.' has been handed over to logistics. Waybill: '.$waybillNumber.'.';
         $this->notifyUser($order->buyer, 'Order handed over', $message, $order);
         $this->notifyUser($order->logistics, 'Parcel ready for pickup', $message, $order);
         User::where('role', 'admin')->where('status', 'approved')->get()
             ->each(fn (User $admin) => $this->notifyUser($admin, 'Parcel handed over', $message, $order));
 
-        return back()->with('success', 'Order handed over. Waybill ' . $waybillNumber . ' was generated automatically.');
+        return back()->with('success', 'Order handed over. Waybill '.$waybillNumber.' was generated automatically.');
     }
 
     private function generateWaybill(Order $order): string
     {
         do {
-            $waybill = 'WB-' . now()->format('ymd') . '-' . strtoupper(Str::random(8));
+            $waybill = 'WB-'.now()->format('ymd').'-'.strtoupper(Str::random(8));
         } while (Order::where('waybill_number', $waybill)->exists());
 
         return $waybill;
@@ -450,19 +478,30 @@ class SellerController extends Controller
         $pdf = Pdf::loadView('seller.pdf.waybill', compact('order'))
             ->setPaper([0, 0, 226.77, 560], 'portrait');
 
-        return $pdf->stream('waybill-' . $order->order_number . '.pdf');
+        return $pdf->stream('waybill-'.$order->order_number.'.pdf');
     }
 
-    public function confirmDelivery(Order $order)
+    public function confirmDelivery(Order $order, FinancialLedgerService $ledger, OrderLifecycleService $lifecycle)
     {
-        abort_if($order->seller_id !== $this->seller()->id, 403);
-        abort_unless(in_array($order->status, ['delivered', 'completed'], true), 422, 'Only delivered orders can be confirmed.');
+        DB::transaction(function () use ($order, $ledger, $lifecycle): void {
+            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            abort_if($locked->seller_id !== $this->seller()->id, 403);
+            abort_unless(in_array($locked->status, ['delivered', 'completed'], true), 422, 'Only delivered orders can be confirmed.');
 
-        $order->update([
-            'status' => 'completed',
-            'tracking_status' => 'Seller confirmed delivery',
-            'confirmed_by_seller_at' => now(),
-        ]);
+            if ($locked->status === 'delivered') {
+                $lifecycle->transition($locked, 'completed', $this->seller()->id, 'seller', null, [
+                    'tracking_status' => 'Seller confirmed delivery',
+                    'confirmed_by_seller_at' => now(),
+                ]);
+            } else {
+                $locked->update([
+                    'tracking_status' => 'Seller confirmed delivery',
+                    'confirmed_by_seller_at' => now(),
+                ]);
+            }
+            $ledger->postCompletedOrder($locked, $this->seller());
+            $order->setRawAttributes($locked->getAttributes(), true);
+        });
 
         $this->seller()->notify(new SellerDeliveryReceived($order));
 
@@ -480,6 +519,7 @@ class SellerController extends Controller
     public function markNotificationsRead()
     {
         auth()->user()->unreadNotifications->markAsRead();
+
         return response()->json(['success' => true]);
     }
 
@@ -521,7 +561,7 @@ class SellerController extends Controller
             } finally {
                 fclose($handle);
             }
-        }, 'seller-earnings-' . $data['from'] . '-to-' . $data['to'] . '.csv', [
+        }, 'seller-earnings-'.$data['from'].'-to-'.$data['to'].'.csv', [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
@@ -531,12 +571,11 @@ class SellerController extends Controller
         $data = $this->earningsData($request);
         $pdf = Pdf::loadView('seller.pdf.earnings', $data)->setPaper('a4', 'portrait');
 
-        return $pdf->download('seller-earnings-' . $data['from'] . '-to-' . $data['to'] . '.pdf');
+        return $pdf->download('seller-earnings-'.$data['from'].'-to-'.$data['to'].'.pdf');
     }
 
     private function earningsData(Request $request): array
     {
-        $commissionRate = app(PlatformCommission::class)->rate();
         $validated = $request->validate([
             'preset' => ['nullable', 'in:today,last_7_days,last_30_days,this_month,last_month,custom'],
             'from' => ['required_if:preset,custom', 'required_with:to', 'nullable', 'date_format:Y-m-d'],
@@ -547,8 +586,8 @@ class SellerController extends Controller
         $today = now()->startOfDay();
 
         if ($preset === 'custom') {
-            $start = \Carbon\Carbon::createFromFormat('Y-m-d', $validated['from'])->startOfDay();
-            $end = \Carbon\Carbon::createFromFormat('Y-m-d', $validated['to'])->endOfDay();
+            $start = Carbon::createFromFormat('Y-m-d', $validated['from'])->startOfDay();
+            $end = Carbon::createFromFormat('Y-m-d', $validated['to'])->endOfDay();
         } else {
             [$start, $end] = match ($preset) {
                 'today' => [$today->copy(), $today->copy()->endOfDay()],
@@ -561,35 +600,18 @@ class SellerController extends Controller
 
         $from = $start->toDateString();
         $to = $end->toDateString();
-        $orders = Order::where('seller_id', $this->seller()->id)
-            ->where('status', 'completed')
-            ->whereBetween('created_at', [$start, $end])
-            ->latest()
-            ->get()
-            ->map(fn (Order $order): array => [
-                'id' => $order->id,
-                'order_number' => $order->order_number,
-                'created_at' => $order->created_at,
-                'amount' => (float) $order->amount,
-                'commission' => round((float) $order->amount * $commissionRate / 100, 2),
-                'commission_rate' => $commissionRate,
-                'net_earnings' => round((float) $order->amount - round((float) $order->amount * $commissionRate / 100, 2), 2),
-                'status' => $order->status,
-            ]);
-
-        $totalSales = (float) $orders->sum('amount');
-        $totalCommission = (float) $orders->sum('commission');
+        $finance = app(FinancialReportService::class)->sellerPeriod($start, $end, $this->seller()->id);
 
         return [
             'from' => $from,
             'to' => $to,
             'preset' => $preset,
-            'orders' => $orders,
-            'totalOrders' => $orders->count(),
-            'totalSales' => $totalSales,
-            'totalCommission' => $totalCommission,
-            'totalNetEarnings' => $totalSales - $totalCommission,
-            'averageCommissionRate' => $commissionRate,
+            'orders' => $finance['orders'],
+            'totalOrders' => $finance['completed_orders'],
+            'totalSales' => $finance['gross_sales'],
+            'totalCommission' => $finance['commission'],
+            'totalNetEarnings' => $finance['seller_net'],
+            'averageCommissionRate' => $finance['average_commission_rate'],
         ];
     }
 
@@ -607,7 +629,8 @@ class SellerController extends Controller
         $data = $this->reportData($from, $to);
 
         $pdf = Pdf::loadView('seller.pdf.report', $data)->setPaper('a4', 'portrait');
-        return $pdf->download('seller-report-' . $from . '-to-' . $to . '.pdf');
+
+        return $pdf->download('seller-report-'.$from.'-to-'.$to.'.pdf');
     }
 
     public function reportCsv(Request $request)
@@ -644,7 +667,7 @@ class SellerController extends Controller
             } finally {
                 fclose($handle);
             }
-        }, 'seller-report-' . $from . '-to-' . $to . '.csv', [
+        }, 'seller-report-'.$from.'-to-'.$to.'.csv', [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
     }
@@ -669,45 +692,21 @@ class SellerController extends Controller
     private function reportData(string $from, string $to): array
     {
         $seller = $this->seller();
-        $commissionRate = app(PlatformCommission::class)->rate();
-
-        $orders = Order::where('seller_id', $seller->id)
-            ->where('status', 'completed')
-            ->whereBetween('created_at', [$from, $to . ' 23:59:59'])
-            ->get();
-
-        $totalSales  = $orders->sum('amount');
-        $totalOrders = $orders->count();
-        $financialOrders = $orders->map(fn (Order $order): array => [
-            'id' => $order->id,
-            'order_number' => $order->order_number,
-            'created_at' => $order->created_at,
-            'amount' => (float) $order->amount,
-            'commission_rate' => $commissionRate,
-            'commission' => round((float) $order->amount * $commissionRate / 100, 2),
-            'net_earnings' => round((float) $order->amount - round((float) $order->amount * $commissionRate / 100, 2), 2),
-            'status' => $order->status,
-        ]);
-        $totalCommission = $financialOrders->sum('commission');
-        $totalNetEarnings = $totalSales - $totalCommission;
+        $finance = app(FinancialReportService::class)->sellerPeriod(
+            Carbon::parse($from)->startOfDay(),
+            Carbon::parse($to)->endOfDay(),
+            $seller->id,
+        );
+        $totalSales = $finance['gross_sales'];
+        $totalOrders = $finance['completed_orders'];
+        $totalCommission = $finance['commission'];
+        $totalNetEarnings = $finance['seller_net'];
         $totalProfit = $totalNetEarnings;
-
-        // Daily breakdown
-        $days   = [];
-        $dailySales = [];
-        $start  = \Carbon\Carbon::parse($from);
-        $end    = \Carbon\Carbon::parse($to);
-        while ($start->lte($end)) {
-            $day = $start->format('Y-m-d');
-            $days[] = $start->format('M d');
-            $dailySales[] = $orders->filter(fn($o) => $o->created_at->format('Y-m-d') === $day)->sum('amount');
-            $start->addDay();
-        }
-
-        // Top products
-        $topProducts = $orders->groupBy('product_name')
-            ->map(fn($g) => ['name' => $g->first()->product_name, 'sales' => $g->sum('amount'), 'count' => $g->count()])
-            ->sortByDesc('sales')->take(5)->values();
+        $financialOrders = $finance['financial_orders'];
+        $days = $finance['days'];
+        $dailySales = $finance['daily_sales'];
+        $topProducts = $finance['top_products'];
+        $commissionRate = $finance['average_commission_rate'];
 
         return compact(
             'from',
@@ -717,11 +716,11 @@ class SellerController extends Controller
             'totalCommission',
             'totalNetEarnings',
             'totalProfit',
-            'commissionRate',
             'financialOrders',
             'days',
             'dailySales',
             'topProducts',
+            'commissionRate',
         );
     }
 
@@ -733,8 +732,8 @@ class SellerController extends Controller
         // Show only buyers who have messaged the seller or placed an order.
         $chattedBuyerIds = Message::where(function ($q) use ($seller) {
             $q->where('sender_id', $seller->id)->orWhere('receiver_id', $seller->id);
-        })->get()->map(fn($m) => $m->sender_id === $seller->id ? $m->receiver_id : $m->sender_id)
-          ->unique()->values();
+        })->get()->map(fn ($m) => $m->sender_id === $seller->id ? $m->receiver_id : $m->sender_id)
+            ->unique()->values();
 
         $orderedBuyerIds = Order::where('seller_id', $seller->id)
             ->pluck('buyer_id');
@@ -751,8 +750,8 @@ class SellerController extends Controller
         }
 
         $activeUserId = $request->get('user');
-        $activeUser   = $activeUserId ? User::find($activeUserId) : null;
-        $messages     = collect();
+        $activeUser = $activeUserId ? User::find($activeUserId) : null;
+        $messages = collect();
 
         if ($activeUser) {
             Message::where('sender_id', $activeUserId)->where('receiver_id', $seller->id)->update(['read' => true]);
@@ -768,6 +767,7 @@ class SellerController extends Controller
 
         $users = $users->map(function ($u) use ($seller) {
             $u->unread = Message::where('sender_id', $u->id)->where('receiver_id', $seller->id)->where('read', false)->count();
+
             return $u;
         });
 
@@ -779,7 +779,8 @@ class SellerController extends Controller
         $request->validate(['receiver_id' => 'required|exists:users,id', 'body' => 'required|string|max:2000']);
         $msg = Message::create(['sender_id' => auth()->id(), 'receiver_id' => $request->receiver_id, 'body' => $request->body, 'read' => false]);
         $msg->load('sender', 'receiver', 'product');
-        \Illuminate\Support\Facades\Mail::to($msg->receiver->email)->send(new NewMessageMail($msg));
+        Mail::to($msg->receiver->email)->send(new NewMessageMail($msg));
+
         return back();
     }
 
@@ -792,35 +793,37 @@ class SellerController extends Controller
     public function updateAccount(Request $request)
     {
         $request->validate([
-            'first_name'    => 'required|string|max:100',
-            'last_name'     => 'required|string|max:100',
+            'first_name' => 'required|string|max:100',
+            'last_name' => 'required|string|max:100',
             'middle_initial' => 'nullable|string|max:5',
-            'sex'           => 'required|in:Male,Female',
-            'birthday'      => 'required|date|before:-18 years',
-            'email'         => 'required|email|unique:users,email,' . auth()->id(),
-            'contact_no'    => 'required|string|max:20',
+            'sex' => 'required|in:Male,Female',
+            'birthday' => 'required|date|before:-18 years',
+            'email' => 'required|email|unique:users,email,'.auth()->id(),
+            'contact_no' => 'required|string|max:20',
             'business_name' => 'nullable|string|max:255',
             'line_of_business' => 'nullable|string|max:255',
-            'province'      => 'required|string|max:120',
-            'municipality'  => 'required|string|max:120',
-            'barangay'      => 'required|string|max:120',
-            'street'        => 'nullable|string|max:255',
-            'house_no'      => 'nullable|string|max:100',
+            'province' => 'required|string|max:120',
+            'municipality' => 'required|string|max:120',
+            'barangay' => 'required|string|max:120',
+            'street' => 'nullable|string|max:255',
+            'house_no' => 'nullable|string|max:100',
         ]);
         auth()->user()->update($request->only(
             'first_name', 'last_name', 'middle_initial', 'sex', 'birthday', 'email', 'contact_no',
             'business_name', 'line_of_business', 'province', 'municipality', 'barangay', 'street', 'house_no'
         ));
+
         return back()->with('success', 'Account updated successfully.');
     }
 
     public function updatePassword(Request $request)
     {
         $request->validate(['current_password' => 'required', 'password' => 'required|min:8|confirmed']);
-        if (!Hash::check($request->current_password, auth()->user()->password)) {
+        if (! Hash::check($request->current_password, auth()->user()->password)) {
             return back()->withErrors(['current_password' => 'Current password is incorrect.']);
         }
         auth()->user()->update(['password' => Hash::make($request->password)]);
+
         return back()->with('success', 'Password changed successfully.');
     }
 }

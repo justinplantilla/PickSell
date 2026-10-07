@@ -3,9 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\User;
 use App\Notifications\NewSellerOrder;
+use App\Services\Finance\FinancialLedgerService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class SellerWorkflowTest extends TestCase
@@ -60,7 +64,7 @@ class SellerWorkflowTest extends TestCase
         ]);
 
         $this->actingAs($seller)
-            ->get('/seller/orders/' . $order->id . '/waybill')
+            ->get('/seller/orders/'.$order->id.'/waybill')
             ->assertOk()
             ->assertHeader('Content-Type', 'application/pdf');
     }
@@ -114,7 +118,7 @@ class SellerWorkflowTest extends TestCase
         ]);
 
         $this->actingAs($seller)
-            ->patch('/seller/orders/' . $order->id . '/confirm-delivery')
+            ->patch('/seller/orders/'.$order->id.'/confirm-delivery')
             ->assertRedirect();
 
         $order->refresh();
@@ -213,7 +217,7 @@ class SellerWorkflowTest extends TestCase
 
         foreach (['out_for_delivery', 'cancelled', 'delivery_failed', 'returned'] as $index => $status) {
             Order::create([
-                'order_number' => 'ORD-SELLER-DIST-' . $index,
+                'order_number' => 'ORD-SELLER-DIST-'.$index,
                 'buyer_id' => $buyer->id,
                 'seller_id' => $seller->id,
                 'product_name' => 'Status Test Product',
@@ -224,7 +228,7 @@ class SellerWorkflowTest extends TestCase
             ]);
         }
 
-        \App\Models\Product::create([
+        Product::create([
             'seller_id' => $seller->id,
             'name' => 'Low Stock Product',
             'category' => 'Accessories',
@@ -233,7 +237,7 @@ class SellerWorkflowTest extends TestCase
             'status' => 'active',
         ]);
 
-        \App\Models\Product::create([
+        Product::create([
             'seller_id' => $seller->id,
             'name' => 'Healthy Stock Product',
             'category' => 'Accessories',
@@ -321,7 +325,7 @@ class SellerWorkflowTest extends TestCase
             ->assertDontSee('Healthy Stock Product');
 
         Order::where('seller_id', $seller->id)->delete();
-        \App\Models\Product::where('seller_id', $seller->id)->delete();
+        Product::where('seller_id', $seller->id)->delete();
 
         $this->get('/seller/dashboard')
             ->assertOk()
@@ -334,7 +338,7 @@ class SellerWorkflowTest extends TestCase
 
     public function test_seller_can_review_and_export_order_level_earnings(): void
     {
-        $this->travelTo(\Carbon\Carbon::parse('2026-10-05 12:00:00'));
+        $this->travelTo(Carbon::parse('2026-10-05 12:00:00'));
 
         $seller = User::create([
             'first_name' => 'Earnings',
@@ -401,9 +405,15 @@ class SellerWorkflowTest extends TestCase
                 'commission' => $commission,
                 'status' => $status,
             ]);
-            \Illuminate\Support\Facades\DB::table('orders')
+            DB::table('orders')
                 ->where('id', $order->id)
                 ->update(['created_at' => $createdAt, 'updated_at' => $createdAt]);
+            if ($status === 'completed') {
+                app(FinancialLedgerService::class)->postCompletedOrder($order);
+                DB::table('financial_transactions')
+                    ->where('order_id', $order->id)
+                    ->update(['created_at' => $createdAt, 'updated_at' => $createdAt]);
+            }
         }
 
         $filters = [
@@ -451,22 +461,22 @@ class SellerWorkflowTest extends TestCase
         config()->set('app.platform_commission_rate', 12.5);
         $this->get(route('seller.earnings', $filters))
             ->assertOk()
-            ->assertSee('-₱437.50')
-            ->assertSee('₱3,062.50')
-            ->assertSee('-₱187.50')
-            ->assertSee('(12.50%)');
+            ->assertSee('-₱350.00')
+            ->assertSee('₱3,150.00')
+            ->assertSee('-₱150.00')
+            ->assertSee('(10.00%)');
 
         $this->get(route('seller.reports', ['from' => $filters['from'], 'to' => $filters['to']]))
             ->assertOk()
             ->assertSee('₱3,500.00')
-            ->assertSee('-₱437.50')
-            ->assertSee('₱3,062.50')
+            ->assertSee('-₱350.00')
+            ->assertSee('₱3,150.00')
             ->assertSee('Net Earnings (After Commission)')
             ->assertSee('Sales and Net Earnings by Order');
 
         $reportCsv = $this->get(route('seller.reports.csv', ['from' => $filters['from'], 'to' => $filters['to']]));
         $reportCsv->assertOk()->assertDownload('seller-report-2026-10-01-to-2026-10-04.csv');
-        $this->assertStringContainsString(',1500.00,12.50,187.50,1312.50,completed', $reportCsv->streamedContent());
+        $this->assertStringContainsString(',1500.00,10.00,150.00,1350.00,completed', $reportCsv->streamedContent());
 
         $this->get(route('seller.reports.pdf', ['from' => $filters['from'], 'to' => $filters['to']]))
             ->assertOk()

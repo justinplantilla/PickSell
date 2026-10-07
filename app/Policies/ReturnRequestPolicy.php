@@ -28,4 +28,35 @@ class ReturnRequestPolicy
             ? Response::allow()
             : Response::denyWithStatus(422, 'This dispute is no longer open.');
     }
+
+    public function approve(User $admin, ReturnRequest $returnRequest): Response
+    {
+        return $this->manageAtStatus($admin, $returnRequest, 'requested');
+    }
+
+    public function reject(User $admin, ReturnRequest $returnRequest): Response
+    {
+        return $this->manageAtStatus($admin, $returnRequest, 'requested');
+    }
+
+    public function inspect(User $admin, ReturnRequest $returnRequest): Response
+    {
+        return $this->manageAtStatus($admin, $returnRequest, 'received');
+    }
+
+    public function approveRefund(User $admin, ReturnRequest $returnRequest): Response
+    {
+        return $this->manageAtStatus($admin, $returnRequest, 'inspected');
+    }
+
+    private function manageAtStatus(User $admin, ReturnRequest $returnRequest, string $status): Response
+    {
+        if (! $admin->hasPermission(Permission::RETURNS_MANAGE)) {
+            return Response::deny('You do not have permission to perform this action.');
+        }
+
+        return $returnRequest->status === $status && $returnRequest->dispute_status !== 'open'
+            ? Response::allow()
+            : Response::denyWithStatus(422, 'This return request is no longer in the expected state.');
+    }
 }

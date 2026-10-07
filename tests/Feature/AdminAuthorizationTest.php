@@ -196,6 +196,6 @@ class AdminAuthorizationTest extends TestCase
 
         $this->limitAdminTo(Permission::ALL);
         $this->actingAs($admin)->post('/admin/settings', ['platform_name' => 'PickSell PH', 'commission_rate' => '15'])->assertRedirect();
-        $this->assertSame('15', PlatformSetting::get('commission_rate'));
+        $this->assertSame('15.00', PlatformSetting::get('commission_rate'));
     }
 }

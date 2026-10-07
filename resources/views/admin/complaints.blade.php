@@ -21,7 +21,7 @@
     @include('admin.returns._care_tabs')
     <table>
         <thead>
-            <tr><th>#</th><th>Filed By</th><th>Against</th><th>Subject</th><th>Status</th><th>Date</th><th>Action</th></tr>
+            <tr><th>#</th><th>Filed By</th><th>Against</th><th>Order</th><th>Subject</th><th>Status</th><th>Date</th><th>Action</th></tr>
         </thead>
         <tbody>
         @forelse($complaints as $c)
@@ -32,6 +32,17 @@
                 <div class="blade-inline-1">{{ ucfirst($c->filer->role ?? '') }}</div>
             </td>
             <td>{{ $c->against->full_name ?? '—' }}</td>
+            <td>
+                @if($c->order)
+                    @can(\App\Auth\Permission::ORDERS_VIEW)
+                        <a href="{{ route('admin.orders.show', $c->order) }}">{{ $c->order->order_number }}</a>
+                    @else
+                        {{ $c->order->order_number }}
+                    @endcan
+                @else
+                    —
+                @endif
+            </td>
             <td>{{ $c->subject }}</td>
             <td>
                 @php
@@ -43,7 +54,7 @@
             <td><a href="/admin/complaints/{{ $c->id }}" class="btn btn-coral btn-sm">Review</a></td>
         </tr>
         @empty
-        <tr><td colspan="7" class="blade-inline-2">No complaints found.</td></tr>
+        <tr><td colspan="8" class="blade-inline-2">No complaints found.</td></tr>
         @endforelse
         </tbody>
     </table>

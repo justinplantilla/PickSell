@@ -143,6 +143,10 @@
         .notification-detail-card h2 { margin:.45rem 2rem .75rem 0; font-size:1.05rem; }
         .notification-detail-message { color:#555; line-height:1.55; }
         .notification-detail-time { display:block; margin-top:1rem; color:#999; font-size:.78rem; }
+        .notification-detail-link { display:inline-flex; align-items:center; justify-content:center; margin-top:1rem; padding:.55rem .9rem; border-radius:8px; background:var(--coral); color:#fff; font-size:.82rem; font-weight:700; text-decoration:none; }
+        .notification-detail-link:hover { background:var(--coral-dark); color:#fff; }
+        body.dark .notification-detail-card { background:#1e1e1e; border-color:#3b3b3b; color:#e5e7eb; }
+        body.dark .notification-detail-message { color:#c4c4c4; }
         .notif-item:last-child { border-bottom: none; }
         .notif-empty { padding: 1.5rem; text-align: center; color: #aaa; font-size: 0.85rem; }
         .notif-header { padding: 0.8rem 1rem; font-weight: 700; font-size: 0.85rem; border-bottom: 1px solid #f0ebe0; display:flex; justify-content:space-between; align-items:center; }

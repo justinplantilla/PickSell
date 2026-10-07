@@ -52,7 +52,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path d="M7.5 11C9.43 11 11 9.43 11 7.5S9.43 4 7.5 4 4 5.57 4 7.5 5.57 11 7.5 11zm0-5C8.33 6 9 6.67 9 7.5S8.33 9 7.5 9 6 8.33 6 7.5 6.67 6 7.5 6zM4.0 19.59 19.59 4 21 5.41 5.41 21 4 19.59zM16.5 13c-1.93 0-3.5 1.57-3.5 3.5s1.57 3.5 3.5 3.5 3.5-1.57 3.5-3.5-1.57-3.5-3.5-3.5zm0 5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
         </div>
         <div class="stat-card-num">-₱{{ number_format($totalCommission, 2) }}</div>
-        <div class="stat-card-label">Commission Deducted ({{ number_format($commissionRate, 2) }}%)</div>
+        <div class="stat-card-label">Commission Deducted (historical rates)</div>
     </div>
     <div class="stat-card orange">
         <div class="stat-card-icon">
@@ -71,7 +71,7 @@
         <div class="earnings-table-wrap">
             <table class="earnings-table">
                 <thead>
-                    <tr><th>Order ID</th><th>Transaction date</th><th>Sale amount (gross)</th><th>Commission deducted</th><th>Net earnings</th><th>Order status</th></tr>
+                    <tr><th>Order ID</th><th>Transaction date</th><th>Sale amount (gross)</th><th>Commission rate</th><th>Commission deducted</th><th>Net earnings</th><th>Order status</th></tr>
                 </thead>
                 <tbody>
                 @foreach($financialOrders as $order)
@@ -79,6 +79,7 @@
                         <td><a href="{{ route('seller.orders.show', $order['id']) }}">#{{ $order['order_number'] }}</a></td>
                         <td>{{ $order['created_at']->format('M d, Y') }}</td>
                         <td>₱{{ number_format($order['amount'], 2) }}</td>
+                        <td>{{ number_format($order['commission_rate'], 2) }}%</td>
                         <td class="earnings-amount--deduction">-₱{{ number_format($order['commission'], 2) }}</td>
                         <td class="earnings-amount--net">₱{{ number_format($order['net_earnings'], 2) }}</td>
                         <td><x-order-status-badge :status="$order['status']" /></td>

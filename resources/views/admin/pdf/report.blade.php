@@ -39,7 +39,7 @@
 <div class="section-title">Summary</div>
 <table>
     <tr>
-        <th>Total Sales</th><th>Total Orders</th><th>Commission ({{ number_format($data['commission_rate'], 2) }}%)</th><th>Net Earnings</th><th>New Buyers</th><th>New Sellers</th>
+        <th>Total Sales</th><th>Total Orders</th><th>Commission (historical rates)</th><th>Net Earnings</th><th>New Buyers</th><th>New Sellers</th>
     </tr>
     <tr>
         <td class="coral">₱{{ number_format($data['total_sales']) }}</td>
@@ -54,7 +54,7 @@
 <!-- Top Sellers -->
 <div class="section-title">Top Sellers Performance</div>
 <table>
-    <thead><tr><th>#</th><th>Seller</th><th>Total Sales</th><th>Orders</th><th>Commission ({{ number_format($data['commission_rate'], 2) }}%)</th><th>Net earnings</th></tr></thead>
+    <thead><tr><th>#</th><th>Seller</th><th>Total Sales</th><th>Orders</th><th>Commission</th><th>Net earnings</th></tr></thead>
     <tbody>
     @foreach($data['top_sellers'] as $i => $s)
     <tr>
@@ -63,7 +63,7 @@
         <td>₱{{ number_format($s['sales']) }}</td>
         <td>{{ $s['orders'] }}</td>
         <td class="coral">₱{{ number_format($s['commission']) }}</td>
-        <td>₱{{ number_format($s['sales'] - $s['commission']) }}</td>
+        <td>₱{{ number_format($s['net']) }}</td>
     </tr>
     @endforeach
     </tbody>

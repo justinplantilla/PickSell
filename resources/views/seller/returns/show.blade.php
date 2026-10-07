@@ -138,19 +138,19 @@
                         <button type="submit" class="btn btn-coral">Confirm item received</button>
                     </form>
                 @elseif($returnRequest->status === 'received')
-                    <p>Inspect the returned item, then mark the refund amount due.</p>
-                    <p class="return-refund-summary">Refund to issue: <strong>₱{{ number_format($returnRequest->refund_amount ?? 0, 2) }}</strong></p>
-                    <form method="POST" action="{{ route('seller.returns.refund-due', $returnRequest) }}">
-                        @csrf @method('PATCH')
-                        <button type="submit" class="btn btn-coral">Mark refund due</button>
-                    </form>
-                @elseif($returnRequest->status === 'refund_due')
-                    <p>Send the refund through the agreed payment method first; this app does not issue payments automatically.</p>
-                    <p class="return-refund-summary">Refund to issue: <strong>₱{{ number_format($returnRequest->refund_amount ?? 0, 2) }}</strong></p>
-                    <form method="POST" action="{{ route('seller.returns.complete', $returnRequest) }}">
-                        @csrf @method('PATCH')
-                        <button type="submit" class="btn btn-success">Confirm refund sent</button>
-                    </form>
+                    <p>The returned item is awaiting Admin inspection before a refund can be approved.</p>
+                @elseif(in_array($returnRequest->status, ['approved_for_refund', 'refund_due'], true))
+                    @if($returnRequest->latestRefund?->status === 'approved')
+                        <p>Finance approved this refund. Send the payment through the agreed method; this app does not transfer funds automatically.</p>
+                        <p class="return-refund-summary">Refund to issue: <strong>₱{{ number_format($returnRequest->latestRefund->amount, 2) }}</strong></p>
+                        <form method="POST" action="{{ route('seller.returns.complete', $returnRequest) }}">
+                            @csrf @method('PATCH')
+                            <button type="submit" class="btn btn-success">Confirm refund sent</button>
+                        </form>
+                    @else
+                        <p>The refund is awaiting Finance review. Do not issue payment until it is approved.</p>
+                        <p class="return-refund-summary">Requested refund: <strong>₱{{ number_format($returnRequest->refund_amount ?? 0, 2) }}</strong></p>
+                    @endif
                 @elseif($returnRequest->status === 'rejected' && $returnRequest->dispute_status === 'open')
                     <div class="alert alert-warning" role="status">This return request was rejected. The buyer may escalate this decision to Platform Admin for final dispute resolution.</div>
                     <p>Seller decision controls are now read-only while Admin reviews the case.</p>
@@ -178,6 +178,10 @@
                                     'seller_approved' => 'Seller approved return',
                                     'seller_rejected' => 'Seller rejected request',
                                     'item_received' => 'Seller received returned item',
+                                    'admin_approved' => 'Admin approved return',
+                                    'admin_rejected' => 'Admin rejected return',
+                                    'admin_inspected' => 'Admin inspected returned item',
+                                    'admin_refund_approved' => 'Admin approved refund',
                                     'refund_due' => 'Refund marked due',
                                     'refund_completed' => 'Refund completed',
                                     'tracking_updated' => 'Return tracking updated',

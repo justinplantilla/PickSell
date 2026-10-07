@@ -25,7 +25,7 @@
                 @endif
             </a>
             @empty
-            <div class="blade-inline-1">No approved users yet.</div>
+            <div class="chat-list-empty">No approved users yet.</div>
             @endforelse
         </div>
     </div>
@@ -36,8 +36,8 @@
         <div class="chat-header">
             <div class="chat-avatar {{ $activeUser->role }}">{{ strtoupper(substr($activeUser->first_name, 0, 1)) }}</div>
             <div>
-                <div class="blade-inline-2">{{ $activeUser->full_name }}</div>
-                <div class="blade-inline-3">{{ ucfirst($activeUser->role) }} · {{ $activeUser->email }}</div>
+                <div class="chat-contact-name">{{ $activeUser->full_name }}</div>
+                <div class="chat-contact-meta">{{ ucfirst($activeUser->role) }} · {{ $activeUser->email }}</div>
             </div>
         </div>
         <div class="chat-messages" id="chatMessages">
@@ -47,11 +47,11 @@
                 <div class="msg-time">{{ $msg->created_at->format('M d, h:i A') }}</div>
             </div>
             @empty
-            <div class="blade-inline-4">No messages yet. Start the conversation!</div>
+            <div class="chat-no-messages">No messages yet. Start the conversation!</div>
             @endforelse
         </div>
         <div class="chat-input-area">
-            <form method="POST" action="/admin/chat/send" class="blade-inline-5" id="msgForm">
+            <form method="POST" action="/admin/chat/send" class="chat-message-form" id="msgForm">
                 @csrf
                 <input type="hidden" name="receiver_id" value="{{ $activeUser->id }}">
                 <input type="text" name="body" class="chat-input" placeholder="Type a message..." required autocomplete="off">

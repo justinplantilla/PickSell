@@ -8,6 +8,7 @@ use App\Models\ComplianceAction;
 use App\Models\ComplianceCase;
 use App\Models\User;
 use App\Services\AuditLogger;
+use App\Services\AdminNotificationService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -29,7 +30,11 @@ class ComplianceService
     /** Whether the last email attempt succeeded. */
     public bool $notified = true;
 
-    public function __construct(private AuditLogger $audit, private UserModerationService $moderation) {}
+    public function __construct(
+        private AuditLogger $audit,
+        private UserModerationService $moderation,
+        private AdminNotificationService $notifications,
+    ) {}
 
     /** @param UploadedFile[] $evidence */
     public function openCase(User $seller, User $actor, array $data, array $evidence = []): ComplianceCase
@@ -47,6 +52,13 @@ class ComplianceService
             $this->record($seller, $actor, ComplianceAction::CASE_OPENED, $data['description'], $case, $evidence,
                 ['type' => $case->type, 'severity' => $case->severity, 'product_id' => $case->product_id]);
             $this->audit->record('compliance.case_opened', $case, [], ['seller_id' => $seller->id, 'type' => $case->type, 'severity' => $case->severity], Permission::SELLER_COMPLIANCE_MANAGE);
+            $this->notifications->notifyAdmins(
+                'compliance.violation',
+                'Compliance case opened',
+                "A {$case->severity}-severity compliance case was opened for {$seller->first_name} {$seller->last_name}.",
+                route('admin.compliance.cases.show', ['case' => $case], false),
+                priority: in_array($case->severity, ['high', 'critical'], true) ? 'critical' : 'normal',
+            );
 
             return $case;
         });

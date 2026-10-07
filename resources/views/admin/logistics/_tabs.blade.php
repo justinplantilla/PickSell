@@ -1,6 +1,6 @@
 <nav class="oversight-tabs" aria-label="Operations">
     @foreach([
-        'admin.logistics' => 'Logistics overview',
+        'admin.logistics.index' => 'Logistics overview',
         'admin.logistics.sorting' => 'Sorting center',
         'admin.logistics.riders' => 'Rider assignment',
     ] as $routeName => $label)

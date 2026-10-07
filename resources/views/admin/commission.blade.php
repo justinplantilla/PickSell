@@ -5,6 +5,9 @@
 @section('title', 'Commission Management')
 
 @section('content')
+@if($migrationWarning)
+<div class="alert alert-warning" role="status">{{ $migrationWarning }}</div>
+@endif
 <!-- Date Filter -->
 <div class="card blade-inline-1">
     <div class="card-body">
@@ -31,7 +34,7 @@
     <div class="stat-card coral">
         <div class="stat-card-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16M8 16v-4M12 16V8M16 16v-7"/></svg></div>
         <div class="stat-card-num">₱{{ number_format($totalCommission, 2) }}</div>
-        <div class="stat-card-label">Total Commission ({{ $rate }}%)</div>
+        <div class="stat-card-label">Total Commission (historical rates)</div>
     </div>
     <div class="stat-card blue">
         <div class="stat-card-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 7h6M9 11h6M9 15h4"/></svg></div>
@@ -48,7 +51,7 @@
     <div class="card">
         <div class="card-header"><span class="card-title">Commission Rate</span></div>
         <div class="card-body">
-            <p class="blade-inline-7">Current platform commission rate applied to all completed orders.</p>
+            <p class="blade-inline-7">Current rate applies to new orders. Existing orders retain their recorded rate.</p>
             <div class="blade-inline-8">{{ $rate }}%</div>
             <p class="blade-inline-9">Per completed transaction</p>
         </div>
@@ -62,7 +65,7 @@
     @else
     <table>
         <thead>
-            <tr><th>Order #</th><th>Seller</th><th>Product</th><th>Order Amount</th><th>Commission ({{ $rate }}%)</th><th>Date</th></tr>
+            <tr><th>Order #</th><th>Seller</th><th>Product</th><th>Order Amount</th><th>Rate at order</th><th>Commission</th><th>Date</th></tr>
         </thead>
         <tbody>
         @foreach($orders as $order)
@@ -71,12 +74,34 @@
             <td>{{ $order->seller->full_name ?? '—' }}</td>
             <td>{{ $order->product_name }}</td>
             <td>₱{{ number_format($order->amount, 2) }}</td>
+            <td>{{ number_format($order->effective_commission_rate, 2) }}%</td>
             <td class="blade-inline-11">₱{{ number_format($order->calculated_commission, 2) }}</td>
             <td>{{ $order->created_at->format('M d, Y') }}</td>
         </tr>
         @endforeach
         </tbody>
     </table>
+    @endif
+</div>
+
+<div class="card">
+    <div class="card-header"><span class="card-title">Commission rate history</span></div>
+    @if($rateHistory->isEmpty())
+        <div class="card-body">No rate changes have been recorded.</div>
+    @else
+        <table>
+            <thead><tr><th>Rate</th><th>Effective from</th><th>Effective until</th><th>Changed by</th></tr></thead>
+            <tbody>
+            @foreach($rateHistory as $entry)
+                <tr>
+                    <td>{{ number_format((float) $entry->rate, 2) }}%</td>
+                    <td>{{ $entry->effective_from->format('M d, Y h:i A') }}</td>
+                    <td>{{ $entry->effective_until?->format('M d, Y h:i A') ?? 'Current' }}</td>
+                    <td>{{ $entry->changedBy?->full_name ?? 'Initial configuration' }}</td>
+                </tr>
+            @endforeach
+            </tbody>
+        </table>
     @endif
 </div>
 

@@ -23,7 +23,7 @@
                     <tr><td class="blade-inline-4">Quantity</td><td>{{ $order->quantity }}</td></tr>
                     <tr><td class="blade-inline-5">Amount</td><td><strong>₱{{ number_format($order->amount, 2) }}</strong></td></tr>
                     <tr><td class="blade-inline-6">Commission ({{ number_format($commissionRate, 2) }}%)</td><td>-₱{{ number_format($commission, 2) }}</td></tr>
-                    <tr><td class="blade-inline-7">Net Earnings</td><td><strong class="blade-inline-8">₱{{ number_format((float) $order->amount - $commission, 2) }}</strong></td></tr>
+                    <tr><td class="blade-inline-7">Net Earnings</td><td><strong class="blade-inline-8">₱{{ number_format($netEarnings, 2) }}</strong></td></tr>
                     <tr><td class="blade-inline-9">Order Date</td><td>{{ $order->created_at->format('M d, Y h:i A') }}</td></tr>
                 </table>
             </div>

@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\ReturnRequest;
 use App\Models\ReturnRequestEvent;
+use App\Services\Finance\RefundService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class SellerReturnRequestController extends Controller
@@ -52,7 +54,7 @@ class SellerReturnRequestController extends Controller
     public function show(ReturnRequest $returnRequest)
     {
         $this->authorizeSeller($returnRequest);
-        $returnRequest->load(['order.product', 'buyer', 'events.actor']);
+        $returnRequest->load(['order.product', 'buyer', 'events.actor', 'latestRefund']);
 
         return view('seller.returns.show', compact('returnRequest'));
     }
@@ -116,22 +118,29 @@ class SellerReturnRequestController extends Controller
         return back()->with('success', 'Returned item marked as received.');
     }
 
-    public function markRefundDue(ReturnRequest $returnRequest)
+    public function markRefundDue(ReturnRequest $returnRequest, RefundService $refunds)
     {
-        $this->transition($returnRequest, 'received');
+        $this->transition($returnRequest, 'approved_for_refund');
+        $refunds->assertApprovedForReturnRequest($returnRequest);
         $returnRequest->update(['status' => 'refund_due', 'refund_due_at' => now()]);
-        $this->recordEvent($returnRequest, 'refund_due', 'received', 'refund_due', 'Seller marked the refund as due.');
+        $this->recordEvent($returnRequest, 'refund_due', 'approved_for_refund', 'refund_due', 'Seller marked the approved refund as due.');
 
         return back()->with('success', 'Refund marked as due.');
     }
 
-    public function complete(ReturnRequest $returnRequest)
+    public function complete(ReturnRequest $returnRequest, RefundService $refunds)
     {
-        $this->transition($returnRequest, 'refund_due');
-        $returnRequest->update(['status' => 'completed', 'completed_at' => now()]);
-        $this->recordEvent($returnRequest, 'refund_completed', 'refund_due', 'completed', 'Seller confirmed the refund was sent.', [
-            'refund_amount' => (float) $returnRequest->refund_amount,
-        ]);
+        DB::transaction(function () use ($returnRequest, $refunds): void {
+            $locked = ReturnRequest::query()->whereKey($returnRequest->id)->lockForUpdate()->firstOrFail();
+            $from = $locked->status;
+            abort_unless(in_array($from, ['approved_for_refund', 'refund_due'], true), 422, 'This return request is not ready for refund completion.');
+            $this->transition($locked, $from);
+            $refunds->markProcessedForReturnRequest($locked, auth()->user());
+            $locked->update(['status' => 'completed', 'completed_at' => now()]);
+            $this->recordEvent($locked, 'refund_completed', $from, 'completed', 'Seller confirmed the refund was sent.', [
+                'refund_amount' => (float) $locked->refund_amount,
+            ]);
+        });
 
         return back()->with('success', 'Refund marked as completed.');
     }

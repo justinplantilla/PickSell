@@ -264,6 +264,8 @@ The existing PHPUnit configuration uses an in-memory SQLite database for tests, 
 - User activation, suspension, and deactivation are validated and auditable.
 - Reports and exports respect date filters and do not expose unauthorized data.
 - Platform settings and announcements validate audience and content.
+- Settings are grouped into General, Financial, Uploads, Policies, and Announcements; invalid values are rejected and setting edits retain actor-attributed before/after history.
+- Commission-rate edits require commission-management permission and use the shared finance service; policy edits and announcement create, toggle, and delete actions are audited.
 
 #### Notifications
 

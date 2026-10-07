@@ -21,21 +21,31 @@
     .account-date { font-weight: 600; color: var(--charcoal); }
     .account-danger-section { margin-top: 1.5rem; }
     .account-danger-copy { font-size: 0.88rem; color: #888; margin-bottom: 1rem; }
-    .account-danger-input { margin-bottom: 0.7rem; max-width: 360px; }
-    .account-page .card-body form { max-width: 720px; }
+    .account-danger-input { margin-bottom: 0; max-width: 360px; }
+    .account-page { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; align-items: start; }
+    .account-page > .card { min-width: 0; margin-bottom: 0; }
+    .account-page .card-body form { width: 100%; max-width: none; }
+    .account-details-card { margin-top: 1.25rem; }
     .account-page .form-group { width: 100%; }
     .account-page .form-control { display: block; min-height: 40px; height: auto; }
     .account-page form > .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; width: auto; min-height: 38px; white-space: nowrap; }
     .account-page table { width: 100%; table-layout: fixed; }
     .account-page table td:first-child { width: 160px; }
     .account-page table td:last-child { width: auto; }
-    .account-page .danger-card form { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
-    .account-page .danger-card form .form-control { flex: 1 1 260px; max-width: 360px; }
+    #admin-account-delete-form { display: block; width: 100%; max-width: none; }
+    #admin-account-delete-form .account-delete-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem 1rem; align-items: start; }
+    #admin-account-delete-form .account-delete-field { min-width: 0; }
+    #admin-account-delete-form .account-delete-field .form-label { display: block; margin-bottom: 0.35rem; font-size: 0.8rem; font-weight: 600; color: var(--charcoal); }
+    #admin-account-delete-form .form-control { display: block; width: 100%; max-width: none; min-height: 42px; box-sizing: border-box; }
+    #admin-account-delete-form .account-delete-actions { margin-top: 0.85rem; }
+    #admin-account-delete-form .btn { min-height: 42px; box-sizing: border-box; }
+    .account-page.account-danger-section { grid-template-columns: minmax(0, 1fr); }
+    @media (max-width: 800px) {
+        .account-page { grid-template-columns: minmax(0, 1fr); }
+    }
     @media (max-width: 640px) {
         .account-page table { table-layout: auto; }
         .account-page table td:first-child { width: 40%; }
-        .account-page .danger-card form { align-items: stretch; }
-        .account-page .danger-card form .form-control,
-        .account-page .danger-card form .btn { width: 100%; max-width: none; }
+        #admin-account-delete-form .account-delete-fields { grid-template-columns: minmax(0, 1fr); }
+        #admin-account-delete-form .btn { width: 100%; }
     }
-

@@ -37,7 +37,7 @@
     <table class="summary">
         <tr>
             <td><div class="summary-label">Gross sales</div><div class="summary-value">PHP {{ number_format($totalSales, 2) }}</div></td>
-            <td><div class="summary-label">Commission ({{ number_format($commissionRate, 2) }}%)</div><div class="summary-value">-PHP {{ number_format($totalCommission, 2) }}</div></td>
+            <td><div class="summary-label">Commission (historical rates)</div><div class="summary-value">-PHP {{ number_format($totalCommission, 2) }}</div></td>
             <td><div class="summary-label">Net earnings</div><div class="summary-value">PHP {{ number_format($totalNetEarnings, 2) }}</div></td>
             <td><div class="summary-label">Completed orders</div><div class="summary-value">{{ $totalOrders }}</div></td>
             <td><div class="summary-label">Average order</div><div class="summary-value">PHP {{ $totalOrders ? number_format($totalSales / $totalOrders, 2) : '0.00' }}</div></td>
@@ -61,12 +61,13 @@
     <div class="section-title">Sales and net earnings by order</div>
     @if($financialOrders->isNotEmpty())
     <table class="data">
-        <thead><tr><th>Order ID / date</th><th>Gross sale</th><th>Commission ({{ number_format($commissionRate, 2) }}%)</th><th>Net earnings</th><th>Status</th></tr></thead>
+        <thead><tr><th>Order ID / date</th><th>Gross sale</th><th>Rate</th><th>Commission</th><th>Net earnings</th><th>Status</th></tr></thead>
         <tbody>
         @foreach($financialOrders as $order)
             <tr>
                 <td>{{ $order['order_number'] }}<br>{{ $order['created_at']->format('M d, Y') }}</td>
                 <td>PHP {{ number_format($order['amount'], 2) }}</td>
+                <td>{{ number_format($order['commission_rate'], 2) }}%</td>
                 <td>-PHP {{ number_format($order['commission'], 2) }}</td>
                 <td>PHP {{ number_format($order['net_earnings'], 2) }}</td>
                 <td>{{ ucfirst($order['status']) }}</td>

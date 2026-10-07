@@ -2,18 +2,18 @@
 
 namespace App\Services\Finance;
 
+use App\Models\FinancialTransaction;
 use App\Models\Order;
-use App\Services\PlatformCommission;
+use App\Services\CommissionService;
 use Carbon\CarbonInterface;
 
 /**
- * The Finance layer's definition of marketplace money figures. Gross sales are completed orders
- * (buyer confirmed); commission is the platform rate applied per order. Dashboard and reports
- * read totals from here so they always agree.
+ * The Finance layer's definition of marketplace money figures. Period totals use posted ledger
+ * entries so approved refunds and adjustments are reflected without rewriting order snapshots.
  */
 class FinancialSummary
 {
-    public function __construct(private PlatformCommission $commission) {}
+    public function __construct(private CommissionService $commission) {}
 
     /**
      * One order's money, by the same rule as the period totals. commission_at_placement is the
@@ -24,13 +24,13 @@ class FinancialSummary
     public function forOrder(Order $order): array
     {
         $amount = (float) $order->amount;
-        $commission = $this->commission->deduction($amount);
+        $commission = $this->commission->commissionForOrder($order);
 
         return [
             'amount' => $amount,
             'commission' => $commission,
-            'net_to_seller' => $amount - $commission,
-            'commission_rate' => $this->commission->rate(),
+            'net_to_seller' => $this->commission->sellerNet($amount, $commission),
+            'commission_rate' => $this->commission->rateForOrder($order),
             'commission_at_placement' => (float) $order->commission,
             'counts_toward_sales' => $order->status === 'completed',
         ];
@@ -39,18 +39,24 @@ class FinancialSummary
     /** @return array{gross_sales: float, commission: float, net_to_sellers: float, completed_orders: int, commission_rate: float} */
     public function forPeriod(CarbonInterface $from, CarbonInterface $to): array
     {
-        $amounts = Order::where('status', 'completed')
+        $entries = FinancialTransaction::query()
+            ->where('status', 'posted')
             ->whereBetween('created_at', [$from, $to])
-            ->pluck('amount');
+            ->get(['order_id', 'type', 'debit', 'credit']);
 
-        $gross = (float) $amounts->sum();
-        $commission = (float) $amounts->sum(fn ($amount) => $this->commission->deduction((float) $amount));
+        $amountFor = fn (string $type, string $column): float => $this->commission->sum(
+            $entries->where('type', $type)->pluck($column),
+        );
+        $gross = $amountFor('order_gross', 'debit');
+        $commission = $amountFor('commission', 'credit') - $amountFor('commission_reversal', 'credit');
+        $netToSellers = $amountFor('seller_net', 'credit') - $amountFor('seller_adjustment', 'credit');
+        $orderIds = $entries->where('type', 'order_gross')->pluck('order_id')->unique();
 
         return [
             'gross_sales' => $gross,
             'commission' => $commission,
-            'net_to_sellers' => $gross - $commission,
-            'completed_orders' => $amounts->count(),
+            'net_to_sellers' => $netToSellers,
+            'completed_orders' => $orderIds->count(),
             'commission_rate' => $this->commission->rate(),
         ];
     }

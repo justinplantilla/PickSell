@@ -118,10 +118,10 @@ class AdminOrderController extends Controller
             'money' => $finance->forOrder($order),
             'overrideTargets' => auth()->user()->can(\App\Auth\Permission::ORDERS_OVERRIDE_STATUS) ? OrderAdministrationService::overrideTargets($order) : [],
             'exceptionActions' => auth()->user()->can(\App\Auth\Permission::ORDERS_MANAGE) ? OrderAdministrationService::exceptionActions($order) : [],
-            // Complaints have no order link; show those between this buyer and seller around the order.
-            'complaints' => Complaint::where(fn ($q) => $q
+            'complaints' => Complaint::where(fn ($q) => $q->where('order_id', $order->id)
+                ->orWhere(fn ($legacy) => $legacy
                     ->where(fn ($w) => $w->where('filed_by', $order->buyer_id)->where('against_user_id', $order->seller_id))
-                    ->orWhere(fn ($w) => $w->where('filed_by', $order->seller_id)->where('against_user_id', $order->buyer_id)))
+                    ->orWhere(fn ($w) => $w->where('filed_by', $order->seller_id)->where('against_user_id', $order->buyer_id))))
                 ->where('created_at', '>=', $order->created_at->copy()->subDay())
                 ->latest()->get(),
             'auditHistory' => AuditLog::with('actor')->where('subject_type', $order->getMorphClass())->where('subject_id', $order->id)->latest('id')->get(),

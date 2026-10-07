@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Notifications\OrderChangedByAdminNotification;
 use App\Services\AuditLogger;
+use App\Services\Finance\FinancialLedgerService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -33,7 +34,11 @@ class OrderAdministrationService
             'help' => 'Cancel before pickup; stock is restored.'],
     ];
 
-    public function __construct(private OrderLifecycleService $lifecycle, private AuditLogger $audit) {}
+    public function __construct(
+        private OrderLifecycleService $lifecycle,
+        private AuditLogger $audit,
+        private FinancialLedgerService $ledger,
+    ) {}
 
     /** @return string[] statuses an admin may override this order to */
     public static function overrideTargets(Order $order): array
@@ -51,7 +56,7 @@ class OrderAdministrationService
     {
         $from = $this->apply($order, function (Order $locked) use ($to) {
             abort_unless(in_array($to, self::overrideTargets($locked), true), 409,
-                'An order cannot be overridden from ' . OrderLifecycleService::label($locked->status) . ' to ' . OrderLifecycleService::label($to) . '.');
+                'An order cannot be overridden from '.OrderLifecycleService::label($locked->status).' to '.OrderLifecycleService::label($to).'.');
 
             return $to;
         }, $admin, $reason, 'order.status_overridden', Permission::ORDERS_OVERRIDE_STATUS);
@@ -59,15 +64,15 @@ class OrderAdministrationService
         $this->notifyParties($order, $from, $reason);
     }
 
-    public function resolveException(Order $order, User $admin, string $action, string $reason): void
+    public function resolveException(Order $order, User $admin, string $action, string $reason, string $permission = Permission::ORDERS_MANAGE): void
     {
         $from = $this->apply($order, function (Order $locked) use ($action) {
             $definition = self::EXCEPTION_ACTIONS[$action] ?? abort(422, 'Unknown resolution.');
             abort_unless(in_array($locked->status, $definition['from'], true), 409,
-                "{$definition['label']} does not apply to an order that is " . OrderLifecycleService::label($locked->status) . '.');
+                "{$definition['label']} does not apply to an order that is ".OrderLifecycleService::label($locked->status).'.');
 
             return $definition['to'];
-        }, $admin, $reason, 'order.exception_resolved', Permission::ORDERS_MANAGE, ['resolution' => $action]);
+        }, $admin, $reason, 'order.exception_resolved', $permission, ['resolution' => $action]);
 
         $this->notifyParties($order, $from, $reason);
     }
@@ -81,6 +86,9 @@ class OrderAdministrationService
             $to = $target($locked);
 
             $this->lifecycle->transition($locked, $to, $admin->id, 'admin', $reason);
+            if ($to === 'completed') {
+                $this->ledger->postCompletedOrder($locked, $admin);
+            }
             $order->setRawAttributes($locked->getAttributes(), true);
 
             $this->audit->record($auditAction, $order, ['status' => ['from' => $from, 'to' => $to]],

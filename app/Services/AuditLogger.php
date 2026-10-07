@@ -12,28 +12,38 @@ use Throwable;
 
 class AuditLogger
 {
+    private const SENSITIVE_KEYS = '/(?:password|passwd|token|secret|credential|authorization|cookie|session|payment|card|cvv|cvc|iban|bank_account|account_number|routing_number|email|phone|contact|address|birthday|birth_date|social_security|ssn|first_name|last_name|full_name)/i';
+
     /**
      * Record an operation. Call inside the same DB transaction as the change it describes,
      * so the change and its audit entry commit (or roll back) together.
      *
      * @param  array<string, array{from: mixed, to: mixed}>  $changes
      */
-    public function record(string $action, ?Model $subject = null, array $changes = [], array $metadata = [], ?string $permission = null): AuditLog
-    {
+    public function record(
+        string $action,
+        ?Model $subject = null,
+        array $changes = [],
+        array $metadata = [],
+        ?string $permission = null,
+        string $result = 'success',
+    ): AuditLog {
         $actor = auth()->user();
         $request = request();
 
         return AuditLog::create([
-            'actor_id'     => $actor?->id,
-            'actor_role'   => $actor?->role,
-            'action'       => $action,
-            'permission'   => $permission,
+            'actor_id' => $actor?->id,
+            'actor_role' => $actor?->role,
+            'action' => $action,
+            'module' => Str::before($action, '.'),
+            'result' => $result,
+            'permission' => $permission,
             'subject_type' => $subject?->getMorphClass(),
-            'subject_id'   => $subject?->getKey(),
-            'changes'      => $changes ?: null,
-            'metadata'     => $metadata ?: null,
-            'ip_address'   => $request?->ip(),
-            'user_agent'   => $request ? Str::limit((string) $request->userAgent(), 252) : null,
+            'subject_id' => $subject?->getKey(),
+            'changes' => self::sanitize($changes) ?: null,
+            'metadata' => self::sanitize($metadata) ?: null,
+            'ip_address' => $request?->ip(),
+            'user_agent' => $request ? Str::limit((string) $request->userAgent(), 252) : null,
         ]);
     }
 
@@ -50,12 +60,12 @@ class AuditLogger
 
         try {
             $this->record('authorization.denied', null, [], [
-                'route'   => $request->route()?->getName(),
-                'method'  => $request->method(),
-                'path'    => $request->path(),
-                'status'  => $exception->getStatusCode(),
-                'reason'  => $exception->getMessage() ?: null,
-            ]);
+                'route' => $request->route()?->getName(),
+                'method' => $request->method(),
+                'path' => $request->path(),
+                'status' => $exception->getStatusCode(),
+                'reason' => $exception->getMessage() ?: null,
+            ], null, 'denied');
         } catch (Throwable $e) {
             report($e);
         }
@@ -76,5 +86,31 @@ class AuditLogger
         }
 
         return $changes;
+    }
+
+    private static function sanitize(array $values): array
+    {
+        $sanitized = [];
+        foreach ($values as $key => $value) {
+            $sanitized[$key] = is_string($key) && preg_match(self::SENSITIVE_KEYS, $key)
+                ? self::redact($value)
+                : (is_array($value) ? self::sanitize($value) : $value);
+        }
+
+        return $sanitized;
+    }
+
+    private static function redact(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return '[redacted]';
+        }
+
+        $redacted = [];
+        foreach ($value as $key => $item) {
+            $redacted[$key] = is_array($item) ? self::redact($item) : '[redacted]';
+        }
+
+        return $redacted;
     }
 }

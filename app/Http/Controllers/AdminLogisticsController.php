@@ -8,9 +8,7 @@ use App\Models\Order;
 use Illuminate\Http\Request;
 
 /**
- * Admin supervision of the logistics flow (read-only; logistics.view). Scanning, sorting and
- * rider assignment are performed in the Logistics portal; logistics.scan / logistics.assign-rider
- * are reserved for when Admin overrides are introduced.
+ * Read-only admin oversight of logistics operations.
  */
 class AdminLogisticsController extends Controller
 {
@@ -21,7 +19,7 @@ class AdminLogisticsController extends Controller
     /** A parcel sitting in one sorting stage longer than this is flagged as stale. */
     public const STALE_AFTER_HOURS = 48;
 
-    public function overview()
+    public function index()
     {
         $pipeline = Order::whereIn('status', self::PIPELINE)
             ->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');

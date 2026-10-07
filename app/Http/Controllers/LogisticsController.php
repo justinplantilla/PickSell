@@ -2,10 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AssignCourierRequest;
+use App\Http\Requests\OpenLogisticsExceptionRequest;
+use App\Http\Requests\ResolveParcelExceptionRequest;
+use App\Http\Requests\ScanParcelRequest;
 use App\Mail\RegistrationApprovedMail;
 use App\Mail\RegistrationDisapprovedMail;
 use App\Mail\NewMessageMail;
 use App\Models\Order;
+use App\Models\LogisticsException;
 use App\Models\LogisticsBranch;
 use App\Models\Municipality;
 use App\Models\BranchRider;
@@ -13,7 +18,9 @@ use App\Models\RiderBarangay;
 use App\Models\Complaint;
 use App\Models\Message;
 use App\Models\User;
-use App\Services\LogisticsRoutingService;
+use App\Services\CourierAssignmentService;
+use App\Services\LogisticsService;
+use App\Services\LogisticsExceptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -22,6 +29,8 @@ use Illuminate\Validation\Rule;
 
 class LogisticsController extends Controller
 {
+    private const MISSING_SCAN_AFTER_HOURS = 48;
+
     public function dashboard()
     {
         $stats = [
@@ -32,7 +41,7 @@ class LogisticsController extends Controller
         ];
 
         $orders = Order::with(['buyer', 'courier'])->where('logistics_id', auth()->id())
-            ->whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed'])
+            ->whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed'])
             ->latest()->take(10)->get();
         return view('logistics.dashboard', compact('stats', 'orders'));
     }
@@ -324,59 +333,142 @@ class LogisticsController extends Controller
 
     public function parcels(Request $request)
     {
-        $status = $request->get('status', 'all');
-        $query = Order::with(['buyer', 'seller', 'courier'])->where('logistics_id', auth()->id())
-            ->whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed']);
-        if ($status !== 'all') {
-            $query->where('status', $status);
+        $status = (string) $request->get('status', 'all');
+        $baseQuery = Order::where('logistics_id', auth()->id());
+        $pipelineStatuses = ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed', 'delivered', 'completed'];
+        $statusAliases = [
+            'awaiting_scan' => 'picked_up',
+            'scanned' => 'at_sorting_center',
+            'awaiting_sort' => 'at_sorting_center',
+            'awaiting_rider' => 'sorted',
+            'failed_delivery' => 'delivery_failed',
+        ];
+        $statusFilters = [...$pipelineStatuses, ...array_keys($statusAliases), 'verification_required', 'destination_exception', 'wrong_destination', 'missing_scan', 'rider_unavailable'];
+        $status = in_array($status, $statusFilters, true) ? $status : 'all';
+        $filterStatus = $statusAliases[$status] ?? ($status === 'wrong_destination' ? 'destination_exception' : $status);
+
+        $queueCounts = [
+            'awaiting_scan' => (clone $baseQuery)->where('status', 'picked_up')->count(),
+            'scanned' => (clone $baseQuery)->where('status', 'at_sorting_center')->count(),
+            'verification_required' => $this->verificationRequiredQuery(clone $baseQuery)->count(),
+            'awaiting_sort' => (clone $baseQuery)->where('status', 'at_sorting_center')->count(),
+            'sorted' => (clone $baseQuery)->where('status', 'sorted')->count(),
+            'destination_exception' => $this->destinationExceptionQuery(clone $baseQuery)->count(),
+            'awaiting_rider' => (clone $baseQuery)->where('status', 'sorted')->count(),
+            'assigned' => (clone $baseQuery)->where('status', 'assigned_to_rider')->count(),
+            'out_for_delivery' => (clone $baseQuery)->where('status', 'out_for_delivery')->count(),
+            'failed_delivery' => (clone $baseQuery)->where('status', 'delivery_failed')->count(),
+            'missing_scan' => (clone $baseQuery)->where('status', 'picked_up')->where('updated_at', '<', now()->subHours(self::MISSING_SCAN_AFTER_HOURS))->count(),
+            'rider_unavailable' => User::where('role', 'courier')->where('status', 'approved')->exists()
+                ? 0
+                : (clone $baseQuery)->where('status', 'sorted')->count(),
+        ];
+
+        $query = (clone $baseQuery)->with(['buyer', 'seller', 'courier', 'parcelScans'])
+            ->whereIn('status', $pipelineStatuses);
+        if (in_array($filterStatus, $pipelineStatuses, true)) {
+            $query->where('status', $filterStatus);
+        } elseif ($filterStatus === 'verification_required') {
+            $this->verificationRequiredQuery($query);
+        } elseif ($filterStatus === 'destination_exception') {
+            $this->destinationExceptionQuery($query);
+        } elseif ($filterStatus === 'missing_scan') {
+            $query->where('status', 'picked_up')->where('updated_at', '<', now()->subHours(self::MISSING_SCAN_AFTER_HOURS));
+        } elseif ($filterStatus === 'rider_unavailable') {
+            $query->where('status', 'sorted');
+            if (User::where('role', 'courier')->where('status', 'approved')->exists()) {
+                $query->whereRaw('1 = 0');
+            }
         }
 
         $orders = $query->latest()->paginate(15);
         $couriers = User::where('role', 'courier')->where('status', 'approved')->orderBy('delivery_area')->orderBy('last_name')->get();
-        return view('logistics.sorting-center', compact('orders', 'couriers', 'status'));
+        $hasActiveCouriers = $couriers->isNotEmpty();
+        return view('logistics.sorting-center', compact('orders', 'couriers', 'status', 'queueCounts', 'hasActiveCouriers'));
     }
 
-    public function scanParcel(Order $order)
+    private function verificationRequiredQuery($query)
     {
-        abort_if($order->status !== 'picked_up', 422, 'Only picked-up parcels can be scanned.');
-        abort_if(!in_array($order->tracking_status, ['Pickup approved by logistics', 'Handed over to courier'], true), 422, 'Approve the pickup request before scanning the parcel.');
-        $order->update([
-            'status' => 'at_sorting_center',
-            'tracking_status' => 'Received and scanned at sorting center',
-        ]);
+        return $query->where(function ($query) {
+            $query->where(function ($query) {
+                $query->where('status', 'picked_up')
+                    ->where(function ($query) {
+                        $query->whereNull('tracking_status')
+                            ->orWhereNotIn('tracking_status', ['Pickup approved by logistics', 'Handed over to courier']);
+                    });
+            })->orWhere(function ($query) {
+                $query->where('status', 'at_sorting_center')
+                    ->where(function ($query) {
+                        $query->whereNull('tracking_status')
+                            ->orWhere('tracking_status', '!=', 'Received and scanned at sorting center');
+                    });
+            });
+        });
+    }
+
+    private function destinationExceptionQuery($query)
+    {
+        return $query->whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted'])
+            ->where(function ($query) {
+                $query->whereNull('destination_branch_id')
+                    ->orWhereNull('destination_barangay_id')
+                    ->orWhereDoesntHave('buyer')
+                    ->orWhereHas('buyer', function ($buyer) {
+                        $buyer->whereNull('barangay')
+                            ->orWhereNull('municipality')
+                            ->orWhereNull('province');
+                    });
+            });
+    }
+
+    public function scanParcel(ScanParcelRequest $request, Order $order, LogisticsService $logistics)
+    {
+        $logistics->scanParcel($order, $request->user(), 'logistics', null, $request->validated());
+
         return back()->with('success', "Parcel {$order->order_number} scanned.");
     }
 
-    public function approvePickup(Order $order)
+    public function sortParcel(Request $request, Order $order, LogisticsService $logistics)
     {
-        abort_if($order->status !== 'ready_for_pickup', 422, 'Only ready-for-pickup parcels can be approved.');
-        abort_if($order->tracking_status !== 'Pickup requested from seller', 422, 'This parcel has no pending pickup request.');
+        $area = $logistics->sortParcel($order, $request->user(), 'logistics');
 
-        $order->update([
-            'status' => 'picked_up',
-            'tracking_status' => 'Pickup approved by logistics',
-        ]);
+        return back()->with('success', "Parcel {$order->order_number} sorted for {$area}.");
+    }
+
+    public function approvePickup(Request $request, Order $order, LogisticsService $logistics)
+    {
+        $logistics->approvePickup($order, $request->user(), 'logistics');
+
         return back()->with('success', "Pickup for {$order->order_number} approved.");
     }
 
-    public function assignCourier(Request $request, Order $order, LogisticsRoutingService $routing)
+    public function assignCourier(AssignCourierRequest $request, Order $order, CourierAssignmentService $assignments)
     {
-        $data = $request->validate(['courier_id' => 'nullable|exists:users,id']);
-        $courier = $data['courier_id']
-            ? User::where('id', $data['courier_id'])->where('role', 'courier')->where('status', 'approved')->firstOrFail()
-            : $routing->suggestedCourier($order);
-        abort_if(!$courier, 422, 'No active rider is assigned to this barangay yet.');
-        abort_if($order->status !== 'at_sorting_center', 422, 'Only parcels in the sorting center can be assigned.');
-        abort_if($order->tracking_status !== 'Received and scanned at sorting center' && !$order->courier_id, 422, 'Scan the parcel before assigning it.');
-
-        $area = $order->buyer ? trim(collect([$order->buyer->municipality, $order->buyer->province])->filter()->join(', ')) : 'Unspecified area';
-        $order->update([
-            'courier_id' => $courier->id,
-            'status' => 'assigned_to_rider',
-            'assigned_at' => now(),
-            'tracking_status' => 'Sorted for ' . $area . '; assigned to ' . $courier->full_name,
-        ]);
+        $courierId = $request->validated('courier_id');
+        $courierId = $courierId === null ? null : (int) $courierId;
+        $courier = $assignments->assign($order, $request->user(), $courierId, 'logistics');
 
         return back()->with('success', "Parcel {$order->order_number} assigned to {$courier->full_name}.");
+    }
+
+    public function openException(
+        OpenLogisticsExceptionRequest $request,
+        Order $order,
+        LogisticsExceptionService $exceptions,
+    ) {
+        $data = $request->validated();
+        $exception = $exceptions->open($order, $request->user(), $data['type'], $data['description']);
+
+        return back()->with('success', "Logistics exception #{$exception->id} opened.");
+    }
+
+    public function resolveException(
+        ResolveParcelExceptionRequest $request,
+        LogisticsException $exception,
+        LogisticsExceptionService $exceptions,
+    ) {
+        $exceptions->resolve($exception, $request->user(), $request->validated('resolution'));
+
+        return back()->with('success', "Logistics exception #{$exception->id} resolved.");
     }
 }

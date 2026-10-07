@@ -36,7 +36,7 @@
         <div class="earnings-panel-header">
             <div>
                 <h2>Commission breakdown</h2>
-                <p>Only completed orders are included. Commission uses the current platform rate configured by the administrator.</p>
+                <p>Only completed orders are included. Each order keeps the commission rate and amount recorded when it was placed.</p>
             </div>
         </div>
         <div class="earnings-filter-row">

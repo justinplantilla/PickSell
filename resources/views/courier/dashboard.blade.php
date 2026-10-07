@@ -19,8 +19,11 @@
         <span class="card-title">Assigned Parcels</span>
         <form method="GET"><select name="status" class="filter-select" data-submit-on-change>
             <option value="all" {{ $status === 'all' ? 'selected' : '' }}>All</option>
-            <option value="shipped" {{ $status === 'shipped' ? 'selected' : '' }}>Out for Delivery</option>
-            <option value="completed" {{ $status === 'completed' ? 'selected' : '' }}>Delivered</option>
+            <option value="assigned_to_rider" {{ $status === 'assigned_to_rider' ? 'selected' : '' }}>Assigned</option>
+            <option value="out_for_delivery" {{ $status === 'out_for_delivery' ? 'selected' : '' }}>Out for Delivery</option>
+            <option value="delivered" {{ $status === 'delivered' ? 'selected' : '' }}>Delivered</option>
+            <option value="delivery_failed" {{ $status === 'delivery_failed' ? 'selected' : '' }}>Delivery Failed</option>
+            <option value="returned" {{ $status === 'returned' ? 'selected' : '' }}>Returned</option>
         </select></form>
     </div>
     <div class="blade-inline-4">
@@ -36,12 +39,15 @@
                     <div class="blade-inline-7">{{ $order->buyer->contact_no ?? '' }}</div>
                 </td>
                 <td>{{ $order->seller->business_name ?? $order->seller->full_name ?? '—' }}</td>
-                <td><span class="badge badge-{{ $order->status }}">{{ $order->status === 'shipped' ? 'Out for delivery' : ucfirst($order->status) }}</span><div class="blade-inline-8">{{ $order->tracking_status ?? 'Assigned' }}</div></td>
+                <td><span class="badge badge-{{ $order->status }}">{{ ucfirst(str_replace('_', ' ', $order->status)) }}</span><div class="blade-inline-8">{{ $order->tracking_status ?? 'Assigned' }}</div></td>
                 <td>
-                    @if($order->status === 'shipped')
-                    <form method="POST" action="{{ route('courier.orders.status', $order) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="completed"><button class="btn btn-success" type="submit">Mark Delivered</button></form>
-                    @elseif($order->status === 'completed')
-                    <span class="blade-inline-9">Completed {{ optional($order->delivered_at)->format('M d, Y') }}</span>
+                    @if($order->status === 'assigned_to_rider')
+                    <form method="POST" action="{{ route('courier.orders.status', $order) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="out_for_delivery"><button class="btn btn-primary" type="submit">Start Delivery</button></form>
+                    @elseif($order->status === 'out_for_delivery')
+                    <form method="POST" action="{{ route('courier.orders.status', $order) }}">@csrf @method('PATCH')<input type="hidden" name="status" value="delivered"><button class="btn btn-success" type="submit">Mark Delivered</button></form>
+                    <form method="POST" action="{{ route('courier.orders.status', $order) }}" class="courier-failure-form">@csrf @method('PATCH')<input type="hidden" name="status" value="delivery_failed"><label for="failure-reason-{{ $order->id }}">Delivery issue</label><textarea id="failure-reason-{{ $order->id }}" name="failure_reason" required minlength="5" maxlength="1000" rows="2" placeholder="Explain why delivery failed"></textarea><button class="btn btn-danger" type="submit">Report Failed</button></form>
+                    @elseif($order->status === 'delivered' || $order->status === 'completed')
+                    <span class="blade-inline-9">{{ $order->status === 'completed' ? 'Completed' : 'Delivered' }} {{ optional($order->delivered_at)->format('M d, Y') }}</span>
                     @endif
                 </td>
             </tr>

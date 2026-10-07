@@ -12,7 +12,7 @@ use App\Models\ProductReview;
 use App\Models\User;
 use App\Notifications\NewSellerOrder;
 use App\Services\LogisticsRoutingService;
-use App\Services\PlatformCommission;
+use App\Services\CommissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -267,7 +267,7 @@ class BuyerController extends Controller
         }
 
         $amount     = $price * $item->quantity;
-        $commission = app(PlatformCommission::class)->deduction((float) $amount);
+        $commissionCalculation = app(CommissionService::class)->calculate((string) round($amount, 2));
 
         $order = Order::create([
             'order_number'   => 'ORD-' . strtoupper(Str::random(8)),
@@ -278,7 +278,8 @@ class BuyerController extends Controller
             'product_name'   => $product->name,
             'quantity'       => $item->quantity,
             'amount'         => $amount,
-            'commission'     => $commission,
+            'commission'     => $commissionCalculation['commission'],
+            'commission_rate' => $commissionCalculation['rate'],
             'status'         => 'placed',
             'tracking_status' => 'Order placed and awaiting seller preparation',
         ]);
