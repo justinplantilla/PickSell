@@ -4,8 +4,10 @@
 .user-row-actions .account-action { position: relative; }
 .user-row-actions .account-action > summary { cursor: pointer; list-style: none; padding: 0.35rem 0.55rem; }
 .user-row-actions .account-action > summary::-webkit-details-marker { display: none; }
-.user-row-actions .btn-suspend { background: #d97706; color: #fff; }
-.user-row-actions .btn-suspend:hover { background: #b45309; }
+.user-row-actions .account-action > summary.btn-suspend { background: #b8863b; color: #fff; }
+.user-row-actions .account-action > summary.btn-suspend:hover { background: #976d2f; color: #fff; }
+.user-row-actions .account-action > summary.btn-deactivate { background: var(--coral); color: #fff; }
+.user-row-actions .account-action > summary.btn-deactivate:hover { background: var(--coral-dark); color: #fff; }
 .user-row-actions .registration-review-link { background: #d97706; color: #fff; }
 .user-row-actions .registration-review-link:hover { background: #b45309; color: #fff; }
 .user-row-actions .account-action-form { position: absolute; z-index: 5; top: calc(100% + 0.3rem); right: 0; width: min(19rem, 78vw); padding: 0.8rem; border: 1px solid #ece6db; border-radius: 10px; background: #fff; box-shadow: 0 8px 24px rgb(0 0 0 / 14%); }

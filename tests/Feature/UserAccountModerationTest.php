@@ -190,7 +190,7 @@ class UserAccountModerationTest extends TestCase
             ->assertSee(route('admin.registrations.show', $pending), false)
             ->assertSee('Review application')
             ->assertSee('btn-suspend', false)
-            ->assertSee('btn-danger', false)
+            ->assertSee('btn-deactivate', false)
             ->assertSee('Suspend', false)
             ->assertSee('Deactivate', false)
             ->assertSee('Reactivate', false)
