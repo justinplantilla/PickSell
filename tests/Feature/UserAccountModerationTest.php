@@ -176,6 +176,28 @@ class UserAccountModerationTest extends TestCase
             ->assertDontSee('Suspend account')->assertSee('requires the user management permission');
     }
 
+    public function test_user_list_shows_only_authorized_status_actions_for_each_account(): void
+    {
+        $active = $this->user('buyer');
+        $suspended = $this->user('seller', 'suspended');
+
+        $this->actingAs($this->admin)->get(route('admin.users'))
+            ->assertOk()
+            ->assertSee('Suspend', false)
+            ->assertSee('Deactivate', false)
+            ->assertSee('Reactivate', false)
+            ->assertSee('name="confirm"', false);
+
+        config(['permissions.roles.admin' => [Permission::USERS_VIEW]]);
+        $this->actingAs($this->admin)->get(route('admin.users'))
+            ->assertOk()
+            ->assertSee($active->email)
+            ->assertSee($suspended->email)
+            ->assertDontSee('Suspend account')
+            ->assertDontSee('Deactivate account')
+            ->assertDontSee('Reactivate account');
+    }
+
     // User history is visible ---------------------------------------------------------------
 
     public function test_profile_shows_history_orders_complaints_and_compliance(): void
