@@ -68,15 +68,15 @@
                         <td>
                             <div class="registration-row-actions">
                                 @if($user->status === 'pending' && $user->role !== 'courier')
-                                    <a href="{{ route('admin.registrations.show', $user) }}" class="btn btn-coral btn-sm">
-                                        Review application<span class="sr-only"> for {{ $user->full_name }}</span>
+                                    <a href="{{ route('admin.registrations.show', $user) }}" class="btn btn-sm registration-review-link">
+                                        Review / Decide<span class="sr-only"> for {{ $user->full_name }}</span>
                                     </a>
                                 @elseif($user->status === 'pending')
-                                    <a href="{{ route('admin.registrations.show', $user) }}" class="btn btn-outline btn-sm">
+                                    <a href="{{ route('admin.registrations.show', $user) }}" class="btn btn-sm registration-logistics-link">
                                         View Logistics review<span class="sr-only"> for {{ $user->full_name }}</span>
                                     </a>
                                 @else
-                                    <a href="{{ route('admin.registrations.show', $user) }}" class="btn btn-outline btn-sm">
+                                    <a href="{{ route('admin.registrations.show', $user) }}" class="btn btn-outline btn-sm registration-view-link">
                                         View review<span class="sr-only"> for {{ $user->full_name }}</span>
                                     </a>
                                 @endif

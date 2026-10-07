@@ -244,12 +244,14 @@ class RegistrationReviewTest extends TestCase
 
         $this->actingAs($this->admin)->get(route('admin.registrations'))->assertOk()
             ->assertSeeInOrder([$old->email, $new->email])
-            ->assertSee('Review application')
+            ->assertSee('Review / Decide')
+            ->assertSee('registration-review-link')
             ->assertSee('View Logistics review')
+            ->assertSee('registration-logistics-link')
             ->assertDontSee($approved->email);
         $this->actingAs($this->admin)->get(route('admin.registrations.show', $old))->assertOk()
-            ->assertSee('>Approve</button>', false)
-            ->assertSee('>Disapprove</button>', false);
+            ->assertSee('class="btn registration-approve"', false)
+            ->assertSee('class="btn registration-disapprove"', false);
         $this->actingAs($this->admin)->get(route('admin.registrations.show', $courier))->assertOk()
             ->assertSee('Courier applications are reviewed in the Logistics portal.')
             ->assertDontSee('>Approve</button>', false)

@@ -185,7 +185,8 @@ class UserAccountModerationTest extends TestCase
 
         $this->actingAs($this->admin)->get(route('admin.users'))
             ->assertOk()
-            ->assertSee('Review &amp; approve', false)
+            ->assertSee('Review / Decide')
+            ->assertSee('registration-review-link')
             ->assertSee(route('admin.registrations.show', $pending), false)
             ->assertSee('Review application')
             ->assertSee('btn-suspend', false)
@@ -208,7 +209,7 @@ class UserAccountModerationTest extends TestCase
             ->assertSee($active->email)
             ->assertSee($suspended->email)
             ->assertSee($pending->email)
-            ->assertDontSee('Review &amp; approve', false)
+            ->assertDontSee('Review / Decide')
             ->assertDontSee('Suspend account')
             ->assertDontSee('Deactivate account')
             ->assertDontSee('Reactivate account');

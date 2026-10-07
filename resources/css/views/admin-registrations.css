@@ -2,3 +2,9 @@
 /* Extracted inline declarations */
 .blade-inline-1 { text-align:center !important; color:#888 !important; padding:2rem !important;  }
 .registration-row-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; min-width: 10rem; }
+.registration-review-link { background: #d97706; color: #fff; }
+.registration-review-link:hover { background: #b45309; color: #fff; }
+.registration-logistics-link { background: #2563eb; color: #fff; }
+.registration-logistics-link:hover { background: #1d4ed8; color: #fff; }
+.registration-view-link { color: #555; }
+body.dark .registration-view-link { color: #e5e7eb; }

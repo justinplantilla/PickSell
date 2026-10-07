@@ -67,8 +67,8 @@
                         <td class="user-row-actions">
                             <div class="user-row-actions-inner">
                                 @if($user->status === 'pending' && auth()->user()->can(\App\Auth\Permission::REGISTRATIONS_VIEW))
-                                    <a href="{{ route('admin.registrations.show', $user) }}" class="btn btn-coral btn-sm">
-                                        {{ $user->role === 'courier' ? 'Review application' : 'Review & approve' }}<span class="sr-only"> for {{ $user->full_name }}</span>
+                                    <a href="{{ route('admin.registrations.show', $user) }}" class="btn btn-sm registration-review-link">
+                                        {{ $user->role === 'courier' ? 'Review application' : 'Review / Decide' }}<span class="sr-only"> for {{ $user->full_name }}</span>
                                     </a>
                                 @endif
                                 <a href="{{ route('admin.users.show', $user) }}" class="btn btn-outline btn-sm">View<span class="sr-only"> {{ $user->full_name }}</span></a>

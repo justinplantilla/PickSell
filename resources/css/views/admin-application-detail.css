@@ -24,6 +24,10 @@
 .review-error { color: #b91c1c; }
 .review-hint { font-weight: 400; color: #6b6b6b; font-size: 0.75rem; }
 .review-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.review-actions .registration-approve { background: #16a34a; color: #fff; }
+.review-actions .registration-approve:hover { background: #15803d; }
+.review-actions .registration-disapprove { background: #dc2626; color: #fff; }
+.review-actions .registration-disapprove:hover { background: #b91c1c; }
 .review-outcome p { margin: 0 0 0.5rem; font-size: 0.86rem; }
 .review-reason { margin: 0.35rem 0 0; font-size: 0.85rem; white-space: pre-line; }
 
