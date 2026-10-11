@@ -11,6 +11,7 @@ use App\Models\LogisticsException;
 use App\Models\Municipality;
 use App\Models\Order;
 use App\Models\ParcelScan;
+use App\Models\ReturnRequest;
 use App\Models\RiderBarangay;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -21,10 +22,15 @@ class AdminLogisticsOperationsTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $buyer;
+
     private User $seller;
+
     private User $courier;
+
     private LogisticsBranch $branch;
+
     private Barangay $barangay;
 
     protected function setUp(): void
@@ -85,10 +91,39 @@ class AdminLogisticsOperationsTest extends TestCase
 
     public function test_logistics_index_route_keeps_the_existing_overview(): void
     {
+        $this->order('at_sorting_center', 'Received and scanned at sorting center');
         $this->actingAs($this->admin)
             ->get(route('admin.logistics.index'))
             ->assertOk()
-            ->assertSee('Logistics overview');
+            ->assertSee('Central dispatch — all branches')
+            ->assertSee('Sorting-center workload');
+    }
+
+    public function test_central_dispatch_dashboard_surfaces_return_requests_with_open_logistics_exceptions(): void
+    {
+        $order = $this->order('delivery_failed', 'Delivery failed');
+        $return = ReturnRequest::create([
+            'order_id' => $order->id,
+            'buyer_id' => $this->buyer->id,
+            'seller_id' => $this->seller->id,
+            'reason' => 'not_as_described',
+            'details' => 'The buyer reported a concern for this parcel.',
+            'status' => 'requested',
+        ]);
+        $exception = LogisticsException::create([
+            'order_id' => $order->id,
+            'opened_by' => $this->admin->id,
+            'type' => 'failed_delivery',
+            'status' => 'open',
+            'description' => 'Delivery could not be completed.',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.logistics.index'))
+            ->assertOk()
+            ->assertSee($exception->description)
+            ->assertSee(ucfirst($return->status))
+            ->assertSee('/admin/returns/'.$return->id);
     }
 
     public function test_admin_scan_uses_permission_guard_and_records_lifecycle_and_audit(): void

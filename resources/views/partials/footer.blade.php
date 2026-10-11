@@ -9,30 +9,55 @@
             </div>
             <div class="footer-col">
                 <h4>Shop</h4>
-                <a href="/shop">All Products</a>
-                <a href="/shop?cat=electronics">Electronics</a>
-                <a href="/shop?cat=fashion">Fashion</a>
-                <a href="/shop?cat=home">Home & Living</a>
-                <a href="/shop?cat=beauty">Beauty</a>
+                @auth
+                    @if(auth()->user()->role === 'buyer')
+                        <a href="{{ route('buyer.home') }}">All Products</a>
+                        <a href="{{ route('buyer.browse', ['deals' => 1]) }}">Deals & Promos</a>
+                        <a href="{{ route('buyer.recommended') }}">Recommended</a>
+                        <a href="{{ route('buyer.categories', ['category' => 'Electronics']) }}">Electronics</a>
+                        <a href="{{ route('buyer.categories', ['category' => 'Fashion']) }}">Fashion</a>
+                        <a href="{{ route('buyer.categories', ['category' => 'Home & Living']) }}">Home & Living</a>
+                    @else
+                        <a href="/">Home</a>
+                        <a href="/about">About</a>
+                        <a href="/contact">Contact</a>
+                    @endif
+                @else
+                    <a href="/">Home</a>
+                    <a href="/about">About</a>
+                    <a href="/contact">Contact</a>
+                @endauth
             </div>
             <div class="footer-col">
-                <h4>Account</h4>
-                <a href="/login">Log In</a>
-                <a href="/register">Sign Up</a>
-                <a href="/register">Become a Seller</a>
+                <h4>My Account</h4>
+                @auth
+                    @if(auth()->user()->role === 'buyer')
+                        <a href="{{ route('buyer.account') }}">Profile & Settings</a>
+                        <a href="{{ route('buyer.orders') }}">My Orders</a>
+                        <a href="{{ route('buyer.cart') }}">My Cart</a>
+                        <a href="{{ route('buyer.chat') }}">Messages</a>
+                    @else
+                        <a href="/login">Log In</a>
+                        <a href="/register">Sign Up</a>
+                    @endif
+                @else
+                    <a href="/login">Log In</a>
+                    <a href="/register">Sign Up</a>
+                    <a href="/register">Become a Seller</a>
+                @endauth
             </div>
             <div class="footer-col">
                 <h4>Support</h4>
-                <a href="/contact">Help Center</a>
-                <a href="/contact">Contact Us</a>
-                <a href="/about">About Us</a>
+                <a href="{{ route('contact') }}">Help Center</a>
+                <a href="{{ route('contact') }}">Contact Us</a>
+                <a href="{{ route('about') }}">About PickSell</a>
             </div>
         </div>
         <div class="footer-bottom">
             <span>&copy; {{ date('Y') }} PickSell. All rights reserved.</span>
             <div class="footer-bottom-links">
-                <a href="/about">Privacy Policy</a>
-                <a href="/about">Terms of Service</a>
+                <a href="{{ route('about') }}">Privacy Policy</a>
+                <a href="{{ route('about') }}">Terms of Service</a>
             </div>
         </div>
     </div>

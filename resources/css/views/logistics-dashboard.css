@@ -5,3 +5,11 @@
 .blade-inline-3 { overflow-x:auto !important;  }
 .blade-inline-4 { font-size:.72rem !important; color:#888 !important;  }
 .blade-inline-5 { text-align:center !important; color:#888 !important; padding:2rem !important;  }
+.logistics-dashboard-stats { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.logistics-stat-link { display:block;color:inherit;transition:transform .15s ease,border-color .15s ease; }
+.logistics-stat-link:hover { transform:translateY(-2px);border-color:var(--coral); }
+.logistics-stat-link span { display:block; }
+.logistics-stat-alert { border-left:4px solid #dc2626; }
+body.dark .logistics-stat-alert { border-left-color:#f87171; }
+@media(max-width:900px) { .logistics-dashboard-stats { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:520px) { .logistics-dashboard-stats { grid-template-columns:1fr; } }

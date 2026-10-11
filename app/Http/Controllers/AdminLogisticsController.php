@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BranchRider;
 use App\Models\LogisticsBranch;
+use App\Models\LogisticsException;
 use App\Models\Order;
 use Illuminate\Http\Request;
 
@@ -13,7 +14,9 @@ use Illuminate\Http\Request;
 class AdminLogisticsController extends Controller
 {
     public const PIPELINE = ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed'];
+
     public const SORTING_STATUSES = ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted'];
+
     public const RIDER_STATUSES = ['assigned_to_rider', 'out_for_delivery', 'delivery_failed'];
 
     /** A parcel sitting in one sorting stage longer than this is flagged as stale. */
@@ -40,6 +43,13 @@ class AdminLogisticsController extends Controller
             'outbound' => $outbound,
             'staleCount' => $this->staleSortingQuery()->count(),
             'awaitingRider' => Order::where('status', 'sorted')->whereNull('courier_id')->count(),
+            'openExceptions' => LogisticsException::query()
+                ->where('status', 'open')
+                ->with(['order.returnRequest', 'order.delivery', 'order.logistics', 'order.destinationBranch'])
+                ->latest()
+                ->take(10)
+                ->get(),
+            'openExceptionCount' => LogisticsException::where('status', 'open')->count(),
         ]);
     }
 

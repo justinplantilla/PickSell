@@ -6,6 +6,7 @@ use App\Models\Barangay;
 use App\Models\LogisticsBranch;
 use App\Models\Order;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 
 class LogisticsRoutingService
 {
@@ -53,17 +54,40 @@ class LogisticsRoutingService
         ]);
     }
 
-    public function suggestedCourier(Order $order): ?User
+    public function suggestedCourier(Order $order, array $excludeRiderIds = []): ?User
     {
-        if (!$order->destination_barangay_id || !$order->destination_branch_id) return null;
+        return $this->eligibleCouriers($order, $excludeRiderIds)->first();
+    }
 
-        return User::query()
+    /** @return Collection<int, User> */
+    public function eligibleCouriers(Order $order, array $excludeRiderIds = []): Collection
+    {
+        if (! $order->destination_barangay_id || ! $order->destination_branch_id) {
+            return new Collection;
+        }
+
+        $query = User::query()
             ->where('role', 'courier')->where('status', 'approved')
             ->whereHas('branchAssignments', fn ($query) => $this->constrainAssignmentToOrder($query, $order))
             ->withCount(['ordersAsCourier as active_parcels' => function ($query) {
                 $query->whereIn('status', ['assigned_to_rider', 'out_for_delivery']);
             }])
-            ->orderBy('active_parcels')->first();
+            ->withExists(['branchAssignments as primary_delivery_coverage' => function ($query) use ($order) {
+                $this->constrainAssignmentToOrder($query, $order)
+                    ->whereHas('barangays', fn ($barangays) => $barangays
+                        ->where('barangay_id', $order->destination_barangay_id)
+                        ->where('is_primary', true));
+            }])
+            ->withMax('deliveryAssignments as last_delivery_offered_at', 'offered_at')
+            ->orderByDesc('primary_delivery_coverage')
+            ->orderByRaw('CASE WHEN last_delivery_offered_at IS NULL THEN 0 ELSE 1 END')
+            ->orderBy('last_delivery_offered_at')
+            ->orderBy('active_parcels');
+        if ($excludeRiderIds !== []) {
+            $query->whereNotIn('id', $excludeRiderIds);
+        }
+
+        return $query->orderBy('id')->get();
     }
 
     public function courierCoversOrder(User $courier, Order $order): bool

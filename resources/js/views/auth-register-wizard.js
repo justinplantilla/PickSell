@@ -45,7 +45,8 @@ if (registerForm && registerConfig) {
         button.setAttribute('aria-busy', loading ? 'true' : 'false'); button.textContent = loading ? 'Loading...' : 'Continue';
     };
     wizardPanels.forEach((panel, index) => {
-        const actions = document.createElement('div'); actions.className = 'wizard-actions';
+        const actions = document.createElement('div');
+        actions.className = 'wizard-actions' + (index === wizardPanels.length - 1 ? ' review-actions' : '');
         if (index > 0) {
             const backButton = document.createElement('button'); backButton.type = 'button'; backButton.className = 'wizard-back'; backButton.textContent = 'Back';
             backButton.addEventListener('click', () => setWizardStep(currentWizardStep - 1)); actions.appendChild(backButton);

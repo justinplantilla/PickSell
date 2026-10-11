@@ -146,6 +146,7 @@ Route::middleware(['auth', LogisticsMiddleware::class])->prefix('logistics')->gr
     Route::patch('/parcels/{order}/scan', [LogisticsController::class, 'scanParcel'])->name('logistics.parcels.scan');
     Route::patch('/parcels/{order}/sort', [LogisticsController::class, 'sortParcel'])->name('logistics.parcels.sort');
     Route::patch('/parcels/{order}/assign', [LogisticsController::class, 'assignCourier'])->name('logistics.parcels.assign');
+    Route::patch('/parcels/{order}/mark-returned', [LogisticsController::class, 'markReturned'])->name('logistics.parcels.returned');
     Route::post('/parcels/{order}/exceptions', [LogisticsController::class, 'openException'])->name('logistics.parcels.exceptions.store');
     Route::patch('/exceptions/{exception}/resolve', [LogisticsController::class, 'resolveException'])->name('logistics.exceptions.resolve');
     Route::get('/tracking', [LogisticsController::class, 'module'])->defaults('module', 'tracking')->name('logistics.tracking');
@@ -177,7 +178,11 @@ Route::middleware(['auth', CourierMiddleware::class])->prefix('courier')->group(
 Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(function () {
     Route::get('/dashboard', [BuyerController::class, 'home'])->name('buyer.dashboard');
     Route::get('/shop', [BuyerController::class, 'home'])->name('buyer.home');
+    Route::get('/categories', [BuyerController::class, 'categories'])->name('buyer.categories');
+    Route::get('/search', [BuyerController::class, 'search'])->name('buyer.search');
     Route::get('/deals', [BuyerController::class, 'home'])->name('buyer.deals');
+    Route::get('/browse', [BuyerController::class, 'browse'])->name('buyer.browse');
+    Route::get('/recommended', [BuyerController::class, 'recommended'])->name('buyer.recommended');
     Route::get('/seller/{seller}', [BuyerController::class, 'sellerStorefront'])->name('buyer.seller');
     Route::get('/product/{product}', [BuyerController::class, 'productDetail'])->name('buyer.product');
     Route::post('/product/{product}/reviews', [BuyerController::class, 'submitProductReview'])->name('buyer.product.review');
@@ -193,6 +198,8 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
 
     // Orders
     Route::get('/orders', [BuyerController::class, 'orders'])->name('buyer.orders');
+    Route::get('/orders/{order}/tracking', [BuyerController::class, 'trackOrder'])->name('buyer.orders.tracking');
+    Route::patch('/orders/{order}/cancel', [BuyerController::class, 'cancelOrder'])->name('buyer.orders.cancel');
     Route::post('/orders/{order}/returns', [BuyerReturnRequestController::class, 'store'])->name('buyer.orders.returns.store');
     Route::post('/orders/{order}/feedback', [BuyerController::class, 'submitFeedback'])->name('buyer.feedback');
     Route::get('/notifications', [BuyerController::class, 'notifications'])->name('buyer.notifications');
@@ -227,6 +234,7 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     Route::get('/orders', [SellerController::class, 'orders'])->name('seller.orders');
     Route::get('/orders/{order}', [SellerController::class, 'showOrder'])->name('seller.orders.show');
     Route::get('/orders/{order}/waybill', [SellerController::class, 'showWaybill'])->name('seller.orders.waybill');
+    Route::patch('/orders/{order}/cancel', [SellerController::class, 'cancelOrder'])->name('seller.orders.cancel');
     Route::patch('/orders/{order}/pack', [SellerController::class, 'packOrder'])->name('seller.orders.pack');
     Route::patch('/orders/{order}/handover', [SellerController::class, 'handoverOrder'])->name('seller.orders.handover');
     Route::patch('/orders/{order}/confirm-delivery', [SellerController::class, 'confirmDelivery'])->name('seller.orders.confirm-delivery');

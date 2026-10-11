@@ -6,43 +6,58 @@ use App\Http\Requests\AssignCourierRequest;
 use App\Http\Requests\OpenLogisticsExceptionRequest;
 use App\Http\Requests\ResolveParcelExceptionRequest;
 use App\Http\Requests\ScanParcelRequest;
+use App\Mail\NewMessageMail;
 use App\Mail\RegistrationApprovedMail;
 use App\Mail\RegistrationDisapprovedMail;
-use App\Mail\NewMessageMail;
-use App\Models\Order;
-use App\Models\LogisticsException;
-use App\Models\LogisticsBranch;
-use App\Models\Municipality;
 use App\Models\BranchRider;
-use App\Models\RiderBarangay;
 use App\Models\Complaint;
+use App\Models\LogisticsBranch;
+use App\Models\LogisticsException;
 use App\Models\Message;
+use App\Models\Municipality;
+use App\Models\Order;
+use App\Models\RiderBarangay;
 use App\Models\User;
 use App\Services\CourierAssignmentService;
-use App\Services\LogisticsService;
 use App\Services\LogisticsExceptionService;
+use App\Services\LogisticsService;
+use App\Services\LogisticsRoutingService;
+use App\Services\Orders\DeliveryStatusTransitionPolicy;
+use App\Services\Orders\OrderLifecycleService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 
 class LogisticsController extends Controller
 {
     private const MISSING_SCAN_AFTER_HOURS = 48;
 
+    private const LEGACY_ORDER_STATUSES = ['pending', 'processing', 'shipped'];
+
     public function dashboard()
     {
+        $baseQuery = Order::where('logistics_id', auth()->id());
         $stats = [
             'pending_couriers' => User::where('role', 'courier')->where('status', 'pending')->count(),
-            'approved_couriers' => User::where('role', 'courier')->where('status', 'approved')->count(),
-            'to_sort' => Order::whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center'])->count(),
-            'assigned' => Order::whereIn('status', ['assigned_to_rider', 'out_for_delivery'])->count(),
+            'approved_couriers' => User::where('role', 'courier')->where('status', 'approved')
+                ->whereHas('branchAssignments', fn ($query) => $query
+                    ->where('status', 'active')
+                    ->whereHas('branch', fn ($branch) => $branch->where('logistics_id', auth()->id())))
+                ->count(),
+            'to_sort' => (clone $baseQuery)->whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center'])->count(),
+            'assigned' => (clone $baseQuery)->whereIn('status', ['assigned_to_rider', 'out_for_delivery'])->count(),
+            'failed' => (clone $baseQuery)->where('status', 'delivery_failed')->count(),
+            'missing_scan' => (clone $baseQuery)->where('status', 'picked_up')
+                ->where('updated_at', '<', now()->subHours(self::MISSING_SCAN_AFTER_HOURS))->count(),
         ];
 
         $orders = Order::with(['buyer', 'courier'])->where('logistics_id', auth()->id())
-            ->whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed'])
+            ->whereIn('status', ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed', 'delivered', 'completed'])
             ->latest()->take(10)->get();
+
         return view('logistics.dashboard', compact('stats', 'orders'));
     }
 
@@ -79,8 +94,9 @@ class LogisticsController extends Controller
     {
         $from = $request->get('from', now()->startOfMonth()->format('Y-m-d'));
         $to = $request->get('to', now()->format('Y-m-d'));
-        $status = $request->get('status', 'all');
-        $query = Order::whereBetween('created_at', [$from, $to . ' 23:59:59']);
+        $status = $this->validatedReportStatus($request);
+        $statusOptions = array_values(array_unique([...Order::STATUS_LIFECYCLE, ...self::LEGACY_ORDER_STATUSES]));
+        $query = Order::whereBetween('created_at', [$from, $to.' 23:59:59']);
         if ($status !== 'all') {
             $query->where('status', $status);
         }
@@ -89,20 +105,21 @@ class LogisticsController extends Controller
         $orders = $query->with(['buyer', 'courier'])->latest()->paginate(20)->withQueryString();
         $summary = $summaryQuery->reorder()->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
 
-        return view('logistics.delivery-reports', compact('orders', 'summary', 'from', 'to', 'status'));
+        return view('logistics.delivery-reports', compact('orders', 'summary', 'from', 'to', 'status', 'statusOptions'));
     }
 
     public function exportDeliveryReports(Request $request)
     {
         $from = $request->get('from', now()->startOfMonth()->format('Y-m-d'));
         $to = $request->get('to', now()->format('Y-m-d'));
-        $status = $request->get('status', 'all');
-        $query = Order::whereBetween('created_at', [$from, $to . ' 23:59:59']);
+        $status = $this->validatedReportStatus($request);
+        $query = Order::whereBetween('created_at', [$from, $to.' 23:59:59']);
         if ($status !== 'all') {
             $query->where('status', $status);
         }
 
         $orders = $query->with(['buyer', 'courier'])->latest()->get();
+
         return response()->streamDownload(function () use ($orders) {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, ['Order', 'Status', 'Tracking', 'Buyer', 'Destination', 'Rider', 'Amount', 'Created At']);
@@ -122,6 +139,15 @@ class LogisticsController extends Controller
         }, 'picksell-delivery-reports.csv', ['Content-Type' => 'text/csv']);
     }
 
+    private function validatedReportStatus(Request $request): string
+    {
+        $statusOptions = ['all', ...Order::STATUS_LIFECYCLE, ...self::LEGACY_ORDER_STATUSES];
+
+        return $request->validate([
+            'status' => ['nullable', Rule::in($statusOptions)],
+        ])['status'] ?? 'all';
+    }
+
     public function account()
     {
         return view('logistics.account-edit', ['user' => auth()->user()]);
@@ -134,7 +160,7 @@ class LogisticsController extends Controller
             'last_name' => 'required|string|max:100',
             'middle_initial' => 'nullable|string|max:5',
             'sex' => 'required|in:Male,Female',
-            'email' => 'required|email|unique:users,email,' . auth()->id(),
+            'email' => 'required|email|unique:users,email,'.auth()->id(),
             'contact_no' => ['required', 'regex:/^09\d{9}$/'],
             'birthday' => 'required|date',
             'province' => 'required|string|max:120',
@@ -144,6 +170,7 @@ class LogisticsController extends Controller
             'house_no' => 'nullable|string|max:100',
         ]);
         auth()->user()->update($data);
+
         return back()->with('success', 'Account details updated.');
     }
 
@@ -155,6 +182,7 @@ class LogisticsController extends Controller
         ]);
         abort_unless(Hash::check($data['current_password'], auth()->user()->password), 422, 'Current password is incorrect.');
         auth()->user()->update(['password' => Hash::make($data['password'])]);
+
         return back()->with('success', 'Password updated.');
     }
 
@@ -172,6 +200,7 @@ class LogisticsController extends Controller
                 ->orWhere(fn ($query) => $query->where('sender_id', $activeUser->id)->where('receiver_id', $logistics->id))
                 ->orderBy('created_at')->get();
         }
+
         return view('logistics.chat', compact('contacts', 'activeUser', 'messages'));
     }
 
@@ -184,6 +213,7 @@ class LogisticsController extends Controller
         } catch (\Throwable $exception) {
             Log::warning('Logistics message email could not be sent.', ['error' => $exception->getMessage()]);
         }
+
         return back()->with('success', 'Message sent.');
     }
 
@@ -218,7 +248,7 @@ class LogisticsController extends Controller
             'logistics_id' => 'nullable|exists:users,id',
         ]);
 
-        $manager = !empty($data['logistics_id'])
+        $manager = ! empty($data['logistics_id'])
             ? User::where('id', $data['logistics_id'])->where('role', 'logistics')->where('status', 'approved')->firstOrFail()
             : null;
         $municipality = Municipality::firstOrCreate([
@@ -256,7 +286,7 @@ class LogisticsController extends Controller
             'status' => 'required|in:active,inactive',
         ]);
 
-        $manager = !empty($data['logistics_id'])
+        $manager = ! empty($data['logistics_id'])
             ? User::where('id', $data['logistics_id'])->where('role', 'logistics')->where('status', 'approved')->firstOrFail()
             : null;
         $municipality = Municipality::firstOrCreate([
@@ -296,6 +326,7 @@ class LogisticsController extends Controller
         }
 
         $users = $query->latest()->paginate(15);
+
         return view('logistics.applications', compact('users', 'status', 'search'));
     }
 
@@ -304,6 +335,7 @@ class LogisticsController extends Controller
         abort_if($user->role !== 'courier', 404);
         $user->update(['status' => 'approved']);
         Mail::to($user->email)->send(new RegistrationApprovedMail($user));
+
         return back()->with('success', "Courier {$user->full_name} approved.");
     }
 
@@ -331,42 +363,53 @@ class LogisticsController extends Controller
         return back()->with('success', "Rider {$user->full_name} is now {$data['status']}.");
     }
 
-    public function parcels(Request $request)
+    public function parcels(Request $request, LogisticsRoutingService $routing)
     {
         $status = (string) $request->get('status', 'all');
         $baseQuery = Order::where('logistics_id', auth()->id());
         $pipelineStatuses = ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed', 'delivered', 'completed'];
         $statusAliases = [
-            'awaiting_scan' => 'picked_up',
             'scanned' => 'at_sorting_center',
-            'awaiting_sort' => 'at_sorting_center',
             'awaiting_rider' => 'sorted',
             'failed_delivery' => 'delivery_failed',
         ];
-        $statusFilters = [...$pipelineStatuses, ...array_keys($statusAliases), 'verification_required', 'destination_exception', 'wrong_destination', 'missing_scan', 'rider_unavailable'];
+        $statusFilters = [...$pipelineStatuses, ...array_keys($statusAliases), 'awaiting_scan', 'awaiting_sort', 'verification_required', 'destination_exception', 'wrong_destination', 'missing_scan', 'rider_unavailable'];
         $status = in_array($status, $statusFilters, true) ? $status : 'all';
         $filterStatus = $statusAliases[$status] ?? ($status === 'wrong_destination' ? 'destination_exception' : $status);
 
         $queueCounts = [
-            'awaiting_scan' => (clone $baseQuery)->where('status', 'picked_up')->count(),
-            'scanned' => (clone $baseQuery)->where('status', 'at_sorting_center')->count(),
+            'awaiting_scan' => (clone $baseQuery)->where('status', 'picked_up')
+                ->whereIn('tracking_status', ['Pickup approved by logistics', 'Handed over to courier'])->count(),
             'verification_required' => $this->verificationRequiredQuery(clone $baseQuery)->count(),
-            'awaiting_sort' => (clone $baseQuery)->where('status', 'at_sorting_center')->count(),
+            'awaiting_sort' => (clone $baseQuery)->where('status', 'at_sorting_center')
+                ->where('tracking_status', 'Received and scanned at sorting center')->count(),
             'sorted' => (clone $baseQuery)->where('status', 'sorted')->count(),
             'destination_exception' => $this->destinationExceptionQuery(clone $baseQuery)->count(),
-            'awaiting_rider' => (clone $baseQuery)->where('status', 'sorted')->count(),
             'assigned' => (clone $baseQuery)->where('status', 'assigned_to_rider')->count(),
             'out_for_delivery' => (clone $baseQuery)->where('status', 'out_for_delivery')->count(),
             'failed_delivery' => (clone $baseQuery)->where('status', 'delivery_failed')->count(),
             'missing_scan' => (clone $baseQuery)->where('status', 'picked_up')->where('updated_at', '<', now()->subHours(self::MISSING_SCAN_AFTER_HOURS))->count(),
-            'rider_unavailable' => User::where('role', 'courier')->where('status', 'approved')->exists()
-                ? 0
-                : (clone $baseQuery)->where('status', 'sorted')->count(),
+            'rider_unavailable' => $this->riderUnavailableQuery(clone $baseQuery)->count(),
         ];
 
-        $query = (clone $baseQuery)->with(['buyer', 'seller', 'courier', 'parcelScans'])
+        $query = (clone $baseQuery)->with([
+            'buyer',
+            'seller',
+            'courier',
+            'destinationBranch.municipality',
+            'destinationBarangay',
+            'parcelScans',
+            'delivery.logs',
+            'logisticsExceptions',
+        ])
             ->whereIn('status', $pipelineStatuses);
-        if (in_array($filterStatus, $pipelineStatuses, true)) {
+        if ($filterStatus === 'awaiting_scan') {
+            $query->where('status', 'picked_up')
+                ->whereIn('tracking_status', ['Pickup approved by logistics', 'Handed over to courier']);
+        } elseif ($filterStatus === 'awaiting_sort') {
+            $query->where('status', 'at_sorting_center')
+                ->where('tracking_status', 'Received and scanned at sorting center');
+        } elseif (in_array($filterStatus, $pipelineStatuses, true)) {
             $query->where('status', $filterStatus);
         } elseif ($filterStatus === 'verification_required') {
             $this->verificationRequiredQuery($query);
@@ -375,16 +418,15 @@ class LogisticsController extends Controller
         } elseif ($filterStatus === 'missing_scan') {
             $query->where('status', 'picked_up')->where('updated_at', '<', now()->subHours(self::MISSING_SCAN_AFTER_HOURS));
         } elseif ($filterStatus === 'rider_unavailable') {
-            $query->where('status', 'sorted');
-            if (User::where('role', 'courier')->where('status', 'approved')->exists()) {
-                $query->whereRaw('1 = 0');
-            }
+            $this->riderUnavailableQuery($query);
         }
 
         $orders = $query->latest()->paginate(15);
-        $couriers = User::where('role', 'courier')->where('status', 'approved')->orderBy('delivery_area')->orderBy('last_name')->get();
-        $hasActiveCouriers = $couriers->isNotEmpty();
-        return view('logistics.sorting-center', compact('orders', 'couriers', 'status', 'queueCounts', 'hasActiveCouriers'));
+        $eligibleCouriers = $orders->getCollection()
+            ->filter(fn (Order $order) => $order->status === 'sorted')
+            ->mapWithKeys(fn (Order $order) => [$order->id => $routing->eligibleCouriers($order)]);
+
+        return view('logistics.sorting-center', compact('orders', 'eligibleCouriers', 'status', 'queueCounts'));
     }
 
     private function verificationRequiredQuery($query)
@@ -417,7 +459,25 @@ class LogisticsController extends Controller
                         $buyer->whereNull('barangay')
                             ->orWhereNull('municipality')
                             ->orWhereNull('province');
+                    })
+                    ->orWhereDoesntHave('destinationBranch.municipality', function ($municipality) {
+                        $municipality->whereHas('barangays', fn ($barangays) => $barangays
+                            ->whereColumn('barangays.id', 'orders.destination_barangay_id'));
                     });
+            });
+    }
+
+    private function riderUnavailableQuery($query)
+    {
+        return $query->where('status', 'sorted')
+            ->whereDoesntHave('destinationBranch.riderAssignments', function ($assignment) {
+                $assignment->where('status', 'active')
+                    ->whereHas('rider', fn ($rider) => $rider->where('role', 'courier')->where('status', 'approved'))
+                    ->whereHas('barangays', fn ($barangays) => $barangays
+                        ->whereColumn('rider_barangays.barangay_id', 'orders.destination_barangay_id'))
+                    ->whereHas('branch.municipality', fn ($municipality) => $municipality
+                        ->whereHas('barangays', fn ($barangays) => $barangays
+                            ->whereColumn('barangays.id', 'orders.destination_barangay_id')));
             });
     }
 
@@ -451,11 +511,50 @@ class LogisticsController extends Controller
         return back()->with('success', "Parcel {$order->order_number} assigned to {$courier->full_name}.");
     }
 
+    public function markReturned(
+        Request $request,
+        Order $order,
+        OrderLifecycleService $lifecycle,
+        DeliveryStatusTransitionPolicy $transitionPolicy,
+    ) {
+        DB::transaction(function () use ($request, $order, $lifecycle, $transitionPolicy): void {
+            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            abort_unless($locked->logistics_id === $request->user()->id, 403);
+            abort_unless(
+                $locked->status === 'delivery_failed' && $locked->delivery?->status === 'return_to_sender',
+                409,
+                'This parcel is not awaiting a return to sender.',
+            );
+            abort_unless(
+                $transitionPolicy->canTransition(
+                    $locked->delivery->status,
+                    'returned',
+                    'logistics',
+                    (int) $locked->delivery->delivery_attempts,
+                ),
+                409,
+                'This delivery cannot be confirmed as returned.',
+            );
+
+            $lifecycle->transition(
+                $locked,
+                'returned',
+                $request->user()->id,
+                'logistics',
+                'Physical return to sender confirmed by logistics.',
+                ['tracking_status' => 'Returned to sender'],
+            );
+        });
+
+        return back()->with('success', "Parcel {$order->order_number} marked as returned to sender.");
+    }
+
     public function openException(
         OpenLogisticsExceptionRequest $request,
         Order $order,
         LogisticsExceptionService $exceptions,
     ) {
+        abort_unless((int) $order->logistics_id === (int) $request->user()->id, 403, 'This parcel belongs to another logistics branch.');
         $data = $request->validated();
         $exception = $exceptions->open($order, $request->user(), $data['type'], $data['description']);
 
@@ -467,6 +566,7 @@ class LogisticsController extends Controller
         LogisticsException $exception,
         LogisticsExceptionService $exceptions,
     ) {
+        abort_unless((int) $exception->order->logistics_id === (int) $request->user()->id, 403, 'This exception belongs to another logistics branch.');
         $exceptions->resolve($exception, $request->user(), $request->validated('resolution'));
 
         return back()->with('success', "Logistics exception #{$exception->id} resolved.");

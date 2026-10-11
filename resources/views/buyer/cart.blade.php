@@ -11,10 +11,14 @@
 <div class="blade-inline-2">
     <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" viewBox="0 0 24 24" class="blade-inline-3"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM5.2 5H2V3H0v2h2l3.6 7.59L4.25 15A2 2 0 0 0 6 18h14v-2H6.42a.25.25 0 0 1-.25-.25l.03-.12L7.1 14h9.45c.75 0 1.41-.41 1.75-1.03L21.7 6.5A1 1 0 0 0 20.83 5H5.2z"/></svg>
     <div class="blade-inline-4">Your cart is empty</div>
-    <a href="/buyer/shop" class="btn btn-coral blade-inline-5">Start Shopping</a>
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;justify-content:center;">
+        <a href="/buyer/shop" class="btn btn-coral blade-inline-5">Start Shopping</a>
+        <a href="{{ route('buyer.browse', ['deals' => 1]) }}" class="btn btn-outline">Browse Deals</a>
+    </div>
 </div>
 @else
 <div class="blade-inline-6">
+    {{-- LEFT: cart table --}}
     <div>
         <div class="card">
             <div class="card-header">
@@ -46,19 +50,21 @@
                         <td class="blade-inline-14">{{ $item->variation ? $item->variation->type.': '.$item->variation->value : '—' }}</td>
                         <td class="blade-inline-15">₱{{ number_format($item->product->effective_price, 2) }}</td>
                         <td>
-                            <div class="blade-inline-16">
+                            <div class="qty-stepper">
+                                <button type="button" class="qty-btn qty-dec" data-item-id="{{ $item->id }}" aria-label="Decrease">−</button>
                                 <input type="number"
                                        value="{{ $item->quantity }}"
                                        min="1"
                                        max="{{ $item->product->stock }}"
                                        data-item-id="{{ $item->id }}"
-                                       class="qty-input blade-inline-17">
+                                       class="qty-input">
+                                <button type="button" class="qty-btn qty-inc" data-item-id="{{ $item->id }}" aria-label="Increase">+</button>
                             </div>
                         </td>
                         <td class="blade-inline-18" data-subtotal="{{ $item->product->effective_price * $item->quantity }}">₱{{ number_format($item->product->effective_price * $item->quantity, 2) }}</td>
                         <td>
-                            <button type="button" class="btn btn-sm remove-item-btn" data-item-id="{{ $item->id }}" title="Remove">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                            <button type="button" class="cart-remove-btn remove-item-btn" data-item-id="{{ $item->id }}" title="Remove">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                             </button>
                         </td>
                     </tr>
@@ -72,26 +78,10 @@
         @endif
     </div>
 
+    {{-- RIGHT: Order Summary first, then You May Also Like --}}
     <div>
-        <div class="cart-promo-card">
-            <div class="cart-promo-kicker">Keep exploring</div>
-            <strong>Find your next favorite</strong>
-            <p>Discover fresh deals and products from local sellers.</p>
-            <a href="/buyer/shop" class="cart-promo-link">Browse products <span aria-hidden="true">→</span></a>
-        </div>
-        <div class="card cart-recommendations">
-            <div class="card-header"><span class="card-title">You May Also Like</span></div>
-            <div class="card-body">
-                @foreach($recommendations as $recommendation)
-                <a href="{{ route('buyer.product', $recommendation) }}" class="cart-recommendation">
-                    @if($recommendation->primary_image)<img src="{{ Storage::url($recommendation->primary_image) }}" alt="{{ $recommendation->name }}">@endif
-                    <span><strong>{{ $recommendation->name }}</strong><small>₱{{ number_format($recommendation->effective_price, 2) }}</small></span>
-                </a>
-                @endforeach
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-header"><span class="card-title">Order Summary</span><span class="summary-default-label">Ready to checkout</span></div>
+        <div class="card cart-summary-card" id="cartSummaryCard">
+            <div class="card-header"><span class="card-title">Order Summary</span></div>
             <div class="card-body">
                 <div class="blade-inline-22">
                     <span class="blade-inline-23">Selected Items</span>
@@ -109,8 +99,66 @@
                 </form>
             </div>
         </div>
+        <div class="card cart-recommendations">
+            <div class="card-header"><span class="card-title">You May Also Like</span></div>
+            <div class="card-body">
+                @foreach($recommendations as $recommendation)
+                <a href="{{ route('buyer.product', $recommendation) }}" class="cart-recommendation">
+                    @if($recommendation->primary_image)<img src="{{ Storage::url($recommendation->primary_image) }}" alt="{{ $recommendation->name }}">@endif
+                    <span><strong>{{ $recommendation->name }}</strong><small>₱{{ number_format($recommendation->effective_price, 2) }}</small></span>
+                </a>
+                @endforeach
+            </div>
+        </div>
     </div>
 </div>
+@endif
+
+{{-- Recommended For You --}}
+@if($recommendedProducts->isNotEmpty())
+<section class="buyer-section cart-recommended-section">
+    <div class="buyer-section-head">
+        <h2 class="buyer-section-title">Recommended For You</h2>
+        <a href="{{ route('buyer.recommended') }}" class="buyer-section-link">See all</a>
+    </div>
+    <div class="product-grid">
+        @foreach($recommendedProducts as $product)
+        <article class="product-card">
+            <a href="{{ route('buyer.product', $product) }}" class="product-card-link">
+                <div class="product-img-wrap">
+                    @if($product->primary_image)
+                        <img src="{{ Storage::url($product->primary_image) }}" alt="{{ $product->name }}">
+                    @else
+                        <div class="product-img-placeholder"><svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="currentColor" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>
+                    @endif
+                    @if($product->discount > 0)
+                    <span class="product-discount-badge">-{{ $product->discount }}%</span>
+                    @endif
+                    <div class="product-hover-details">
+                        <span class="product-hover-category">{{ $product->category ?? 'Product' }}</span>
+                        <span class="product-hover-name">{{ $product->name }}</span>
+                        <span class="product-hover-stock">{{ $product->stock }} available · View details</span>
+                    </div>
+                </div>
+                <div class="product-info">
+                    <div class="product-name">{{ $product->name }}</div>
+                    <div>
+                        <span class="product-price">₱{{ number_format($product->effective_price, 2) }}</span>
+                        @if($product->discount > 0)
+                        <span class="product-original">₱{{ number_format($product->price, 2) }}</span>
+                        @endif
+                    </div>
+                    <div class="product-seller">{{ $product->seller->business_name ?? $product->seller->full_name }}</div>
+                </div>
+            </a>
+            <div class="product-card-actions">
+                <button type="button" class="card-add-btn" data-card-cart-action="/buyer/cart/{{ $product->id }}">Add to Cart</button>
+                <button type="button" class="card-buy-btn" data-card-cart-action="/buyer/cart/{{ $product->id }}" data-card-buy-now="/buyer/checkout">Buy Now</button>
+            </div>
+        </article>
+        @endforeach
+    </div>
+</section>
 @endif
 @endsection
 

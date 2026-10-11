@@ -5,10 +5,11 @@ namespace App\Models;
 use App\Auth\Permission;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use Notifiable;
+    use HasApiTokens, Notifiable;
 
     protected $fillable = [
         'role', 'status', 'provider_type',
@@ -160,6 +161,11 @@ class User extends Authenticatable
     public function ordersAsCourier()
     {
         return $this->hasMany(Order::class, 'courier_id');
+    }
+
+    public function deliveryAssignments()
+    {
+        return $this->hasMany(DeliveryAssignment::class, 'rider_id');
     }
 
     public function courierAssignments()

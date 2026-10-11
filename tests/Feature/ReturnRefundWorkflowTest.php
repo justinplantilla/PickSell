@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\DeliveryLog;
 use App\Models\Order;
 use App\Models\ReturnRequest;
 use App\Models\User;
@@ -82,6 +83,35 @@ class ReturnRefundWorkflowTest extends TestCase
                 'details' => 'Duplicate request.',
             ])
             ->assertStatus(409);
+    }
+
+    public function test_buyer_has_an_owned_delivery_tracking_page_with_the_delivery_log_timeline(): void
+    {
+        $buyer = $this->makeUser('buyer');
+        $seller = $this->makeUser('seller');
+        $otherBuyer = $this->makeUser('buyer');
+        $order = $this->makeOrder($buyer, $seller, 'out_for_delivery');
+        $delivery = $order->delivery()->firstOrFail();
+        DeliveryLog::create([
+            'delivery_id' => $delivery->id,
+            'actor_id' => $seller->id,
+            'actor_role' => 'logistics',
+            'from_status' => 'picked_up',
+            'to_status' => 'at_sorting_center',
+            'note' => 'Parcel received at the destination hub.',
+        ]);
+
+        $this->actingAs($buyer)
+            ->get(route('buyer.orders.tracking', $order))
+            ->assertOk()
+            ->assertSee('Delivery updates')
+            ->assertSee($delivery->tracking_number)
+            ->assertSee('Parcel received at the destination hub.')
+            ->assertSee('Out for delivery');
+
+        $this->actingAs($otherBuyer)
+            ->get(route('buyer.orders.tracking', $order))
+            ->assertNotFound();
     }
 
     public function test_seller_can_complete_the_approved_refund_lifecycle_and_cannot_change_another_sellers_request(): void
@@ -283,12 +313,12 @@ class ReturnRefundWorkflowTest extends TestCase
         return User::create([
             'first_name' => ucfirst($role),
             'last_name' => 'ReturnTest',
-            'email' => $role . '.' . $token . '@example.com',
+            'email' => $role.'.'.$token.'@example.com',
             'password' => bcrypt('password'),
             'role' => $role,
             'status' => 'approved',
             'sex' => 'Male',
-            'contact_no' => '09' . random_int(100000000, 999999999),
+            'contact_no' => '09'.random_int(100000000, 999999999),
             'birthday' => '1990-01-01',
             'age' => 36,
             'province' => 'Metro Manila',
@@ -300,7 +330,7 @@ class ReturnRefundWorkflowTest extends TestCase
     private function makeOrder(User $buyer, User $seller, string $status): Order
     {
         return Order::create([
-            'order_number' => 'RET-' . strtoupper(Str::random(8)),
+            'order_number' => 'RET-'.strtoupper(Str::random(8)),
             'buyer_id' => $buyer->id,
             'seller_id' => $seller->id,
             'product_name' => 'Return Test Product',

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\AdminNotificationService;
+use App\Services\DeliveryDomainSynchronizer;
 use App\Services\Orders\OrderLifecycleService;
 use Illuminate\Database\Eloquent\Model;
 
@@ -61,6 +62,9 @@ class Order extends Model
 
     public ?string $statusChangeReason = null;
 
+    /** @var array<string, mixed> Optional proof/location fields for the next delivery log. */
+    public array $deliveryLogContext = [];
+
     /**
      * Every status change — from any portal — stamps its lifecycle timestamp (first time only)
      * and writes an order_status_histories row, so the full lifecycle is always visible.
@@ -74,10 +78,24 @@ class Order extends Model
             }
         });
 
-        static::created(fn (Order $order) => $order->recordStatusChange(null));
+        static::created(function (Order $order): void {
+            $order->recordStatusChange(null);
+            app(DeliveryDomainSynchronizer::class)->syncCreatedOrder($order);
+        });
 
         static::updated(function (Order $order): void {
-            if ($order->wasChanged('status')) {
+            $statusChanged = $order->wasChanged('status');
+            $courierChanged = $order->wasChanged('courier_id');
+
+            if ($statusChanged || $courierChanged) {
+                app(DeliveryDomainSynchronizer::class)->syncOrderUpdate(
+                    $order,
+                    $order->getOriginal('status'),
+                    $order->getOriginal('courier_id') === null ? null : (int) $order->getOriginal('courier_id'),
+                );
+            }
+
+            if ($statusChanged) {
                 $order->recordStatusChange($order->getOriginal('status'));
 
                 $notifications = app(AdminNotificationService::class);
@@ -138,6 +156,11 @@ class Order extends Model
     public function courier()
     {
         return $this->belongsTo(User::class, 'courier_id');
+    }
+
+    public function delivery()
+    {
+        return $this->hasOne(Delivery::class);
     }
 
     public function product()

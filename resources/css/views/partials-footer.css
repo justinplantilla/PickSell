@@ -10,6 +10,12 @@ footer {
     margin: 0 auto;
     padding: 0 1.5rem;
 }
+@media(max-width: 560px) {
+    .footer-inner { padding: 0 0.75rem; }
+}
+@media(min-width: 1440px) {
+    .footer-inner { max-width: 1600px; padding-inline: clamp(1.5rem, 4vw, 5rem); }
+}
 .footer-main {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr 1fr;

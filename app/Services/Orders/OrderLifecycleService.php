@@ -12,6 +12,8 @@ use App\Models\Product;
  */
 class OrderLifecycleService
 {
+    public function __construct(private DeliveryStatusTransitionPolicy $transitionPolicy) {}
+
     /** status => statuses it may move to */
     public const TRANSITIONS = [
         'placed' => ['confirmed', 'preparing', 'cancelled'],
@@ -23,7 +25,7 @@ class OrderLifecycleService
         'sorted' => ['assigned_to_rider'],
         'assigned_to_rider' => ['out_for_delivery', 'at_sorting_center'],
         'out_for_delivery' => ['delivered', 'delivery_failed'],
-        'delivery_failed' => ['at_sorting_center', 'returned'],
+        'delivery_failed' => ['assigned_to_rider', 'at_sorting_center', 'returned'],
         'delivered' => ['completed'],
         'completed' => [],
         'returned' => [],
@@ -83,6 +85,18 @@ class OrderLifecycleService
     public function transition(Order $order, string $to, ?int $actorId, string $source, ?string $reason, array $extra = []): void
     {
         abort_unless(self::canTransition($order->status, $to), 409, 'An order cannot move from ' . self::label($order->status) . ' to ' . self::label($to) . '.');
+        $delivery = $order->delivery()->first();
+        abort_unless(
+            $this->transitionPolicy->canTransition(
+                $order->status,
+                $to,
+                $source,
+                (int) ($delivery?->delivery_attempts ?? 0),
+                $delivery?->status,
+            ),
+            409,
+            'This actor cannot make the requested delivery status transition.',
+        );
 
         // Moving a parcel back to sorting releases its rider so it can be reassigned.
         if ($to === 'at_sorting_center' && in_array($order->status, ['assigned_to_rider', 'delivery_failed'], true)) {

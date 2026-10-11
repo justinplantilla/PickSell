@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Notifications\CourierAssignedNotification;
 use App\Models\Order;
 use App\Models\User;
+use App\Notifications\CourierAssignedNotification;
 use App\Services\Orders\OrderLifecycleService;
 use Illuminate\Support\Facades\DB;
 
@@ -20,13 +20,16 @@ class CourierAssignmentService
     {
         return DB::transaction(function () use ($order, $actor, $courierId, $source, $auditPermission) {
             $locked = Order::whereKey($order->id)->with('buyer')->lockForUpdate()->firstOrFail();
+            if ($source === 'logistics') {
+                abort_unless((int) $locked->logistics_id === (int) $actor->id, 403, 'This parcel belongs to another logistics branch.');
+            }
             abort_if($locked->status !== 'sorted', 422, 'Only sorted parcels can be assigned.');
             abort_unless($locked->parcelScans()->exists(), 422, 'A parcel scan is required before rider assignment.');
 
             $courier = $courierId !== null
                 ? User::whereKey($courierId)->where('role', 'courier')->where('status', 'approved')->first()
                 : $this->routing->suggestedCourier($locked);
-            abort_if(!$courier, 422, 'No active rider is assigned to this barangay yet.');
+            abort_if(! $courier, 422, 'No active rider is assigned to this barangay yet.');
             abort_unless($this->routing->courierCoversOrder($courier, $locked), 422, 'The selected rider is not assigned to this parcel destination.');
 
             $from = $locked->status;
@@ -39,7 +42,7 @@ class CourierAssignmentService
             $this->lifecycle->transition($locked, 'assigned_to_rider', $actor->id, $source, $reason, [
                 'courier_id' => $courier->id,
                 'assigned_at' => now(),
-                'tracking_status' => 'Sorted for ' . $area . '; assigned to ' . $courier->full_name,
+                'tracking_status' => 'Sorted for '.$area.'; assigned to '.$courier->full_name,
             ]);
 
             $this->audit->record('logistics.rider_assigned', $locked, [

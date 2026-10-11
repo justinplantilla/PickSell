@@ -284,7 +284,7 @@
                 <span>I confirm that the information and documents I provided are accurate.</span>
             </label>
 
-            <button type="submit" class="btn-submit blade-inline-1">Submit Registration</button>
+            <button type="submit" class="btn-submit">Submit Registration</button>
         </form>
 
         <div class="auth-footer">Already have an account? <a href="/login">Log in</a></div>

@@ -24,11 +24,36 @@ inputs.forEach(input => {
                 const button = document.createElement('button');
                 button.type = 'button';
                 button.className = 'search-suggestion';
+                if (item.category !== 'Category') {
+                    const thumbnail = document.createElement('span');
+                    thumbnail.className = 'search-suggestion-image';
+                    if (item.image) {
+                        const image = document.createElement('img');
+                        image.src = item.image;
+                        image.alt = '';
+                        image.loading = 'lazy';
+                        thumbnail.appendChild(image);
+                    } else {
+                        thumbnail.setAttribute('aria-hidden', 'true');
+                        thumbnail.textContent = '—';
+                    }
+                    button.appendChild(thumbnail);
+                }
+                const copy = document.createElement('span');
+                copy.className = 'search-suggestion-copy';
                 const name = document.createElement('span');
+                name.className = 'search-suggestion-name';
                 name.textContent = item.name;
                 const detail = document.createElement('small');
-                detail.textContent = item.category || 'Product';
-                button.append(name, detail);
+                detail.textContent = item.category === 'Category' ? 'Category' : (item.category || 'Product');
+                copy.append(name, detail);
+                button.appendChild(copy);
+                if (item.category !== 'Category' && item.price !== undefined) {
+                    const price = document.createElement('strong');
+                    price.className = 'search-suggestion-price';
+                    price.textContent = `₱${Number(item.price).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    button.appendChild(price);
+                }
                 button.addEventListener('click', () => {
                     const formAction = form.action || '/buyer/shop';
                     const params = new URLSearchParams();

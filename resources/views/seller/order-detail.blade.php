@@ -59,6 +59,12 @@
                 </table>
 
                 <div class="blade-inline-20">
+                    @if(in_array($order->status, ['placed', 'confirmed', 'preparing'], true))
+                    <form method="POST" action="{{ route('seller.orders.cancel', $order) }}" class="blade-inline-21" onsubmit="return confirm('Cancel this order before pickup?')">
+                        @csrf @method('PATCH')
+                        <button type="submit" class="btn btn-outline">Cancel Order</button>
+                    </form>
+                    @endif
                     @if(in_array($order->status, ['placed', 'confirmed', 'pending'], true))
                     <form method="POST" action="/seller/orders/{{ $order->id }}/pack">
                         @csrf @method('PATCH')

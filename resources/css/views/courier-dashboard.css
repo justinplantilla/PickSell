@@ -12,3 +12,23 @@
 .blade-inline-10 { text-align:center !important; color:#888 !important; padding:2rem !important;  }
 .courier-failure-form { display:grid; gap:0.4rem; margin-top:0.5rem; min-width:12rem; }
 .courier-failure-form textarea { width:100%; resize:vertical; }
+.courier-contact-actions { display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.45rem; }
+.courier-attempt-context { margin-top:.4rem;color:#92400e;font-size:.74rem;line-height:1.4; }
+.courier-task-failed { background:#fffaf0; }
+.courier-task-table td[data-label="Action"] { min-width:220px; }
+@media(max-width:700px) {
+    .blade-inline-4 { overflow:visible !important; }
+    .courier-task-table,.courier-task-table tbody,.courier-task-table tr,.courier-task-table td { display:block;width:100%; }
+    .courier-task-table thead { display:none; }
+    .courier-task-table tr { margin-bottom:.85rem;border:1px solid #e8e2d8;border-radius:10px;background:#fff;overflow:hidden; }
+    .courier-task-table tr.courier-task-failed { border-color:#f2c59a;background:#fffaf0; }
+    .courier-task-table td { display:grid;grid-template-columns:minmax(6.5rem,30%) minmax(0,1fr);gap:.65rem;padding:.7rem .8rem;overflow-wrap:anywhere; }
+    .courier-task-table td::before { content:attr(data-label);color:#777;font-size:.7rem;font-weight:700;text-transform:uppercase; }
+    .courier-task-table td[data-label="Action"] { min-width:0; }
+    .courier-task-table td[data-label="Action"] form { min-width:0; }
+    .courier-task-table td[data-label="Action"] form:not(.courier-failure-form) { justify-self:start; }
+    .courier-failure-form { grid-column:1/-1;min-width:0; }
+    .courier-failure-form label,.courier-failure-form textarea,.courier-failure-form button { grid-column:1/-1; }
+    .courier-task-table td[colspan] { display:block; }
+    .courier-task-table td[colspan]::before { content:none; }
+}

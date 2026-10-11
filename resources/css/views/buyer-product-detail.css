@@ -81,7 +81,7 @@
 .purchase-row { display:flex; align-items:end; }
 .purchase-row small { display:block; margin-top:.35rem; color:#98a2b3; font-size:.72rem; }
 .product-voucher { padding:.75rem .9rem; border:1px solid #fde68a; border-radius:9px; background:#fff8e1; color:#855d08; font-size:.78rem; }
-.product-actions { display:grid; grid-template-columns:1fr 1fr 1fr; gap:.55rem; }
+.product-actions { display:grid; grid-template-columns:1fr 1fr 1fr; gap:.55rem; margin-top:.75rem; }
 .product-actions .btn { min-height:44px; font-size:.75rem; }
 .product-actions svg { width:16px; height:16px; }
 .seller-panel { display:flex; align-items:center; gap:.7rem; padding:1rem; border:1px solid var(--line); border-radius:12px; background:#fff; box-shadow:0 8px 20px rgba(31,35,40,.05); }

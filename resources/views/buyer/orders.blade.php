@@ -9,8 +9,8 @@
 <h2 class="blade-inline-1">My Orders</h2>
 
 <div class="status-tabs">
-    @foreach(['all'=>'All','pending'=>'To Ship','processing'=>'Preparing','shipped'=>'In Transit','completed'=>'Delivered','cancelled'=>'Cancelled'] as $val => $label)
-    <a href="/buyer/orders?status={{ $val }}" class="status-tab {{ $status === $val ? 'active' : '' }}">{{ $label }}</a>
+    @foreach(['all'=>'All','pending'=>'To Ship','processing'=>'Preparing','shipped'=>'In Transit','completed'=>'Delivered','returned'=>'Returned','cancelled'=>'Cancelled'] as $val => $label)
+    <a href="{{ route('buyer.orders', ['status' => $val]) }}" class="status-tab {{ $status === $val ? 'active' : '' }}" @if($status === $val) aria-current="page" @endif>{{ $label }}</a>
     @endforeach
 </div>
 
@@ -39,8 +39,15 @@
             <div class="blade-inline-11">₱{{ number_format($order->amount, 2) }}</div>
         </div>
         <div class="blade-inline-12">
-            @if($order->waybill_number)
-            <div class="blade-inline-13">Waybill: <strong>{{ $order->waybill_number }}</strong></div>
+            @if($order->delivery?->tracking_number)
+            <div class="blade-inline-13">Tracking #: <strong>{{ $order->delivery->tracking_number }}</strong></div>
+            <a class="btn btn-outline btn-sm" href="{{ route('buyer.orders.tracking', $order) }}">View delivery tracking</a>
+            @endif
+            @if(in_array($order->status, ['placed', 'confirmed', 'preparing'], true))
+            <form method="POST" action="{{ route('buyer.orders.cancel', $order) }}" class="cancel-order-form">
+                @csrf @method('PATCH')
+                <button type="button" class="btn btn-outline btn-sm" onclick="confirmCancel(this)">Cancel Order</button>
+            </form>
             @endif
             @if($order->status === 'completed' && !$order->rating)
             <button class="btn btn-coral btn-sm" onclick="openFeedback({{ $order->id }})">Rate & Review</button>
@@ -55,19 +62,32 @@
 
     {{-- Tracking Steps --}}
     @php
-        $steps = ['pending'=>'To Ship','processing'=>'Preparing','shipped'=>'In Transit','completed'=>'Delivered'];
-        $stepKeys = array_keys($steps);
-        $currentIdx = array_search($order->status, $stepKeys);
+        $steps = [
+            ['label' => 'Order Placed', 'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg>'],
+            ['label' => 'Preparing', 'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.34C18 2.54 15.96.5 13.5.5c-1.3 0-2.48.56-3.33 1.44L9 3.17 7.83 1.94C6.98 1.06 5.8.5 4.5.5 2.04.5 0 2.54 0 4.66c0 .46.11.9.18 1.34H0v2h20V6zm-9.5-3.5c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM4.5 3.5c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM0 20c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V10H0v10zm8-7h8v2H8v-2zm0 4h8v2H8v-2zM4 13h2v2H4v-2zm0 4h2v2H4v-2z"/></svg>'],
+            ['label' => $order->status === 'returned' ? 'Returned' : 'In Transit', 'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>'],
+            ['label' => 'Delivered', 'icon' => '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>'],
+        ];
+        $stepStatuses = [
+            ['pending', 'placed', 'confirmed'],
+            ['processing', 'preparing', 'ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted'],
+            ['shipped', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed', 'returned'],
+            ['delivered', 'completed'],
+        ];
+        $currentIdx = false;
+        foreach ($stepStatuses as $idx => $statuses) {
+            if (in_array($order->status, $statuses, true)) { $currentIdx = $idx; break; }
+        }
     @endphp
     @if($order->status !== 'cancelled')
     <div class="blade-inline-15">
         <div class="order-track">
-            @foreach($steps as $key => $label)
-            @php $idx = array_search($key, $stepKeys); $done = $currentIdx !== false && $idx <= $currentIdx; @endphp
+            @foreach($steps as $idx => $step)
+            @php $done = $currentIdx !== false && $idx <= $currentIdx; $active = $idx === $currentIdx; @endphp
             @if(!$loop->first)<div class="track-line {{ $done ? 'done' : '' }}"></div>@endif
             <div class="track-step">
-                <div class="track-dot {{ $done ? 'done' : '' }}"></div>
-                <div class="track-label {{ $done ? 'done' : '' }}">{{ $label }}</div>
+                <div class="track-icon {{ $done ? 'done' : '' }} {{ $active ? 'active' : '' }}" @if($active) aria-current="step" @endif>{!! $step['icon'] !!}</div>
+                <div class="track-label {{ $done ? 'done' : '' }}">{{ $step['label'] }}</div>
             </div>
             @endforeach
         </div>

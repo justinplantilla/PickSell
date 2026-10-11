@@ -25,9 +25,12 @@ use App\Policies\SellerCompliancePolicy;
 use App\Policies\UserPolicy;
 use App\Services\Admin\AdminDashboardService;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -45,6 +48,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(60)
+            ->by($request->user()?->getAuthIdentifier() ?? $request->ip()));
+
         // One Gate per explicit permission; roles map to permissions in config/permissions.php.
         foreach (Permission::ALL as $permission) {
             Gate::define($permission, fn (User $user) => $user->hasPermission($permission));

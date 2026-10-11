@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\Order;
 use App\Models\LogisticsBranch;
+use App\Models\Order;
 use App\Models\ParcelScan;
 use App\Models\User;
 use App\Services\Orders\OrderLifecycleService;
@@ -22,15 +22,18 @@ class LogisticsService
         string $source,
         ?string $auditPermission = null,
         array $scanDetails = [],
-    ): void
-    {
+    ): void {
         DB::transaction(function () use ($order, $actor, $source, $auditPermission, $scanDetails) {
             $locked = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $this->ensureBranchOwnership($locked, $actor, $source);
             abort_if($locked->status !== 'picked_up', 422, 'Only picked-up parcels can be scanned.');
-            abort_if(!in_array($locked->tracking_status, ['Pickup approved by logistics', 'Handed over to courier'], true), 422, 'Approve the pickup request before scanning the parcel.');
+            abort_if(! in_array($locked->tracking_status, ['Pickup approved by logistics', 'Handed over to courier'], true), 422, 'Approve the pickup request before scanning the parcel.');
 
             $from = $locked->status;
-            $reason = $source === 'admin' ? 'Parcel scanned by admin' : null;
+            $reason = 'Sorting-center scan'
+                .(! empty($scanDetails['scan_type']) ? ': '.$scanDetails['scan_type'] : '')
+                .(! empty($scanDetails['location']) ? ' at '.$scanDetails['location'] : '')
+                .(! empty($scanDetails['notes']) ? ' — '.$scanDetails['notes'] : '');
             $this->lifecycle->transition($locked, 'at_sorting_center', $actor->id, $source, $reason, [
                 'tracking_status' => 'Received and scanned at sorting center',
             ]);
@@ -59,6 +62,7 @@ class LogisticsService
     {
         return DB::transaction(function () use ($order, $actor, $source) {
             $locked = Order::whereKey($order->id)->with('buyer')->lockForUpdate()->firstOrFail();
+            $this->ensureBranchOwnership($locked, $actor, $source);
             abort_if($locked->status !== 'at_sorting_center', 422, 'Only parcels at the sorting center can be sorted.');
             abort_if($locked->tracking_status !== 'Received and scanned at sorting center', 422, 'Scan the parcel before sorting it.');
 
@@ -68,7 +72,7 @@ class LogisticsService
 
             $reason = $source === 'admin' ? 'Parcel sorted by admin' : null;
             $this->lifecycle->transition($locked, 'sorted', $actor->id, $source, $reason, [
-                'tracking_status' => 'Sorted for ' . $area,
+                'tracking_status' => 'Sorted for '.$area,
             ]);
 
             return $area;
@@ -79,6 +83,7 @@ class LogisticsService
     {
         DB::transaction(function () use ($order, $actor, $source): void {
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            $this->ensureBranchOwnership($locked, $actor, $source);
             abort_if($locked->status !== 'ready_for_pickup', 422, 'Only ready-for-pickup parcels can be approved.');
             abort_if($locked->tracking_status !== 'Pickup requested from seller', 422, 'This parcel has no pending pickup request.');
 
@@ -86,5 +91,12 @@ class LogisticsService
                 'tracking_status' => 'Pickup approved by logistics',
             ]);
         });
+    }
+
+    private function ensureBranchOwnership(Order $order, User $actor, string $source): void
+    {
+        if ($source === 'logistics') {
+            abort_unless((int) $order->logistics_id === (int) $actor->id, 403, 'This parcel belongs to another logistics branch.');
+        }
     }
 }

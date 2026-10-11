@@ -5,8 +5,9 @@
 @endsection
 
 @section('content')
+<p class="oversight-description">Central dispatch overview across all logistics branches. Branch operators continue to work only with parcels assigned to their branch.</p>
 <div class="card">
-    <div class="card-header"><span class="card-title">Logistics pipeline</span></div>
+    <div class="card-header"><span class="card-title">Central dispatch — all branches</span></div>
     @include('admin.logistics._tabs')
     <div class="oversight-pipeline">
         @foreach($pipeline as $status => $count)
@@ -18,6 +19,42 @@
         @endforeach
     </div>
 </div>
+
+<section class="card">
+    <div class="card-header">
+        <span class="card-title">Open logistics exceptions ({{ number_format($openExceptionCount) }})</span>
+        <a class="btn btn-outline" href="{{ route('admin.disputes') }}">Return / refund disputes</a>
+    </div>
+    @if($openExceptions->isEmpty())
+        <div class="oversight-empty"><strong>No open logistics exceptions</strong>Parcel exceptions are shown here alongside any related buyer return or refund request.</div>
+    @else
+        <div class="oversight-table-wrap">
+            <table>
+                <thead><tr><th>Parcel</th><th>Branch</th><th>Exception</th><th>Buyer return / refund</th><th>Opened</th></tr></thead>
+                <tbody>
+                @foreach($openExceptions as $exception)
+                    <tr>
+                        <td><strong>{{ $exception->order->order_number }}</strong><span class="oversight-meta">{{ $exception->order->tracking_status ?? ucfirst(str_replace('_', ' ', $exception->order->status)) }}</span></td>
+                        <td>{{ $exception->order->destinationBranch?->name ?? $exception->order->logistics?->full_name ?? 'Branch not assigned' }}</td>
+                        <td>{{ ucfirst(str_replace('_', ' ', $exception->type)) }}<span class="oversight-meta">{{ \Illuminate\Support\Str::limit($exception->description, 90) }}</span></td>
+                        <td>
+                            @if($exception->order->returnRequest)
+                                <a href="{{ route('admin.returns.show', $exception->order->returnRequest) }}">
+                                    {{ ucfirst(str_replace('_', ' ', $exception->order->returnRequest->status)) }}
+                                    @if($exception->order->returnRequest->dispute_status === 'open') · dispute open @endif
+                                </a>
+                            @else
+                                <span class="oversight-meta">No buyer return request</span>
+                            @endif
+                        </td>
+                        <td><time datetime="{{ $exception->created_at->toIso8601String() }}">{{ $exception->created_at->diffForHumans() }}</time></td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+</section>
 
 <div class="stat-grid">
     <a href="{{ route('admin.logistics.sorting', ['stale' => 1]) }}" class="stat-card">

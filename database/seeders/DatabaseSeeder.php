@@ -11,14 +11,13 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Admin
-        User::create([
+        User::firstOrCreate(['email' => 'admin@picksell.ph'], [
             'role'           => 'admin',
             'status'         => 'approved',
             'last_name'      => 'Admin',
             'first_name'     => 'PickSell',
             'middle_initial' => null,
             'sex'            => 'Male',
-            'email'          => 'admin@picksell.ph',
             'password'       => Hash::make('Admin@1234'),
             'contact_no'     => '09000000000',
             'birthday'       => '1990-01-01',
@@ -29,14 +28,13 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // Seller
-        User::create([
+        User::firstOrCreate(['email' => 'seller@picksell.ph'], [
             'role'             => 'seller',
             'status'           => 'approved',
             'last_name'        => 'Dela Cruz',
             'first_name'       => 'Juan',
             'middle_initial'   => 'S',
             'sex'              => 'Male',
-            'email'            => 'seller@picksell.ph',
             'password'         => Hash::make('Seller@1234'),
             'contact_no'       => '09111111111',
             'birthday'         => '1995-06-15',
@@ -53,14 +51,13 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // Buyer
-        User::create([
+        User::firstOrCreate(['email' => 'buyer@picksell.ph'], [
             'role'           => 'buyer',
             'status'         => 'approved',
             'last_name'      => 'Reyes',
             'first_name'     => 'Maria',
             'middle_initial' => 'L',
             'sex'            => 'Female',
-            'email'          => 'buyer@picksell.ph',
             'password'       => Hash::make('Buyer@1234'),
             'contact_no'     => '09222222222',
             'birthday'       => '2000-03-20',
@@ -73,9 +70,14 @@ class DatabaseSeeder extends Seeder
             'id_upload'      => null,
         ]);
 
-            $this->call([
-                ProductSeeder::class,
-                CourierSeeder::class,
-            ]);
+        $this->call([
+            ProductSeeder::class,
+            CourierSeeder::class,
+            LogisticsNetworkSeeder::class,
+        ]);
+
+        if (app()->environment(['local', 'testing'])) {
+            $this->call(AdminDemoDataSeeder::class);
+        }
     }
 }

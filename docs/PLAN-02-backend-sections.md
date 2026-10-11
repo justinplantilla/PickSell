@@ -11,7 +11,7 @@
 
 ### 2.1 Backend Architecture
 
-PickSell uses a Laravel MVC architecture with server-rendered Blade views and a Vite-built frontend asset layer. The backend is organized around Laravel controllers, Eloquent models, middleware, notifications, mail, migrations, and route groups.
+PickSell uses a Laravel MVC architecture with server-rendered Blade views and a Vite-built frontend asset layer. The backend is organized around Laravel controllers, Eloquent models, middleware, notifications, mail, migrations, and route groups. Commerce remains the authoritative owner of orders; Logistics has its own delivery-assignment and delivery-event records synchronized from order lifecycle changes.
 
 The application supports several role-based portals:
 
@@ -71,6 +71,9 @@ Core entities:
 - `announcements`: platform messages targeted to selected audiences
 - `platform_settings`: persisted administrative configuration
 - Logistics network tables: branches, barangay coverage, rider assignments, and related location mappings
+- `deliveries`: one logistics-side row per order with its own buyer-facing tracking number and logistics lifecycle timestamps
+- `delivery_assignments`: rider offers and responses, allowing multiple historical assignment rows for a delivery
+- `delivery_logs`: append-only delivery status and proof/location ledger without update timestamps or soft deletes
 
 ### 2.4 Relationship Model
 
@@ -86,6 +89,10 @@ erDiagram
     PRODUCTS ||--o{ CART_ITEMS : appears_in
     CARTS ||--o{ CART_ITEMS : contains
     PRODUCTS ||--o{ ORDERS : ordered_as
+    ORDERS ||--o| DELIVERIES : tracks
+    DELIVERIES ||--o{ DELIVERY_ASSIGNMENTS : offers
+    DELIVERIES ||--o{ DELIVERY_LOGS : records
+    USERS ||--o{ DELIVERY_ASSIGNMENTS : receives
     LOGISTICS_BRANCHES ||--o{ BRANCH_RIDERS : assigns
     USERS ||--o{ BRANCH_RIDERS : rides
 ```
@@ -159,6 +166,28 @@ Recommended response conventions:
 9. Use CSRF protection for all browser form and fetch mutations.
 10. Return only the fields needed by the client. Do not expose password hashes, private document paths, or unrelated profile data.
 
+#### Rider Mobile API
+
+The web portals remain session-authenticated. The Flutter Rider app is the only mobile client in scope and authenticates with Laravel Sanctum bearer tokens; existing Buyer, Seller, Logistics Staff, Admin, and Courier web routes remain available. Riders must have the `courier` role and an approved account.
+
+Rider authentication and operations are versioned under `/api/v1`:
+
+| Method | Endpoint | Authentication | Ability | Purpose |
+|---|---|---|---|---|
+| `POST` | `/auth/login` | Public, rate-limited | — | Validate rider credentials and issue a bearer token |
+| `POST` | `/auth/logout` | Sanctum token | `rider:write` | Revoke the current token |
+| `GET` | `/rider/assignments` | Sanctum token | `rider:read` | List active, pending rider offers |
+| `POST` | `/rider/assignments/{id}/respond` | Sanctum token | `rider:write` | Accept or reject an offer using `action` and optional `reason` |
+| `GET` | `/rider/deliveries/{id}` | Sanctum token | `rider:read` | Read one assigned delivery, recipient address, order items, and logs |
+| `POST` | `/rider/deliveries/{id}/status` | Sanctum token, multipart | `rider:write` | Advance delivery status and upload a proof photo |
+| `GET` | `/rider/deliveries` | Sanctum token | `rider:read` | List the rider's delivery history |
+| `GET` | `/rider/deliveries/{id}/proof/{log}` | Sanctum token | `rider:read` | Read a private proof image from an owned delivery log |
+| `GET` | `/rider/me` | Sanctum token | `rider:read` | Return the authenticated rider's app-safe profile |
+
+Issued tokens carry `rider:read` and `rider:write`; middleware checks the matching ability for each route. Status updates require multipart `photo` uploads in JPG/JPEG/PNG format and a 5 MB maximum. Proof photos are stored on the private local disk and only served after the authenticated rider's delivery ownership is verified.
+
+Delivery status changes use the same `RiderDeliveryWorkflow`, `DeliveryStatusTransitionPolicy`, and `OrderLifecycleService` as the web courier portal. The policy enforces the rider state allow-list and attempt-count gate; logistics can move `return_to_sender` to `returned` only after confirming physical receipt. The existing `orders` row remains authoritative, and its observer synchronizes its one `deliveries` row, offer/response rows, and append-only `delivery_logs`; rider ownership is checked on every read and mutation. The buyer-facing tracking number is distinct from the seller's existing `orders.waybill_number`. Rejected and expired offers are routed by primary barangay coverage followed by the least-recent offer time. The reused logistics network remains in `logistics_branches`, `branch_riders`, and `rider_barangays`.
+
 ### 4.3 Validation Rules
 
 Requests should use Laravel validation before any database mutation. Validation should cover:
@@ -175,22 +204,40 @@ Validation messages should be user-readable, while server logs should contain en
 
 ### 4.4 Order and Logistics Rules
 
-Order status transitions must be explicit and sequential. A recommended transition policy is:
+The canonical order state machine follows the persisted `Order::STATUS_LIFECYCLE` values:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Pending
-    Pending --> Processing
-    Processing --> PickupRequested
-    PickupRequested --> ReceivedAtSorting
-    ReceivedAtSorting --> AssignedToCourier
-    AssignedToCourier --> OutForDelivery
-    OutForDelivery --> Completed
-    Pending --> Cancelled
-    Processing --> Cancelled
+    [*] --> placed
+    placed --> preparing
+    preparing --> ready_for_pickup
+    ready_for_pickup --> picked_up
+    picked_up --> at_sorting_center
+    at_sorting_center --> sorted
+    sorted --> assigned_to_rider
+    assigned_to_rider --> out_for_delivery
+    assigned_to_rider --> at_sorting_center: rider rejects/expires
+    out_for_delivery --> delivered
+    delivered --> completed
+    out_for_delivery --> delivery_failed
+    delivery_failed --> assigned_to_rider: attempts 1-3, same rider retries
+    delivery_failed --> returned: after return_to_sender is physically received
+    delivery_failed --> at_sorting_center: logistics reprocesses
+    placed --> cancelled: buyer/seller
+    preparing --> cancelled: buyer/seller
 ```
 
-The backend must verify the actor and current state before each transition. Seller, courier, logistics, buyer, and admin actions should not share unrestricted update methods.
+`confirmed` remains supported as an existing compatibility state; `sorted` is an active dispatch state. Buyer and seller cancellation is limited to `placed`, `confirmed`, and `preparing`; neither may cancel after pickup has been requested. Admin cancellation remains a separate privileged override. Each failed delivery increments `deliveries.delivery_attempts`: attempts one through three return the order to `assigned_to_rider` for the same rider to retry; after attempt four the delivery enters `return_to_sender`, and logistics confirms the physical return to reach terminal order status `returned`. Rider rejection/expiry routes another eligible branch rider, preferring primary barangay coverage, then the rider with the oldest assignment offer. Unanswered offers expire after 30 minutes and are processed once per minute by the Laravel scheduler (`php artisan schedule:run`).
+
+The backend verifies actor ownership and current state before each transition. Seller, courier, logistics, buyer, and admin actions use distinct guarded paths rather than unrestricted status updates.
+
+Logistics operators are scoped to parcels whose `orders.logistics_id` matches their account for the dashboard, scan, sort, rider allocation, and exception actions. The Admin Logistics overview is the read-only cross-branch dispatch view; it includes branch workload plus open logistics exceptions and links any matching buyer return/refund request into the existing Returns and Disputes workflow. A logistics exception does not automatically create a buyer return request because failed delivery and returned merchandise are distinct business outcomes.
+
+Sorting-center scans write their validated scan type, location, and note to the `delivery_logs` status event as well as the existing `parcel_scans` record. Rider allocation uses the shared `CourierAssignmentService`; the order observer creates the `delivery_assignments` offer and audit log rather than directly changing a courier ID.
+
+Buyers can open an authenticated `/buyer/orders/{order}/tracking` page for orders they own. It displays the delivery tracking number, current delivery status, and chronological `delivery_logs`. Seller package preparation and handover remain unchanged. The repository exposes the Rider mobile backend API, but does not contain a Flutter client project.
+
+Buyer order tabs group canonical order states into preparation, transit, delivered, returned, and cancelled views while retaining legacy status aliases for existing records. The order progress strip uses the same lifecycle groups; the detailed tracking timeline remains oldest-first and highlights its newest event. Logistics intake queues distinguish parcels ready to scan from records needing verification, and only count a parcel as awaiting sort after a valid sorting-center scan. Rider-unavailable queues use active rider coverage for the parcel's destination branch and barangay, not system-wide rider availability. Scan details and operational exception history/actions remain attached to the order. Courier task tables become stacked cards on narrow screens and expose tap-to-call and map navigation without changing delivery transition rules.
 
 Stock should be checked again at checkout time. Product status, seller status, and buyer authorization should be revalidated on the server even if the UI already hides invalid actions.
 
@@ -223,9 +270,15 @@ Production responses should avoid exposing stack traces, SQL statements, credent
 | Browser/UI checks | Verify layout, interaction, responsive behavior, and compiled assets | Auth layouts, dashboard menus, notification cards, action buttons |
 | Regression checks | Protect previously fixed layout and refactor issues | Blade document order, extracted CSS/JS loading, SVG-only admin actions |
 
+### 7.2 Local Admin Preview Data
+
+`AdminDemoDataSeeder` creates a repeatable, connected preview dataset for the Admin dashboard, order lifecycle, product moderation, logistics branches and rider coverage, delivery attempts and scans, buyer returns/disputes, complaints, reviews, messages, and finance ledger. Demo users use `@demo.picksell.test` addresses; the preview is fictional and is not a source of real customer information. Orders are linked to their buyer, seller, product, logistics branch, destination, delivery record, and assigned rider where applicable. These demo orders and related records appear alongside real data in Admin metrics and workflows.
+
+Run `php artisan db:seed --class=AdminDemoDataSeeder` against a local database to add the preview data, or run `php artisan db:seed` on a local/testing environment to seed the application and preview data together. The demo seeder is idempotent and does not truncate existing tables. Production seeding is never automatic and is blocked unless explicitly enabled for that one CLI process with `ADMIN_DEMO_DATA_ALLOW_PRODUCTION=true php artisan db:seed --class=AdminDemoDataSeeder --force`. Deploy the code and migrations first, back up the production database, and run that command from the production application host only if adding fictional rows to live Admin metrics/workflows is intended. The default local Admin sign-in is `admin@picksell.ph` with password `Admin@1234`.
+
 The existing PHPUnit configuration uses an in-memory SQLite database for tests, array sessions/cache, synchronous queues, and array mail. This keeps automated tests isolated and repeatable.
 
-### 7.2 Functional Test Matrix
+### 7.3 Functional Test Matrix
 
 #### Authentication and authorization
 
@@ -274,7 +327,7 @@ The existing PHPUnit configuration uses an in-memory SQLite database for tests, 
 - The Mark all as read action is CSRF-protected and idempotent.
 - Clicking a notification opens the expected detail card without executing notification text as HTML.
 
-### 7.3 Security Test Plan
+### 7.4 Security Test Plan
 
 - Verify CSRF rejection for browser mutations without a valid token.
 - Verify IDOR resistance by changing route IDs to another user's product, order, message, complaint, or account.
@@ -285,7 +338,7 @@ The existing PHPUnit configuration uses an in-memory SQLite database for tests, 
 - Verify production configuration does not expose debug output or secrets.
 - Scan dependencies regularly and rotate credentials if they have appeared in source, logs, screenshots, or public repositories.
 
-### 7.4 Performance and Reliability Checks
+### 7.5 Performance and Reliability Checks
 
 - Use eager loading for seller, buyer, product, branch, and location relationships used in tables.
 - Check notification, order, product, and user queries with realistic record counts.
@@ -294,7 +347,7 @@ The existing PHPUnit configuration uses an in-memory SQLite database for tests, 
 - Verify database backups and restore procedures before production deployment.
 - Test the application with production-like MySQL settings in addition to SQLite feature tests.
 
-### 7.5 Release Gate
+### 7.6 Release Gate
 
 A release is ready only when:
 
@@ -308,7 +361,7 @@ A release is ready only when:
 8. Production secrets are stored outside committed files and debug mode is disabled.
 9. The deployment smoke test covers login, dashboard access, checkout or order handling, notification read state, and logout.
 
-### 7.6 Evidence to Attach to the Plan
+### 7.7 Evidence to Attach to the Plan
 
 For the final submission, attach:
 
@@ -323,7 +376,7 @@ For the final submission, attach:
 
 ## Implementation Notes and Open Decisions
 
-- The current application is web-route and Blade oriented; a versioned public REST API can be introduced later if mobile or third-party clients become a requirement.
+- The versioned Rider API is scoped to the Flutter Rider app; it is not a general public API for the other web roles.
 - The database refinement items above are recommendations to verify against the final migration state before production sign-off.
 - The notification read endpoint is intentionally explicit so opening a notification list does not silently change user state.
 - This draft describes the current PickSell implementation and the controls required to make it production-ready; it should be reviewed by the project adviser before being marked final.

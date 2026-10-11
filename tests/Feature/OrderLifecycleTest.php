@@ -236,5 +236,7 @@ class OrderLifecycleTest extends TestCase
         $history = $order->statusHistories()->where('to_status', 'delivery_failed')->sole();
         $this->assertSame('courier', $history->source);
         $this->assertSame('Buyer was not available at the address.', $history->reason);
+        $this->assertSame('assigned_to_rider', $order->fresh()->status);
+        $this->assertSame(1, $order->fresh()->delivery->delivery_attempts);
     }
 }

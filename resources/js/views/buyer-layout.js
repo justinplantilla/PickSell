@@ -152,19 +152,18 @@ document.addEventListener('click', event => {
     if (button) {
         event.preventDefault();
         event.stopPropagation();
-        if (button.disabled || button.dataset.confirmPending === 'true') return;
-        button.dataset.confirmPending = 'true';
-        const message = button.dataset.cardBuyNow
-            ? 'Add this product and continue to checkout?'
-            : 'Add this product to your cart?';
-        window.showConfirm(message).then(confirmed => {
-            delete button.dataset.confirmPending;
-            if (confirmed) {
-                handleBuyerCardCartAction(button);
-            } else {
-                button.removeAttribute('disabled');
-            }
-        });
+        if (button.disabled) return;
+        if (button.dataset.cardBuyNow) {
+            if (button.dataset.confirmPending === 'true') return;
+            button.dataset.confirmPending = 'true';
+            window.showConfirm('Add this product and continue to checkout?').then(confirmed => {
+                delete button.dataset.confirmPending;
+                if (confirmed) handleBuyerCardCartAction(button);
+                else button.removeAttribute('disabled');
+            });
+        } else {
+            handleBuyerCardCartAction(button);
+        }
     }
 });
 document.querySelectorAll('.announcement-banner').forEach(banner => {

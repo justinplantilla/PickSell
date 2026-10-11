@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Mail\NewMessageMail;
 use App\Models\Message;
 use App\Models\Order;
-use App\Services\Orders\OrderLifecycleService;
+use App\Services\Orders\RiderDeliveryWorkflow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -22,7 +22,7 @@ class CourierController extends Controller
     {
         $courier = $this->courier();
         $status = $request->get('status', 'all');
-        $query = Order::where('courier_id', $courier->id)->with(['buyer', 'seller']);
+        $query = Order::where('courier_id', $courier->id)->with(['buyer', 'seller', 'delivery.logs']);
         if ($status === 'delivered') {
             $query->whereIn('status', ['delivered', 'completed']);
         } elseif (in_array($status, ['assigned_to_rider', 'out_for_delivery', 'delivery_failed', 'returned'], true)) {
@@ -42,28 +42,21 @@ class CourierController extends Controller
         return view('courier.dashboard', compact('orders', 'status', 'stats'));
     }
 
-    public function updateStatus(Request $request, Order $order, OrderLifecycleService $lifecycle)
+    public function updateStatus(Request $request, Order $order, RiderDeliveryWorkflow $workflow)
     {
         $data = $request->validate([
             'status' => 'required|in:out_for_delivery,delivered,delivery_failed',
             'failure_reason' => 'required_if:status,delivery_failed|nullable|string|min:5|max:1000',
         ]);
 
-        DB::transaction(function () use ($order, $data, $lifecycle): void {
+        DB::transaction(function () use ($order, $data, $workflow): void {
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             abort_if($locked->courier_id !== $this->courier()->id, 403);
-            $trackingStatus = match ($data['status']) {
-                'out_for_delivery' => 'Out for delivery',
-                'delivered' => 'Delivered',
-                'delivery_failed' => 'Delivery failed',
-            };
-            $lifecycle->transition(
+            $workflow->update(
                 $locked,
+                $this->courier(),
                 $data['status'],
-                $this->courier()->id,
-                'courier',
                 $data['failure_reason'] ?? null,
-                ['tracking_status' => $trackingStatus],
             );
             $order->setRawAttributes($locked->getAttributes(), true);
         });

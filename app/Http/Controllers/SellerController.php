@@ -12,6 +12,7 @@ use App\Notifications\SellerDeliveryReceived;
 use App\Services\CommissionService;
 use App\Services\Finance\FinancialLedgerService;
 use App\Services\Orders\OrderLifecycleService;
+use App\Services\Orders\OrderCancellationService;
 use App\Services\ProductGallery;
 use App\Services\Reports\FinancialReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -434,6 +435,14 @@ class SellerController extends Controller
         });
 
         return back()->with('success', 'Order marked as being prepared.');
+    }
+
+    public function cancelOrder(Request $request, Order $order, OrderCancellationService $cancellations)
+    {
+        $data = $request->validate(['reason' => ['nullable', 'string', 'max:1000']]);
+        $cancellations->cancel($order, $this->seller(), 'seller', $data['reason'] ?? null);
+
+        return back()->with('success', 'Order cancelled before pickup.');
     }
 
     public function handoverOrder(Order $order, OrderLifecycleService $lifecycle)
