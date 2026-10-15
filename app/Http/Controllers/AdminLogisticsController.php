@@ -13,9 +13,9 @@ use Illuminate\Http\Request;
  */
 class AdminLogisticsController extends Controller
 {
-    public const PIPELINE = ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed'];
+    public const PIPELINE = ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'in_transit', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed'];
 
-    public const SORTING_STATUSES = ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted'];
+    public const SORTING_STATUSES = ['ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'in_transit'];
 
     public const RIDER_STATUSES = ['assigned_to_rider', 'out_for_delivery', 'delivery_failed'];
 
@@ -42,7 +42,13 @@ class AdminLogisticsController extends Controller
             'inbound' => $inbound,
             'outbound' => $outbound,
             'staleCount' => $this->staleSortingQuery()->count(),
-            'awaitingRider' => Order::where('status', 'sorted')->whereNull('courier_id')->count(),
+            'awaitingRider' => Order::where('status', 'sorted')->whereNull('courier_id')
+                ->where(function ($route) {
+                    $route->whereNull('origin_hub_id')
+                        ->orWhereNull('destination_hub_id')
+                        ->orWhereColumn('origin_branch_id', 'destination_branch_id')
+                        ->orWhereNotNull('destination_hub_received_at');
+                })->count(),
             'openExceptions' => LogisticsException::query()
                 ->where('status', 'open')
                 ->with(['order.returnRequest', 'order.delivery', 'order.logistics', 'order.destinationBranch'])

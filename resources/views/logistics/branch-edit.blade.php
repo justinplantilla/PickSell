@@ -1,28 +1,64 @@
 @extends('logistics.layout')
-@section('styles')
-@vite('resources/css/views/logistics-branch-edit.css')
-@endsection
-@section('title', 'Edit Branch')
+@section('title', 'Edit Province Hub')
+@section('no_intro', true)
 @section('content')
-<div class="blade-inline-1">
-    <div><h1 class="blade-inline-2">Edit Branch</h1><p class="blade-inline-3">Update the branch details without removing its rider assignments.</p></div>
-    <a class="btn btn-outline" href="{{ route('logistics.branches') }}">Back to Branches</a>
+<div class="page-heading">
+    <div>
+        <h1>{{ $branch->name }}</h1>
+        <p>Update the hub's details, portal address and status.</p>
+    </div>
+    <div class="page-heading-actions">
+        <a class="btn btn-outline" href="{{ route('logistics.branches') }}">← All province hubs</a>
+        @if($branch->portalHost())<a class="btn btn-outline" href="{{ $branch->portalUrl() }}" target="_blank" rel="noopener">Open portal ↗</a>@endif
+    </div>
 </div>
 
+@if(! $branch->assignedOperator)
+    <div class="callout"><div><strong>This hub has no operator yet,</strong> so nobody can sign in to its portal. Fill in the operator account below.</div></div>
+@endif
+
 <div class="card">
-    <div class="card-header"><span class="card-title">{{ $branch->name }}</span><span class="blade-inline-4">{{ $branch->municipality->name }}, {{ $branch->municipality->province }}</span></div>
-    <div class="card-body">
-        <form method="POST" action="{{ route('logistics.branches.update', $branch) }}" class="blade-inline-5">
-            @csrf
-            @method('PUT')
-            <div><label class="blade-inline-6">Branch Name *</label><input class="form-control blade-inline-7" name="name" value="{{ old('name', $branch->name) }}" required></div>
-            <div><label class="blade-inline-8">Status *</label><select class="form-control blade-inline-9" name="status" required><option value="active" {{ old('status', $branch->status) === 'active' ? 'selected' : '' }}>Active</option><option value="inactive" {{ old('status', $branch->status) === 'inactive' ? 'selected' : '' }}>Inactive</option></select></div>
-            <div><label class="blade-inline-10">Province *</label><input class="form-control blade-inline-11" name="province" value="{{ old('province', $branch->municipality->province) }}" required></div>
-            <div><label class="blade-inline-12">Municipality / City *</label><input class="form-control blade-inline-13" name="municipality" value="{{ old('municipality', $branch->municipality->name) }}" required></div>
-            <div><label class="blade-inline-14">Branch Manager</label><select class="form-control blade-inline-15" name="logistics_id"><option value="">-- Unassigned --</option>@foreach($logisticsManagers as $manager)<option value="{{ $manager->id }}" {{ (string) old('logistics_id', $branch->logistics_id) === (string) $manager->id ? 'selected' : '' }}>{{ $manager->full_name }}</option>@endforeach</select></div>
-            <div><label class="blade-inline-16">Branch Address</label><input class="form-control blade-inline-17" name="address" value="{{ old('address', $branch->address) }}" placeholder="Street, building, or landmark"></div>
-            <div class="blade-inline-18"><a class="btn btn-outline" href="{{ route('logistics.branches') }}">Cancel</a><button class="btn btn-coral" type="submit">Save Changes</button></div>
-        </form>
-    </div>
+    <form method="POST" action="{{ route('logistics.branches.update', $branch) }}">
+        @csrf
+        @method('PUT')
+        <div class="form-section">
+            <h2>Hub details</h2>
+            <p>Changing the subdomain changes the portal address; tell the operator before you do.</p>
+            <div class="branch-form-grid">
+                <div><label for="hub-name">Hub name *</label><input class="form-control" id="hub-name" name="name" value="{{ old('name', $branch->name) }}" required></div>
+                <div>
+                    <label for="hub-subdomain">Portal subdomain *</label>
+                    <input class="form-control" id="hub-subdomain" name="subdomain" value="{{ old('subdomain', $branch->subdomain) }}" required maxlength="{{ \App\Support\LogisticsDomains::MAX_SUBDOMAIN_LENGTH }}" pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                        data-subdomain-input data-preview-target="hub-subdomain-preview" data-host-template="https://{{ \App\Support\LogisticsDomains::provinceHost('{subdomain}') }}">
+                    <small>Portal address: <code id="hub-subdomain-preview"></code></small>
+                </div>
+                <div><label for="hub-province">Province *</label><input class="form-control" id="hub-province" name="province" value="{{ old('province', $branch->municipality->province) }}" required></div>
+                <div><label for="hub-municipality">Municipality / City *</label><input class="form-control" id="hub-municipality" name="municipality" value="{{ old('municipality', $branch->municipality->name) }}" required></div>
+                <div><label for="hub-address">Address</label><input class="form-control" id="hub-address" name="address" value="{{ old('address', $branch->address) }}"></div>
+                <div>
+                    <label for="hub-status">Status *</label>
+                    <select class="form-control" id="hub-status" name="status" required>
+                        <option value="active" @selected(old('status', $branch->status) === 'active')>Active</option>
+                        <option value="inactive" @selected(old('status', $branch->status) === 'inactive')>Inactive</option>
+                    </select>
+                    <small>Inactive hubs' portals stop working until reactivated.</small>
+                </div>
+            </div>
+        </div>
+        <div class="form-section">
+            <h2>Operator</h2>
+            @if($branch->assignedOperator)
+                <p>This account signs in at the hub's portal.</p>
+                <div class="branch-form-grid">
+                    <div><label>Name</label><div>{{ $branch->assignedOperator->full_name }}</div></div>
+                    <div><label>Login email</label><div>{{ $branch->assignedOperator->email }}</div></div>
+                </div>
+            @else
+                <p>Create the account that will run this hub.</p>
+                @include('logistics.partials.operator-fields')
+            @endif
+        </div>
+        <div class="form-actions"><a class="btn btn-outline" href="{{ route('logistics.branches') }}">Cancel</a><button class="btn btn-coral" type="submit">Save Changes</button></div>
+    </form>
 </div>
 @endsection

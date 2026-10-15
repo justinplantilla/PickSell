@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Auth\Permission;
 use App\Mail\AccountStatusChangedMail;
 use App\Models\AuditLog;
+use App\Models\BranchRider;
 use App\Models\Complaint;
+use App\Models\Municipality;
 use App\Models\Order;
 use App\Models\RegistrationReview;
 use App\Models\User;
@@ -14,11 +16,13 @@ use App\Support\RegistrationChecklist;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
+use Tests\Concerns\InteractsWithLogisticsHubs;
 use Tests\TestCase;
 
 /** Module 3 — User Accounts: status history, transitions, confirmation, profile inspection, audit. */
 class UserAccountModerationTest extends TestCase
 {
+    use InteractsWithLogisticsHubs;
     use RefreshDatabase;
 
     private User $admin;
@@ -84,11 +88,14 @@ class UserAccountModerationTest extends TestCase
         ]);
         $this->assertDatabaseHas('user_status_histories', ['user_id' => $seller->id, 'to_status' => 'approved']);
 
-        // Logistics portal suspending a rider
-        $logistics = $this->user('logistics');
+        // Station hub suspending one of its riders
+        $municipality = Municipality::create(['province' => 'Metro Manila', 'name' => 'Pasig']);
+        $station = $this->createStationHub($this->createProvinceHub($this->user('logistics'), $municipality, 'metro-manila'), $municipality, 'pasig');
+        $operator = $this->createHubOperator($station);
         $rider = $this->user('courier');
-        $this->actingAs($logistics)->patch(route('logistics.riders.status', $rider), ['status' => 'suspended']);
-        $this->assertDatabaseHas('user_status_histories', ['user_id' => $rider->id, 'from_status' => 'approved', 'to_status' => 'suspended', 'changed_by' => $logistics->id]);
+        BranchRider::create(['branch_id' => $station->id, 'user_id' => $rider->id, 'status' => 'active']);
+        $this->actingAs($operator)->patch($this->stationRoute($station, 'station-hub.riders.status', ['user' => $rider]), ['status' => 'suspended']);
+        $this->assertDatabaseHas('user_status_histories', ['user_id' => $rider->id, 'from_status' => 'approved', 'to_status' => 'suspended', 'changed_by' => $operator->id]);
     }
 
     // Invalid transitions are rejected ------------------------------------------------------

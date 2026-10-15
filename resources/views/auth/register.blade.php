@@ -6,7 +6,7 @@
 @endsection
 
 @section('content')
-@php($isLogisticsSite = request()->getHost() === 'logistics.pick-sell.shop')
+@php($isLogisticsSite = \App\Support\LogisticsDomains::isLogisticsHost(request()->getHost()))
 <div class="auth-wrapper">
     <div class="auth-shell">
         <div class="auth-card">
@@ -21,6 +21,7 @@
         <form method="POST" action="/register" enctype="multipart/form-data" id="registerForm">
             <div data-register-config data-role="{{ old('role', $registrationRoles[0]) }}" data-province="{{ old('province') }}" data-municipality="{{ old('municipality') }}" data-barangay="{{ old('barangay') }}" hidden></div>
             @csrf
+            <input type="hidden" name="registration_token" value="{{ old('registration_token', $registrationToken) }}">
 
             <div class="wizard-progress" id="wizardProgress" aria-label="Registration progress">
                 <div class="wizard-progress-item active">Role</div>
@@ -72,17 +73,18 @@
                 <div class="form-row-3">
                     <div class="form-group">
                         <label>Last Name <span class="req">*</span></label>
-                        <input type="text" name="last_name" value="{{ old('last_name') }}" placeholder="dela Cruz" required>
+                        <input type="text" name="last_name" value="{{ old('last_name') }}" placeholder="dela Cruz" minlength="2" maxlength="50" pattern="\p{L}[\p{L}\s.'\-]*" title="2 to 50 characters: letters, spaces, hyphens, apostrophes and periods only" required autocomplete="family-name">
                         @error('last_name')<div class="field-error">{{ $message }}</div>@enderror
                     </div>
                     <div class="form-group">
                         <label>First Name <span class="req">*</span></label>
-                        <input type="text" name="first_name" value="{{ old('first_name') }}" placeholder="Juan" required>
+                        <input type="text" name="first_name" value="{{ old('first_name') }}" placeholder="Juan" minlength="2" maxlength="50" pattern="\p{L}[\p{L}\s.'\-]*" title="2 to 50 characters: letters, spaces, hyphens, apostrophes and periods only" required autocomplete="given-name">
                         @error('first_name')<div class="field-error">{{ $message }}</div>@enderror
                     </div>
                     <div class="form-group">
                         <label>M.I. <span class="opt">(opt)</span></label>
                         <input type="text" name="middle_initial" value="{{ old('middle_initial') }}" placeholder="A" maxlength="5">
+                        @error('middle_initial')<div class="field-error">{{ $message }}</div>@enderror
                     </div>
                 </div>
                 <div class="form-row">
@@ -97,14 +99,15 @@
                     </div>
                     <div class="form-group">
                         <label>Contact No. <span class="req">*</span></label>
-                        <input type="tel" name="contact_no" value="{{ old('contact_no') }}" placeholder="09XXXXXXXXX" inputmode="numeric" pattern="09[0-9]{9}" minlength="11" maxlength="11" title="Enter an 11-digit Philippine mobile number starting with 09" required>
+                        <input type="tel" name="contact_no" value="{{ old('contact_no') }}" placeholder="09XXXXXXXXX" inputmode="tel" pattern="(\+?63|0)9[0-9]{9}" maxlength="13" title="Enter an 11-digit mobile number starting with 09 (or +63)" required autocomplete="tel-national">
                         @error('contact_no')<div class="field-error">{{ $message }}</div>@enderror
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label>Birthday <span class="req">*</span></label>
-                        <input type="date" name="birthday" id="birthday" value="{{ old('birthday') }}" required>
+                        <input type="date" name="birthday" id="birthday" value="{{ old('birthday') }}" max="{{ now()->subYears(18)->toDateString() }}" required>
+                        <small class="field-hint">You must be at least 18 years old.</small>
                         @error('birthday')<div class="field-error">{{ $message }}</div>@enderror
                     </div>
                     <div class="form-group">
@@ -119,14 +122,25 @@
                 <div class="form-section-title">Account Credentials</div>
                 <div class="form-group">
                     <label>Email Address <span class="req">*</span></label>
-                    <input type="email" name="email" value="{{ old('email', $email) }}" placeholder="you@example.com" required>
+                    <input type="email" name="email" value="{{ old('email', $email) }}" placeholder="you@example.com" required autocomplete="email">
                     @error('email')<div class="field-error">{{ $message }}</div>@enderror
+                </div>
+                <div class="email-otp" id="emailOtp" data-send-url="{{ route('register.email-code') }}" data-verify-url="{{ route('register.email-code.verify') }}" data-verified-email="{{ session('registration_verified_email') }}" hidden>
+                    <p class="email-otp-intro">Verify your email to continue. We will send a 6-digit code that expires in 5 minutes.</p>
+                    <div class="email-otp-row">
+                        <button type="button" class="otp-button" id="otpSend">Send code</button>
+                        <div class="email-otp-entry" id="otpEntry" hidden>
+                            <input type="text" id="otpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code" aria-label="Verification code">
+                            <button type="button" class="otp-button otp-button--primary" id="otpVerify">Verify</button>
+                        </div>
+                    </div>
+                    <div class="email-otp-status" id="otpStatus" role="status" aria-live="polite"></div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label>Password <span class="req">*</span></label>
                         <div class="pw-wrap">
-                            <input type="password" name="password" placeholder="Min. 8 characters" required>
+                            <input type="password" name="password" placeholder="Min. 8 characters" minlength="8" required autocomplete="new-password">
                             <button type="button" class="pw-eye" data-password-toggle>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
                             </button>
@@ -138,7 +152,7 @@
                     <div class="form-group">
                         <label>Confirm Password <span class="req">*</span></label>
                         <div class="pw-wrap">
-                            <input type="password" name="password_confirmation" placeholder="Repeat password" required>
+                            <input type="password" name="password_confirmation" placeholder="Repeat password" minlength="8" required autocomplete="new-password">
                             <button type="button" class="pw-eye" data-password-toggle>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
                             </button>
@@ -279,10 +293,19 @@
                 <span id="registrationNote">Your registration will be reviewed by PickSell. Please wait for the approval result before logging in.</span>
             </div>
 
-            <label class="confirm-row">
-                <input type="checkbox" name="confirmed" value="1" required>
-                <span>I confirm that the information and documents I provided are accurate.</span>
-            </label>
+            <div class="confirm-group">
+                <label class="confirm-row">
+                    <input type="checkbox" name="confirmed" value="1" required>
+                    <span>I confirm that the information and documents I provided are accurate.</span>
+                </label>
+                @error('confirmed')<div class="field-error">{{ $message }}</div>@enderror
+
+                <label class="confirm-row">
+                    <input type="checkbox" name="terms" value="1" {{ old('terms') ? 'checked' : '' }} required>
+                    <span>I have read and agree to the <a href="{{ route('terms') }}" target="_blank" rel="noopener">Terms of Service</a> and <a href="{{ route('privacy') }}" target="_blank" rel="noopener">Privacy Policy</a>.</span>
+                </label>
+                @error('terms')<div class="field-error">{{ $message }}</div>@enderror
+            </div>
 
             <button type="submit" class="btn-submit">Submit Registration</button>
         </form>

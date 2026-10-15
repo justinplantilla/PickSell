@@ -79,7 +79,7 @@ class OperationalReportService
                         ->orWhereHas('order', fn (Builder $orders) => $orders->where('seller_id', $sellerId));
                 }))->count(),
             'rider_workload' => $riderWorkload,
-            'sorting_backlog' => (clone $base)->whereIn('status', ['picked_up', 'at_sorting_center', 'sorted'])->count(),
+            'sorting_backlog' => (clone $base)->whereIn('status', ['picked_up', 'at_sorting_center', 'sorted', 'in_transit'])->count(),
         ];
     }
 

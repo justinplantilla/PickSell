@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    // Philippine Standard Geographic Code directory, used to load a station's barangays.
+    'psgc' => [
+        'url' => env('PSGC_API_URL', 'https://psgc.gitlab.io/api'),
+        // CA bundle for hosts whose PHP has no curl.cainfo configured; null uses PHP's default.
+        'ca_bundle' => env('PSGC_CA_BUNDLE'),
+    ],
+
 ];

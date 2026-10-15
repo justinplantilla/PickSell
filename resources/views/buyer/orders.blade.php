@@ -71,7 +71,7 @@
         $stepStatuses = [
             ['pending', 'placed', 'confirmed'],
             ['processing', 'preparing', 'ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted'],
-            ['shipped', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed', 'returned'],
+            ['shipped', 'in_transit', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed', 'returned'],
             ['delivered', 'completed'],
         ];
         $currentIdx = false;

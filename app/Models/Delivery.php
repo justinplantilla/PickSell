@@ -12,6 +12,10 @@ class Delivery extends Model
         'status',
         'origin_branch_id',
         'destination_branch_id',
+        'origin_hub_id',
+        'destination_hub_id',
+        'linehaul_dispatched_at',
+        'destination_hub_received_at',
         'destination_barangay_id',
         'delivery_attempts',
         'picked_up_at',
@@ -28,6 +32,8 @@ class Delivery extends Model
         'out_for_delivery_at' => 'datetime',
         'delivered_at' => 'datetime',
         'returned_at' => 'datetime',
+        'linehaul_dispatched_at' => 'datetime',
+        'destination_hub_received_at' => 'datetime',
     ];
 
     public function order()
@@ -60,6 +66,16 @@ class Delivery extends Model
     public function destinationBranch()
     {
         return $this->belongsTo(LogisticsBranch::class, 'destination_branch_id');
+    }
+
+    public function originHub()
+    {
+        return $this->belongsTo(LogisticsBranch::class, 'origin_hub_id');
+    }
+
+    public function destinationHub()
+    {
+        return $this->belongsTo(LogisticsBranch::class, 'destination_hub_id');
     }
 
     public function destinationBarangay()

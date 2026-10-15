@@ -22,7 +22,8 @@ class OrderLifecycleService
         'ready_for_pickup' => ['picked_up', 'cancelled'],
         'picked_up' => ['at_sorting_center'],
         'at_sorting_center' => ['sorted'],
-        'sorted' => ['assigned_to_rider'],
+        'sorted' => ['assigned_to_rider', 'in_transit'],
+        'in_transit' => ['at_sorting_center'],
         'assigned_to_rider' => ['out_for_delivery', 'at_sorting_center'],
         'out_for_delivery' => ['delivered', 'delivery_failed'],
         'delivery_failed' => ['assigned_to_rider', 'at_sorting_center', 'returned'],
@@ -48,6 +49,7 @@ class OrderLifecycleService
         'picked_up' => 'picked_up_at',
         'at_sorting_center' => 'sorting_received_at',
         'sorted' => 'sorted_at',
+        'in_transit' => 'linehaul_dispatched_at',
         'assigned_to_rider' => 'assigned_to_rider_at',
         'out_for_delivery' => 'out_for_delivery_at',
         'delivered' => 'delivered_at',
@@ -60,7 +62,7 @@ class OrderLifecycleService
     public const TERMINAL = ['completed', 'returned', 'cancelled'];
 
     /** The main path, for timelines. */
-    public const MAIN_PATH = ['placed', 'confirmed', 'preparing', 'ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed'];
+    public const MAIN_PATH = ['placed', 'confirmed', 'preparing', 'ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'in_transit', 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed'];
 
     public static function allowedNext(string $from): array
     {

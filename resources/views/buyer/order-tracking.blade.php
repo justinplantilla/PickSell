@@ -131,7 +131,7 @@
                 </div>
             @else
                 <p class="tracking-cancel-hint">We're sorry your order was cancelled. Let us know how we can do better.</p>
-                <form method="POST" action="{{ route('buyer.orders.feedback', $order) }}" class="tracking-cancel-form">
+                <form method="POST" action="{{ route('buyer.feedback', $order) }}" class="tracking-cancel-form">
                     @csrf
                     <div class="star-rating" id="cancelStarRating">
                         @for($i=1;$i<=5;$i++)

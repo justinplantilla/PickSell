@@ -17,3 +17,124 @@
         .sidebar-nav::-webkit-scrollbar-track { background: var(--charcoal); }
         .sidebar-nav::-webkit-scrollbar-thumb { background: #555; border: 1px solid var(--charcoal); border-radius: 999px; }
         .sidebar-nav::-webkit-scrollbar-thumb:hover { background: #777; }
+
+/* ---- Shared logistics portal components (company, province hub, station hub) ---- */
+.page-heading { display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin:0 0 1.2rem; }
+.page-heading h1 { font-size:1.45rem;margin:0 0 .3rem; }
+.page-heading p { color:#777;margin:0;font-size:.88rem;max-width:62ch;line-height:1.5; }
+.page-heading-actions { display:flex;gap:.5rem;flex-wrap:wrap; }
+body.dark .page-heading p { color:#9ca3af; }
+
+.hub-context { display:inline-flex;align-items:center;gap:.45rem;padding:.3rem .7rem;border-radius:999px;background:#fff3f0;color:#b8321d;font-size:.75rem;font-weight:700;white-space:nowrap; }
+.hub-context small { color:#9a6b60;font-weight:600; }
+body.dark .hub-context { background:#33211d;color:#ff8068; }
+body.dark .hub-context small { color:#c9a49a; }
+
+.stats { grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); }
+.stat-link { display:block;color:inherit;transition:transform .15s ease,border-color .15s ease; }
+.stat-link:hover { transform:translateY(-2px);border-color:var(--coral); }
+.stat span { display:block; }
+.stat small { display:block;margin-top:.35rem;color:#999;font-size:.72rem; }
+.stat-alert { border-left:4px solid #dc2626; }
+.stat-alert strong { color:#dc2626; }
+body.dark .stat-alert { border-left-color:#f87171; }
+
+.btn { display:inline-flex;align-items:center;justify-content:center;gap:.35rem;text-decoration:none;line-height:1.2; }
+.btn:focus-visible,.nav-item:focus-visible,.queue-item:focus-visible,.form-control:focus-visible,.filter-select:focus-visible { outline:2px solid var(--coral);outline-offset:2px; }
+.btn-coral:hover { background:#cf3b20; }
+.btn-success:hover { background:#15803d; }
+.btn-outline:hover { border-color:var(--coral);color:var(--coral); }
+.btn-sm { padding:.35rem .6rem;font-size:.75rem; }
+body.dark .btn-outline { background:#1e1e1e;border-color:#3a3a3a;color:#e5e7eb; }
+
+.table-wrap { overflow-x:auto; }
+.table-wrap table { min-width:640px; }
+tbody tr:hover td { background:#fcfaf7; }
+body.dark tbody tr:hover td { background:#232323; }
+.cell-title { font-weight:700; }
+.cell-meta { display:block;margin-top:.2rem;font-size:.73rem;color:#888; }
+.cell-actions { display:flex;gap:.4rem;flex-wrap:wrap;justify-content:flex-end; }
+.route-path { display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;font-size:.8rem; }
+.route-path .route-arrow { color:#bbb; }
+
+.empty-state { padding:2.2rem 1rem;text-align:center;color:#888; }
+.empty-state strong { display:block;color:#444;font-size:.95rem;margin-bottom:.3rem; }
+.empty-state p { margin:0 0 .9rem;font-size:.83rem; }
+body.dark .empty-state strong { color:#e5e7eb; }
+
+.status-pill { display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;font-weight:700; }
+.status-pill::before { content:'';width:8px;height:8px;border-radius:50%;background:#9ca3af; }
+.status-pill--active { color:#15803d; } .status-pill--active::before { background:#16a34a; }
+.status-pill--inactive { color:#6b7280; }
+.status-pill--warning { color:#b45309; } .status-pill--warning::before { background:#f59e0b; }
+
+.portal-link { display:inline-flex;align-items:center;gap:.3rem;font-family:ui-monospace,Consolas,monospace;font-size:.76rem;color:#2563eb;word-break:break-all; }
+.portal-link:hover { text-decoration:underline; }
+body.dark .portal-link { color:#93c5fd; }
+
+.seller-order-status { text-transform:none;letter-spacing:0;font-size:.72rem;white-space:nowrap; }
+.seller-order-status--processing { background:#eff6ff;color:#2563eb; }
+.seller-order-status--shipped { background:#fff7ed;color:#c2410c; }
+.seller-order-status--completed { background:#f0fdf4;color:#166534; }
+.seller-order-status--cancelled { background:#fef2f0;color:#b91c1c; }
+.seller-order-status--neutral { background:#f3f4f6;color:#4b5563; }
+body.dark .seller-order-status--processing { background:#0c1a3a;color:#93c5fd; }
+body.dark .seller-order-status--shipped { background:#33211d;color:#fdba74; }
+body.dark .seller-order-status--completed { background:#0f2a1a;color:#86efac; }
+body.dark .seller-order-status--cancelled { background:#3a1414;color:#fca5a5; }
+body.dark .seller-order-status--neutral { background:#2a2a2a;color:#d1d5db; }
+
+.form-section { padding:1.2rem;border-bottom:1px solid #f0ebe0; }
+.form-section:last-of-type { border-bottom:0; }
+.form-section h2 { font-size:.95rem;margin:0 0 .2rem; }
+.form-section > p { color:#888;font-size:.8rem;margin:0 0 1rem; }
+.branch-form-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem; }
+.branch-form-grid .full { grid-column:1 / -1; }
+.branch-form-grid label { display:block;font-size:.78rem;font-weight:700;margin-bottom:.35rem;color:#4b5563; }
+.branch-form-grid small,.field-hint { display:block;margin-top:.3rem;color:#888;font-size:.72rem; }
+.field-hint code,.branch-form-grid small code { color:var(--coral);font-weight:700; }
+.form-actions { display:flex;justify-content:flex-end;gap:.6rem;padding:1rem 1.2rem;background:#faf8f5;border-top:1px solid #f0ebe0; }
+body.dark .branch-form-grid label { color:#d1d5db; }
+body.dark .form-section,body.dark .form-actions { border-color:#2a2a2a; }
+body.dark .form-actions { background:#1a1a1a; }
+.callout { display:flex;gap:.7rem;align-items:flex-start;padding:.85rem 1rem;border-radius:9px;background:#fffbeb;border:1px solid #fde68a;color:#78350f;font-size:.83rem;margin-bottom:1.2rem; }
+.callout a { font-weight:700;text-decoration:underline; }
+.callout--info { background:#eff6ff;border-color:#bfdbfe;color:#1e3a8a; }
+body.dark .callout { background:#2a2210;border-color:#5b4a14;color:#fde68a; }
+body.dark .callout--info { background:#0c1a3a;border-color:#1e3a8a;color:#bfdbfe; }
+
+@media(max-width:700px) { .branch-form-grid { grid-template-columns:1fr; } .branch-form-grid .full { grid-column:auto; } .page-heading { align-items:flex-start; } .hub-context small { display:none; } }
+
+/* Sidebar: long hub names must not push the hamburger out of view or get clipped. */
+.sidebar-logo-text { flex:1 1 auto;min-width:0; }
+.brand { display:block; }
+.sidebar-subtitle { overflow:hidden;text-overflow:ellipsis; }
+.hamburger { flex:0 0 auto; }
+.nav-label--hub { white-space:normal;overflow-wrap:anywhere;line-height:1.35;color:#c9c9c9;font-size:.72rem; }
+.nav-item { min-width:0; }
+.nav-text { min-width:0;overflow:hidden;text-overflow:ellipsis; }
+.hub-context { max-width:min(420px,45vw);overflow:hidden;text-overflow:ellipsis; }
+.sidebar.mini .nav-label--hub { display:none; }
+
+/* Station rider applications */
+.application-list { display:grid;gap:1rem; }
+.application-grid { display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:1.2rem;padding:1.2rem; }
+.application-facts { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem 1rem;margin:0; }
+.application-facts dt { font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#888; }
+.application-facts dd { margin:.15rem 0 0;font-size:.86rem;overflow-wrap:anywhere; }
+.application-docs { display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem; }
+.application-checklist { display:grid;gap:.55rem;margin:0 0 1rem;padding:0;list-style:none; }
+.application-checklist label { display:flex;gap:.55rem;align-items:flex-start;font-size:.84rem;line-height:1.4;cursor:pointer; }
+.application-checklist input { margin-top:.2rem;accent-color:var(--coral); }
+.application-decide h3 { font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:#777;margin:0 0 .6rem; }
+.application-decide .form-control { margin-bottom:.8rem; }
+.application-disapprove { margin-top:1rem;border-top:1px solid #f0ebe0;padding-top:.8rem; }
+.application-disapprove summary { cursor:pointer;color:#b91c1c;font-size:.82rem;font-weight:700; }
+.application-disapprove form { display:grid;gap:.5rem;margin-top:.6rem; }
+body.dark .application-disapprove { border-color:#2a2a2a; }
+@media(max-width:900px) { .application-grid { grid-template-columns:1fr; } }
+@media(max-width:520px) { .application-facts { grid-template-columns:1fr; } }
+.nav-count { margin-left:auto;min-width:20px;height:20px;padding:0 .4rem;border-radius:999px;background:var(--coral);color:#fff;font-size:.7rem;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0; }
+.sidebar.mini .nav-item { position:relative; }
+.sidebar.mini .nav-count { position:absolute;top:4px;right:8px;min-width:16px;height:16px;font-size:.6rem; }
+@media(max-width:700px) { .nav-item { position:relative; } .nav-count { position:absolute;top:4px;right:8px;min-width:16px;height:16px;font-size:.6rem; } }

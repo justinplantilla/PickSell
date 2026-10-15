@@ -455,7 +455,7 @@ class BuyerController extends Controller
         $statusGroups = [
             'pending' => ['pending', 'placed', 'confirmed'],
             'processing' => ['processing', 'preparing', 'ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted'],
-            'shipped' => ['shipped', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed'],
+            'shipped' => ['shipped', 'in_transit', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed'],
             'completed' => ['delivered', 'completed'],
             'returned' => ['returned'],
             'cancelled' => ['cancelled'],

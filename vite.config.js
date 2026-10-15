@@ -64,6 +64,7 @@ export default defineConfig({
                 'resources/js/views/admin-chat.js',
                 'resources/js/views/admin-layout.js',
                 'resources/js/views/auth-register.js',
+                'resources/css/views/pages-legal.css',
                 'resources/js/views/buyer-chat.js',
                 'resources/js/views/buyer-layout.js',
                 'resources/js/views/buyer-home.js',

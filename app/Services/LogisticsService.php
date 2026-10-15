@@ -39,7 +39,11 @@ class LogisticsService
             ]);
 
             $branch = $actor->role === 'logistics'
-                ? LogisticsBranch::where('logistics_id', $actor->id)->where('status', 'active')->orderBy('id')->first()
+                ? (request()->attributes->get('station_hub')
+                    ?? request()->attributes->get('province_hub')
+                    ?? LogisticsBranch::where('logistics_id', $actor->logisticsCompanyId())
+                        ->where('hub_type', 'station_hub')
+                        ->where('status', 'active')->orderBy('id')->first())
                 : null;
             ParcelScan::create([
                 'order_id' => $locked->id,
@@ -79,6 +83,83 @@ class LogisticsService
         });
     }
 
+    public function dispatchLinehaul(Order $order, User $actor, string $source): void
+    {
+        DB::transaction(function () use ($order, $actor, $source): void {
+            $locked = Order::query()->whereKey($order->id)
+                ->with(['originHub', 'destinationHub'])->lockForUpdate()->firstOrFail();
+            $this->ensureBranchOwnership($locked, $actor, $source);
+            abort_if($locked->status !== 'sorted', 422, 'Only sorted parcels can be sent to a province hub.');
+            abort_unless(
+                $locked->requiresLinehaul(),
+                422,
+                'A province-hub transfer is only required when the parcel travels between two different province hubs.',
+            );
+            abort_if($locked->destination_hub_received_at, 409, 'This parcel has already arrived at its destination province hub.');
+
+            $station = $source === 'logistics' ? request()->attributes->get('station_hub') : null;
+            if ($station) {
+                abort_unless((int) $locked->origin_branch_id === (int) $station->id, 403, 'Only the origin station can dispatch this parcel to linehaul.');
+            }
+            $provinceHub = $source === 'logistics' ? request()->attributes->get('province_hub') : null;
+            if ($provinceHub) {
+                abort_unless((int) $locked->origin_hub_id === (int) $provinceHub->id, 403, 'Only the origin province hub can dispatch this parcel to linehaul.');
+            }
+
+            $this->lifecycle->transition(
+                $locked,
+                'in_transit',
+                $actor->id,
+                $source,
+                'Dispatched from '.$locked->originHub->name.' to '.$locked->destinationHub->name.'.',
+                ['tracking_status' => 'In transit to '.$locked->destinationHub->name],
+            );
+            ParcelScan::create([
+                'order_id' => $locked->id,
+                'scanned_by' => $actor->id,
+                'scan_type' => 'province_hub_linehaul_departed',
+                'location' => $locked->originHub->name,
+                'notes' => 'Linehaul destination: '.$locked->destinationHub->name,
+                'scanned_at' => now(),
+            ]);
+        });
+    }
+
+    public function receiveAtDestinationHub(Order $order, User $actor, string $source): void
+    {
+        DB::transaction(function () use ($order, $actor, $source): void {
+            $locked = Order::query()->whereKey($order->id)
+                ->with('destinationHub')->lockForUpdate()->firstOrFail();
+            $this->ensureBranchOwnership($locked, $actor, $source);
+            abort_if(request()->attributes->get('station_hub'), 403, 'Linehaul receipt is handled by the destination province hub portal.');
+            $provinceHub = request()->attributes->get('province_hub');
+            if ($provinceHub) {
+                abort_unless((int) $locked->destination_hub_id === (int) $provinceHub->id, 403, 'This linehaul is not addressed to this province hub.');
+            }
+            abort_if($locked->status !== 'in_transit', 422, 'Only linehaul parcels can be received at a province hub.');
+            abort_unless($locked->destination_hub_id && $locked->destinationHub, 422, 'This parcel has no destination province hub.');
+
+            $this->lifecycle->transition(
+                $locked,
+                'at_sorting_center',
+                $actor->id,
+                $source,
+                'Received at '.$locked->destinationHub->name.'.',
+                [
+                    'destination_hub_received_at' => now(),
+                    'tracking_status' => 'Received and scanned at sorting center',
+                ],
+            );
+            ParcelScan::create([
+                'order_id' => $locked->id,
+                'scanned_by' => $actor->id,
+                'scan_type' => 'province_hub_linehaul_received',
+                'location' => $locked->destinationHub->name,
+                'scanned_at' => now(),
+            ]);
+        });
+    }
+
     public function approvePickup(Order $order, User $actor, string $source): void
     {
         DB::transaction(function () use ($order, $actor, $source): void {
@@ -96,7 +177,27 @@ class LogisticsService
     private function ensureBranchOwnership(Order $order, User $actor, string $source): void
     {
         if ($source === 'logistics') {
-            abort_unless((int) $order->logistics_id === (int) $actor->id, 403, 'This parcel belongs to another logistics branch.');
+            $station = request()->attributes->get('station_hub');
+            $provinceHub = request()->attributes->get('province_hub');
+            $companyId = $station?->logistics_id ?? $provinceHub?->logistics_id ?? $actor->id;
+            abort_unless((int) $order->logistics_id === (int) $companyId, 403, 'This parcel belongs to another logistics company.');
+
+            if ($station) {
+                abort_unless(
+                    (int) $order->origin_branch_id === (int) $station->id
+                        || (int) $order->destination_branch_id === (int) $station->id,
+                    403,
+                    'This parcel does not pass through this station hub.',
+                );
+            }
+            if ($provinceHub) {
+                abort_unless(
+                    (int) $order->origin_hub_id === (int) $provinceHub->id
+                        || (int) $order->destination_hub_id === (int) $provinceHub->id,
+                    403,
+                    'This parcel does not pass through this province hub.',
+                );
+            }
         }
     }
 }

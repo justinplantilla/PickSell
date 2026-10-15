@@ -56,8 +56,8 @@
         <div class="footer-bottom">
             <span>&copy; {{ date('Y') }} PickSell. All rights reserved.</span>
             <div class="footer-bottom-links">
-                <a href="{{ route('about') }}">Privacy Policy</a>
-                <a href="{{ route('about') }}">Terms of Service</a>
+                <a href="{{ route('privacy') }}">Privacy Policy</a>
+                <a href="{{ route('terms') }}">Terms of Service</a>
             </div>
         </div>
     </div>

@@ -15,10 +15,12 @@ use App\Models\ReturnRequest;
 use App\Models\RiderBarangay;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\InteractsWithLogisticsHubs;
 use Tests\TestCase;
 
 class AdminLogisticsOperationsTest extends TestCase
 {
+    use InteractsWithLogisticsHubs;
     use RefreshDatabase;
 
     private User $admin;
@@ -143,12 +145,18 @@ class AdminLogisticsOperationsTest extends TestCase
 
     public function test_logistics_pickup_approval_uses_the_shared_order_lifecycle(): void
     {
-        $logisticsUser = $this->user('logistics');
+        $company = $this->user('logistics');
+        $station = $this->createStationHub(
+            $this->createProvinceHub($company, $this->branch->municipality, 'metro-manila'),
+            $this->branch->municipality,
+            'pasig',
+        );
+        $logisticsUser = $this->createHubOperator($station);
         $order = $this->order('ready_for_pickup', 'Pickup requested from seller');
-        $order->update(['logistics_id' => $logisticsUser->id]);
+        $order->update(['logistics_id' => $company->id, 'origin_branch_id' => $station->id]);
 
         $this->actingAs($logisticsUser)
-            ->patch(route('logistics.parcels.approve-pickup', $order))
+            ->patch($this->stationRoute($station, 'station-hub.approve-pickup', ['order' => $order]))
             ->assertRedirect();
 
         $this->assertSame('picked_up', $order->fresh()->status);

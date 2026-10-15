@@ -21,9 +21,32 @@ class CourierAssignmentService
         return DB::transaction(function () use ($order, $actor, $courierId, $source, $auditPermission) {
             $locked = Order::whereKey($order->id)->with('buyer')->lockForUpdate()->firstOrFail();
             if ($source === 'logistics') {
-                abort_unless((int) $locked->logistics_id === (int) $actor->id, 403, 'This parcel belongs to another logistics branch.');
+                $station = request()->attributes->get('station_hub');
+                $provinceHub = request()->attributes->get('province_hub');
+                $companyId = $station?->logistics_id ?? $provinceHub?->logistics_id ?? $actor->id;
+                abort_unless((int) $locked->logistics_id === (int) $companyId, 403, 'This parcel belongs to another logistics company.');
+                if ($station) {
+                    abort_unless(
+                        (int) $locked->destination_branch_id === (int) $station->id,
+                        403,
+                        'Rider assignment must be handled by the destination station hub.',
+                    );
+                }
+                if ($provinceHub) {
+                    abort_unless(
+                        (int) $locked->origin_hub_id === (int) $provinceHub->id
+                            || (int) $locked->destination_hub_id === (int) $provinceHub->id,
+                        403,
+                        'This parcel does not pass through this province hub.',
+                    );
+                }
             }
             abort_if($locked->status !== 'sorted', 422, 'Only sorted parcels can be assigned.');
+            abort_if(
+                $locked->awaitingLinehaul(),
+                422,
+                'This parcel must be received at its destination province hub before a delivery rider can be assigned.',
+            );
             abort_unless($locked->parcelScans()->exists(), 422, 'A parcel scan is required before rider assignment.');
 
             $courier = $courierId !== null

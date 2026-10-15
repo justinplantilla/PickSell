@@ -38,6 +38,7 @@ class SellerController extends Controller
         'picked_up',
         'at_sorting_center',
         'sorted',
+        'in_transit',
         'assigned_to_rider',
         'out_for_delivery',
         'shipped',
@@ -53,8 +54,8 @@ class SellerController extends Controller
         'shipped' => [
             'label' => 'Shipped',
             'tone' => 'shipped',
-            'description' => 'Picked up through out for delivery',
-            'statuses' => ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped'],
+            'description' => 'Picked up, transferred between province hubs, and out for delivery',
+            'statuses' => ['picked_up', 'at_sorting_center', 'sorted', 'in_transit', 'assigned_to_rider', 'out_for_delivery', 'shipped'],
         ],
         'delivered' => [
             'label' => 'Delivered',

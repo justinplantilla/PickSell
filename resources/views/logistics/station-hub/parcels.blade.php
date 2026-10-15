@@ -2,17 +2,20 @@
 @section('styles')
 @vite('resources/css/views/logistics-parcels.css')
 @endsection
-@section('title', 'Sorting Center')
+@section('title', 'Station Operations')
+@section('no_intro', true)
 @section('content')
 @php
     $queueSections = [
         'Incoming' => [
+            ['Pickup Requests', 'ready_for_pickup', $queueCounts['ready_for_pickup']],
             ['Awaiting Scan', 'awaiting_scan', $queueCounts['awaiting_scan']],
             ['Verification Required', 'verification_required', $queueCounts['verification_required']],
         ],
         'Sorting' => [
             ['Awaiting Sort', 'awaiting_sort', $queueCounts['awaiting_sort']],
             ['Sorted', 'sorted', $queueCounts['sorted']],
+            ['Linehaul', 'in_transit', $queueCounts['linehaul']],
             ['Destination Exception', 'destination_exception', $queueCounts['destination_exception']],
         ],
         'Dispatch' => [
@@ -28,8 +31,13 @@
 @endphp
 
 <div class="page-heading">
-    <h1>Sorting Center Control Board</h1>
-    <p>Track incoming parcels, sorting, dispatch, and operational exceptions.</p>
+    <div>
+        <h1>Station Operations</h1>
+        <p>Work each queue left to right: approve pickups, scan arrivals, sort, then assign riders. Problems collect under Exceptions.</p>
+    </div>
+    @if($status !== 'all')
+        <div class="page-heading-actions"><a class="btn btn-outline" href="{{ route('station-hub.parcels') }}">Show all parcels</a></div>
+    @endif
 </div>
 
 <section class="logistics-control-board" aria-label="Parcel queue summary">
@@ -38,7 +46,7 @@
             <h2>{{ $section }}</h2>
             <div class="queue-items">
                 @foreach($queues as [$label, $filter, $count])
-                    <a class="queue-item {{ $status === $filter ? 'is-active' : '' }}" href="{{ route('logistics.parcels', ['status' => $filter]) }}" @if($status === $filter) aria-current="page" @endif>
+                    <a class="queue-item {{ $status === $filter ? 'is-active' : '' }}" href="{{ route('station-hub.parcels', ['status' => $filter]) }}" @if($status === $filter) aria-current="page" @endif>
                         <span>{{ $label }}</span>
                         <strong>{{ number_format($count) }}</strong>
                     </a>
@@ -56,20 +64,25 @@
         </div>
         <form method="GET">
             <select class="filter-select" name="status" data-submit-on-change aria-label="Filter parcels by status">
-                <option value="all" {{ $status === 'all' ? 'selected' : '' }}>All Parcels</option>
-                <option value="ready_for_pickup" {{ $status === 'ready_for_pickup' ? 'selected' : '' }}>Pickup Requests</option>
-                <option value="awaiting_scan" {{ $status === 'awaiting_scan' ? 'selected' : '' }}>Awaiting Scan</option>
-                <option value="verification_required" {{ $status === 'verification_required' ? 'selected' : '' }}>Verification Required</option>
-                <option value="awaiting_sort" {{ $status === 'awaiting_sort' ? 'selected' : '' }}>Awaiting Sort</option>
-                <option value="sorted" {{ $status === 'sorted' ? 'selected' : '' }}>Sorted</option>
-                <option value="assigned_to_rider" {{ $status === 'assigned_to_rider' ? 'selected' : '' }}>Assigned to Rider</option>
-                <option value="out_for_delivery" {{ $status === 'out_for_delivery' ? 'selected' : '' }}>Out for Delivery</option>
-                <option value="delivery_failed" {{ $status === 'delivery_failed' ? 'selected' : '' }}>Failed Delivery</option>
-                <option value="delivered" {{ $status === 'delivered' ? 'selected' : '' }}>Delivered</option>
-                <option value="completed" {{ $status === 'completed' ? 'selected' : '' }}>Completed</option>
-                <option value="destination_exception" {{ $status === 'destination_exception' ? 'selected' : '' }}>Destination Exception</option>
-                <option value="missing_scan" {{ $status === 'missing_scan' ? 'selected' : '' }}>Missing Scan</option>
-                <option value="rider_unavailable" {{ $status === 'rider_unavailable' ? 'selected' : '' }}>Rider Unavailable</option>
+                @foreach([
+                    'all' => 'All Parcels',
+                    'ready_for_pickup' => 'Pickup Requests',
+                    'awaiting_scan' => 'Awaiting Scan',
+                    'verification_required' => 'Verification Required',
+                    'awaiting_sort' => 'Awaiting Sort',
+                    'sorted' => 'Sorted',
+                    'in_transit' => 'In Transit Between Province Hubs',
+                    'assigned_to_rider' => 'Assigned to Rider',
+                    'out_for_delivery' => 'Out for Delivery',
+                    'delivery_failed' => 'Failed Delivery',
+                    'delivered' => 'Delivered',
+                    'completed' => 'Completed',
+                    'destination_exception' => 'Destination Exception',
+                    'missing_scan' => 'Missing Scan',
+                    'rider_unavailable' => 'Rider Unavailable',
+                ] as $value => $label)
+                    <option value="{{ $value }}" {{ $status === $value ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
             </select>
         </form>
     </div>
@@ -79,7 +92,7 @@
                 <tr>
                     <th>Order ID</th>
                     <th>Current Status / Next Valid Action</th>
-                    <th>Destination Area / Seller</th>
+                    <th>Hub Route / Destination</th>
                     <th>Courier</th>
                     <th>Last Scan / Last Updated</th>
                     <th>Action</th>
@@ -94,6 +107,9 @@
                     $area = $order->buyer
                         ? trim(collect([$order->buyer->barangay, $order->buyer->municipality, $order->buyer->province])->filter()->join(', '))
                         : 'Destination unavailable';
+                    $awaitingLinehaul = $order->awaitingLinehaul();
+                    $isOriginStation = (int) $station->id === (int) $order->origin_branch_id;
+                    $isDestinationStation = (int) $station->id === (int) $order->destination_branch_id;
                     $destinationNeedsReview = !$order->destination_branch_id
                         || !$order->destination_barangay_id
                         || !$order->buyer
@@ -107,7 +123,10 @@
                         'at_sorting_center' => $order->tracking_status !== 'Received and scanned at sorting center'
                             ? 'Verify scan'
                             : ($destinationNeedsReview ? 'Verify destination' : 'Sort parcel'),
-                        'sorted' => $eligibleRiders->isNotEmpty() ? 'Assign rider' : 'Rider unavailable for destination',
+                        'sorted' => $awaitingLinehaul
+                            ? 'Waiting for linehaul from '.($order->originHub?->name ?? 'the origin province hub')
+                            : (!$isDestinationStation ? 'Handled by '.($order->destinationBranch?->name ?? 'the destination station') : ($eligibleRiders->isNotEmpty() ? 'Assign rider' : 'Rider unavailable for destination')),
+                        'in_transit' => 'In transit to '.$order->destinationHub?->name,
                         'assigned_to_rider' => 'Rider to start delivery',
                         'out_for_delivery' => 'Await delivery outcome',
                         'delivery_failed' => $order->delivery?->status === 'return_to_sender'
@@ -121,7 +140,7 @@
                         $order->status === 'delivery_failed' => 'failed_delivery',
                         $destinationNeedsReview => 'wrong_destination',
                         $order->status === 'picked_up' && !in_array($order->tracking_status, ['Pickup approved by logistics', 'Handed over to courier'], true) => 'missing_scan',
-                        $order->status === 'sorted' && $eligibleRiders->isEmpty() => 'rider_unavailable',
+                        $order->status === 'sorted' && !$awaitingLinehaul && $isDestinationStation && $eligibleRiders->isEmpty() => 'rider_unavailable',
                         default => null,
                     };
                 @endphp
@@ -131,12 +150,19 @@
                         <span class="parcel-row-meta">{{ $order->waybill_number ?? 'No waybill' }}</span>
                     </td>
                     <td>
-                        <span class="badge badge-{{ $order->status }}">{{ ucfirst(str_replace('_', ' ', $order->status)) }}</span>
+                        <x-order-status-badge :status="$order->status" />
                         <span class="parcel-row-meta">{{ $order->tracking_status ?? 'Awaiting processing' }}</span>
                         <strong class="parcel-next-action">{{ $nextAction }}</strong>
                     </td>
                     <td>
-                        <strong>{{ $area }}</strong>
+                        <strong>
+                            {{ $order->originBranch?->name ?? 'Origin station pending' }}
+                            @if($order->requiresLinehaul())
+                                → {{ $order->originHub?->name }} → {{ $order->destinationHub?->name }}
+                            @endif
+                            → {{ $order->destinationBranch?->name ?? 'Destination station pending' }}
+                        </strong>
+                        <span class="parcel-row-meta">{{ $area }}</span>
                         <span class="parcel-row-meta">From {{ $order->seller?->business_name ?? $order->seller?->full_name ?? 'Unavailable' }}</span>
                     </td>
                     <td>{{ $order->courier?->full_name ?? 'Unassigned' }}</td>
@@ -151,12 +177,12 @@
                     </td>
                     <td>
                         @if($order->status === 'ready_for_pickup')
-                            <form method="POST" action="{{ route('logistics.parcels.approve-pickup', $order) }}">
+                            <form method="POST" action="{{ route('station-hub.approve-pickup', $order) }}">
                                 @csrf @method('PATCH')
                                 <button class="btn btn-success" type="submit">Approve Pickup</button>
                             </form>
                         @elseif($order->status === 'picked_up' && in_array($order->tracking_status, ['Pickup approved by logistics', 'Handed over to courier'], true))
-                            <form method="POST" action="{{ route('logistics.parcels.scan', $order) }}">
+                            <form method="POST" action="{{ route('station-hub.scan', $order) }}">
                                 @csrf @method('PATCH')
                                 <details class="parcel-action-details">
                                     <summary class="btn btn-outline">Scan Parcel</summary>
@@ -168,21 +194,25 @@
                                                 <option value="condition_checked">Package condition checked</option>
                                             </select>
                                         </label>
-                                        <label>Location <input class="filter-select" type="text" name="location" maxlength="150" placeholder="Hub or scan location"></label>
+                                        <label>Location <input class="filter-select" type="text" name="location" maxlength="150" placeholder="{{ $station->name }}"></label>
                                         <label>Notes <textarea class="filter-select" name="notes" maxlength="5000" rows="2" placeholder="Optional handling notes"></textarea></label>
                                         <button class="btn btn-coral" type="submit">Save Scan</button>
                                     </div>
                                 </details>
                             </form>
                         @elseif($order->status === 'at_sorting_center' && $order->tracking_status === 'Received and scanned at sorting center' && !$destinationNeedsReview)
-                            <form method="POST" action="{{ route('logistics.parcels.sort', $order) }}">
+                            <form method="POST" action="{{ route('station-hub.sort', $order) }}">
                                 @csrf @method('PATCH')
                                 <button class="btn btn-outline" type="submit">Sort Parcel</button>
                             </form>
                         @elseif($order->status === 'at_sorting_center' && $order->tracking_status === 'Received and scanned at sorting center' && $destinationNeedsReview)
                             <span class="parcel-action-hint">Correct the destination before sorting.</span>
-                        @elseif($order->status === 'sorted' && $eligibleRiders->isNotEmpty())
-                            <form method="POST" action="{{ route('logistics.parcels.assign', $order) }}" class="parcel-assign-form">
+                        @elseif($order->status === 'sorted' && $awaitingLinehaul)
+                            <span class="parcel-action-hint">{{ $order->originHub?->name ?? 'The origin province hub' }} dispatches this parcel to {{ $order->destinationHub?->name }}.</span>
+                        @elseif($order->status === 'in_transit')
+                            <span class="parcel-action-hint">Linehaul is on its way to {{ $order->destinationHub?->name }}.</span>
+                        @elseif($order->status === 'sorted' && $isDestinationStation && $eligibleRiders->isNotEmpty())
+                            <form method="POST" action="{{ route('station-hub.assign', $order) }}" class="parcel-assign-form">
                                 @csrf @method('PATCH')
                                 <select class="filter-select" name="courier_id" required aria-label="Choose a courier for {{ $order->order_number }}">
                                     <option value="">Assign rider</option>
@@ -192,20 +222,20 @@
                                 </select>
                                 <button class="btn btn-coral" type="submit">Assign</button>
                             </form>
+                        @elseif($order->status === 'sorted' && $isDestinationStation)
+                            <span class="parcel-action-hint">No approved rider covers this destination.</span>
                         @elseif($order->status === 'delivery_failed' && $order->delivery?->status === 'return_to_sender')
-                            <form method="POST" action="{{ route('logistics.parcels.returned', $order) }}">
+                            <form method="POST" action="{{ route('station-hub.mark-returned', $order) }}">
                                 @csrf @method('PATCH')
                                 <button class="btn btn-outline" type="submit">Confirm Returned</button>
                             </form>
                         @elseif($order->status === 'delivery_failed')
                             <span class="parcel-action-hint">
-                                {{ $order->delivery?->status === 'return_to_sender' ? 'Return received; confirm it above.' : 'Review the failed attempt and coordinate the next step.' }}
+                                Review the failed attempt and coordinate the next step.
                                 @if($order->delivery)
                                     <span class="parcel-row-meta">Attempt {{ $order->delivery->delivery_attempts }}{{ $latestDeliveryEvent?->note ? ' · '.$latestDeliveryEvent->note : '' }}</span>
                                 @endif
                             </span>
-                        @elseif($order->status === 'sorted')
-                            <span class="parcel-action-hint">No approved rider covers this destination.</span>
                         @else
                             <span class="parcel-action-hint">No action available</span>
                         @endif
@@ -213,7 +243,7 @@
                             <div class="parcel-exception-summary">
                                 <strong>Open {{ str_replace('_', ' ', $openException->type) }} exception</strong>
                                 <span>{{ $openException->description }}</span>
-                                <form method="POST" action="{{ route('logistics.exceptions.resolve', $openException) }}">
+                                <form method="POST" action="{{ route('station-hub.exceptions.resolve', $openException) }}">
                                     @csrf @method('PATCH')
                                     <label for="exception-resolution-{{ $openException->id }}">Resolution</label>
                                     <textarea class="filter-select" id="exception-resolution-{{ $openException->id }}" name="resolution" minlength="5" maxlength="5000" rows="2" required></textarea>
@@ -223,7 +253,7 @@
                         @else
                             <details class="parcel-exception-details">
                                 <summary>Open operational exception</summary>
-                                <form method="POST" action="{{ route('logistics.parcels.exceptions.store', $order) }}">
+                                <form method="POST" action="{{ route('station-hub.exceptions.store', $order) }}">
                                     @csrf
                                     <label for="exception-type-{{ $order->id }}">Exception type</label>
                                     <select class="filter-select" id="exception-type-{{ $order->id }}" name="type" required>
@@ -249,7 +279,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="parcel-empty">No parcels found for this queue.</td></tr>
+                <tr><td colspan="6"><div class="empty-state"><strong>Nothing in this queue</strong><p>{{ $status === 'all' ? 'No parcels have come through this station yet.' : 'You are all caught up here.' }}</p></div></td></tr>
             @endforelse
             </tbody>
         </table>
