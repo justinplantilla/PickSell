@@ -12,7 +12,7 @@ class User extends Authenticatable
     use HasApiTokens, Notifiable;
 
     protected $fillable = [
-        'role', 'status', 'provider_type',
+        'role', 'status', 'provider_type', 'assigned_hub_id',
         'last_name', 'first_name', 'middle_initial', 'sex',
         'email', 'password', 'contact_no', 'birthday', 'age',
         'province', 'municipality', 'barangay', 'street', 'house_no',
@@ -80,6 +80,16 @@ class User extends Authenticatable
     public function isApproved(): bool
     {
         return $this->status === 'approved';
+    }
+
+    public function assignedHub()
+    {
+        return $this->belongsTo(LogisticsBranch::class, 'assigned_hub_id');
+    }
+
+    public function logisticsCompanyId(): int
+    {
+        return (int) ($this->assignedHub?->logistics_id ?? $this->id);
     }
 
     public function isPending(): bool

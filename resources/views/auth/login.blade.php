@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@php($isLogisticsSite = request()->getHost() === 'logistics.pick-sell.shop')
+@php($isLogisticsSite = \App\Support\LogisticsDomains::isLogisticsHost(request()->getHost()))
 @section('title', $isLogisticsSite ? 'Log In | PickSell Logistics' : 'Log In')
 
 @section('styles')
@@ -16,6 +16,9 @@
 
         @if(session('success'))
             <div class="alert-success">{{ session('success') }}</div>
+        @endif
+        @if(session('error'))
+            <div class="alert-error">{{ session('error') }}</div>
         @endif
         @if($errors->any())
             <div class="alert-error">{{ $errors->first() }}</div>

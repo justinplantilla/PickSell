@@ -15,7 +15,7 @@ if (registerForm && registerConfig) {
         [registerForm.querySelector('.role-selector')], [wizardSections[0]],
         [wizardSections[1], wizardSections[2]],
         [wizardSections[3], wizardSections[4], wizardSections[5]],
-        [registerForm.querySelector('.notice-box'), registerForm.querySelector('.confirm-row'), submitButton]
+        [registerForm.querySelector('.notice-box'), registerForm.querySelector('.confirm-group'), submitButton]
     ];
     const wizardPanels = wizardGroups.map((nodes, index) => {
         const panel = document.createElement('div');
@@ -26,12 +26,117 @@ if (registerForm && registerConfig) {
     });
     let currentWizardStep = 0;
 
+    // Buyers verify their email with a one-time code on the Account step before they can continue.
+    const emailOtp = (() => {
+        const box = document.getElementById('emailOtp');
+        const emailInput = registerForm.querySelector('input[name="email"]');
+        if (!box || !emailInput) return { toggle() {}, blocksStep: () => false };
+        const sendButton = document.getElementById('otpSend');
+        const entry = document.getElementById('otpEntry');
+        const codeInput = document.getElementById('otpCode');
+        const verifyButton = document.getElementById('otpVerify');
+        const status = document.getElementById('otpStatus');
+        const csrf = registerForm.querySelector('input[name="_token"]')?.value;
+        let active = false;
+        let verifiedEmail = (box.dataset.verifiedEmail || '').toLowerCase();
+        let cooldownTimer = null;
+        const currentEmail = () => emailInput.value.trim().toLowerCase();
+        const isVerified = () => verifiedEmail !== '' && verifiedEmail === currentEmail();
+        const say = (message, tone = '') => { status.textContent = message; status.className = 'email-otp-status' + (tone ? ' is-' + tone : ''); };
+        const post = async (url, body) => {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': csrf },
+                body: JSON.stringify(body),
+            });
+            const data = await response.json().catch(() => ({}));
+            const message = data.errors ? Object.values(data.errors)[0][0] : data.message;
+            return { ok: response.ok, status: response.status, data, message };
+        };
+        const cooldown = seconds => {
+            clearInterval(cooldownTimer);
+            let left = seconds;
+            sendButton.disabled = true;
+            const tick = () => {
+                if (left <= 0) { clearInterval(cooldownTimer); sendButton.disabled = false; sendButton.textContent = 'Resend code'; return; }
+                sendButton.textContent = `Resend in ${left}s`;
+                left--;
+            };
+            tick();
+            cooldownTimer = setInterval(tick, 1000);
+        };
+        const render = () => {
+            const verified = isVerified();
+            box.classList.toggle('is-verified', verified);
+            sendButton.hidden = verified;
+            entry.hidden = verified || entry.dataset.shown !== 'true';
+            if (verified) say('✓ ' + currentEmail() + ' is verified.', 'success');
+        };
+        const reset = () => {
+            entry.dataset.shown = 'false';
+            codeInput.value = '';
+            clearInterval(cooldownTimer);
+            sendButton.disabled = false;
+            sendButton.textContent = 'Send code';
+            say('');
+            render();
+        };
+
+        sendButton.addEventListener('click', async () => {
+            if (!emailInput.checkValidity()) { emailInput.reportValidity(); return; }
+            sendButton.disabled = true;
+            say('Sending code…');
+            const firstName = registerForm.querySelector('input[name="first_name"]')?.value || '';
+            const result = await post(box.dataset.sendUrl, { email: currentEmail(), first_name: firstName }).catch(() => null);
+            if (!result) { sendButton.disabled = false; say('Could not reach the server. Check your connection and try again.', 'error'); return; }
+            if (result.data.verified) { verifiedEmail = currentEmail(); render(); return; }
+            if (!result.ok) {
+                say(result.message || 'The code could not be sent.', 'error');
+                if (result.status === 429 && result.data.wait) cooldown(result.data.wait); else sendButton.disabled = false;
+                return;
+            }
+            entry.dataset.shown = 'true';
+            render();
+            say(result.message);
+            codeInput.focus();
+            cooldown(result.data.wait || 60);
+        });
+
+        codeInput.addEventListener('input', () => { codeInput.value = codeInput.value.replace(/\D/g, '').slice(0, 6); });
+        codeInput.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); verifyButton.click(); } });
+        verifyButton.addEventListener('click', async () => {
+            if (!/^\d{6}$/.test(codeInput.value)) { say('Enter the 6-digit code from the email.', 'error'); codeInput.focus(); return; }
+            verifyButton.disabled = true;
+            say('Checking code…');
+            const result = await post(box.dataset.verifyUrl, { email: currentEmail(), code: codeInput.value }).catch(() => null);
+            verifyButton.disabled = false;
+            if (!result) { say('Could not reach the server. Check your connection and try again.', 'error'); return; }
+            if (!result.ok || !result.data.verified) { say(result.message || 'That code did not work.', 'error'); codeInput.select(); return; }
+            verifiedEmail = currentEmail();
+            clearInterval(cooldownTimer);
+            render();
+        });
+
+        emailInput.addEventListener('input', () => { if (!isVerified()) reset(); });
+
+        return {
+            toggle(role) { active = role === 'buyer'; box.hidden = !active; render(); },
+            blocksStep(panel) {
+                if (!active || !panel.contains(box) || isVerified()) return false;
+                if (!emailInput.checkValidity()) { emailInput.reportValidity(); return true; }
+                say('Verify your email with the 6-digit code before continuing.', 'error');
+                (entry.hidden ? sendButton : codeInput).focus();
+                return true;
+            },
+        };
+    })();
+
     const validateWizardStep = () => {
         const fields = [...wizardPanels[currentWizardStep].querySelectorAll('input, select, textarea')]
             .filter(field => field.required && !field.disabled && (field.type !== 'radio' || field.checked) && (field.type === 'radio' || field.type === 'file' || field.offsetParent !== null));
         const invalidField = fields.find(field => !field.checkValidity());
         if (invalidField) { invalidField.reportValidity(); return false; }
-        return true;
+        return !emailOtp.blocksStep(wizardPanels[currentWizardStep]);
     };
     const setWizardStep = step => {
         currentWizardStep = step;
@@ -73,7 +178,7 @@ if (registerForm && registerConfig) {
         document.querySelector('input[name="business_name"]').placeholder = logisticsSelected && providerType === 'individual' ? 'e.g. Juan Dela Cruz Delivery' : "e.g. Juan's Store";
     };
     const updateRegistrationNote = role => {
-        const messages = { courier: 'Courier applications are reviewed by the PickSell Logistics team. Please wait for the approval result before logging in.', logistics: 'Logistics provider applications are reviewed by the PickSell Admin team. Please wait for approval before logging in.', seller: 'Seller applications are reviewed by the PickSell Admin team. Please wait for the approval result before logging in.', buyer: 'Your registration will be reviewed by PickSell. Please wait for the approval result before logging in.' };
+        const messages = { courier: 'Courier applications are reviewed by the station hub for your town. Please wait for the approval result before logging in.', logistics: 'Logistics provider applications are reviewed by the PickSell Admin team. Please wait for approval before logging in.', seller: 'Seller applications are reviewed by the PickSell Admin team. Please wait for the approval result before logging in.', buyer: 'Your registration will be reviewed by PickSell. Please wait for the approval result before logging in.' };
         document.getElementById('registrationNote').textContent = messages[role] || messages.buyer;
     };
     const updateRole = role => {
@@ -85,7 +190,7 @@ if (registerForm && registerConfig) {
         document.querySelectorAll('#sellerFields input, #sellerFields select').forEach(element => { if (element.id !== 'provider_type') element.required = ['seller', 'logistics'].includes(role); });
         document.querySelectorAll('#courierFields input, #courierFields select').forEach(element => { element.required = role === 'courier'; });
         document.getElementById('provider_type').required = role === 'logistics';
-        updateProviderFields(); updateRegistrationNote(role);
+        updateProviderFields(); updateRegistrationNote(role); emailOtp.toggle(role);
     };
     roleBtns.forEach(button => button.addEventListener('click', () => { const role = button.querySelector('input').value; button.querySelector('input').checked = true; updateRole(role); }));
     document.getElementById('provider_type').addEventListener('change', updateProviderFields);
@@ -95,9 +200,22 @@ if (registerForm && registerConfig) {
         passwordMeter.classList.toggle('visible', password.length > 0);
         passwordMeterBar.style.width = ['0%', '25%', '50%', '75%', '100%'][score];
         passwordMeterBar.style.background = ['#d9534f', '#d9534f', '#d99a3d', '#79a85b', '#4c7a5e'][score];
-        passwordHint.textContent = ['', 'Use at least 8 characters.', 'Add upper and lowercase letters.', 'Add a number.', 'Strong password.'][score];
+        const missing = [
+            [password.length >= 8, '8+ characters'],
+            [/[A-Z]/.test(password), 'an uppercase letter'],
+            [/[a-z]/.test(password), 'a lowercase letter'],
+            [/\d/.test(password), 'a number'],
+            [/[^A-Za-z0-9]/.test(password), 'a special character'],
+        ].filter(([ok]) => !ok).map(([, label]) => label);
+        passwordHint.textContent = password.length === 0 ? '' : (missing.length ? 'Still needs: ' + missing.join(', ') + '.' : 'Strong password.');
     });
-    registerForm.addEventListener('submit', () => { submitButton.classList.add('is-submitting'); submitButton.textContent = 'Submitting...'; });
+    // Block repeat clicks so only one registration (and one verification email) is sent.
+    registerForm.addEventListener('submit', event => {
+        if (registerForm.dataset.submitting === 'true') { event.preventDefault(); return; }
+        registerForm.dataset.submitting = 'true';
+        submitButton.classList.add('is-submitting'); submitButton.textContent = 'Submitting...';
+        setTimeout(() => { submitButton.disabled = true; }, 0);
+    });
     updateRole(registerConfig.dataset.role);
 
     document.getElementById('birthday').addEventListener('change', function () { const dob = new Date(this.value); const today = new Date(); let age = today.getFullYear() - dob.getFullYear(); const month = today.getMonth() - dob.getMonth(); if (month < 0 || (month === 0 && today.getDate() < dob.getDate())) age--; document.getElementById('age').value = age >= 0 ? age : ''; });

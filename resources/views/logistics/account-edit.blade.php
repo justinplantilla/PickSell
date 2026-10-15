@@ -123,6 +123,21 @@
     </div>
 
     <div>
+        @if($user->assignedHub)
+        <div class="card logistics-details-card">
+            <div class="card-header"><span class="card-title">Hub Assignment</span></div>
+            <div class="card-body account-details-list">
+                <div><span>Role</span><strong>{{ $user->assignedHub->isProvinceHub() ? 'Province Hub Operator' : 'Station Hub Operator' }}</strong></div>
+                <div><span>Hub</span><strong>{{ $user->assignedHub->name }}</strong></div>
+                @if($user->assignedHub->parent)
+                    <div><span>Province Hub</span><strong>{{ $user->assignedHub->parent->name }}</strong></div>
+                @endif
+                <div><span>Portal</span><strong><a class="portal-link" href="{{ $user->assignedHub->portalUrl() }}">{{ $user->assignedHub->portalHost() }}</a></strong></div>
+                <div><span>Account Status</span><strong>{{ ucfirst($user->status) }}</strong></div>
+            </div>
+        </div>
+        <p class="account-danger-copy">Operator accounts are managed by your logistics company. Ask them to deactivate or reassign this account.</p>
+        @else
         <div class="card logistics-details-card">
             <div class="card-header"><span class="card-title">Logistics Details</span></div>
             <div class="card-body account-details-list">
@@ -147,6 +162,7 @@
                 </form>
             </div>
         </div>
+        @endif
     </div>
 </div>
 @endsection

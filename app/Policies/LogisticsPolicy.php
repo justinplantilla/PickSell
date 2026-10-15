@@ -61,7 +61,7 @@ class LogisticsPolicy
     private function canOperate(User $user, Order $order, string $permission): bool
     {
         if ($user->role === 'logistics') {
-            return $user->isApproved() && $order->logistics_id === $user->id;
+            return $user->isApproved() && (int) $order->logistics_id === $user->logisticsCompanyId();
         }
 
         return $user->hasPermission($permission);

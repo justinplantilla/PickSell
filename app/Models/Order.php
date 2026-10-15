@@ -17,6 +17,7 @@ class Order extends Model
         'picked_up',
         'at_sorting_center',
         'sorted',
+        'in_transit',
         'assigned_to_rider',
         'out_for_delivery',
         'delivered',
@@ -28,7 +29,8 @@ class Order extends Model
 
     protected $fillable = [
         'order_number', 'product_id', 'buyer_id', 'seller_id', 'logistics_id', 'courier_id',
-        'origin_branch_id', 'destination_branch_id', 'destination_barangay_id',
+        'origin_branch_id', 'destination_branch_id', 'origin_hub_id', 'destination_hub_id', 'destination_barangay_id',
+        'linehaul_dispatched_at', 'destination_hub_received_at',
         'product_name', 'quantity', 'amount', 'commission', 'commission_rate', 'status',
         'waybill_number', 'tracking_status',
         'packed_at', 'handed_over_at', 'delivered_at', 'confirmed_by_seller_at', 'assigned_at',
@@ -53,6 +55,8 @@ class Order extends Model
         'assigned_to_rider_at' => 'datetime',
         'out_for_delivery_at' => 'datetime',
         'completed_at' => 'datetime',
+        'linehaul_dispatched_at' => 'datetime',
+        'destination_hub_received_at' => 'datetime',
     ];
 
     /** Context for the next status change (not persisted on orders); see OrderLifecycleService. */
@@ -86,8 +90,15 @@ class Order extends Model
         static::updated(function (Order $order): void {
             $statusChanged = $order->wasChanged('status');
             $courierChanged = $order->wasChanged('courier_id');
+            $routeChanged = $order->wasChanged([
+                'origin_branch_id',
+                'destination_branch_id',
+                'origin_hub_id',
+                'destination_hub_id',
+                'destination_barangay_id',
+            ]);
 
-            if ($statusChanged || $courierChanged) {
+            if ($statusChanged || $courierChanged || $routeChanged) {
                 app(DeliveryDomainSynchronizer::class)->syncOrderUpdate(
                     $order,
                     $order->getOriginal('status'),
@@ -176,6 +187,30 @@ class Order extends Model
     public function destinationBranch()
     {
         return $this->belongsTo(LogisticsBranch::class, 'destination_branch_id');
+    }
+
+    public function originHub()
+    {
+        return $this->belongsTo(LogisticsBranch::class, 'origin_hub_id');
+    }
+
+    public function destinationHub()
+    {
+        return $this->belongsTo(LogisticsBranch::class, 'destination_hub_id');
+    }
+
+    /** Inter-province parcels travel origin province hub → destination province hub before last-mile delivery. */
+    public function requiresLinehaul(): bool
+    {
+        return $this->origin_hub_id
+            && $this->destination_hub_id
+            && (int) $this->origin_hub_id !== (int) $this->destination_hub_id;
+    }
+
+    /** Still waiting to be received at its destination province hub before a rider can be assigned. */
+    public function awaitingLinehaul(): bool
+    {
+        return $this->requiresLinehaul() && ! $this->destination_hub_received_at;
     }
 
     public function destinationBarangay()

@@ -25,7 +25,7 @@ class AdminOrderController extends Controller
 {
     public const STAGES = [
         'fulfillment' => ['label' => 'Seller fulfillment', 'statuses' => ['placed', 'confirmed', 'preparing', 'ready_for_pickup']],
-        'logistics' => ['label' => 'In logistics', 'statuses' => ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery']],
+        'logistics' => ['label' => 'In logistics', 'statuses' => ['picked_up', 'at_sorting_center', 'sorted', 'in_transit', 'assigned_to_rider', 'out_for_delivery']],
         'delivered' => ['label' => 'Delivered', 'statuses' => ['delivered', 'completed']],
         'exceptions' => ['label' => 'Exceptions', 'statuses' => ['delivery_failed', 'returned', 'cancelled']],
     ];

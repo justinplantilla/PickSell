@@ -65,6 +65,22 @@ class OrderCancellationTest extends TestCase
         $this->assertSame(0, OrderStatusHistory::where('to_status', 'cancelled')->count());
     }
 
+    public function test_buyer_can_rate_a_cancelled_order_from_its_tracking_page(): void
+    {
+        [$buyer, $seller] = $this->participants();
+        $order = $this->order($buyer, $seller, 'cancelled', 'CANCEL-FEEDBACK');
+
+        $this->actingAs($buyer)
+            ->get(route('buyer.orders.tracking', $order))
+            ->assertOk()
+            ->assertSee(route('buyer.feedback', $order), false);
+
+        $this->post(route('buyer.feedback', $order), ['rating' => 4, 'feedback' => 'Seller cancelled quickly.'])
+            ->assertRedirect();
+
+        $this->assertSame(4, (int) $order->fresh()->rating);
+    }
+
     private function participants(): array
     {
         return [

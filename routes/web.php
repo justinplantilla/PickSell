@@ -2,6 +2,8 @@
 
 use App\Auth\Permission;
 use App\Http\Controllers\AdminAccountController;
+use App\Http\Controllers\ProvinceHubController;
+use App\Http\Controllers\StationHubController;
 use App\Http\Controllers\AdminAnalyticsController;
 use App\Http\Controllers\AdminAuditLogController;
 use App\Http\Controllers\AdminChatController;
@@ -32,16 +34,20 @@ use App\Http\Controllers\SellerReturnRequestController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\BuyerMiddleware;
 use App\Http\Middleware\CourierMiddleware;
+use App\Http\Middleware\EnsureCompanyLogisticsPortal;
 use App\Http\Middleware\LogisticsMiddleware;
+use App\Http\Middleware\ResolveHubContext;
 use App\Http\Middleware\SellerMiddleware;
 use App\Models\Product;
+use App\Support\LogisticsDomains;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 
 Route::get('/', function () {
-    if (request()->getHost() === 'logistics.pick-sell.shop') {
-        return redirect()->route('logistics.dashboard');
+    if (LogisticsDomains::isLogisticsHost(request()->getHost())) {
+        // Every logistics portal (company, province hub, station hub) serves its own /logistics/dashboard.
+        return redirect('/logistics/dashboard');
     }
 
     if (! Schema::hasTable('products')) {
@@ -101,6 +107,8 @@ Route::get('/shop', function (Request $request) {
 })->name('shop');
 Route::get('/about', fn () => view('pages.about'))->name('about');
 Route::get('/contact', fn () => view('pages.contact'))->name('contact');
+Route::get('/terms', fn () => view('pages.terms'))->name('terms');
+Route::get('/privacy', fn () => view('pages.privacy'))->name('privacy');
 Route::post('/contact', fn () => back()->with('success', 'Message sent!'))->name('contact.send');
 
 Route::middleware('guest')->group(function () {
@@ -108,6 +116,8 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/register/email-code', [AuthController::class, 'sendRegistrationCode'])->middleware('throttle:6,1')->name('register.email-code');
+    Route::post('/register/email-code/verify', [AuthController::class, 'verifyRegistrationCode'])->middleware('throttle:20,1')->name('register.email-code.verify');
     Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request');
     Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email');
     Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword'])->name('password.reset');
@@ -128,32 +138,58 @@ Route::middleware('auth')->group(function () {
     }));
 });
 
+// Province Hub Portal (e.g. hub-cebu.pick-sell.shop)
+Route::middleware(['auth', LogisticsMiddleware::class, ResolveHubContext::class])
+    ->domain(LogisticsDomains::routeDomain('province_hub'))
+    ->prefix('logistics')
+    ->group(function () {
+        Route::get('/dashboard', [ProvinceHubController::class, 'dashboard'])->name('province-hub.dashboard');
+        Route::get('/parcels', [ProvinceHubController::class, 'parcels'])->name('province-hub.parcels');
+        Route::patch('/parcels/{order}/receive-linehaul', [ProvinceHubController::class, 'receiveLinehaul'])->name('province-hub.receive-linehaul');
+        Route::patch('/parcels/{order}/dispatch-linehaul', [ProvinceHubController::class, 'dispatchLinehaul'])->name('province-hub.dispatch-linehaul');
+        Route::get('/stations', [ProvinceHubController::class, 'stationHubs'])->name('province-hub.stations');
+        Route::post('/stations', [ProvinceHubController::class, 'storeStationHub'])->name('province-hub.stations.store');
+        Route::patch('/stations/{branch}/status', [ProvinceHubController::class, 'updateStationStatus'])->name('province-hub.stations.status');
+        Route::get('/account', [LogisticsController::class, 'account'])->name('province-hub.account');
+        Route::patch('/account', [LogisticsController::class, 'updateAccount'])->name('province-hub.account.update');
+        Route::patch('/account/password', [LogisticsController::class, 'updatePassword'])->name('province-hub.account.password');
+    });
+
+// Station Hub Portal (e.g. station-mandaue.pick-sell.shop)
+Route::middleware(['auth', LogisticsMiddleware::class, ResolveHubContext::class])
+    ->domain(LogisticsDomains::routeDomain('station_hub'))
+    ->prefix('logistics')
+    ->group(function () {
+        Route::get('/dashboard', [StationHubController::class, 'dashboard'])->name('station-hub.dashboard');
+        Route::get('/parcels', [StationHubController::class, 'parcels'])->name('station-hub.parcels');
+        Route::get('/riders', [StationHubController::class, 'riders'])->name('station-hub.riders');
+        Route::post('/riders', [StationHubController::class, 'assignRider'])->name('station-hub.riders.assign');
+        Route::patch('/riders/{user}/status', [StationHubController::class, 'updateRiderStatus'])->name('station-hub.riders.status');
+        Route::get('/applications', [StationHubController::class, 'applications'])->name('station-hub.applications');
+        Route::patch('/applications/{user}/approve', [StationHubController::class, 'approveApplication'])->name('station-hub.applications.approve');
+        Route::patch('/applications/{user}/disapprove', [StationHubController::class, 'disapproveApplication'])->name('station-hub.applications.disapprove');
+        Route::post('/barangays/import', [StationHubController::class, 'importBarangays'])->name('station-hub.barangays.import');
+        Route::patch('/parcels/{order}/approve-pickup', [StationHubController::class, 'approvePickup'])->name('station-hub.approve-pickup');
+        Route::patch('/parcels/{order}/scan', [StationHubController::class, 'scanParcel'])->name('station-hub.scan');
+        Route::patch('/parcels/{order}/sort', [StationHubController::class, 'sortParcel'])->name('station-hub.sort');
+        Route::patch('/parcels/{order}/assign', [StationHubController::class, 'assignCourier'])->name('station-hub.assign');
+        Route::patch('/parcels/{order}/mark-returned', [StationHubController::class, 'markReturned'])->name('station-hub.mark-returned');
+        Route::post('/parcels/{order}/exceptions', [StationHubController::class, 'openException'])->name('station-hub.exceptions.store');
+        Route::patch('/exceptions/{exception}/resolve', [StationHubController::class, 'resolveException'])->name('station-hub.exceptions.resolve');
+        Route::get('/account', [LogisticsController::class, 'account'])->name('station-hub.account');
+        Route::patch('/account', [LogisticsController::class, 'updateAccount'])->name('station-hub.account.update');
+        Route::patch('/account/password', [LogisticsController::class, 'updatePassword'])->name('station-hub.account.password');
+    });
+
 // Logistics / Sorting Center Staff Routes
-Route::middleware(['auth', LogisticsMiddleware::class])->prefix('logistics')->group(function () {
+Route::middleware(['auth', LogisticsMiddleware::class, ResolveHubContext::class, EnsureCompanyLogisticsPortal::class])->prefix('logistics')->group(function () {
     Route::get('/dashboard', [LogisticsController::class, 'dashboard'])->name('logistics.dashboard');
     Route::get('/branches', [LogisticsController::class, 'branches'])->name('logistics.branches');
     Route::post('/branches', [LogisticsController::class, 'storeBranch'])->name('logistics.branches.store');
     Route::get('/branches/{branch}/edit', [LogisticsController::class, 'editBranch'])->name('logistics.branches.edit');
     Route::put('/branches/{branch}', [LogisticsController::class, 'updateBranch'])->name('logistics.branches.update');
-    Route::get('/coverage', [LogisticsController::class, 'module'])->defaults('module', 'coverage')->name('logistics.coverage');
-    Route::get('/assignments', [LogisticsController::class, 'module'])->defaults('module', 'assignments')->name('logistics.assignments');
-    Route::get('/applications', [LogisticsController::class, 'applications'])->name('logistics.applications');
-    Route::patch('/applications/{user}/approve', [LogisticsController::class, 'approveCourier'])->name('logistics.applications.approve');
-    Route::patch('/applications/{user}/disapprove', [LogisticsController::class, 'disapproveCourier'])->name('logistics.applications.disapprove');
-    Route::patch('/riders/{user}/status', [LogisticsController::class, 'updateRiderStatus'])->name('logistics.riders.status');
-    Route::get('/parcels', [LogisticsController::class, 'parcels'])->name('logistics.parcels');
-    Route::patch('/parcels/{order}/approve-pickup', [LogisticsController::class, 'approvePickup'])->name('logistics.parcels.approve-pickup');
-    Route::patch('/parcels/{order}/scan', [LogisticsController::class, 'scanParcel'])->name('logistics.parcels.scan');
-    Route::patch('/parcels/{order}/sort', [LogisticsController::class, 'sortParcel'])->name('logistics.parcels.sort');
-    Route::patch('/parcels/{order}/assign', [LogisticsController::class, 'assignCourier'])->name('logistics.parcels.assign');
-    Route::patch('/parcels/{order}/mark-returned', [LogisticsController::class, 'markReturned'])->name('logistics.parcels.returned');
-    Route::post('/parcels/{order}/exceptions', [LogisticsController::class, 'openException'])->name('logistics.parcels.exceptions.store');
-    Route::patch('/exceptions/{exception}/resolve', [LogisticsController::class, 'resolveException'])->name('logistics.exceptions.resolve');
-    Route::get('/tracking', [LogisticsController::class, 'module'])->defaults('module', 'tracking')->name('logistics.tracking');
-    Route::get('/riders', [LogisticsController::class, 'module'])->defaults('module', 'riders')->name('logistics.riders');
     Route::get('/reports/deliveries', [LogisticsController::class, 'deliveryReports'])->name('logistics.reports.deliveries');
     Route::get('/reports/deliveries/export', [LogisticsController::class, 'exportDeliveryReports'])->name('logistics.reports.deliveries.export');
-    Route::get('/reports/branches', [LogisticsController::class, 'module'])->defaults('module', 'branch-reports')->name('logistics.reports.branches');
     Route::get('/complaints', [LogisticsController::class, 'module'])->defaults('module', 'complaints')->name('logistics.complaints');
     Route::get('/messages', [LogisticsController::class, 'messages'])->name('logistics.messages');
     Route::post('/messages/send', [LogisticsController::class, 'sendMessage'])->name('logistics.messages.send');

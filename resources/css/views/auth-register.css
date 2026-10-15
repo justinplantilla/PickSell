@@ -189,3 +189,25 @@
         .auth-card { padding-inline: 0.8rem; }
         .auth-title { font-size: 1.15rem; }
     }
+
+.field-hint { display:block; margin-top:.3rem; color:#8a8378; font-size:.74rem; }
+.confirm-group .field-error { margin-left:1.7rem; }
+.confirm-row a { color:var(--coral); font-weight:600; text-decoration:underline; }
+
+/* Email OTP on the Account step */
+.email-otp { margin:-.35rem 0 1rem;padding:.85rem 1rem;border:1px solid #eadfd2;border-radius:10px;background:#fffaf6; }
+.email-otp-intro { margin:0 0 .65rem;color:#6f685e;font-size:.8rem;line-height:1.45; }
+.email-otp-row { display:flex;gap:.5rem;flex-wrap:wrap;align-items:center; }
+.email-otp-entry { display:flex;gap:.5rem;flex:1 1 220px; }
+.email-otp-entry[hidden] { display:none; }
+.email-otp-entry input { flex:1;min-width:0;letter-spacing:.35em;text-align:center;font-family:ui-monospace,Consolas,monospace;font-size:1.05rem; }
+.otp-button { border:1px solid var(--coral);background:#fff;color:var(--coral);border-radius:8px;padding:.55rem .9rem;font-weight:700;font-size:.82rem;cursor:pointer;white-space:nowrap; }
+.otp-button--primary { background:var(--coral);color:#fff; }
+.otp-button:disabled { opacity:.55;cursor:not-allowed; }
+.email-otp-status { margin-top:.5rem;font-size:.8rem;min-height:1.1em;color:#6f685e; }
+.email-otp-status.is-error { color:#b91c1c; }
+.email-otp-status.is-success { color:#15803d;font-weight:700; }
+.email-otp.is-verified { border-color:#bbf7d0;background:#f0fdf4; }
+body.dark .email-otp { background:#1f1a17;border-color:#3a302a; }
+body.dark .email-otp.is-verified { background:#0f2a1a;border-color:#166534; }
+body.dark .otp-button { background:transparent; }

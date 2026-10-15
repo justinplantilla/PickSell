@@ -22,14 +22,14 @@ class AdminDashboardService
 
     public const IN_PROGRESS_STATUSES = [
         'placed', 'confirmed', 'preparing', 'ready_for_pickup',
-        'picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery',
+        'picked_up', 'at_sorting_center', 'sorted', 'in_transit', 'assigned_to_rider', 'out_for_delivery',
     ];
 
     /** Lifecycle strip: stage => statuses (order follows the marketplace lifecycle). */
     public const LIFECYCLE = [
         'placed' => ['label' => 'Placed', 'statuses' => ['placed', 'confirmed']],
         'preparing' => ['label' => 'Preparing', 'statuses' => ['preparing', 'ready_for_pickup']],
-        'sorting' => ['label' => 'Sorting', 'statuses' => ['picked_up', 'at_sorting_center', 'sorted']],
+        'sorting' => ['label' => 'Sorting', 'statuses' => ['picked_up', 'at_sorting_center', 'sorted', 'in_transit']],
         'delivery' => ['label' => 'Delivery', 'statuses' => ['assigned_to_rider', 'out_for_delivery']],
         'awaiting_confirmation' => ['label' => 'Awaiting buyer', 'statuses' => ['delivered']],
     ];

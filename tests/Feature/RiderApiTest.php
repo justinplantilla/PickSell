@@ -19,10 +19,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\InteractsWithLogisticsHubs;
 use Tests\TestCase;
 
 class RiderApiTest extends TestCase
 {
+    use InteractsWithLogisticsHubs;
     use RefreshDatabase;
 
     private User $rider;
@@ -277,7 +279,10 @@ class RiderApiTest extends TestCase
     public function test_fourth_failed_delivery_attempt_goes_to_sender_and_logistics_confirms_return(): void
     {
         $assignment = $this->assignedDelivery();
-        $assignment->delivery->order->update(['logistics_id' => $this->user('logistics', 'logistics')->id]);
+        $company = $this->user('logistics', 'logistics');
+        $municipality = Municipality::create(['province' => 'Metro Manila', 'name' => 'Pasig']);
+        $station = $this->createStationHub($this->createProvinceHub($company, $municipality, 'metro-manila'), $municipality, 'pasig');
+        $assignment->delivery->order->update(['logistics_id' => $company->id, 'destination_branch_id' => $station->id]);
         $token = $this->riderToken();
         $accepted = $this->withToken($token)
             ->postJson("/api/v1/rider/assignments/{$assignment->id}/respond", ['action' => 'accept']);
@@ -304,9 +309,8 @@ class RiderApiTest extends TestCase
             }
         }
 
-        $logistics = User::where('role', 'logistics')->sole();
-        $this->actingAs($logistics)
-            ->patch(route('logistics.parcels.returned', $assignment->delivery->order))
+        $this->actingAs($this->createHubOperator($station))
+            ->patch($this->stationRoute($station, 'station-hub.mark-returned', ['order' => $assignment->delivery->order]))
             ->assertRedirect()
             ->assertSessionHas('success');
 

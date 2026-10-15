@@ -10,31 +10,35 @@ use Illuminate\Database\Eloquent\Collection;
 
 class LogisticsRoutingService
 {
-    public function branchForUser(?User $user): ?LogisticsBranch
+    public function branchForUser(?User $user, ?int $logisticsId = null): ?LogisticsBranch
     {
         if (!$user) return null;
 
         if ($user->municipality_id) {
             return LogisticsBranch::where('municipality_id', $user->municipality_id)
-                ->where('status', 'active')->first();
+                ->when($logisticsId, fn ($query) => $query->where('logistics_id', $logisticsId))
+                ->where('hub_type', 'station_hub')
+                ->where('status', 'active')->orderBy('id')->first();
         }
 
         if (!$user->municipality || !$user->province) return null;
 
         return LogisticsBranch::where('status', 'active')
+            ->when($logisticsId, fn ($query) => $query->where('logistics_id', $logisticsId))
+            ->where('hub_type', 'station_hub')
             ->whereHas('municipality', function ($query) use ($user) {
                 $query->whereRaw('LOWER(name) = ?', [mb_strtolower(trim($user->municipality))])
                     ->whereRaw('LOWER(province) = ?', [mb_strtolower(trim($user->province))]);
             })->first();
     }
 
-    public function barangayForUser(?User $user): ?Barangay
+    public function barangayForUser(?User $user, ?int $logisticsId = null): ?Barangay
     {
         if (!$user) return null;
 
         if ($user->barangay_id) return Barangay::find($user->barangay_id);
 
-        $branch = $this->branchForUser($user);
+        $branch = $this->branchForUser($user, $logisticsId);
         if (!$branch || !$user->barangay) return null;
 
         return Barangay::where('municipality_id', $branch->municipality_id)
@@ -43,13 +47,16 @@ class LogisticsRoutingService
 
     public function routeOrder(Order $order, ?User $seller, ?User $buyer): void
     {
-        $origin = $this->branchForUser($seller);
-        $destination = $this->branchForUser($buyer);
-        $barangay = $this->barangayForUser($buyer);
+        $logisticsId = (int) $order->logistics_id;
+        $origin = $this->branchForUser($seller, $logisticsId);
+        $destination = $this->branchForUser($buyer, $logisticsId);
+        $barangay = $this->barangayForUser($buyer, $logisticsId);
 
         $order->update([
             'origin_branch_id' => $origin?->id,
             'destination_branch_id' => $destination?->id,
+            'origin_hub_id' => $origin?->parent_id,
+            'destination_hub_id' => $destination?->parent_id,
             'destination_barangay_id' => $barangay?->id,
         ]);
     }

@@ -95,7 +95,7 @@
                 </div>
             </form>
         @elseif($user->status === 'pending' && $user->role === 'courier')
-            <div class="card-body"><p>Courier applications are reviewed in the Logistics portal.</p></div>
+            <div class="card-body"><p>Courier applications are reviewed in the Logistics portal. The station hub for the applicant's town ({{ $user->municipality ?? 'not set' }}, {{ $user->province ?? 'not set' }}) approves or disapproves them under Rider Applications.</p></div>
         @elseif($user->status === 'pending')
             <div class="card-body"><p>This application is pending. Deciding it requires the registrations management permission.</p></div>
         @elseif($latest)

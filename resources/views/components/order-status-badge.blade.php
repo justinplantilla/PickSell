@@ -3,6 +3,7 @@
 @php
     $label = match ($status) {
         'at_sorting_center' => 'At sorting center',
+        'in_transit' => 'In transit to province hub',
         'assigned_to_rider' => 'Assigned to rider',
         'delivery_failed' => 'Delivery failed',
         'out_for_delivery' => 'Out for delivery',
@@ -13,7 +14,7 @@
 
     $tone = match ($status) {
         'pending', 'placed', 'confirmed', 'preparing', 'processing', 'ready_for_pickup' => 'processing',
-        'picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'shipped' => 'shipped',
+        'picked_up', 'at_sorting_center', 'sorted', 'in_transit', 'assigned_to_rider', 'out_for_delivery', 'shipped' => 'shipped',
         'delivered', 'completed' => 'completed',
         'cancelled', 'delivery_failed', 'returned', 'refunded' => 'cancelled',
         default => 'neutral',
