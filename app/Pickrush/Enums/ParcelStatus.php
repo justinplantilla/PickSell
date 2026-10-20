@@ -58,7 +58,7 @@ enum ParcelStatus: string
     /** The parcel is sitting inside a hub (can be scanned out, sorted or dispatched). */
     public function isAtHub(): bool
     {
-        return in_array($this, [self::AtOriginHub, self::AtProvinceHub, self::ArrivedAtStation, self::DeliveryFailed, self::OnHold], true);
+        return in_array($this, [self::AtOriginHub, self::AtProvinceHub, self::ArrivedAtStation, self::DeliveryFailed, self::OnHold, self::ReturningToSender], true);
     }
 
     public function label(): string

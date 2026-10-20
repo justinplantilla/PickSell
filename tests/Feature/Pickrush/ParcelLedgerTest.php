@@ -39,7 +39,7 @@ class ParcelLedgerTest extends TestCase
             'consignee_name' => 'Maria Santos', 'consignee_mobile' => '09171234567',
             'delivery_address' => '45A Bagong Pag-asa, Quezon City',
             'delivery_barangay_code' => '137404001', 'delivery_municipality_code' => '137404000',
-            'payment_type' => 'cod', 'cod_amount' => 1200,
+            'cod_amount' => 1200,
         ], $overrides));
     }
 

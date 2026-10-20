@@ -53,7 +53,6 @@ class PicksellBridge
             'delivery_barangay_code' => $delivery['barangay_code'],
             'delivery_municipality_code' => $delivery['municipality_code'],
             'item_description' => "{$order->product_name} × {$order->quantity}",
-            'payment_type' => 'cod',                     // Picksell checkout is cash on delivery
             'cod_amount' => $order->amount,
         ], Actor::picksell());
     }

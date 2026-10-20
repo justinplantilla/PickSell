@@ -68,7 +68,7 @@ class Hub extends Model
 
     /**
      * What still stops this hub from operating. Every hub is active; readiness tells HQ
-     * which ones still need people. Zones and riders join the check with the station portal.
+     * which ones still need people. A station also needs a zone and an approved rider.
      *
      * @return list<string>
      */
@@ -77,6 +77,14 @@ class Hub extends Model
         $gaps = [];
         if (! $this->staff()->where('role', StaffRole::HubManager)->where('is_active', true)->where('is_sample', false)->exists()) {
             $gaps[] = 'No active hub manager';
+        }
+        if ($this->isStation()) {
+            if (! Zone::withoutGlobalScopes()->where('station_hub_id', $this->id)->exists()) {
+                $gaps[] = 'No delivery zone set up';
+            }
+            if (! Rider::withoutGlobalScopes()->where('station_hub_id', $this->id)->where('status', 'active')->exists()) {
+                $gaps[] = 'No approved rider';
+            }
         }
 
         return $gaps;

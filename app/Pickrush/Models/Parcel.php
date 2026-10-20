@@ -56,6 +56,22 @@ class Parcel extends Model
         return $this->belongsTo(Hub::class, 'next_hub_id');
     }
 
+    public function assignments()
+    {
+        return $this->hasMany(Assignment::class)->latest('id');
+    }
+
+    public function openAssignment()
+    {
+        return $this->hasOne(Assignment::class)->whereIn('status', Assignment::OPEN)->latestOfMany();
+    }
+
+    /** Where the rider takes it: the buyer, or the seller when it is coming back. */
+    public function dropOffBarangayCode(): ?string
+    {
+        return $this->is_return ? $this->pickup_barangay_code : $this->delivery_barangay_code;
+    }
+
     public function getRouteKeyName(): string
     {
         return 'tracking_no';

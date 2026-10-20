@@ -15,6 +15,9 @@ class DashboardController extends Controller
     public function __invoke()
     {
         $staff = Actor::staff();
+        if ($staff->hub?->isStation()) {
+            return redirect()->route('pickrush.station.dashboard');
+        }
         $parcels = Parcel::query();   // already limited to the viewer's hub by ParcelHubScope
 
         $counts = (clone $parcels)->selectRaw('current_status, count(*) as total')->groupBy('current_status')->pluck('total', 'current_status');

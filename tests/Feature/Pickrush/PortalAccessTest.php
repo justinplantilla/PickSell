@@ -44,7 +44,8 @@ class PortalAccessTest extends TestCase
         $this->assertGuest('web');
         $this->assertNotNull($manager->fresh()->last_login_at);
 
-        $this->get($this->pickrushUrl('/'))->assertOk()->assertSee('Tanauan City Station')->assertSee('Hub manager');
+        $this->get($this->pickrushUrl('/'))->assertRedirect(route('pickrush.station.dashboard'));
+        $this->get(route('pickrush.station.dashboard'))->assertOk()->assertSee('Tanauan City Station')->assertSee('Hub manager');
 
         $this->post($this->pickrushUrl('/logout'))->assertRedirect($this->pickrushUrl('/login'));
         $this->assertGuest('pickrush');
@@ -72,11 +73,11 @@ class PortalAccessTest extends TestCase
     {
         $this->buildNetwork();
         $dispatcher = $this->staff(StaffRole::Dispatcher, $this->station('041029000'));
-        $this->actingAs($dispatcher, 'pickrush')->get($this->pickrushUrl('/'))->assertOk();
+        $this->actingAs($dispatcher, 'pickrush')->get(route('pickrush.station.dashboard'))->assertOk();
 
         $dispatcher->update(['is_active' => false]);
 
-        $this->get($this->pickrushUrl('/'))->assertRedirect($this->pickrushUrl('/login'));
+        $this->get(route('pickrush.station.dashboard'))->assertRedirect($this->pickrushUrl('/login'));
         $this->assertGuest('pickrush');
     }
 

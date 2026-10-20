@@ -59,8 +59,8 @@ class HubNetworkTest extends TestCase
         $samples = Staff::where('is_sample', true)->get();
         $this->assertCount(Hub::count() - 1, $samples, 'hubs that already have a manager are skipped');
         $this->assertTrue($samples->every(fn (Staff $s) => ! $s->is_active && str_ends_with($s->email, '@pickrush.test')));
-        $this->assertSame(['No active hub manager'], $this->station('041029000')->readinessGaps(), 'a sample does not make a hub ready');
-        $this->assertSame([], $real->hub->readinessGaps());
+        $this->assertContains('No active hub manager', $this->station('041029000')->readinessGaps(), 'a sample does not make a hub ready');
+        $this->assertNotContains('No active hub manager', $real->hub->readinessGaps());
 
         $this->artisan('pickrush:purge-samples')->assertSuccessful();
         $this->assertSame(1, Staff::count());

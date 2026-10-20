@@ -104,3 +104,27 @@ h2 { font-size: 1.05rem; }
 .pr-timeline li::before { content: ""; position: absolute; left: -1.55rem; top: .3rem; width: 12px; height: 12px; border-radius: 50%; background: #cbd2dc; }
 .pr-timeline li.is-current::before { background: var(--pr-brand); box-shadow: 0 0 0 3px rgba(232, 89, 12, .2); }
 .pr-timeline time { color: var(--pr-muted); font-size: .82rem; }
+
+/* Scan box */
+.pr-scan { background: var(--pr-surface); border: 2px solid var(--pr-brand); border-radius: var(--pr-radius); padding: 1rem 1.1rem; margin-bottom: 1.25rem; }
+.pr-scan-label { display: block; font-weight: 700; margin-bottom: .5rem; }
+.pr-scan-row { display: flex; gap: .6rem; }
+.pr-scan-input { flex: 1; font-size: 1.15rem; letter-spacing: .05em; padding: .7rem .9rem; }
+
+/* Tabs, inline forms, sections */
+.pr-tabs { display: flex; gap: .3rem; flex-wrap: wrap; margin-bottom: 1rem; border-bottom: 1px solid var(--pr-line); }
+.pr-tabs a { padding: .5rem .8rem; text-decoration: none; color: var(--pr-ink-soft); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.pr-tabs a.is-active { color: var(--pr-brand-dark); border-bottom-color: var(--pr-brand); font-weight: 600; }
+.pr-inline { display: inline-flex; gap: .4rem; align-items: center; flex-wrap: wrap; margin: 0; }
+.pr-section { margin-bottom: 1.25rem; }
+.pr-section > h2 { margin-bottom: .6rem; }
+.pr-form-grid { display: grid; gap: .9rem 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.pr-form-grid .pr-field { margin-bottom: 0; }
+.pr-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; }
+.pr-btn-sm { padding: .3rem .65rem; font-size: .82rem; }
+.pr-btn-danger { background: #fff; color: var(--pr-bad); border-color: #fca5a5; }
+.pr-checklist { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: .3rem .8rem; max-height: 420px; overflow: auto; border: 1px solid var(--pr-line); border-radius: 8px; padding: .75rem; background: #fff; }
+.pr-checklist label { display: flex; gap: .45rem; align-items: flex-start; }
+.pr-checklist small { color: var(--pr-muted); }
+.pr-sticky-bar { position: sticky; bottom: 0; background: var(--pr-surface); border: 1px solid var(--pr-line); border-radius: var(--pr-radius); padding: .75rem 1rem; margin-top: 1rem; display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; box-shadow: 0 -6px 18px rgba(20, 33, 61, .06); }
+.pr-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
