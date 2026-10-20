@@ -208,13 +208,13 @@ class LogisticsController extends Controller
             ->where('logistics_id', $request->user()->id);
         if ($search !== '') {
             $query->where(function ($builder) use ($search) {
-                $builder->where('name', 'like', "%{$search}%")
+                $builder->whereLike('name', "%{$search}%")
                     ->orWhereHas('municipality', fn ($municipality) => $municipality
-                        ->where('name', 'like', "%{$search}%")
-                        ->orWhere('province', 'like', "%{$search}%"))
+                        ->whereLike('name', "%{$search}%")
+                        ->orWhereLike('province', "%{$search}%"))
                     ->orWhereHas('logistics', fn ($manager) => $manager
-                        ->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%"));
+                        ->whereLike('first_name', "%{$search}%")
+                        ->orWhereLike('last_name', "%{$search}%"));
             });
         }
         $branches = $query->with('children')->orderBy('name')->get();

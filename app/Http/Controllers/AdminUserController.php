@@ -172,11 +172,11 @@ class AdminUserController extends Controller
         };
         if ($filters['search'] !== '') {
             $search = $filters['search'];
-            $query->where(fn ($q) => $q->where('first_name', 'like', "%{$search}%")
-                ->orWhere('last_name', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%")
-                ->orWhere('business_name', 'like', "%{$search}%")
-                ->orWhere('contact_no', 'like', "%{$search}%"));
+            $query->where(fn ($q) => $q->whereLike('first_name', "%{$search}%")
+                ->orWhereLike('last_name', "%{$search}%")
+                ->orWhereLike('email', "%{$search}%")
+                ->orWhereLike('business_name', "%{$search}%")
+                ->orWhereLike('contact_no', "%{$search}%"));
         }
 
         return $query;

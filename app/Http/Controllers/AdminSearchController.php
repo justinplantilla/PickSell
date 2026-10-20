@@ -24,27 +24,27 @@ class AdminSearchController extends Controller
             ? User::query()
                 ->whereIn('role', ['buyer', 'seller', 'courier', 'logistics'])
                 ->where(fn ($query) => $query
-                    ->where('first_name', 'like', $like)
-                    ->orWhere('last_name', 'like', $like)
-                    ->orWhere('email', 'like', $like)
-                    ->orWhere('business_name', 'like', $like))
+                    ->whereLike('first_name', $like)
+                    ->orWhereLike('last_name', $like)
+                    ->orWhereLike('email', $like)
+                    ->orWhereLike('business_name', $like))
                 ->latest('id')->limit(10)->get()
             : collect();
 
         $products = $viewer->can(Permission::PRODUCTS_VIEW)
             ? Product::query()->with('seller')
-                ->where(fn ($query) => $query->where('name', 'like', $like)
-                    ->orWhere('category', 'like', $like)
-                    ->orWhereHas('seller', fn ($seller) => $seller->where('business_name', 'like', $like)))
+                ->where(fn ($query) => $query->whereLike('name', $like)
+                    ->orWhereLike('category', $like)
+                    ->orWhereHas('seller', fn ($seller) => $seller->whereLike('business_name', $like)))
                 ->latest('id')->limit(10)->get()
             : collect();
 
         $orders = $viewer->can(Permission::ORDERS_VIEW)
             ? Order::query()->with(['buyer', 'seller'])
                 ->where(fn ($query) => $query
-                    ->where('order_number', 'like', $like)
-                    ->orWhere('waybill_number', 'like', $like)
-                    ->orWhere('product_name', 'like', $like)
+                    ->whereLike('order_number', $like)
+                    ->orWhereLike('waybill_number', $like)
+                    ->orWhereLike('product_name', $like)
                     ->when(ctype_digit($term), fn ($idQuery) => $idQuery->orWhere('id', (int) $term)))
                 ->latest('id')->limit(10)->get()
             : collect();

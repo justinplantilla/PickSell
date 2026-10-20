@@ -318,7 +318,7 @@ class SellerController extends Controller
             $query->where('status', $status);
         }
         if ($search) {
-            $query->where('name', 'like', "%$search%");
+            $query->whereLike('name', "%$search%");
         }
         [$sortColumn, $sortDirection] = $sortOptions[$sort];
         $products = $query->orderBy($sortColumn, $sortDirection)

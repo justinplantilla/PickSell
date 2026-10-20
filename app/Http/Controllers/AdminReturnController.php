@@ -23,7 +23,7 @@ class AdminReturnController extends Controller
             $query->where('status', $status);
         }
         if ($search !== '') {
-            $query->whereHas('order', fn ($q) => $q->where('order_number', 'like', "%{$search}%"));
+            $query->whereHas('order', fn ($q) => $q->whereLike('order_number', "%{$search}%"));
         }
 
         return view('admin.returns.all', [

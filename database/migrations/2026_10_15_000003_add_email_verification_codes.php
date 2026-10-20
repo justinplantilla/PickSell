@@ -12,9 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         // New registrations stay "unverified" until they confirm the one-time code sent to their email.
-        if (DB::getDriverName() === 'mysql') {
-            $this->setUserStatuses([...self::STATUSES, 'unverified']);
-        }
+        $this->setUserStatuses([...self::STATUSES, 'unverified']);
 
         Schema::create('email_verification_codes', function (Blueprint $table) {
             $table->id();
@@ -32,7 +30,7 @@ return new class extends Migration
     {
         Schema::dropIfExists('email_verification_codes');
 
-        if (DB::getDriverName() !== 'mysql') {
+        if (! in_array(DB::getDriverName(), ['mysql', 'mariadb', 'pgsql'], true)) {
             return;
         }
         if (DB::table('users')->where('status', 'unverified')->exists()) {
@@ -44,6 +42,11 @@ return new class extends Migration
     private function setUserStatuses(array $statuses): void
     {
         $list = "'".implode("','", $statuses)."'";
-        DB::statement("ALTER TABLE `users` MODIFY `status` ENUM({$list}) NOT NULL DEFAULT 'pending'");
+
+        match (DB::getDriverName()) {
+            'mysql', 'mariadb' => DB::statement("ALTER TABLE `users` MODIFY `status` ENUM({$list}) NOT NULL DEFAULT 'pending'"),
+            'pgsql' => DB::statement("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_status_check, ADD CONSTRAINT users_status_check CHECK (status IN ({$list}))"),
+            default => null,
+        };
     }
 };

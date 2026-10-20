@@ -123,7 +123,7 @@ class AdminProductController extends Controller
     {
         $query = Product::with(['seller', 'latestStatusModeration'])->latest();
         if ($filters['search'] !== '') {
-            $query->where('name', 'like', '%'.$filters['search'].'%');
+            $query->whereLike('name', '%'.$filters['search'].'%');
         }
         if ($filters['seller']) {
             $query->where('seller_id', $filters['seller']);

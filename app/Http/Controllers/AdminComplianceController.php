@@ -38,9 +38,9 @@ class AdminComplianceController extends Controller
             default => null,
         };
         if ($search !== '') {
-            $query->where(fn ($q) => $q->where('business_name', 'like', "%{$search}%")
-                ->orWhere('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%"));
+            $query->where(fn ($q) => $q->whereLike('business_name', "%{$search}%")
+                ->orWhereLike('first_name', "%{$search}%")->orWhereLike('last_name', "%{$search}%")
+                ->orWhereLike('email', "%{$search}%"));
         }
         // Highest risk first.
         $query->orderByDesc('open_case_weight')->orderByDesc('recent_warnings_count')->orderByDesc('mismatched_products_count')->orderBy('business_name');

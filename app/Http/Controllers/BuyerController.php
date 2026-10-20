@@ -59,7 +59,7 @@ class BuyerController extends Controller
         $query = Product::where('status', 'active')->where('stock', '>', 0)->with('seller');
 
         if ($search) {
-            $query->where('name', 'like', "%$search%");
+            $query->whereLike('name', "%$search%");
         }
         if ($category) {
             $query->where('category', $category);
@@ -144,8 +144,8 @@ class BuyerController extends Controller
 
         if ($search) {
             $query->where(function ($b) use ($search) {
-                $b->where('name', 'like', "%{$search}%")
-                  ->orWhere('category', 'like', "%{$search}%");
+                $b->whereLike('name', "%{$search}%")
+                  ->orWhereLike('category', "%{$search}%");
             });
         }
         if ($category) {
@@ -212,8 +212,8 @@ class BuyerController extends Controller
             ->where('stock', '>', 0)
             ->with('seller')
             ->when($query, fn ($q) => $q->where(function ($b) use ($query) {
-                $b->where('name', 'like', "%{$query}%")
-                  ->orWhere('category', 'like', "%{$query}%");
+                $b->whereLike('name', "%{$query}%")
+                  ->orWhereLike('category', "%{$query}%");
             }))
             ->when($category, fn ($q) => $q->where('category', $category))
             ->latest()

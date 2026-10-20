@@ -26,17 +26,12 @@ return new class extends Migration
 
     public function up(): void
     {
-        if (DB::getDriverName() !== 'mysql') {
-            return;
-        }
-
-        $statuses = "'" . implode("','", [...self::CURRENT_STATUSES, ...self::LEGACY_STATUSES]) . "'";
-        DB::statement("ALTER TABLE `orders` MODIFY `status` ENUM({$statuses}) NOT NULL DEFAULT 'placed'");
+        $this->setStatuses([...self::CURRENT_STATUSES, ...self::LEGACY_STATUSES]);
     }
 
     public function down(): void
     {
-        if (DB::getDriverName() !== 'mysql') {
+        if (! in_array(DB::getDriverName(), ['mysql', 'mariadb', 'pgsql'], true)) {
             return;
         }
 
@@ -44,7 +39,17 @@ return new class extends Migration
             throw new RuntimeException('Cannot remove legacy order statuses while orders still use them.');
         }
 
-        $statuses = "'" . implode("','", self::CURRENT_STATUSES) . "'";
-        DB::statement("ALTER TABLE `orders` MODIFY `status` ENUM({$statuses}) NOT NULL DEFAULT 'placed'");
+        $this->setStatuses(self::CURRENT_STATUSES);
+    }
+
+    private function setStatuses(array $statuses): void
+    {
+        $list = "'" . implode("','", $statuses) . "'";
+
+        match (DB::getDriverName()) {
+            'mysql', 'mariadb' => DB::statement("ALTER TABLE `orders` MODIFY `status` ENUM({$list}) NOT NULL DEFAULT 'placed'"),
+            'pgsql' => DB::statement("ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check, ADD CONSTRAINT orders_status_check CHECK (status IN ({$list}))"),
+            default => null,
+        };
     }
 };

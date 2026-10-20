@@ -30,9 +30,7 @@ return new class extends Migration
 
     public function up(): void
     {
-        if (DB::getDriverName() === 'mysql') {
-            $this->setOrderStatuses(self::STATUSES);
-        }
+        $this->setOrderStatuses(self::STATUSES);
 
         // Databases that ran an earlier version of the hub hierarchy migration never got this column.
         if (! Schema::hasColumn('users', 'assigned_hub_id')) {
@@ -54,7 +52,7 @@ return new class extends Migration
             $table->dropUnique(['assigned_hub_id']);
         });
 
-        if (DB::getDriverName() !== 'mysql') {
+        if (! in_array(DB::getDriverName(), ['mysql', 'mariadb', 'pgsql'], true)) {
             return;
         }
 
@@ -68,6 +66,11 @@ return new class extends Migration
     private function setOrderStatuses(array $statuses): void
     {
         $list = "'".implode("','", $statuses)."'";
-        DB::statement("ALTER TABLE `orders` MODIFY `status` ENUM({$list}) NOT NULL DEFAULT 'placed'");
+
+        match (DB::getDriverName()) {
+            'mysql', 'mariadb' => DB::statement("ALTER TABLE `orders` MODIFY `status` ENUM({$list}) NOT NULL DEFAULT 'placed'"),
+            'pgsql' => DB::statement("ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check, ADD CONSTRAINT orders_status_check CHECK (status IN ({$list}))"),
+            default => null,
+        };
     }
 };

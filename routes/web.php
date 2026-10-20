@@ -72,8 +72,8 @@ Route::get('/shop', function (Request $request) {
     $search = trim((string) $request->get('q', ''));
     if ($search) {
         $query->where(function ($builder) use ($search) {
-            $builder->where('name', 'like', "%{$search}%")
-                ->orWhere('category', 'like', "%{$search}%");
+            $builder->whereLike('name', "%{$search}%")
+                ->orWhereLike('category', "%{$search}%");
         });
     }
     $category = strtolower(trim((string) $request->get('cat', '')));

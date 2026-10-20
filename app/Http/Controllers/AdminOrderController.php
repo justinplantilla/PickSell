@@ -200,9 +200,9 @@ class AdminOrderController extends Controller
         }
         if ($filters['search'] !== '') {
             $search = $filters['search'];
-            $query->where(fn ($q) => $q->where('order_number', 'like', "%{$search}%")
-                ->orWhere('waybill_number', 'like', "%{$search}%")
-                ->orWhere('product_name', 'like', "%{$search}%")
+            $query->where(fn ($q) => $q->whereLike('order_number', "%{$search}%")
+                ->orWhereLike('waybill_number', "%{$search}%")
+                ->orWhereLike('product_name', "%{$search}%")
                 ->when(ctype_digit($search), fn ($byId) => $byId->orWhere('id', (int) $search)));
         }
 

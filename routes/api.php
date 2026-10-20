@@ -66,8 +66,8 @@ Route::get('/search-suggestions', function (Request $request) {
         ->where('status', 'active')
         ->where('stock', '>', 0)
         ->where(function ($builder) use ($query) {
-            $builder->where('name', 'like', "%{$query}%")
-                ->orWhere('category', 'like', "%{$query}%");
+            $builder->whereLike('name', "%{$query}%")
+                ->orWhereLike('category', "%{$query}%");
         })
         ->latest()
         ->take(6)
@@ -82,7 +82,7 @@ Route::get('/search-suggestions', function (Request $request) {
     $categories = Product::query()
         ->where('status', 'active')
         ->where('stock', '>', 0)
-        ->where('category', 'like', "%{$query}%")
+        ->whereLike('category', "%{$query}%")
         ->whereNotNull('category')
         ->distinct()
         ->orderBy('category')
