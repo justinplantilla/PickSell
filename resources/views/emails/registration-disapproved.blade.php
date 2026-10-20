@@ -36,6 +36,10 @@
         <p style="font-size:0.78rem;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Reason</p>
         <div class="reason-box">{{ $reason }}</div>
 
+        @if(in_array($user->role, ['seller', 'logistics'], true))
+        <p style="margin-top:20px;">To fix this, <a href="{{ $user->role === 'logistics' ? \App\Support\LogisticsDomains::url('/login') : url('/login') }}" style="color:#E8472A;text-decoration:none;">log in</a> with your email and password, replace the documents mentioned above and resubmit your application for review.</p>
+        @endif
+
         <p style="margin-top:20px;">If you think this was a mistake or want to re-apply with updated information, feel free to reach out to our support team at <a href="mailto:{{ config('mail.from.address') }}" style="color:#E8472A;text-decoration:none;">{{ config('mail.from.address') }}</a>.</p>
     </div>
     <div class="footer">

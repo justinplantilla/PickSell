@@ -255,7 +255,8 @@ class AdminDashboardTest extends TestCase
     public function test_sidebar_badge_shows_pending_approvals_on_every_admin_page(): void
     {
         $this->user('seller', 'pending');
-        $this->user('logistics', 'pending');
+        $this->user('logistics', 'pending')->forceFill(['email_verified_at' => now()])->save();
+        $this->user('logistics', 'pending'); // still verifying its email, so not yet in the queue
         $this->user('courier', 'pending');
 
         $this->assertSame(2, app(AdminDashboardService::class)->pendingApprovals());

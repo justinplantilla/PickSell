@@ -56,7 +56,7 @@ class AdminDashboardService
             'finance' => $can(Permission::REPORTS_VIEW) || $can(Permission::COMMISSION_VIEW) ? $this->finance() : null,
             'users' => $can(Permission::USERS_VIEW) ? $this->users() : null,
             'pendingApplications' => $can(Permission::REGISTRATIONS_VIEW)
-                ? User::whereIn('role', self::ADMIN_REVIEWED_ROLES)->where('status', 'pending')->oldest()->take(5)->get()
+                ? User::whereIn('role', self::ADMIN_REVIEWED_ROLES)->where('status', 'pending')->readyForReview()->oldest()->take(5)->get()
                 : collect(),
         ];
     }
@@ -70,7 +70,7 @@ class AdminDashboardService
     /** Pending approvals count, also used for the sidebar badge. */
     public function pendingApprovals(): int
     {
-        return User::whereIn('role', self::ADMIN_REVIEWED_ROLES)->where('status', 'pending')->count();
+        return User::whereIn('role', self::ADMIN_REVIEWED_ROLES)->where('status', 'pending')->readyForReview()->count();
     }
 
     private function kpis(User $viewer, $statusCounts, array $exceptions): array

@@ -35,6 +35,10 @@ class AdminRegistrationController extends Controller
         if ($status !== 'all') {
             $query->where('status', $status);
         }
+        if ($status === 'pending') {
+            // Logistics applicants reach the queue only after confirming their email.
+            $query->readyForReview();
+        }
         match ($date) {
             'today' => $query->whereDate('created_at', today()),
             '7d' => $query->where('created_at', '>=', now()->subDays(7)),

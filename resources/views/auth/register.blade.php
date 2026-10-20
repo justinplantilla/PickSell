@@ -19,7 +19,7 @@
         @endif
 
         <form method="POST" action="/register" enctype="multipart/form-data" id="registerForm">
-            <div data-register-config data-role="{{ old('role', $registrationRoles[0]) }}" data-province="{{ old('province') }}" data-municipality="{{ old('municipality') }}" data-barangay="{{ old('barangay') }}" hidden></div>
+            <div data-register-config data-role="{{ old('role', $registrationRoles[0]) }}" data-region="{{ old('region') }}" data-province="{{ old('province') }}" data-municipality="{{ old('municipality') }}" data-barangay="{{ old('barangay') }}" hidden></div>
             @csrf
             <input type="hidden" name="registration_token" value="{{ old('registration_token', $registrationToken) }}">
 
@@ -164,10 +164,17 @@
             {{-- Address --}}
             <div class="form-section">
                 <div class="form-section-title">Address</div>
+                <div class="form-group">
+                    <label>Region <span class="req">*</span></label>
+                    <select name="region" id="region" required>
+                        <option value="">-- Select Region --</option>
+                    </select>
+                    @error('region')<div class="field-error">{{ $message }}</div>@enderror
+                </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label>Province <span class="req">*</span></label>
-                        <select name="province" id="province" required>
+                        <select name="province" id="province" required disabled>
                             <option value="">-- Select Province --</option>
                         </select>
                         @error('province')<div class="field-error">{{ $message }}</div>@enderror
@@ -197,6 +204,11 @@
                     <label>Street / Subdivision <span class="opt">(opt)</span></label>
                     <input type="text" name="street" value="{{ old('street') }}" placeholder="e.g. Rizal St., Sunshine Subd.">
                 </div>
+                <div class="form-group" data-roles="seller logistics">
+                    <label>Postal Code <span class="req">*</span></label>
+                    <input type="text" name="postal_code" value="{{ old('postal_code') }}" placeholder="e.g. 4009" inputmode="numeric" minlength="4" maxlength="4" pattern="\d{4}" title="Enter the 4-digit postal code" data-required>
+                    @error('postal_code')<div class="field-error">{{ $message }}</div>@enderror
+                </div>
             </div>
 
             {{-- Upload ID --}}
@@ -212,27 +224,38 @@
                 </div>
             </div>
 
-            {{-- Seller Fields --}}
+            {{-- Business Fields: each group shows for the roles in data-roles (and, for sellers, the seller types in data-seller-types); its data-required fields are required only while shown. --}}
             <div class="form-section seller-fields" id="sellerFields">
                 <div class="form-section-title">Business Information</div>
-                <div class="form-group provider-type-fields" id="providerTypeFields">
+                <div class="form-group" data-roles="logistics">
                     <label>Provider Type <span class="req">*</span></label>
-                    <select name="provider_type" id="provider_type">
+                    <select name="provider_type" id="provider_type" data-required>
                         <option value="">-- Select Provider Type --</option>
                         <option value="company" {{ old('provider_type') === 'company' ? 'selected' : '' }}>Company Logistics Provider</option>
                         <option value="individual" {{ old('provider_type') === 'individual' ? 'selected' : '' }}>Individual Logistics Provider</option>
                     </select>
                     @error('provider_type')<div class="field-error">{{ $message }}</div>@enderror
                 </div>
+                <div class="form-group" data-roles="seller">
+                    <label>Seller Type <span class="req">*</span></label>
+                    <select name="seller_type" id="seller_type" data-required>
+                        <option value="">-- Select Seller Type --</option>
+                        @foreach(\App\Support\SellerTypes::LABELS as $type => $label)
+                            <option value="{{ $type }}" {{ old('seller_type') === $type ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <small class="field-hint">Individuals upload a government ID only. Sole proprietorships also upload DTI and BIR certificates; corporations upload SEC and BIR certificates.</small>
+                    @error('seller_type')<div class="field-error">{{ $message }}</div>@enderror
+                </div>
                 <div class="form-row">
-                    <div class="form-group">
+                    <div class="form-group" data-roles="seller logistics">
                         <label id="businessNameLabel">Business Name <span class="req">*</span></label>
-                        <input type="text" name="business_name" value="{{ old('business_name') }}" placeholder="e.g. Juan's Store">
+                        <input type="text" name="business_name" value="{{ old('business_name') }}" placeholder="e.g. Juan's Store" data-required>
                         @error('business_name')<div class="field-error">{{ $message }}</div>@enderror
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" data-roles="seller">
                         <label id="businessTypeLabel">Line of Business <span class="req">*</span></label>
-                        <select name="line_of_business" id="line_of_business">
+                        <select name="line_of_business" id="line_of_business" data-required>
                             <option value="">-- Select Category --</option>
                             @foreach(['Electronics','Fashion','Home & Living','Sports','Beauty','Food & Grocery','Books','Toys','Others'] as $cat)
                                 <option value="{{ $cat }}" {{ old('line_of_business') === $cat ? 'selected' : '' }}>{{ $cat }}</option>
@@ -241,14 +264,48 @@
                         @error('line_of_business')<div class="field-error">{{ $message }}</div>@enderror
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Upload Business Permit <span class="req">*</span></label>
+                <div class="form-group" data-roles="logistics" data-provider-types="company">
+                    <label>SEC Registration No. <span class="req">*</span></label>
+                    <input type="text" name="sec_registration_no" value="{{ old('sec_registration_no') }}" placeholder="e.g. CS202012345" maxlength="11" pattern="[A-Za-z]{2}[0-9]{9}" title="2 letters followed by 9 digits, like CS202012345" autocapitalize="characters" data-required>
+                    <small class="field-hint">2 letters followed by 9 digits, as shown on your SEC Certificate.</small>
+                    @error('sec_registration_no')<div class="field-error">{{ $message }}</div>@enderror
+                </div>
+                <div class="form-group" data-roles="seller logistics">
+                    <label>TIN (Tax Identification Number) <span class="req">*</span></label>
+                    <input type="text" name="tin" value="{{ old('tin') }}" placeholder="000-000-000-000" inputmode="numeric" maxlength="15" pattern="\d{3}[\-\s]?\d{3}[\-\s]?\d{3}[\-\s]?\d{3}" title="Enter the 12-digit TIN in the format 000-000-000-000" data-required>
+                    @error('tin')<div class="field-error">{{ $message }}</div>@enderror
+                </div>
+                <div class="form-group" data-roles="logistics" id="serviceAreas">
+                    <label>Service Areas <span class="req">*</span></label>
+                    <div class="service-areas">
+                        @foreach(\App\Support\PhilippineRegions::LABELS as $key => $label)
+                            <label><input type="checkbox" name="service_areas[]" value="{{ $key }}" {{ in_array($key, (array) old('service_areas', []), true) ? 'checked' : '' }}> <span>{{ $label }}</span></label>
+                        @endforeach
+                    </div>
+                    <small class="field-hint">Select every region you deliver to.</small>
+                    <div class="field-error" id="serviceAreasError" hidden>Select at least one service area.</div>
+                    @error('service_areas')<div class="field-error">{{ $message }}</div>@enderror
+                    @error('service_areas.*')<div class="field-error">{{ $message }}</div>@enderror
+                </div>
+                <div class="form-group" data-roles="logistics">
+                    <label>Upload Mayor's / Business Permit <span class="req">*</span></label>
                     <label class="file-upload-label" for="business_permit">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 6v11.5a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10.5a1 1 0 0 1-2 0V6H10v9.5a2.5 2.5 0 0 0 5 0V5a4 4 0 0 0-8 0v12.5a5.5 5.5 0 0 0 11 0V6h-1.5z"/></svg> <span id="business_permit_name">Click to upload (JPG, PNG, PDF — max 5MB)</span>
-                        <input type="file" id="business_permit" name="business_permit" accept=".jpg,.jpeg,.png,.pdf">
+                        <input type="file" id="business_permit" name="business_permit" accept=".jpg,.jpeg,.png,.pdf" data-required>
                     </label>
                     @error('business_permit')<div class="field-error">{{ $message }}</div>@enderror
                 </div>
+                @foreach(\App\Support\SellerTypes::DOCUMENT_LABELS as $document => $label)
+                    {{-- Logistics companies upload the SEC and BIR certificates; individual providers only the BIR certificate. --}}
+                    <div class="form-group" data-roles="seller{{ $document === 'dti_certificate' ? '' : ' logistics' }}" data-seller-types="{{ implode(' ', \App\Support\SellerTypes::typesRequiring($document)) }}" data-provider-types="{{ $document === 'sec_certificate' ? 'company' : 'company individual' }}">
+                        <label>Upload {{ $label }} <span class="req">*</span></label>
+                        <label class="file-upload-label" for="{{ $document }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 6v11.5a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10.5a1 1 0 0 1-2 0V6H10v9.5a2.5 2.5 0 0 0 5 0V5a4 4 0 0 0-8 0v12.5a5.5 5.5 0 0 0 11 0V6h-1.5z"/></svg> <span id="{{ $document }}_name">Click to upload (JPG, PNG, PDF — max 5MB)</span>
+                            <input type="file" id="{{ $document }}" name="{{ $document }}" accept=".jpg,.jpeg,.png,.pdf" data-required>
+                        </label>
+                        @error($document)<div class="field-error">{{ $message }}</div>@enderror
+                    </div>
+                @endforeach
             </div>
 
             {{-- Courier Fields --}}

@@ -15,18 +15,21 @@ class User extends Authenticatable
         'role', 'status', 'provider_type', 'assigned_hub_id',
         'last_name', 'first_name', 'middle_initial', 'sex',
         'email', 'password', 'contact_no', 'birthday', 'age',
-        'province', 'municipality', 'barangay', 'street', 'house_no',
+        'province', 'municipality', 'barangay', 'region', 'street', 'house_no', 'postal_code',
         'municipality_id', 'barangay_id',
         'id_upload',
         // Seller
         'business_name', 'line_of_business', 'business_permit',
+        'seller_type', 'tin', 'dti_certificate', 'sec_certificate', 'bir_certificate',
+        // Logistics provider
+        'sec_registration_no', 'service_areas',
         // Courier
         'vehicle_type', 'plate_number', 'or_cr_upload', 'delivery_area',
     ];
 
     protected $hidden = ['password', 'remember_token'];
 
-    protected $casts = ['birthday' => 'date', 'email_verified_at' => 'datetime'];
+    protected $casts = ['birthday' => 'date', 'email_verified_at' => 'datetime', 'service_areas' => 'array'];
 
     /**
      * Context for the next status change (not persisted on users). Services set these before
@@ -95,6 +98,18 @@ class User extends Authenticatable
     public function isPending(): bool
     {
         return $this->status === 'pending';
+    }
+
+    /** Logistics applicants confirm their email with a one-time code after submitting; until then they are "Unverified". */
+    public function isAwaitingEmailVerification(): bool
+    {
+        return $this->role === 'logistics' && $this->isPending() && $this->email_verified_at === null;
+    }
+
+    /** Applications an admin can review: everything except logistics applicants still verifying their email. */
+    public function scopeReadyForReview($query)
+    {
+        return $query->where(fn ($q) => $q->where('role', '!=', 'logistics')->orWhereNotNull('email_verified_at'));
     }
 
     public function isDeactivated(): bool

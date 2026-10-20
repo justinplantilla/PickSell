@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\EmailVerificationService;
 use App\Support\LogisticsDomains;
+use App\Support\PhilippineRegions;
+use App\Support\SellerTypes;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -18,6 +20,11 @@ use Carbon\Carbon;
 
 class AuthController extends Controller
 {
+    /** Roles whose email is confirmed with a one-time code on the registration form before the account exists. */
+    private const EMAIL_VERIFIED_ROLES = ['buyer', 'seller'];
+
+    private const FILE_RULES = ['file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'];
+
     public function __construct(private EmailVerificationService $verification) {}
 
     public function showLogin()    { return view('auth.login'); }
@@ -44,11 +51,26 @@ class AuthController extends Controller
             return back()->withErrors(['email' => 'Invalid email or password.'])->onlyInput('email');
         }
 
+        if ($user->isAwaitingEmailVerification()) {
+            // Not signed in yet: the applicant first confirms their email with the code sent at registration.
+            $request->session()->put(RegistrationEmailVerificationController::SESSION_KEY, $user->id);
+
+            return redirect()->route('register.verify-email')
+                ->with('warning', 'Verify your email before logging in. Enter the 6-digit code we sent you, or resend a new code.');
+        }
+
         if ($user->isPending()) {
             return back()->withErrors(['email' => 'Your account is still pending approval. Please check your email.'])->onlyInput('email');
         }
 
         if ($user->status === 'disapproved') {
+            if (in_array($user->role, $this->resubmittingRoles($request), true)) {
+                // A rejected seller or logistics provider is not signed in; they may only correct their documents and resubmit.
+                $request->session()->put('resubmission_user_id', $user->id);
+
+                return redirect()->route('registration.resubmit');
+            }
+
             return back()->withErrors(['email' => 'Your registration was disapproved. Please contact support.'])->onlyInput('email');
         }
 
@@ -108,6 +130,10 @@ class AuthController extends Controller
             'contact_no' => $this->normalizeMobile($request->input('contact_no')),
             'first_name' => $this->squish($request->input('first_name')),
             'last_name' => $this->squish($request->input('last_name')),
+            'business_name' => $this->squish($request->input('business_name')),
+            'tin' => $this->normalizeTin($request->input('tin')),
+            'sec_registration_no' => strtoupper(trim((string) $request->input('sec_registration_no'))),
+            'postal_code' => trim((string) $request->input('postal_code')),
         ]);
         $role = $request->input('role', 'buyer');
         $registrationRoles = $this->registrationRoles($request);
@@ -121,8 +147,8 @@ class AuthController extends Controller
             'middle_initial' => ['nullable', 'string', 'max:5', "regex:/^[\\pL.\\s]+$/u"],
             'sex'            => 'required|in:Male,Female',
             'email'          => [...$this->emailRules(), function (string $attribute, $value, $fail) use ($request, $role): void {
-                // Buyers confirm their email with a one-time code on the form's Account step.
-                if ($role === 'buyer' && $request->session()->get('registration_verified_email') !== $value) {
+                // Buyers and sellers confirm their email with a one-time code on the form's Account step.
+                if (in_array($role, self::EMAIL_VERIFIED_ROLES, true) && $request->session()->get('registration_verified_email') !== $value) {
                     $fail('Verify your email with the 6-digit code we send you before submitting.');
                 }
             }],
@@ -146,18 +172,50 @@ class AuthController extends Controller
                     $fail('You must be at least 18 years old to register.');
                 }
             }],
+            'region'         => [$role === 'logistics' ? 'required' : 'nullable', 'string', 'max:100'],
             'province'       => 'required|string',
             'municipality'   => 'required|string',
             'barangay'       => 'required|string',
             'street'         => 'nullable|string|max:255',
             'house_no'       => 'nullable|string|max:100',
-            'id_upload'      => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'postal_code'    => [in_array($role, ['seller', 'logistics'], true) ? 'required' : 'nullable', 'regex:/^\d{4}$/'],
+            'id_upload'      => ['required', ...self::FILE_RULES],
         ];
 
-        if (in_array($role, ['seller', 'logistics'], true)) {
-            $rules['business_name']    = 'required|string|max:255';
+        if ($role === 'seller') {
+            $rules['seller_type']      = ['required', Rule::in(SellerTypes::keys())];
+            $rules['business_name']    = ['required', 'string', 'min:3', 'max:30', function (string $attribute, $value, $fail): void {
+                $taken = User::where('role', 'seller')
+                    ->whereRaw('LOWER(business_name) = ?', [mb_strtolower((string) $value)])
+                    ->exists();
+                if ($taken) {
+                    $fail('This shop name is already taken. Choose a different name.');
+                }
+            }];
             $rules['line_of_business'] = 'required|string|max:255';
-            $rules['business_permit']  = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
+            $rules['tin']              = ['required', 'regex:/^\d{3}-\d{3}-\d{3}-\d{3}$/', Rule::unique('users', 'tin')];
+            foreach (array_keys(SellerTypes::DOCUMENT_LABELS) as $document) {
+                $rules[$document] = ['required_if:seller_type,'.implode(',', SellerTypes::typesRequiring($document)), 'nullable', ...self::FILE_RULES];
+            }
+        }
+
+        if ($role === 'logistics') {
+            $rules['business_name']       = ['required', 'string', 'min:2', 'max:100', function (string $attribute, $value, $fail): void {
+                $taken = User::where('role', 'logistics')
+                    ->whereRaw('LOWER(business_name) = ?', [mb_strtolower((string) $value)])
+                    ->exists();
+                if ($taken) {
+                    $fail('This company name is already registered.');
+                }
+            }];
+            // Companies are registered with the SEC; individual providers have no SEC number or certificate.
+            $rules['sec_registration_no'] = ['required_if:provider_type,company', 'nullable', 'regex:/^[A-Z]{2}\d{9}$/', Rule::unique('users', 'sec_registration_no')];
+            $rules['tin']                 = ['required', 'regex:/^\d{3}-\d{3}-\d{3}-\d{3}$/', Rule::unique('users', 'tin')];
+            $rules['service_areas']       = ['required', 'array', 'min:1'];
+            $rules['service_areas.*']     = ['distinct', Rule::in(PhilippineRegions::keys())];
+            $rules['sec_certificate']     = ['required_if:provider_type,company', 'nullable', ...self::FILE_RULES];
+            $rules['bir_certificate']     = ['required', ...self::FILE_RULES];
+            $rules['business_permit']     = ['required', ...self::FILE_RULES];
         }
 
         if ($role === 'courier') {
@@ -180,6 +238,22 @@ class AuthController extends Controller
             'password.confirmed' => 'The passwords do not match.',
             'terms.accepted' => 'You must accept the Terms of Service and Privacy Policy to register.',
             'confirmed.accepted' => 'Confirm that the information and documents you provided are accurate.',
+            'business_name.min' => $role === 'logistics' ? 'The company name must be at least 2 characters.' : 'The shop name must be at least 3 characters.',
+            'business_name.max' => $role === 'logistics' ? 'The company name may not be longer than 100 characters.' : 'The shop name may not be longer than 30 characters.',
+            'sec_registration_no.required_if' => 'Companies must enter their SEC registration number.',
+            'sec_registration_no.regex' => 'Enter the SEC registration number as 2 letters followed by 9 digits, like CS202012345.',
+            'sec_registration_no.unique' => 'This SEC registration number is already registered to another account.',
+            'service_areas.required' => 'Select at least one service area.',
+            'service_areas.*.in' => 'Select service areas from the list.',
+            'tin.regex' => 'Enter a 12-digit TIN in the format 000-000-000-000.',
+            'tin.unique' => 'This TIN is already registered to another account.',
+            'postal_code.regex' => 'Enter a valid 4-digit postal code.',
+            'dti_certificate.required_if' => 'Sole proprietorships must upload their DTI Certificate.',
+            'sec_certificate.required_if' => $role === 'logistics' ? 'Companies must upload their SEC Certificate.' : 'Corporations must upload their SEC Certificate.',
+            'bir_certificate.required_if' => 'Upload your BIR Certificate of Registration (Form 2303).',
+            'bir_certificate.required' => 'Upload your BIR Certificate of Registration (Form 2303).',
+            'business_permit.required' => 'Upload your Mayor\'s / Business Permit.',
+            ...$this->documentMessages(),
         ]);
 
         $age = Carbon::parse($data['birthday'])->age;
@@ -187,10 +261,25 @@ class AuthController extends Controller
         $idPath = $request->file('id_upload')->store('uploads/ids', 'public');
 
         $extra = [];
-        if (in_array($role, ['seller', 'logistics'], true)) {
+        if ($role === 'seller') {
+            $extra['seller_type']      = $data['seller_type'];
             $extra['business_name']    = $data['business_name'];
             $extra['line_of_business'] = $data['line_of_business'];
-            $extra['business_permit']  = $request->file('business_permit')->store('uploads/permits', 'public');
+            $extra['tin']              = $data['tin'];
+            foreach (SellerTypes::requiredDocuments($data['seller_type']) as $document) {
+                $extra[$document] = $request->file($document)->store('uploads/permits', 'public');
+            }
+        }
+        if ($role === 'logistics') {
+            $extra['business_name']       = $data['business_name'];
+            $extra['sec_registration_no'] = $data['provider_type'] === 'company' ? $data['sec_registration_no'] : null;
+            $extra['tin']                 = $data['tin'];
+            $extra['service_areas']       = array_values($data['service_areas']);
+            $extra['business_permit']     = $request->file('business_permit')->store('uploads/permits', 'public');
+            $extra['bir_certificate']     = $request->file('bir_certificate')->store('uploads/permits', 'public');
+            if ($data['provider_type'] === 'company') {
+                $extra['sec_certificate'] = $request->file('sec_certificate')->store('uploads/permits', 'public');
+            }
         }
         if ($role === 'courier') {
             $extra['vehicle_type'] = $data['vehicle_type'];
@@ -215,11 +304,13 @@ class AuthController extends Controller
             'province'       => $data['province'],
             'municipality'   => $data['municipality'],
             'barangay'       => $data['barangay'],
+            'region'         => $data['region'] ?? null,
             'street'         => $data['street'] ?? null,
             'house_no'       => $data['house_no'] ?? null,
+            'postal_code'    => $data['postal_code'] ?: null,
             'id_upload'      => $idPath,
         ], $extra));
-        if ($role === 'buyer') {
+        if (in_array($role, self::EMAIL_VERIFIED_ROLES, true)) {
             $applicant->forceFill(['email_verified_at' => now()])->save();
         }
         if ($token) {
@@ -231,6 +322,11 @@ class AuthController extends Controller
 
     private function afterRegistration(Request $request, User $applicant, bool $justCreated)
     {
+        if ($applicant->role === 'logistics') {
+            // Logistics applicants verify their email after submitting; admins are told once that is done.
+            return app(RegistrationEmailVerificationController::class)->start($request, $applicant, $justCreated);
+        }
+
         if ($justCreated) {
             $request->session()->forget('registration_verified_email');
             app(\App\Services\AdminNotificationService::class)->notifyAdmins(
@@ -314,6 +410,23 @@ class AuthController extends Controller
         ];
     }
 
+    private function documentMessages(): array
+    {
+        return collect(['id_upload', 'business_permit', 'or_cr_upload', ...array_keys(SellerTypes::DOCUMENT_LABELS)])
+            ->flatMap(fn (string $field) => [
+                "{$field}.mimes" => 'Only JPG, PNG and PDF files are accepted.',
+                "{$field}.max" => 'Each file must be 5 MB or smaller.',
+            ])->all();
+    }
+
+    /** "345678901000" and "345 678 901 000" become "345-678-901-000"; anything else is left for validation to reject. */
+    private function normalizeTin($value): string
+    {
+        $value = trim((string) $value);
+
+        return preg_match('/^(\d{3})[-\s]?(\d{3})[-\s]?(\d{3})[-\s]?(\d{3})$/', $value, $m) ? "{$m[1]}-{$m[2]}-{$m[3]}-{$m[4]}" : $value;
+    }
+
     /** "+63 917 123 4567", "639171234567" and "09171234567" are the same number. */
     private function normalizeMobile($value): string
     {
@@ -332,6 +445,12 @@ class AuthController extends Controller
         return $this->isLogisticsPortal($request)
             ? ['courier', 'logistics']
             : ['buyer', 'seller'];
+    }
+
+    /** Rejected applicants who may correct their documents and resubmit from this portal. @return list<string> */
+    private function resubmittingRoles(Request $request): array
+    {
+        return $this->isLogisticsPortal($request) ? ['logistics'] : ['seller'];
     }
 
     private function isLogisticsPortal(Request $request): bool
