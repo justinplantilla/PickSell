@@ -97,7 +97,7 @@ class PortalAccessTest extends TestCase
             ->assertSee('Tanauan City Station')->assertDontSee('Calamba City Station')->assertDontSee('P-041000000');
         $this->actingAs($admin, 'pickrush')->get($this->pickrushUrl('/hubs/'.$tanauan->parent_hub_id))->assertOk()
             ->assertSee('Stations sorting through this hub (2)')->assertSee('San Jose Station');
-        $this->actingAs($admin, 'pickrush')->get($this->pickrushUrl('/'))->assertOk()
-            ->assertSee('Province hubs')->assertSee('Hubs without a real manager');
+        $this->actingAs($admin, 'pickrush')->get($this->pickrushUrl('/'))->assertRedirect(route('pickrush.hq.dashboard'));
+        $this->actingAs($admin, 'pickrush')->get(route('pickrush.hq.dashboard'))->assertOk()->assertSee('3 province hubs');
     }
 }

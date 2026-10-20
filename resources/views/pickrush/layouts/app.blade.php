@@ -20,6 +20,7 @@
         <div class="pr-who">
             <strong>{{ $staff->full_name }}</strong>
             {{ $staff->role->label() }}@if($staff->hub) · {{ $staff->hub->name }}@else · HQ @endif
+            <a href="{{ route('pickrush.account') }}" style="color:#dfe4ee;display:block;margin-top:.4rem">My account</a>
             <form method="POST" action="{{ route('pickrush.logout') }}">
                 @csrf
                 <button type="submit" class="pr-btn pr-btn-ghost">Sign out</button>

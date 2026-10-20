@@ -1,11 +1,13 @@
 <?php
 
+use App\Pickrush\Http\Controllers\AccountController;
 use App\Pickrush\Http\Controllers\AuthController;
 use App\Pickrush\Http\Controllers\DashboardController;
 use App\Pickrush\Http\Controllers\ExceptionController;
 use App\Pickrush\Http\Controllers\FleetController;
 use App\Pickrush\Http\Controllers\Province;
 use App\Pickrush\Http\Controllers\HubController;
+use App\Pickrush\Http\Controllers\Hq;
 use App\Pickrush\Http\Controllers\ParcelController;
 use App\Pickrush\Http\Controllers\Station;
 use App\Pickrush\Http\Controllers\TrackingController;
@@ -36,16 +38,47 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
         Route::get('/parcels', [ParcelController::class, 'index'])->name('parcels.index');
         Route::get('/parcels/{parcel}', [ParcelController::class, 'show'])->name('parcels.show');
 
+        Route::get('/account', [AccountController::class, 'edit'])->name('account');
+        Route::put('/account/password', [AccountController::class, 'updatePassword'])->name('account.password');
+
+        // Exceptions: hub staff for their hub, HQ for the whole network.
+        Route::get('/exceptions', [ExceptionController::class, 'index'])->name('exceptions.index');
+        Route::post('/exceptions/{exception}/resolve', [ExceptionController::class, 'resolve'])->name('exceptions.resolve');
+
+        // Company (HQ) portal: monitor, govern, settle money. It does not scan parcels or assign riders.
         Route::middleware('pickrush.role:super_admin,finance,support')->group(function () {
             Route::get('/hubs', [HubController::class, 'index'])->name('hubs.index');
             Route::get('/hubs/{hub}', [HubController::class, 'show'])->name('hubs.show');
+            Route::put('/hubs/{hub}', [HubController::class, 'update'])->name('hubs.update');
+
+            Route::prefix('hq')->name('hq.')->group(function () {
+                Route::get('/', Hq\DashboardController::class)->name('dashboard');
+                Route::get('/alerts', [Hq\AuditController::class, 'alerts'])->name('alerts');
+                Route::get('/reports', [Hq\ReportController::class, 'index'])->name('reports');
+                Route::get('/reports/export', [Hq\ReportController::class, 'export'])->name('reports.export');
+                Route::get('/settings', [Hq\SettingsController::class, 'index'])->name('settings');
+                Route::put('/settings', [Hq\SettingsController::class, 'update'])->name('settings.update');
+                Route::get('/finance', [Hq\FinanceController::class, 'index'])->name('finance');
+                Route::post('/finance/remittances/{remittance}', [Hq\FinanceController::class, 'confirm'])->name('finance.confirm');
+
+                Route::middleware('pickrush.role:super_admin,support')->group(function () {
+                    Route::get('/address-fix', [Hq\AddressFixController::class, 'index'])->name('address-fix');
+                    Route::put('/address-fix/{parcel}', [Hq\AddressFixController::class, 'update'])->name('address-fix.update');
+                });
+                Route::get('/audit', [Hq\AuditController::class, 'index'])->middleware('pickrush.role:super_admin,finance')->name('audit');
+                Route::middleware('pickrush.role:super_admin')->group(function () {
+                    Route::get('/staff', [Hq\StaffController::class, 'index'])->name('staff.index');
+                    Route::get('/staff/create', [Hq\StaffController::class, 'create'])->name('staff.create');
+                    Route::post('/staff', [Hq\StaffController::class, 'store'])->name('staff.store');
+                    Route::get('/staff/{staff}/edit', [Hq\StaffController::class, 'edit'])->name('staff.edit');
+                    Route::put('/staff/{staff}', [Hq\StaffController::class, 'update'])->name('staff.update');
+                });
+            });
         });
 
         // Shared by station and province hubs.
         Route::middleware('pickrush.hub')->group(function () {
-            Route::get('/exceptions', [ExceptionController::class, 'index'])->name('exceptions.index');
             Route::post('/exceptions', [ExceptionController::class, 'store'])->name('exceptions.store');
-            Route::post('/exceptions/{exception}/resolve', [ExceptionController::class, 'resolve'])->name('exceptions.resolve');
             Route::get('/fleet', [FleetController::class, 'index'])->name('fleet.index');
             Route::post('/fleet', [FleetController::class, 'store'])->name('fleet.store');
             Route::put('/fleet/{vehicle}', [FleetController::class, 'update'])->name('fleet.update');

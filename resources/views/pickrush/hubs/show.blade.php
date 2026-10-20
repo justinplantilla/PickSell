@@ -42,6 +42,21 @@
     </section>
 </div>
 
+@if(\App\Pickrush\Support\Actor::staff()->role === \App\Pickrush\Enums\StaffRole::SuperAdmin)
+    <section class="pr-card" style="margin-top:1rem">
+        <h2>Edit hub</h2>
+        <form method="POST" action="{{ route('pickrush.hubs.update', $hub) }}" class="pr-form-grid">
+            @csrf @method('PUT')
+            <div class="pr-field" style="grid-column:1/-1"><label for="address">Address</label><input id="address" name="address" class="pr-input" value="{{ old('address', $hub->address) }}"></div>
+            <div class="pr-field"><label for="lat">Latitude</label><input id="lat" name="lat" type="number" step="any" class="pr-input" value="{{ old('lat', $hub->lat) }}"></div>
+            <div class="pr-field"><label for="lng">Longitude</label><input id="lng" name="lng" type="number" step="any" class="pr-input" value="{{ old('lng', $hub->lng) }}"></div>
+            <label class="pr-check"><input type="checkbox" name="is_active" value="1" @checked($hub->is_active)> Active (parcels can be routed here)</label>
+            <div class="pr-field"><button type="submit" class="pr-btn pr-btn-primary">Save hub</button></div>
+        </form>
+        <p class="pr-muted"><a href="{{ route('pickrush.hq.staff.create', ['hub_id' => $hub->id]) }}">Add staff to this hub</a></p>
+    </section>
+@endif
+
 @if($stations->isNotEmpty())
     <section class="pr-card" style="margin-top:1rem">
         <h2>Stations sorting through this hub ({{ $stations->count() }})</h2>

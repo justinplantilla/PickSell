@@ -22,7 +22,7 @@
     <a class="pr-card" href="{{ route('pickrush.province.inbound') }}" style="text-decoration:none;color:inherit"><div class="pr-stat-num">{{ $inboundTrips }}</div><div class="pr-stat-label">Trips on the road to here ({{ $onTheWay }} parcels)</div></a>
     <a class="pr-card" href="{{ route('pickrush.province.inventory') }}" style="text-decoration:none;color:inherit"><div class="pr-stat-num">{{ number_format($onHand) }}</div><div class="pr-stat-label">On hand</div></a>
     <a class="pr-card" href="{{ route('pickrush.province.sorting') }}" style="text-decoration:none;color:inherit"><div class="pr-stat-num">{{ number_format($unsorted) }}</div><div class="pr-stat-label">Not sorted yet</div></a>
-    <a class="pr-card" href="{{ route('pickrush.province.inventory', ['aging' => 1]) }}" style="text-decoration:none;color:inherit"><div class="pr-stat-num">{{ number_format($aging) }}</div><div class="pr-stat-label">Aging (over {{ \App\Pickrush\Services\Province\Inventory::AGING_HOURS }}h)</div></a>
+    <a class="pr-card" href="{{ route('pickrush.province.inventory', ['aging' => 1]) }}" style="text-decoration:none;color:inherit"><div class="pr-stat-num">{{ number_format($aging) }}</div><div class="pr-stat-label">Aging (over {{ \App\Pickrush\Services\Province\Inventory::agingHours() }}h)</div></a>
     <a class="pr-card" href="{{ route('pickrush.exceptions.index') }}" style="text-decoration:none;color:inherit"><div class="pr-stat-num">{{ $openExceptions }}</div><div class="pr-stat-label">Open exceptions ({{ $onHold }} on hold)</div></a>
 </div>
 

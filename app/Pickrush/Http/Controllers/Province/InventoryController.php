@@ -15,10 +15,10 @@ class InventoryController extends PortalController
         $aging = $request->boolean('aging');
 
         return view('pickrush.province.inventory', [
-            'parcels' => $aging ? $onHand->filter(fn ($p) => $p->dwell_hours >= Inventory::AGING_HOURS)->values() : $onHand,
+            'parcels' => $aging ? $onHand->filter(fn ($p) => $p->dwell_hours >= Inventory::agingHours())->values() : $onHand,
             'total' => $onHand->count(),
-            'agingCount' => $onHand->filter(fn ($p) => $p->dwell_hours >= Inventory::AGING_HOURS)->count(),
-            'agingHours' => Inventory::AGING_HOURS,
+            'agingCount' => $onHand->filter(fn ($p) => $p->dwell_hours >= Inventory::agingHours())->count(),
+            'agingHours' => Inventory::agingHours(),
             'aging' => $aging,
         ]);
     }

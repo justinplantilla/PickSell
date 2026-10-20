@@ -42,11 +42,27 @@ final class Navigation
             ];
         }
 
-        $items = [['label' => 'Dashboard', 'route' => 'pickrush.dashboard', 'active' => 'pickrush.dashboard']];
-        if ($staff->hasRole(StaffRole::SuperAdmin, StaffRole::Finance, StaffRole::Support)) {
-            $items[] = ['label' => 'Hubs', 'route' => 'pickrush.hubs.index', 'active' => 'pickrush.hubs.*'];
+        // HQ: what each company role uses, in the order they use it.
+        $is = fn (StaffRole ...$roles) => $staff->hasRole(...$roles);
+        $items = [
+            ['label' => 'Dashboard', 'route' => 'pickrush.hq.dashboard', 'active' => 'pickrush.hq.dashboard'],
+            ['label' => 'Alerts', 'route' => 'pickrush.hq.alerts', 'active' => 'pickrush.hq.alerts'],
+            ['label' => 'Parcel tracking', 'route' => 'pickrush.parcels.index', 'active' => 'pickrush.parcels.*'],
+        ];
+        if ($is(StaffRole::SuperAdmin, StaffRole::Support)) {
+            $items[] = ['label' => 'Addresses to fix', 'route' => 'pickrush.hq.address-fix', 'active' => 'pickrush.hq.address-fix*'];
         }
-        $items[] = ['label' => 'Parcels', 'route' => 'pickrush.parcels.index', 'active' => 'pickrush.parcels.*'];
+        $items[] = ['label' => 'Exceptions', 'route' => 'pickrush.exceptions.index', 'active' => 'pickrush.exceptions.*'];
+        $items[] = ['label' => 'Hubs', 'route' => 'pickrush.hubs.index', 'active' => 'pickrush.hubs.*'];
+        if ($is(StaffRole::SuperAdmin)) {
+            $items[] = ['label' => 'Staff & roles', 'route' => 'pickrush.hq.staff.index', 'active' => 'pickrush.hq.staff.*'];
+        }
+        $items[] = ['label' => 'Finance', 'route' => 'pickrush.hq.finance', 'active' => 'pickrush.hq.finance*'];
+        $items[] = ['label' => 'Reports', 'route' => 'pickrush.hq.reports', 'active' => 'pickrush.hq.reports*'];
+        $items[] = ['label' => 'Rates & policies', 'route' => 'pickrush.hq.settings', 'active' => 'pickrush.hq.settings*'];
+        if ($is(StaffRole::SuperAdmin, StaffRole::Finance)) {
+            $items[] = ['label' => 'Audit log', 'route' => 'pickrush.hq.audit', 'active' => 'pickrush.hq.audit'];
+        }
 
         return $items;
     }

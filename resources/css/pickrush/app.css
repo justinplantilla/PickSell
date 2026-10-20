@@ -138,3 +138,12 @@ h2 { font-size: 1.05rem; }
 .pr-bin-tile { background: var(--pr-surface); border: 1px solid var(--pr-line); border-radius: var(--pr-radius); padding: .8rem 1rem; }
 .pr-bin-tile strong { display: block; font-size: 1.05rem; }
 .pr-bin-tile.is-exception { border-color: #fca5a5; background: #fef2f2; }
+
+/* HQ: ranking bars and period switch */
+.pr-bar { position: relative; height: 10px; background: #eef0f4; border-radius: 999px; min-width: 120px; overflow: hidden; }
+.pr-bar > span { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--pr-ok); }
+.pr-bar.is-below > span { background: var(--pr-warn); }
+.pr-bar.is-far-below > span { background: var(--pr-bad); }
+.pr-bar-target { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--pr-ink); }
+.pr-alert-list { list-style: none; margin: .5rem 0 0; padding: 0; }
+.pr-alert-list li { padding: .35rem 0; border-top: 1px solid var(--pr-line); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }

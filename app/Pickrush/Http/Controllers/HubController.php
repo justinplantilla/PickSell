@@ -35,6 +35,24 @@ class HubController extends Controller
         return view('pickrush.hubs.index', compact('hubs', 'filters'));
     }
 
+    public function update(\Illuminate\Http\Request $request, Hub $hub)
+    {
+        abort_unless(\App\Pickrush\Support\Actor::staff()->role === StaffRole::SuperAdmin, 403, 'Only a super admin edits hubs.');
+        $data = $request->validate([
+            'address' => 'nullable|string|max:255',
+            'lat' => 'nullable|numeric|between:4,22',     // the Philippines
+            'lng' => 'nullable|numeric|between:116,127',
+            'is_active' => 'nullable|boolean',
+        ]);
+        $data['is_active'] = $request->boolean('is_active');
+        if (! $data['is_active'] && $hub->isProvince() && $hub->childStations()->where('is_active', true)->exists()) {
+            return back()->withErrors(['operation' => 'Deactivate its stations first, or keep the province hub active.']);
+        }
+        $hub->update($data);
+
+        return back()->with('success', $data['is_active'] ? "{$hub->name} saved." : "{$hub->name} is inactive: parcels routed to it go to the exception bin.");
+    }
+
     public function show(Hub $hub)
     {
         $hub->load(['parent', 'staff' => fn ($q) => $q->orderBy('role')->orderBy('full_name')]);

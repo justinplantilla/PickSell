@@ -29,7 +29,7 @@ class DashboardController extends PortalController
             'onHand' => $onHand->count(),
             'unsorted' => $onHand->where('current_status', ParcelStatus::AtProvinceHub)->whereNull('sorted_at')->count(),
             'onHold' => $onHand->where('current_status', ParcelStatus::OnHold)->count(),
-            'aging' => $onHand->filter(fn ($p) => $p->dwell_hours >= Inventory::AGING_HOURS)->count(),
+            'aging' => $onHand->filter(fn ($p) => $p->dwell_hours >= Inventory::agingHours())->count(),
             'openExceptions' => ParcelException::where('status', 'open')->where('hub_id', $hub->id)->count(),
             'inToday' => $volume([ParcelStatus::AtProvinceHub], today()),
             'outToday' => $volume($outStatuses, today()),

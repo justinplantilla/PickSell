@@ -28,6 +28,7 @@ class ParcelRegistrar
             $dest = $this->router->stationFor($data['delivery_municipality_code'] ?? null);
 
             $parcel = Parcel::create($data + [
+                'shipping_fee' => RateCard::quote($origin, $dest, $data['weight_kg'] ?? null, (float) ($data['cod_amount'] ?? 0)),
                 'tracking_no' => $this->trackingNumbers->generate(),
                 'origin_hub_id' => $origin?->id,
                 'dest_hub_id' => $dest?->id,

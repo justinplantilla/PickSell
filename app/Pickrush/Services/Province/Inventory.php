@@ -11,8 +11,11 @@ use Illuminate\Support\Collection;
 /** What is physically in a hub and for how long (dwell time from its arrival scan). */
 class Inventory
 {
-    /** Parcels on the floor longer than this are aging. */
-    public const AGING_HOURS = 24;
+    /** Parcels on the floor longer than this are aging (HQ policy). */
+    public static function agingHours(): int
+    {
+        return (int) config('pickrush.policies.aging_hours');
+    }
 
     /** @return Collection<int, Parcel> each with arrived_at and dwell_hours */
     public function onHand(Hub $hub): Collection

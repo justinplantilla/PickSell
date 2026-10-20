@@ -34,6 +34,30 @@ return [
 
         // Cash counts above this need a second staff member present.
         'two_person_count_above' => 20000,
+
+        // Parcels on a hub floor longer than this are aging; with no scan for this long, stuck.
+        'aging_hours' => 24,
+        'stuck_after_hours' => 48,
+
+        // Hub ranking target: delivery success rate (%) a hub should reach.
+        'sla_success_rate' => 95,
+
+        // How often stations remit cash to the company: daily, every_two_days or weekly.
+        'remittance_cycle' => 'daily',
+
+        // Seller payout releases this many days after delivery (the dispute window).
+        'payout_release_days' => 7,
+    ],
+
+    /*
+    | Shipping rates. A parcel's fee is the base for its service type plus the per-kg charge
+    | above the included weight, plus the COD fee (% of the COD amount). HQ edits these.
+    */
+    'rates' => [
+        'same_city' => ['base' => 60, 'included_kg' => 1, 'per_kg' => 15],
+        'same_province' => ['base' => 85, 'included_kg' => 1, 'per_kg' => 20],
+        'inter_province' => ['base' => 120, 'included_kg' => 1, 'per_kg' => 30],
+        'cod_fee_percent' => 1.5,
     ],
 
     // Closed list so failure reports are comparable across hubs.
