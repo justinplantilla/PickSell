@@ -411,7 +411,7 @@ class SellerController extends Controller
     public function showOrder(Order $order)
     {
         abort_if($order->seller_id !== $this->seller()->id, 403);
-        $order->load('buyer', 'courier');
+        $order->load('buyer');
         $commissionService = app(CommissionService::class);
         $commissionRate = $commissionService->rateForOrder($order);
         $commission = $commissionService->commissionForOrder($order);
@@ -454,9 +454,8 @@ class SellerController extends Controller
             return $waybillNumber;
         });
 
-        $message = 'Order #'.$order->order_number.' has been handed over to logistics. Waybill: '.$waybillNumber.'.';
+        $message = 'Order #'.$order->order_number.' has been handed over to Pickrush. Waybill: '.$waybillNumber.'.';
         $this->notifyUser($order->buyer, 'Order handed over', $message, $order);
-        $this->notifyUser($order->logistics, 'Parcel ready for pickup', $message, $order);
         User::where('role', 'admin')->where('status', 'approved')->get()
             ->each(fn (User $admin) => $this->notifyUser($admin, 'Parcel handed over', $message, $order));
 

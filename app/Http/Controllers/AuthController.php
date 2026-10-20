@@ -16,8 +16,8 @@ class AuthController extends Controller
 
     public function showRegister(Request $request)
     {
-        $registrationRoles = $this->registrationRoles($request);
         $email = strtolower(trim((string) $request->query('email', '')));
+        $registrationRoles = ['buyer', 'seller'];
 
         return view('auth.register', compact('registrationRoles', 'email'));
     }
@@ -51,17 +51,9 @@ class AuthController extends Controller
             return back()->withErrors(['email' => 'Your account has been deactivated. Please contact support.'])->onlyInput('email');
         }
 
-        $allowedLoginRoles = $request->getHost() === 'logistics.pick-sell.shop'
-            ? ['logistics', 'courier']
-            : ['buyer', 'seller', 'admin'];
-
-        if (!in_array($user->role, $allowedLoginRoles, true)) {
-            $siteName = $request->getHost() === 'logistics.pick-sell.shop'
-                ? 'PickSell Logistics'
-                : 'PickSell';
-
+        if (!in_array($user->role, ['buyer', 'seller', 'admin'], true)) {
             return back()->withErrors([
-                'email' => "This account cannot log in through {$siteName}. Please use the correct portal.",
+                'email' => 'This account cannot log in through PickSell. Please use the correct portal.',
             ])->onlyInput('email');
         }
 
@@ -75,11 +67,9 @@ class AuthController extends Controller
     {
         $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
         $role = $request->input('role', 'buyer');
-        $registrationRoles = $this->registrationRoles($request);
 
         $rules = [
-            'role'           => 'required|in:'.implode(',', $registrationRoles),
-            'provider_type'  => 'required_if:role,logistics|nullable|in:company,individual',
+            'role'           => 'required|in:buyer,seller',
             'last_name'      => 'required|string|max:100',
             'first_name'     => 'required|string|max:100',
             'middle_initial' => 'nullable|string|max:5',
@@ -97,17 +87,10 @@ class AuthController extends Controller
             'id_upload'      => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ];
 
-        if (in_array($role, ['seller', 'logistics'], true)) {
+        if ($role === 'seller') {
             $rules['business_name']    = 'required|string|max:255';
             $rules['line_of_business'] = 'required|string|max:255';
             $rules['business_permit']  = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
-        }
-
-        if ($role === 'courier') {
-            $rules['vehicle_type'] = 'required|string';
-            $rules['plate_number'] = 'required|string|max:20';
-            $rules['or_cr_upload'] = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
-            $rules['delivery_area'] = 'required|string|max:255';
         }
 
         $data = $request->validate($rules);
@@ -117,21 +100,14 @@ class AuthController extends Controller
         $idPath = $request->file('id_upload')->store('uploads/ids', 'public');
 
         $extra = [];
-        if (in_array($role, ['seller', 'logistics'], true)) {
+        if ($role === 'seller') {
             $extra['business_name']    = $data['business_name'];
             $extra['line_of_business'] = $data['line_of_business'];
             $extra['business_permit']  = $request->file('business_permit')->store('uploads/permits', 'public');
         }
-        if ($role === 'courier') {
-            $extra['vehicle_type'] = $data['vehicle_type'];
-            $extra['plate_number'] = $data['plate_number'];
-            $extra['or_cr_upload'] = $request->file('or_cr_upload')->store('uploads/orcr', 'public');
-            $extra['delivery_area'] = $data['delivery_area'];
-        }
 
         $applicant = User::create(array_merge([
             'role'           => $role,
-            'provider_type'  => $role === 'logistics' ? $data['provider_type'] : null,
             'status'         => 'pending',
             'last_name'      => $data['last_name'],
             'first_name'     => $data['first_name'],
@@ -157,13 +133,6 @@ class AuthController extends Controller
         );
 
         return redirect('/login')->with('success', 'Registration submitted! Please wait for admin approval. You will be notified via email.');
-    }
-
-    private function registrationRoles(Request $request): array
-    {
-        return $request->getHost() === 'logistics.pick-sell.shop'
-            ? ['courier', 'logistics']
-            : ['buyer', 'seller'];
     }
 
     public function showForgotPassword() { return view('auth.forgot-password'); }
@@ -239,9 +208,7 @@ class AuthController extends Controller
     {
         return match($role) {
             'admin'   => '/admin/dashboard',
-            'logistics' => '/logistics/dashboard',
             'seller'  => '/seller/dashboard',
-            'courier' => '/courier/dashboard',
             default   => '/buyer/dashboard',
         };
     }

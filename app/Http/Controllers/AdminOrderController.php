@@ -7,7 +7,6 @@ use App\Http\Requests\Admin\AdminOrderStatusRequest;
 use App\Http\Requests\Admin\ResolveOrderExceptionRequest;
 use App\Models\AuditLog;
 use App\Models\Complaint;
-use App\Models\LogisticsBranch;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Admin\AdminDashboardService;
@@ -25,7 +24,7 @@ class AdminOrderController extends Controller
 {
     public const STAGES = [
         'fulfillment' => ['label' => 'Seller fulfillment', 'statuses' => ['placed', 'confirmed', 'preparing', 'ready_for_pickup']],
-        'logistics' => ['label' => 'In logistics', 'statuses' => ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery']],
+        'logistics' => ['label' => 'With Pickrush', 'statuses' => ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery']],
         'delivered' => ['label' => 'Delivered', 'statuses' => ['delivered', 'completed']],
         'exceptions' => ['label' => 'Exceptions', 'statuses' => ['delivery_failed', 'returned', 'cancelled']],
     ];
@@ -37,7 +36,7 @@ class AdminOrderController extends Controller
         $filters = $this->filters($request);
         $query = $this->filteredOrders($filters, $dashboard);
         $activeFilter = match (true) {
-            $filters['issues'] => 'Operational exceptions: stuck, failed delivery or unassigned',
+            $filters['issues'] => 'Operational exceptions: stuck or failed delivery',
             $filters['stuck'] => 'Stuck: in progress with no update for '.AdminDashboardService::STUCK_AFTER_HOURS.'h+',
             (bool) $filters['statuses'] => 'Status: '.implode(', ', array_map(fn ($s) => str_replace('_', ' ', $s), $filters['statuses'])),
             default => null,
@@ -60,8 +59,6 @@ class AdminOrderController extends Controller
             'options' => [
                 'sellers' => User::where('role', 'seller')->whereHas('ordersAsSeller')->orderBy('business_name')->get(['id', 'first_name', 'last_name', 'business_name']),
                 'buyers' => User::where('role', 'buyer')->whereHas('ordersAsBuyer')->orderBy('last_name')->get(['id', 'first_name', 'last_name', 'middle_initial']),
-                'couriers' => User::where('role', 'courier')->whereHas('ordersAsCourier')->orderBy('last_name')->get(['id', 'first_name', 'last_name', 'middle_initial']),
-                'branches' => LogisticsBranch::orderBy('name')->get(['id', 'name']),
             ],
         ]);
     }
@@ -114,7 +111,7 @@ class AdminOrderController extends Controller
     public function show(Order $order, FinancialSummary $finance)
     {
         Gate::authorize('view', $order);
-        $order->load(['buyer', 'seller', 'courier', 'product', 'originBranch', 'destinationBranch', 'destinationBarangay',
+        $order->load(['buyer', 'seller', 'product',
             'returnRequest.events.actor', 'statusHistories.changer']);
 
         return view('admin.orders.show', [
@@ -158,7 +155,7 @@ class AdminOrderController extends Controller
             'search' => trim((string) $request->input('search', '')),
             'statuses' => array_values(array_intersect(explode(',', $statusFilter), Order::STATUS_LIFECYCLE)),
             'date' => array_key_exists($request->input('date'), self::DATE_FILTERS) ? $request->input('date') : ($request->input('placed') === 'today' ? 'today' : 'any'),
-            'parties' => ['seller' => $ids('seller'), 'buyer' => $ids('buyer'), 'courier' => $ids('courier'), 'branch' => $ids('branch')],
+            'parties' => ['seller' => $ids('seller'), 'buyer' => $ids('buyer')],
             'stuck' => $request->boolean('stuck'),
             'issues' => $request->boolean('issues'),
         ];
@@ -166,21 +163,17 @@ class AdminOrderController extends Controller
 
     private function filteredOrders(array $filters, AdminDashboardService $dashboard): Builder
     {
-        $query = Order::with(['buyer', 'seller', 'courier'])->latest('updated_at');
+        $query = Order::with(['buyer', 'seller'])->latest('updated_at');
         if ($filters['stage'] !== 'all') {
             $query->whereIn('status', self::STAGES[$filters['stage']]['statuses']);
         }
         if ($filters['statuses']) {
             $query->whereIn('status', $filters['statuses']);
         }
-        foreach (['seller' => 'seller_id', 'buyer' => 'buyer_id', 'courier' => 'courier_id'] as $key => $column) {
+        foreach (['seller' => 'seller_id', 'buyer' => 'buyer_id'] as $key => $column) {
             if ($filters['parties'][$key]) {
                 $query->where($column, $filters['parties'][$key]);
             }
-        }
-        if ($filters['parties']['branch']) {
-            $query->where(fn ($q) => $q->where('origin_branch_id', $filters['parties']['branch'])
-                ->orWhere('destination_branch_id', $filters['parties']['branch']));
         }
         match ($filters['date']) {
             'today' => $query->whereDate('created_at', today()),
@@ -195,8 +188,7 @@ class AdminOrderController extends Controller
         if ($filters['issues']) {
             $query->where(fn ($q) => $q
                 ->whereIn('id', $dashboard->stuckOrdersQuery()->select('id'))
-                ->orWhere('status', 'delivery_failed')
-                ->orWhere(fn ($sorted) => $sorted->where('status', 'sorted')->whereNull('courier_id')));
+                ->orWhere('status', 'delivery_failed'));
         }
         if ($filters['search'] !== '') {
             $search = $filters['search'];

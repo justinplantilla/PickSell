@@ -3,10 +3,7 @@
 namespace Tests\Feature;
 
 use App\Auth\Permission;
-use App\Models\BranchRider;
 use App\Models\Complaint;
-use App\Models\LogisticsBranch;
-use App\Models\Municipality;
 use App\Models\Order;
 use App\Models\PlatformSetting;
 use App\Models\ReturnRequest;
@@ -74,24 +71,15 @@ class AdminDashboardTest extends TestCase
 
     private function seedOperations(): array
     {
-        $municipality = Municipality::create(['province' => 'Metro Manila', 'name' => 'Pasig']);
-        $branch = LogisticsBranch::create(['municipality_id' => $municipality->id, 'name' => 'Pasig Hub', 'status' => 'active']);
-        $rider = $this->user('courier');
-        BranchRider::create(['branch_id' => $branch->id, 'user_id' => $rider->id, 'status' => 'active']);
-        $inactiveRider = $this->user('courier');
-        BranchRider::create(['branch_id' => $branch->id, 'user_id' => $inactiveRider->id, 'status' => 'inactive']);
-
         return [
             'today' => $this->order('placed'),
             'yesterday' => $this->order('preparing', [], ['created_at' => now()->subDay(), 'updated_at' => now()->subHour()]),
             'stuck' => $this->order('at_sorting_center', [], ['created_at' => now()->subDays(4), 'updated_at' => now()->subDays(3)]),
             'failed' => $this->order('delivery_failed', [], ['created_at' => now()->subDays(2)]),
-            'unassigned' => $this->order('sorted'),
-            'onDelivery' => $this->order('out_for_delivery', ['courier_id' => $rider->id]),
+            'atStation' => $this->order('sorted'),
+            'onDelivery' => $this->order('out_for_delivery'),
             'completed' => $this->order('completed', ['amount' => 2500]),
             'pendingSeller' => $this->user('seller', 'pending'),
-            'pendingCourier' => $this->user('courier', 'pending'),
-            'rider' => $rider,
         ];
     }
 
@@ -101,16 +89,16 @@ class AdminDashboardTest extends TestCase
         $html = $this->actingAs($this->admin)->get('/admin/dashboard')->assertOk()->getContent();
 
         $this->assertSame(4, $this->kpi($html, 'orders_today'), 'placed, sorted, out for delivery and completed were created today');
-        $this->assertSame(1, $this->kpi($html, 'pending_approvals'), 'couriers are reviewed by Logistics, not Admin');
-        $this->assertSame(1, $this->kpi($html, 'active_riders'), 'inactive branch riders do not count');
-        $this->assertSame(3, $this->kpi($html, 'issues'), 'stuck + failed + unassigned');
+        $this->assertSame(1, $this->kpi($html, 'pending_approvals'));
+        $this->assertNull($this->kpi($html, 'active_riders'), 'riders belong to Pickrush now');
+        $this->assertSame(2, $this->kpi($html, 'issues'), 'stuck + failed');
 
         // Live aggregation: a change in the database shows on the next load.
         $this->user('buyer', 'pending');
-        Order::where('status', 'sorted')->update(['courier_id' => User::where('role', 'courier')->first()->id]);
+        Order::where('status', 'delivery_failed')->update(['status' => 'returned']);
         $html = $this->actingAs($this->admin)->get('/admin/dashboard')->getContent();
         $this->assertSame(2, $this->kpi($html, 'pending_approvals'));
-        $this->assertSame(2, $this->kpi($html, 'issues'));
+        $this->assertSame(1, $this->kpi($html, 'issues'));
     }
 
     public function test_each_kpi_opens_its_filtered_module(): void
@@ -119,15 +107,14 @@ class AdminDashboardTest extends TestCase
         $html = $this->actingAs($this->admin)->get('/admin/dashboard')->getContent();
         preg_match_all('/<a href="([^"]+)" class="stat-card command-kpi[^"]*" data-kpi="([a-z_]+)"/', $html, $links, PREG_SET_ORDER);
         $urls = collect($links)->mapWithKeys(fn ($m) => [$m[2] => html_entity_decode($m[1])]);
-        $this->assertSame(['orders_today', 'pending_approvals', 'active_riders', 'issues'], $urls->keys()->all());
+        $this->assertSame(['orders_today', 'pending_approvals', 'issues'], $urls->keys()->all());
 
         $this->actingAs($this->admin)->get($urls['orders_today'])->assertOk()
             ->assertSee($seeded['today']->order_number)->assertDontSee($seeded['yesterday']->order_number)->assertSee('Placed today');
         $this->actingAs($this->admin)->get($urls['pending_approvals'])->assertOk()->assertSee($seeded['pendingSeller']->email);
-        $this->actingAs($this->admin)->get($urls['active_riders'])->assertOk()->assertSee($seeded['rider']->full_name);
         $this->actingAs($this->admin)->get($urls['issues'])->assertOk()
-            ->assertSee($seeded['stuck']->order_number)->assertSee($seeded['failed']->order_number)->assertSee($seeded['unassigned']->order_number)
-            ->assertDontSee($seeded['today']->order_number)->assertDontSee($seeded['onDelivery']->order_number);
+            ->assertSee($seeded['stuck']->order_number)->assertSee($seeded['failed']->order_number)
+            ->assertDontSee($seeded['atStation']->order_number)->assertDontSee($seeded['today']->order_number)->assertDontSee($seeded['onDelivery']->order_number);
     }
 
     public function test_lifecycle_stages_count_and_link_to_orders(): void
@@ -135,11 +122,11 @@ class AdminDashboardTest extends TestCase
         $seeded = $this->seedOperations();
         $html = $this->actingAs($this->admin)->get('/admin/dashboard')->getContent();
 
-        foreach (['Placed' => 1, 'Preparing' => 1, 'Sorting' => 2, 'Delivery' => 1] as $label => $count) {
+        foreach (['Placed' => 1, 'Preparing' => 1, 'With Pickrush' => 2, 'Delivery' => 1] as $label => $count) {
             $this->assertMatchesRegularExpression('/<strong class="oversight-number">'.$count.'<\/strong>\s*<span>'.$label.'<\/span>/', $html);
         }
         $this->actingAs($this->admin)->get(route('admin.orders', ['status' => 'picked_up,at_sorting_center,sorted']))->assertOk()
-            ->assertSee($seeded['stuck']->order_number)->assertSee($seeded['unassigned']->order_number)->assertDontSee($seeded['today']->order_number);
+            ->assertSee($seeded['stuck']->order_number)->assertSee($seeded['atStation']->order_number)->assertDontSee($seeded['today']->order_number);
     }
 
     public function test_pending_actions_link_to_their_queues_and_show_clear_when_empty(): void
@@ -166,7 +153,7 @@ class AdminDashboardTest extends TestCase
             ->assertSee('Operational exceptions')
             ->assertSee('Stuck orders')->assertSee('href="'.route('admin.orders', ['stuck' => 1]).'"', false)
             ->assertSee('Failed deliveries')->assertSee('href="'.route('admin.orders', ['status' => 'delivery_failed']).'"', false)
-            ->assertSee('Unassigned parcels')->assertSee('href="'.route('admin.logistics.sorting', ['status' => 'sorted']).'"', false);
+            ->assertDontSee('Unassigned parcels');
     }
 
     public function test_financial_figures_come_from_the_finance_layer(): void
@@ -239,24 +226,21 @@ class AdminDashboardTest extends TestCase
         config(['permissions.roles.admin' => [Permission::COMPLAINTS_VIEW]]);
         $this->actingAs($this->admin)->get('/admin/dashboard')->assertForbidden();
 
-        config(['permissions.roles.admin' => [Permission::DASHBOARD_VIEW, Permission::LOGISTICS_VIEW]]);
+        config(['permissions.roles.admin' => [Permission::DASHBOARD_VIEW]]);
         $html = $this->actingAs($this->admin)->get('/admin/dashboard')->assertOk()->getContent();
 
-        $this->assertSame(1, $this->kpi($html, 'active_riders'));
-        $this->assertSame(1, $this->kpi($html, 'issues'), 'only unassigned parcels are visible to logistics.view');
+        $this->assertNull($this->kpi($html, 'issues'));
         $this->assertNull($this->kpi($html, 'orders_today'));
         $this->assertNull($this->kpi($html, 'pending_approvals'));
         foreach (['Marketplace lifecycle', 'Pending actions', 'Finance snapshot', 'Oldest pending applications', 'Active accounts', 'Stuck orders'] as $hidden) {
             $this->assertStringNotContainsString($hidden, $html);
         }
-        $this->assertStringContainsString('Unassigned parcels', $html);
     }
 
     public function test_sidebar_badge_shows_pending_approvals_on_every_admin_page(): void
     {
         $this->user('seller', 'pending');
-        $this->user('logistics', 'pending');
-        $this->user('courier', 'pending');
+        $this->user('buyer', 'pending');
 
         $this->assertSame(2, app(AdminDashboardService::class)->pendingApprovals());
         $this->actingAs($this->admin)->get('/admin/products')->assertOk()->assertSee('<span class="nav-badge" aria-label="2 pending">2</span>', false);

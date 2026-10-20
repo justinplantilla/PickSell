@@ -69,12 +69,10 @@
     <div class="card-header"><span class="card-title" id="users-title">New accounts in this period</span></div>
     <div class="oversight-table-wrap">
         <table>
-            <thead><tr><th>Buyers</th><th>Sellers</th><th>Riders</th><th>Logistics partners</th></tr></thead>
+            <thead><tr><th>Buyers</th><th>Sellers</th></tr></thead>
             <tbody><tr>
                 <td class="oversight-number">{{ number_format($newUsers['buyer'] ?? 0) }}</td>
                 <td class="oversight-number">{{ number_format($newUsers['seller'] ?? 0) }}</td>
-                <td class="oversight-number">{{ number_format($newUsers['courier'] ?? 0) }}</td>
-                <td class="oversight-number">{{ number_format($newUsers['logistics'] ?? 0) }}</td>
             </tr></tbody>
         </table>
     </div>

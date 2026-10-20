@@ -11,16 +11,13 @@ class User extends Authenticatable
     use Notifiable;
 
     protected $fillable = [
-        'role', 'status', 'provider_type',
+        'role', 'status',
         'last_name', 'first_name', 'middle_initial', 'sex',
         'email', 'password', 'contact_no', 'birthday', 'age',
         'province', 'municipality', 'barangay', 'street', 'house_no',
-        'municipality_id', 'barangay_id',
         'id_upload',
         // Seller
         'business_name', 'line_of_business', 'business_permit',
-        // Courier
-        'vehicle_type', 'plate_number', 'or_cr_upload', 'delivery_area',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -30,7 +27,7 @@ class User extends Authenticatable
     /**
      * Context for the next status change (not persisted on users). Services set these before
      * update(); the history row below picks them up, so every status change is recorded
-     * wherever it happens — Admin, Logistics portal or registration review.
+     * wherever it happens — Admin or registration review.
      */
     public ?string $statusChangeReason = null;
 
@@ -157,16 +154,6 @@ class User extends Authenticatable
         return $this->hasMany(Order::class, 'seller_id');
     }
 
-    public function ordersAsCourier()
-    {
-        return $this->hasMany(Order::class, 'courier_id');
-    }
-
-    public function courierAssignments()
-    {
-        return $this->hasMany(BranchRider::class, 'user_id');
-    }
-
     public function auditLogs()
     {
         return $this->hasMany(AuditLog::class, 'actor_id');
@@ -180,20 +167,5 @@ class User extends Authenticatable
     public function products()
     {
         return $this->hasMany(Product::class, 'seller_id');
-    }
-
-    public function municipality()
-    {
-        return $this->belongsTo(Municipality::class);
-    }
-
-    public function barangay()
-    {
-        return $this->belongsTo(Barangay::class);
-    }
-
-    public function branchAssignments()
-    {
-        return $this->courierAssignments();
     }
 }

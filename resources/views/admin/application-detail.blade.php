@@ -31,9 +31,6 @@
                 'Address' => collect([$user->house_no, $user->street, $user->barangay, $user->municipality, $user->province])->filter()->join(', '),
                 'Business name' => $user->business_name,
                 'Line of business' => $user->line_of_business,
-                'Provider type' => $user->provider_type ? ucfirst($user->provider_type) : null,
-                'Vehicle' => $user->vehicle_type ? $user->vehicle_type . ($user->plate_number ? ' · ' . $user->plate_number : '') : null,
-                'Delivery area' => $user->delivery_area,
                 'Submitted' => $user->created_at->format('M d, Y h:i A') . ' (' . $user->created_at->diffForHumans() . ')',
             ]);
         @endphp
@@ -94,8 +91,6 @@
                     <button type="submit" class="btn registration-disapprove" formaction="{{ route('admin.registrations.disapprove', $user) }}" data-confirm="Disapprove this application and send the reason to the applicant?">Disapprove</button>
                 </div>
             </form>
-        @elseif($user->status === 'pending' && $user->role === 'courier')
-            <div class="card-body"><p>Courier applications are reviewed in the Logistics portal.</p></div>
         @elseif($user->status === 'pending')
             <div class="card-body"><p>This application is pending. Deciding it requires the registrations management permission.</p></div>
         @elseif($latest)

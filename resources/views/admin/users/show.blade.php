@@ -18,7 +18,7 @@
     <section class="card" aria-labelledby="profile-heading">
         <div class="card-header">
             <span class="card-title" id="profile-heading">Profile</span>
-            <span class="badge badge-{{ $user->role }}">{{ $user->role === 'courier' ? 'Rider' : ucfirst($user->role) }}</span>
+            <span class="badge badge-{{ $user->role }}">{{ ucfirst($user->role) }}</span>
         </div>
         @php
             $fields = array_filter([
@@ -27,7 +27,6 @@
                 'Contact no.' => $user->contact_no,
                 'Address' => collect([$user->house_no, $user->street, $user->barangay, $user->municipality, $user->province])->filter(fn ($v) => is_string($v) && $v !== '')->join(', '),
                 'Business' => $user->business_name ? $user->business_name . ($user->line_of_business ? ' · ' . $user->line_of_business : '') : null,
-                'Vehicle' => $user->vehicle_type ? $user->vehicle_type . ($user->plate_number ? ' · ' . $user->plate_number : '') : null,
                 'Joined' => $user->created_at->format('M d, Y') . ' (' . $user->created_at->diffForHumans() . ')',
             ]);
         @endphp

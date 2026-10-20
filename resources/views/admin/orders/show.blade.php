@@ -30,7 +30,7 @@
             <dl class="order-fields">
                 <div><dt>Buyer</dt><dd>{{ $order->buyer?->full_name ?? '—' }} @can('viewAccount', $order->buyer)<a href="{{ route('admin.users.show', $order->buyer) }}" class="oversight-meta">account</a>@endcan
                     <span class="oversight-meta">{{ $order->buyer?->email }} · {{ $order->buyer?->contact_no }}</span></dd></div>
-                <div><dt>Deliver to</dt><dd>{{ collect([$order->destinationBarangay?->name ?? $order->buyer?->barangay, $order->buyer?->municipality, $order->buyer?->province])->filter(fn ($v) => is_string($v) && $v !== '')->join(', ') ?: '—' }}</dd></div>
+                <div><dt>Deliver to</dt><dd>{{ collect([$order->buyer?->barangay, $order->buyer?->municipality, $order->buyer?->province])->filter(fn ($v) => is_string($v) && $v !== '')->join(', ') ?: '—' }}</dd></div>
                 <div><dt>Seller</dt><dd>{{ $order->seller?->business_name ?? $order->seller?->full_name ?? '—' }} @can('viewAccount', $order->seller)<a href="{{ route('admin.users.show', $order->seller) }}" class="oversight-meta">account</a>@endcan</dd></div>
                 <div><dt>Item</dt><dd>
                     @if($order->product && auth()->user()->can('view', $order->product))
@@ -88,29 +88,20 @@
         @endif
     </section>
 
-    {{-- Sorting events + courier assignment --}}
-    <div class="order-grid">
-        <section class="card" aria-labelledby="sorting-heading">
-            <div class="card-header"><span class="card-title" id="sorting-heading">Sorting events</span></div>
-            <dl class="order-fields order-pad">
-                <div><dt>Waybill</dt><dd>{{ $order->waybill_number ?? 'Not generated yet' }}</dd></div>
-                <div><dt>Route</dt><dd>{{ $order->originBranch?->name ?? 'Origin not set' }} → {{ $order->destinationBranch?->name ?? 'Destination not set' }}</dd></div>
-                <div><dt>Picked up</dt><dd>{{ $order->picked_up_at?->format('M d, Y h:i A') ?? '—' }}</dd></div>
-                <div><dt>Received at hub</dt><dd>{{ $order->sorting_received_at?->format('M d, Y h:i A') ?? '—' }}</dd></div>
-                <div><dt>Sorted</dt><dd>{{ $order->sorted_at?->format('M d, Y h:i A') ?? '—' }}</dd></div>
-                <div><dt>Tracking note</dt><dd>{{ $order->tracking_status ?? '—' }}</dd></div>
-            </dl>
-        </section>
-        <section class="card" aria-labelledby="courier-heading">
-            <div class="card-header"><span class="card-title" id="courier-heading">Courier assignment</span></div>
-            <dl class="order-fields order-pad">
-                <div><dt>Rider</dt><dd>{{ $order->courier?->full_name ?? 'Unassigned' }}@if($order->courier)<span class="oversight-meta">{{ $order->courier->contact_no }}</span>@endif</dd></div>
-                <div><dt>Assigned</dt><dd>{{ $order->assigned_to_rider_at?->format('M d, Y h:i A') ?? '—' }}</dd></div>
-                <div><dt>Out for delivery</dt><dd>{{ $order->out_for_delivery_at?->format('M d, Y h:i A') ?? '—' }}</dd></div>
-                <div><dt>Delivered</dt><dd>{{ $order->delivered_at?->format('M d, Y h:i A') ?? '—' }}</dd></div>
-            </dl>
-        </section>
-    </div>
+    {{-- Delivery (handled by Pickrush) --}}
+    <section class="card" aria-labelledby="delivery-heading">
+        <div class="card-header"><span class="card-title" id="delivery-heading">Delivery</span><span class="oversight-description">Handled by Pickrush</span></div>
+        <dl class="order-fields order-pad">
+            <div><dt>Waybill</dt><dd>{{ $order->waybill_number ?? 'Not generated yet' }}</dd></div>
+            <div><dt>Picked up</dt><dd>{{ $order->picked_up_at?->format('M d, Y h:i A') ?? '—' }}</dd></div>
+            <div><dt>Received at hub</dt><dd>{{ $order->sorting_received_at?->format('M d, Y h:i A') ?? '—' }}</dd></div>
+            <div><dt>At destination station</dt><dd>{{ $order->sorted_at?->format('M d, Y h:i A') ?? '—' }}</dd></div>
+            <div><dt>Rider assigned</dt><dd>{{ $order->assigned_to_rider_at?->format('M d, Y h:i A') ?? '—' }}</dd></div>
+            <div><dt>Out for delivery</dt><dd>{{ $order->out_for_delivery_at?->format('M d, Y h:i A') ?? '—' }}</dd></div>
+            <div><dt>Delivered</dt><dd>{{ $order->delivered_at?->format('M d, Y h:i A') ?? '—' }}</dd></div>
+            <div><dt>Tracking note</dt><dd>{{ $order->tracking_status ?? '—' }}</dd></div>
+        </dl>
+    </section>
 
     {{-- Admin actions --}}
     @if($overrideTargets || $exceptionActions)

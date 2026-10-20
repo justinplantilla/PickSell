@@ -6,7 +6,6 @@ use App\Models\Complaint;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use App\Models\ReturnRequest;
-use App\Models\User;
 use App\Services\Orders\OrderLifecycleService;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
@@ -23,7 +22,6 @@ class OperationalReportService
      *   delivery_failures: int,
      *   return_count: int,
      *   complaint_count: int,
-     *   rider_workload: Collection,
      *   sorting_backlog: int
      * }
      */
@@ -43,20 +41,8 @@ class OperationalReportService
             ? 0.0
             : round($completed->avg(fn (Order $order): float => $order->created_at->diffInMinutes($order->completed_at) / 60), 2);
 
-        $riderWorkload = (clone $base)->whereNotNull('courier_id')
-            ->selectRaw('courier_id, count(*) as total')
-            ->groupBy('courier_id')->orderByDesc('total')->get()
-            ->map(function ($row): array {
-                $rider = User::query()->find($row->courier_id);
-
-                return [
-                    'name' => $rider?->full_name ?? 'Unavailable rider',
-                    'orders' => (int) $row->total,
-                ];
-            });
-
         return [
-            'orders' => (clone $base)->with(['seller', 'courier'])->latest('created_at')->paginate(25)->withQueryString(),
+            'orders' => (clone $base)->with(['seller'])->latest('created_at')->paginate(25)->withQueryString(),
             'status_totals' => $statusTotals,
             'order_count' => $orderCount,
             'average_fulfillment_hours' => $averageFulfillmentHours,
@@ -78,7 +64,6 @@ class OperationalReportService
                         ->orWhere('filed_by', $sellerId)
                         ->orWhereHas('order', fn (Builder $orders) => $orders->where('seller_id', $sellerId));
                 }))->count(),
-            'rider_workload' => $riderWorkload,
             'sorting_backlog' => (clone $base)->whereIn('status', ['picked_up', 'at_sorting_center', 'sorted'])->count(),
         ];
     }

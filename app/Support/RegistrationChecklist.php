@@ -19,13 +19,9 @@ final class RegistrationChecklist
             'address' => ['Address is complete and plausible', null],
         ];
 
-        if (in_array($applicant->role, ['seller', 'logistics'], true)) {
+        if ($applicant->role === 'seller') {
             $items['business_permit'] = ['Business permit is valid and names this business', 'business_permit'];
             $items['business_details'] = ['Business name and line of business are consistent with the permit', null];
-        }
-
-        if ($applicant->role === 'logistics') {
-            $items['provider_type'] = ['Provider type (company / individual) matches the documents', null];
         }
 
         return collect($items)->map(fn ($item) => [
@@ -41,7 +37,6 @@ final class RegistrationChecklist
         return collect([
             'id_upload' => 'Government-issued ID',
             'business_permit' => 'Business permit',
-            'or_cr_upload' => 'OR/CR & driver’s license',
         ])->filter(fn ($label, $field) => filled($applicant->{$field}))
             ->map(fn ($label, $field) => ['label' => $label, 'path' => $applicant->{$field}])
             ->all();

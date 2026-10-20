@@ -16,7 +16,7 @@ class CreateAnnouncementRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'message' => ['required', 'string', 'max:1000'],
-            'audience' => ['required', 'string', 'in:all,buyer,seller,courier'],
+            'audience' => ['required', 'string', 'in:all,buyer,seller'],
         ];
     }
 }

@@ -11,7 +11,6 @@ use App\Models\Product;
 use App\Models\ProductReview;
 use App\Models\User;
 use App\Notifications\NewSellerOrder;
-use App\Services\LogisticsRoutingService;
 use App\Services\CommissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -168,13 +167,7 @@ class BuyerController extends Controller
 
         $total = $items->sum(fn($i) => $i->product->effective_price * $i->quantity);
         $cartCount = CartItem::where('cart_id', $cart->id)->count();
-        $logisticsProvider = User::where('role', 'logistics')
-            ->where('status', 'approved')
-            ->orderBy('business_name')
-            ->orderBy('last_name')
-            ->first();
-
-        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount', 'logisticsProvider'));
+        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount'));
     }
 
     public function updateCart(Request $request, CartItem $item)
@@ -205,12 +198,6 @@ class BuyerController extends Controller
             'voucher_code' => 'nullable|string',
         ]);
 
-        $logisticsProvider = User::where('role', 'logistics')
-            ->where('status', 'approved')
-            ->orderBy('business_name')
-            ->orderBy('last_name')
-            ->firstOrFail();
-
         $cart  = $this->getCart();
         $items = CartItem::whereIn('id', $data['item_ids'])
             ->where('cart_id', $cart->id)
@@ -219,10 +206,8 @@ class BuyerController extends Controller
 
         if ($items->isEmpty()) return back()->withErrors(['item_ids' => 'No items selected.']);
 
-        $routing = app(LogisticsRoutingService::class);
-
         try {
-            $placed = DB::transaction(function () use ($items, $data, $logisticsProvider, $routing) {
+            $placed = DB::transaction(function () use ($items, $data) {
                 // Lock the products so moderation, other buyers and stock changes cannot interleave.
                 $products = Product::whereIn('id', $items->pluck('product_id'))->with('seller')->lockForUpdate()->get()->keyBy('id');
                 $unavailable = $items->filter(fn ($item) => ! $products->get($item->product_id)?->isPurchasable());
@@ -239,7 +224,7 @@ class BuyerController extends Controller
                 $placed = [];
                 foreach ($items as $item) {
                     $item->setRelation('product', $products[$item->product_id]);
-                    $placed[] = $this->createOrderFromCartItem($item, $data, $logisticsProvider, $routing);
+                    $placed[] = $this->createOrderFromCartItem($item, $data);
                 }
 
                 return $placed;
@@ -256,7 +241,7 @@ class BuyerController extends Controller
     }
 
     /** Builds one order from a cart line inside placeOrder's transaction. */
-    private function createOrderFromCartItem(CartItem $item, array $data, User $logisticsProvider, LogisticsRoutingService $routing): Order
+    private function createOrderFromCartItem(CartItem $item, array $data): Order
     {
         $product = $item->product;
         $price   = $product->effective_price;
@@ -274,7 +259,6 @@ class BuyerController extends Controller
             'product_id'     => $product->id,
             'buyer_id'       => $this->buyer()->id,
             'seller_id'      => $product->seller_id,
-            'logistics_id'   => $logisticsProvider->id,
             'product_name'   => $product->name,
             'quantity'       => $item->quantity,
             'amount'         => $amount,
@@ -283,7 +267,6 @@ class BuyerController extends Controller
             'status'         => 'placed',
             'tracking_status' => 'Order placed and awaiting seller preparation',
         ]);
-        $routing->routeOrder($order, $product->seller, $this->buyer());
 
         // Deduct stock
         $product->decrement('stock', $item->quantity);

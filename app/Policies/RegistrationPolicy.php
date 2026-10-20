@@ -35,9 +35,6 @@ class RegistrationPolicy
         if ($denied = $this->permission($admin, Permission::REGISTRATIONS_MANAGE) ?? $this->reviewable($admin, $applicant)) {
             return $denied;
         }
-        if ($applicant->role === 'courier') {
-            return Response::deny('Courier applications must be reviewed by Logistics.');
-        }
 
         // Blocks repeated decisions: once approved or disapproved, the application is closed.
         return $applicant->status === 'pending'

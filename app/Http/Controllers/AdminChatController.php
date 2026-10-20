@@ -17,7 +17,7 @@ class AdminChatController extends Controller
     {
         $admin = $request->user();
         $contacts = User::query()
-            ->whereIn('role', ['buyer', 'seller', 'courier', 'logistics'])
+            ->whereIn('role', ['buyer', 'seller'])
             ->where('status', 'approved')
             ->withCount([
                 'sentMessages as unread' => fn ($query) => $query

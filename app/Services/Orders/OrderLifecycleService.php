@@ -78,16 +78,11 @@ class OrderLifecycleService
     /**
      * Guarded transition. Caller holds a row lock and runs inside a transaction.
      *
-     * @param  array<string, mixed>  $extra  extra column updates (e.g. clearing the courier)
+     * @param  array<string, mixed>  $extra  extra column updates (e.g. the waybill number)
      */
     public function transition(Order $order, string $to, ?int $actorId, string $source, ?string $reason, array $extra = []): void
     {
         abort_unless(self::canTransition($order->status, $to), 409, 'An order cannot move from ' . self::label($order->status) . ' to ' . self::label($to) . '.');
-
-        // Moving a parcel back to sorting releases its rider so it can be reassigned.
-        if ($to === 'at_sorting_center' && in_array($order->status, ['assigned_to_rider', 'delivery_failed'], true)) {
-            $extra += ['courier_id' => null];
-        }
 
         $order->statusChangedBy = $actorId;
         $order->statusChangeSource = $source;

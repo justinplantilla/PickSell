@@ -83,12 +83,6 @@ class UserAccountModerationTest extends TestCase
             'checklist' => array_fill_keys(array_keys(RegistrationChecklist::for($seller)), '1'),
         ]);
         $this->assertDatabaseHas('user_status_histories', ['user_id' => $seller->id, 'to_status' => 'approved']);
-
-        // Logistics portal suspending a rider
-        $logistics = $this->user('logistics');
-        $rider = $this->user('courier');
-        $this->actingAs($logistics)->patch(route('logistics.riders.status', $rider), ['status' => 'suspended']);
-        $this->assertDatabaseHas('user_status_histories', ['user_id' => $rider->id, 'from_status' => 'approved', 'to_status' => 'suspended', 'changed_by' => $logistics->id]);
     }
 
     // Invalid transitions are rejected ------------------------------------------------------
@@ -181,14 +175,12 @@ class UserAccountModerationTest extends TestCase
         $active = $this->user('buyer');
         $suspended = $this->user('seller', 'suspended');
         $pending = $this->user('buyer', 'pending');
-        $pendingCourier = $this->user('courier', 'pending');
 
         $this->actingAs($this->admin)->get(route('admin.users'))
             ->assertOk()
             ->assertSee('Review / Decide')
             ->assertSee('registration-review-link')
             ->assertSee(route('admin.registrations.show', $pending), false)
-            ->assertSee('Review application')
             ->assertSee('btn-suspend', false)
             ->assertSee('btn-deactivate', false)
             ->assertSee('Suspend', false)
@@ -199,9 +191,6 @@ class UserAccountModerationTest extends TestCase
         $this->actingAs($this->admin)->get(route('admin.registrations.show', $pending))
             ->assertOk()
             ->assertSee('>Approve</button>', false);
-        $this->actingAs($this->admin)->get(route('admin.registrations.show', $pendingCourier))
-            ->assertOk()
-            ->assertSee('Courier applications are reviewed in the Logistics portal.');
 
         config(['permissions.roles.admin' => [Permission::USERS_VIEW]]);
         $this->actingAs($this->admin)->get(route('admin.users'))

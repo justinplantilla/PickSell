@@ -55,7 +55,6 @@ class AdminAccountPolicy
             'product_moderation_logs' => ['admin_id'],
             'compliance_cases' => ['opened_by'],
             'compliance_actions' => ['actor_id'],
-            'logistics_exceptions' => ['opened_by'],
             'messages' => ['sender_id', 'receiver_id'],
             'complaints' => ['filed_by'],
             'orders' => ['buyer_id', 'seller_id'],

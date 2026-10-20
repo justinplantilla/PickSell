@@ -3,7 +3,6 @@ const registerConfig = document.querySelector('[data-register-config]');
 if (registerForm && registerConfig) {
     const roleBtns = document.querySelectorAll('.role-btn');
     const sellerFields = document.getElementById('sellerFields');
-    const courierFields = document.getElementById('courierFields');
     const submitButton = registerForm.querySelector('.btn-submit');
     const passwordInput = registerForm.querySelector('input[name="password"]');
     const passwordMeter = registerForm.querySelector('.password-meter');
@@ -59,35 +58,18 @@ if (registerForm && registerConfig) {
     });
     registerForm.querySelector('input[name="role"]')?.setAttribute('required', 'required');
 
-    const updateProviderFields = () => {
-        const providerType = document.getElementById('provider_type').value;
-        const logisticsSelected = document.querySelector('input[name="role"]:checked')?.value === 'logistics';
-        const businessType = document.getElementById('line_of_business');
-        const selectedType = businessType.value;
-        const typeOptions = logisticsSelected ? ['Local Delivery', 'Same-Day Delivery', 'Express Delivery', 'Freight and Cargo', 'Other'] : ['Electronics', 'Fashion', 'Home & Living', 'Sports', 'Beauty', 'Food & Grocery', 'Books', 'Toys', 'Others'];
-        businessType.innerHTML = '<option value="">-- Select ' + (logisticsSelected ? 'Service Type' : 'Category') + ' --</option>' + typeOptions.map(option => '<option value="' + option + '">' + option + '</option>').join('');
-        if (typeOptions.includes(selectedType)) businessType.value = selectedType;
-        document.getElementById('businessNameLabel').innerHTML = logisticsSelected && providerType === 'individual' ? 'Provider Name <span class="req">*</span>' : 'Business Name <span class="req">*</span>';
-        document.getElementById('businessTypeLabel').innerHTML = logisticsSelected && providerType === 'individual' ? 'Service Type <span class="req">*</span>' : 'Line of Business <span class="req">*</span>';
-        document.querySelector('input[name="business_name"]').placeholder = logisticsSelected && providerType === 'individual' ? 'e.g. Juan Dela Cruz Delivery' : "e.g. Juan's Store";
-    };
     const updateRegistrationNote = role => {
-        const messages = { courier: 'Courier applications are reviewed by the PickSell Logistics team. Please wait for the approval result before logging in.', logistics: 'Logistics provider applications are reviewed by the PickSell Admin team. Please wait for approval before logging in.', seller: 'Seller applications are reviewed by the PickSell Admin team. Please wait for the approval result before logging in.', buyer: 'Your registration will be reviewed by PickSell. Please wait for the approval result before logging in.' };
+        const messages = { seller: 'Seller applications are reviewed by the PickSell Admin team. Please wait for the approval result before logging in.', buyer: 'Your registration will be reviewed by PickSell. Please wait for the approval result before logging in.' };
         document.getElementById('registrationNote').textContent = messages[role] || messages.buyer;
     };
     const updateRole = role => {
         roleBtns.forEach(button => button.classList.remove('active'));
         document.getElementById('role-' + role)?.classList.add('active');
-        sellerFields.style.display = ['seller', 'logistics'].includes(role) ? 'block' : 'none';
-        courierFields.style.display = role === 'courier' ? 'block' : 'none';
-        document.getElementById('providerTypeFields').style.display = role === 'logistics' ? 'block' : 'none';
-        document.querySelectorAll('#sellerFields input, #sellerFields select').forEach(element => { if (element.id !== 'provider_type') element.required = ['seller', 'logistics'].includes(role); });
-        document.querySelectorAll('#courierFields input, #courierFields select').forEach(element => { element.required = role === 'courier'; });
-        document.getElementById('provider_type').required = role === 'logistics';
-        updateProviderFields(); updateRegistrationNote(role);
+        sellerFields.style.display = role === 'seller' ? 'block' : 'none';
+        document.querySelectorAll('#sellerFields input, #sellerFields select').forEach(element => { element.required = role === 'seller'; });
+        updateRegistrationNote(role);
     };
     roleBtns.forEach(button => button.addEventListener('click', () => { const role = button.querySelector('input').value; button.querySelector('input').checked = true; updateRole(role); }));
-    document.getElementById('provider_type').addEventListener('change', updateProviderFields);
     passwordInput.addEventListener('input', () => {
         const password = passwordInput.value;
         const score = [password.length >= 8, /[a-z]/.test(password) && /[A-Z]/.test(password), /\d/.test(password), /[^A-Za-z0-9]/.test(password)].filter(Boolean).length;
@@ -100,7 +82,7 @@ if (registerForm && registerConfig) {
     updateRole(registerConfig.dataset.role);
 
     document.getElementById('birthday').addEventListener('change', function () { const dob = new Date(this.value); const today = new Date(); let age = today.getFullYear() - dob.getFullYear(); const month = today.getMonth() - dob.getMonth(); if (month < 0 || (month === 0 && today.getDate() < dob.getDate())) age--; document.getElementById('age').value = age >= 0 ? age : ''; });
-    ['id_upload', 'business_permit', 'or_cr_upload'].forEach(inputId => document.getElementById(inputId).addEventListener('change', function () { document.getElementById(`${inputId}_name`).textContent = this.files[0]?.name || 'Click to upload'; }));
+    ['id_upload', 'business_permit'].forEach(inputId => document.getElementById(inputId).addEventListener('change', function () { document.getElementById(`${inputId}_name`).textContent = this.files[0]?.name || 'Click to upload'; }));
 
     const BASE = 'https://psgc.gitlab.io/api';
     const fetchJSON = url => fetch(url).then(response => response.json());

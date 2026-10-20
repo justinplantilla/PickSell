@@ -31,7 +31,6 @@
                     </tr>
                     <tr><td class="blade-inline-5">Buyer</td><td>{{ $complaint->order->buyer->full_name ?? '—' }}</td></tr>
                     <tr><td class="blade-inline-5">Seller</td><td>{{ $complaint->order->seller->full_name ?? '—' }}</td></tr>
-                    <tr><td class="blade-inline-5">Courier</td><td>{{ $complaint->order->courier->full_name ?? 'Not assigned' }}</td></tr>
                 @else
                     <tr><td class="blade-inline-5">Order</td><td>No order linked</td></tr>
                 @endif

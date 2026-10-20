@@ -4,9 +4,6 @@ namespace Tests\Feature;
 
 use App\Auth\Permission;
 use App\Models\AuditLog;
-use App\Models\BranchRider;
-use App\Models\LogisticsBranch;
-use App\Models\Municipality;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Refund;
@@ -62,14 +59,9 @@ class AdminNavigationTest extends TestCase
     {
         $this->buyer = $this->user('buyer');
         $this->seller = $this->user('seller');
-        $municipality = Municipality::create(['province' => 'Metro Manila', 'name' => 'Pasig']);
-        $branch = LogisticsBranch::create(['municipality_id' => $municipality->id, 'name' => 'Pasig Hub', 'status' => 'active']);
-        $rider = $this->user('courier');
-        BranchRider::create(['branch_id' => $branch->id, 'user_id' => $rider->id, 'status' => 'active']);
-
-        $stale = $this->order('at_sorting_center', ['origin_branch_id' => $branch->id, 'destination_branch_id' => $branch->id]);
+        $stale = $this->order('at_sorting_center');
         Order::whereKey($stale->id)->update(['updated_at' => now()->subHours(72)]);
-        $out = $this->order('out_for_delivery', ['courier_id' => $rider->id, 'destination_branch_id' => $branch->id, 'waybill_number' => 'WB-NAV-1']);
+        $out = $this->order('out_for_delivery', ['waybill_number' => 'WB-NAV-1']);
         $this->order('placed');
         $completed = $this->order('completed', ['delivered_at' => now()]);
 
@@ -84,7 +76,7 @@ class AdminNavigationTest extends TestCase
             'status' => 'approved', 'approved_at' => now(),
         ]);
 
-        return compact('branch', 'rider', 'stale', 'out', 'completed', 'return');
+        return compact('stale', 'out', 'completed', 'return');
     }
 
     public function test_sidebar_follows_the_target_structure_in_order(): void
@@ -102,7 +94,6 @@ class AdminNavigationTest extends TestCase
             'Overview' => ['Dashboard', 'Notifications'],
             'Marketplace' => ['Orders', 'Products', 'Seller Compliance'],
             'Users' => ['Registrations', 'User Accounts'],
-            'Operations' => ['Logistics', 'Sorting Center', 'Rider Assignment'],
             'Customer Care' => ['Complaints & Disputes', 'Returns', 'Refunds'],
             'Finance' => ['Commission', 'Financial Reports'],
             'Analytics' => ['Reports'],
@@ -144,11 +135,11 @@ class AdminNavigationTest extends TestCase
 
     public function test_narrower_roles_only_see_their_groups(): void
     {
-        config(['permissions.roles.admin' => [Permission::DASHBOARD_VIEW, Permission::LOGISTICS_VIEW]]);
+        config(['permissions.roles.admin' => [Permission::DASHBOARD_VIEW, Permission::COMPLAINTS_VIEW]]);
         $html = $this->actingAs($this->admin)->get('/admin/dashboard')->assertOk()->getContent();
 
-        $this->assertStringContainsString('<span class="nav-label">Sorting Center</span>', $html);
-        foreach (['Marketplace', 'Customer Care', 'Finance', 'System'] as $hiddenGroup) {
+        $this->assertStringContainsString('<span class="nav-label">Complaints &amp; Disputes</span>', $html);
+        foreach (['Marketplace', 'Finance', 'System'] as $hiddenGroup) {
             $this->assertStringNotContainsString('>'.$hiddenGroup.'</div>', $html);
         }
         $this->actingAs($this->admin)->get('/admin/orders')->assertForbidden();
@@ -162,17 +153,6 @@ class AdminNavigationTest extends TestCase
             ->assertSee('WB-NAV-1')->assertDontSee('>Item 3<', false);
         $this->actingAs($this->admin)->get('/admin/orders?search=WB-NAV-1')->assertOk()
             ->assertSee('ORD-NAV')->assertSee('Out for delivery');
-    }
-
-    public function test_sorting_center_flags_idle_parcels(): void
-    {
-        $seeded = $this->seedMarketplace();
-
-        $this->actingAs($this->admin)->get('/admin/logistics/sorting-center?stale=1')->assertOk()
-            ->assertSee($seeded['stale']->order_number)->assertSee('Idle');
-        $this->actingAs($this->admin)->get('/admin/logistics')->assertOk()->assertSee('Pasig Hub');
-        $this->actingAs($this->admin)->get('/admin/logistics/rider-assignment')->assertOk()
-            ->assertSee($seeded['rider']->full_name)->assertSee('WB-NAV-1');
     }
 
     public function test_returns_refunds_and_non_escalated_detail_are_read_only(): void

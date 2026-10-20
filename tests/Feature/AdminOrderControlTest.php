@@ -5,8 +5,6 @@ namespace Tests\Feature;
 use App\Auth\Permission;
 use App\Models\AuditLog;
 use App\Models\Complaint;
-use App\Models\LogisticsBranch;
-use App\Models\Municipality;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
 use App\Models\Product;
@@ -25,7 +23,6 @@ class AdminOrderControlTest extends TestCase
     private User $admin;
     private User $buyer;
     private User $seller;
-    private User $courier;
     private Product $product;
 
     protected function setUp(): void
@@ -36,7 +33,6 @@ class AdminOrderControlTest extends TestCase
         $this->admin = $this->user('admin');
         $this->buyer = $this->user('buyer');
         $this->seller = $this->user('seller', ['business_name' => 'Tote House']);
-        $this->courier = $this->user('courier');
         $this->product = Product::create(['seller_id' => $this->seller->id, 'name' => 'Canvas Tote', 'category' => 'Fashion', 'price' => 500, 'stock' => 5, 'status' => 'active']);
     }
 
@@ -76,10 +72,8 @@ class AdminOrderControlTest extends TestCase
 
     public function test_every_order_is_searchable_and_filterable(): void
     {
-        $municipality = Municipality::create(['province' => 'Metro Manila', 'name' => 'Pasig']);
-        $hub = LogisticsBranch::create(['municipality_id' => $municipality->id, 'name' => 'Pasig Hub', 'status' => 'active']);
         $otherSeller = $this->user('seller', ['business_name' => 'Gadget Hub']);
-        $a = $this->order('out_for_delivery', ['courier_id' => $this->courier->id, 'destination_branch_id' => $hub->id, 'waybill_number' => 'WB-FIND-ME']);
+        $a = $this->order('out_for_delivery', ['waybill_number' => 'WB-FIND-ME']);
         $b = $this->order('placed', ['seller_id' => $otherSeller->id, 'product_name' => 'Speaker']);
         $old = $this->order('completed');
         Order::whereKey($old->id)->update(['created_at' => now()->subDays(40)]);
@@ -92,11 +86,9 @@ class AdminOrderControlTest extends TestCase
         $see(['status' => 'out_for_delivery'], $a, $b);
         $see(['seller' => $otherSeller->id], $b, $a);
         $see(['buyer' => $this->buyer->id], $a, $this->order('placed', ['buyer_id' => $this->user('buyer')->id]));
-        $see(['courier' => $this->courier->id], $a, $b);
-        $see(['branch' => $hub->id], $a, $b);
         $see(['date' => '30d'], $a, $old);
 
-        $this->actingAs($this->admin)->get(route('admin.orders'))->assertSeeInOrder(['Order', 'Buyer', 'Seller', 'Amount', 'Status', 'Courier', 'Updated', 'Action']);
+        $this->actingAs($this->admin)->get(route('admin.orders'))->assertSeeInOrder(['Order', 'Buyer', 'Seller', 'Amount', 'Status', 'Updated', 'Action']);
     }
 
     // Complete lifecycle visible -------------------------------------------------------------
@@ -117,14 +109,14 @@ class AdminOrderControlTest extends TestCase
         $this->assertSame($this->seller->id, $order->statusHistories->last()->changed_by);
     }
 
-    public function test_detail_page_shows_summary_lifecycle_sorting_courier_returns_and_audit(): void
+    public function test_detail_page_shows_summary_lifecycle_delivery_returns_and_audit(): void
     {
         $order = $this->order('placed');
         $order->update(['status' => 'preparing']);
         $order->update(['status' => 'ready_for_pickup', 'waybill_number' => 'WB-DETAIL']);
         $order->update(['status' => 'picked_up']);
         $order->update(['status' => 'at_sorting_center']);
-        $order->update(['status' => 'assigned_to_rider', 'courier_id' => $this->courier->id]);
+        $order->update(['status' => 'assigned_to_rider']);
         $order->update(['status' => 'out_for_delivery']);
         $order->update(['status' => 'delivered']);
         $order->update(['status' => 'completed']);
@@ -134,8 +126,8 @@ class AdminOrderControlTest extends TestCase
 
         $this->actingAs($this->admin)->get(route('admin.orders.show', $order))->assertOk()
             ->assertSeeInOrder(['Order ' . $order->order_number, 'Buyer', 'Seller', 'Item', 'Order amount', 'Platform commission', 'Net to seller',
-                'Fulfillment timeline', 'Status history', 'Sorting events', 'Courier assignment', 'Complaints', 'Returns &amp; refunds', 'Audit history'], false)
-            ->assertSee('WB-DETAIL')->assertSee($this->courier->full_name)
+                'Fulfillment timeline', 'Status history', 'Delivery', 'Handled by Pickrush', 'Complaints', 'Returns &amp; refunds', 'Audit history'], false)
+            ->assertSee('WB-DETAIL')
             ->assertSee('Skipped')                    // confirmed / sorted were never reached
             ->assertDontSee('@else')                  // no leaked Blade directives
             ->assertSee('Torn strap on arrival')->assertSee('Refund due')->assertSee('₱1,000.00');
@@ -162,7 +154,7 @@ class AdminOrderControlTest extends TestCase
         $completed = $this->order('completed');
         $this->override($completed, 'cancelled')->assertStatus(409);        // terminal
         $sorting = $this->order('at_sorting_center');
-        $this->override($sorting, 'assigned_to_rider')->assertForbidden();  // needs a rider from logistics
+        $this->override($sorting, 'assigned_to_rider')->assertForbidden();  // set only by Pickrush scans
         $this->override($sorting, 'teleported')->assertStatus(409);
 
         $this->assertSame(['placed', 'completed', 'at_sorting_center'], [$placed->fresh()->status, $completed->fresh()->status, $sorting->fresh()->status]);
@@ -203,10 +195,10 @@ class AdminOrderControlTest extends TestCase
 
     public function test_exception_resolutions_apply_side_effects(): void
     {
-        $failed = $this->order('delivery_failed', ['courier_id' => $this->courier->id]);
+        $failed = $this->order('delivery_failed');
         $this->actingAs($this->admin)->patch(route('admin.orders.resolve', $failed), ['action' => 'reattempt_delivery', 'reason' => 'Buyer was away; reschedule delivery.'])
             ->assertSessionHasNoErrors();
-        $this->assertSame(['at_sorting_center', null], [$failed->fresh()->status, $failed->fresh()->courier_id]);
+        $this->assertSame('at_sorting_center', $failed->fresh()->status);
 
         $returned = $this->order('delivery_failed');
         $this->actingAs($this->admin)->patch(route('admin.orders.resolve', $returned), ['action' => 'return_to_seller', 'reason' => 'Buyer refused the parcel twice.']);
@@ -230,7 +222,7 @@ class AdminOrderControlTest extends TestCase
     {
         $order = $this->order('ready_for_pickup');
         $stale = Order::find($order->id);
-        $order->update(['status' => 'picked_up']); // logistics moved it first
+        $order->update(['status' => 'picked_up']); // Pickrush moved it first
 
         $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
         app(\App\Services\Orders\OrderAdministrationService::class)->overrideStatus($stale, $this->admin, 'cancelled', 'Cancel the stale order now.');

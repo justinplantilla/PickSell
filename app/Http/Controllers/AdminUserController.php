@@ -122,7 +122,6 @@ class AdminUserController extends Controller
         $column = match ($user->role) {
             'buyer' => 'buyer_id',
             'seller' => 'seller_id',
-            'courier' => 'courier_id',
             default => null,
         };
         if (! $column) {
@@ -133,12 +132,12 @@ class AdminUserController extends Controller
         $byStatus = (clone $orders)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
 
         return [
-            'perspective' => ['buyer_id' => 'Purchases', 'seller_id' => 'Sales', 'courier_id' => 'Deliveries'][$column],
+            'perspective' => ['buyer_id' => 'Purchases', 'seller_id' => 'Sales'][$column],
             'total' => (int) $byStatus->sum(),
             'completed' => (int) ($byStatus['completed'] ?? 0),
             'in_progress' => (int) $byStatus->except(['completed', 'delivered', 'cancelled', 'returned', 'delivery_failed'])->sum(),
             'problems' => (int) $byStatus->only(['cancelled', 'returned', 'delivery_failed'])->sum(),
-            'completed_value' => $column === 'courier_id' ? null : (float) (clone $orders)->where('status', 'completed')->sum('amount'),
+            'completed_value' => (float) (clone $orders)->where('status', 'completed')->sum('amount'),
             'recent' => (clone $orders)->latest()->take(5)->get(['id', 'order_number', 'product_name', 'amount', 'status', 'created_at']),
         ];
     }
@@ -156,7 +155,7 @@ class AdminUserController extends Controller
     private function filteredUsers(array $filters)
     {
         $query = User::whereIn('role', UserPolicy::MANAGED_ROLES)
-            ->withCount(['ordersAsBuyer', 'ordersAsSeller', 'ordersAsCourier']);
+            ->withCount(['ordersAsBuyer', 'ordersAsSeller']);
         if ($filters['role'] !== 'all') {
             $query->where('role', $filters['role']);
         }

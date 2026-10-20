@@ -32,10 +32,8 @@
         @foreach([
             'seller' => ['All sellers', $options['sellers'], fn ($u) => $u->business_name ?? $u->full_name],
             'buyer' => ['All buyers', $options['buyers'], fn ($u) => $u->full_name],
-            'courier' => ['All couriers', $options['couriers'], fn ($u) => $u->full_name],
-            'branch' => ['All sorting centers', $options['branches'], fn ($b) => $b->name],
         ] as $key => [$placeholder, $choices, $labelOf])
-            <select name="{{ $key }}" class="filter-select" aria-label="{{ $key === 'branch' ? 'Sorting center' : ucfirst($key) }}" data-submit-on-change>
+            <select name="{{ $key }}" class="filter-select" aria-label="{{ ucfirst($key) }}" data-submit-on-change>
                 <option value="">{{ $placeholder }}</option>
                 @foreach($choices as $choice)
                     <option value="{{ $choice->id }}" @selected($filters[$key] === $choice->id)>{{ $labelOf($choice) }}</option>
@@ -99,7 +97,7 @@
     @else
         <div class="oversight-table-wrap">
             <table>
-                <thead><tr><th>Order</th><th>Buyer</th><th>Seller</th><th>Amount</th><th>Status</th><th>Courier</th><th>Updated</th><th>Action</th></tr></thead>
+                <thead><tr><th>Order</th><th>Buyer</th><th>Seller</th><th>Amount</th><th>Status</th><th>Updated</th><th>Action</th></tr></thead>
                 <tbody>
                 @foreach($orders as $order)
                     <tr>
@@ -108,7 +106,6 @@
                         <td>{{ $order->seller?->business_name ?? $order->seller?->full_name ?? '—' }}</td>
                         <td class="oversight-number">₱{{ number_format($order->amount, 2) }}</td>
                         <td><x-admin-order-status :status="$order->status" />@if($order->tracking_status)<span class="oversight-meta">{{ $order->tracking_status }}</span>@endif</td>
-                        <td>{{ $order->courier?->full_name ?? '—' }}</td>
                         <td><time datetime="{{ $order->updated_at->toIso8601String() }}" title="{{ $order->updated_at->format('M d, Y h:i A') }}">{{ $order->updated_at->diffForHumans() }}</time></td>
                         <td><a href="{{ route('admin.orders.show', $order) }}" class="btn btn-outline btn-sm">View<span class="sr-only"> {{ $order->order_number }}</span></a></td>
                     </tr>

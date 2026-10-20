@@ -37,54 +37,24 @@
             </table>
         </div>
     </section>
-    <section class="card">
-        <div class="card-header"><span class="card-title">Rider Workload</span></div>
-        @php $riderWorkloadMax = max(1, (int) ($data['rider_workload']->max('orders') ?? 0)); @endphp
-        @if($data['rider_workload']->isNotEmpty())
-            <ul class="oversight-bars" aria-label="Rider workload visualization">
-                @foreach($data['rider_workload'] as $rider)
-                    <li class="oversight-bar-row">
-                        <span class="oversight-bar-label">{{ $rider['name'] }}</span>
-                        <span class="oversight-bar-track" role="img" aria-label="{{ $rider['orders'] }} assigned orders">
-                            <span class="oversight-bar-fill" style="width: {{ max(1, round($rider['orders'] / $riderWorkloadMax * 100)) }}%"></span>
-                        </span>
-                        <span class="oversight-bar-value">{{ number_format($rider['orders']) }}</span>
-                    </li>
-                @endforeach
-            </ul>
-        @endif
-        <div class="table-responsive">
-            <table>
-                <thead><tr><th>Rider</th><th>Assigned orders</th></tr></thead>
-                <tbody>
-                    @forelse($data['rider_workload'] as $rider)
-                        <tr><td>{{ $rider['name'] }}</td><td>{{ number_format($rider['orders']) }}</td></tr>
-                    @empty
-                        <tr><td colspan="2">No assigned rider orders match these filters.</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-    </section>
 </div>
 
 <section class="card">
     <div class="card-header"><span class="card-title">Orders</span></div>
     <div class="table-responsive">
         <table>
-            <thead><tr><th>Order</th><th>Seller</th><th>Rider</th><th>Status</th><th>Created</th><th>Fulfilled</th></tr></thead>
+            <thead><tr><th>Order</th><th>Seller</th><th>Status</th><th>Created</th><th>Fulfilled</th></tr></thead>
             <tbody>
                 @forelse($data['orders'] as $order)
                     <tr>
                         <td>{{ $order->order_number }}</td>
                         <td>{{ $order->seller?->full_name ?? '—' }}</td>
-                        <td>{{ $order->courier?->full_name ?? 'Unassigned' }}</td>
                         <td>{{ \App\Services\Orders\OrderLifecycleService::label($order->status) }}</td>
                         <td>{{ $order->created_at?->format('M d, Y H:i') ?? '—' }}</td>
                         <td>{{ $order->completed_at?->format('M d, Y H:i') ?? '—' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="6">No orders match these filters.</td></tr>
+                    <tr><td colspan="5">No orders match these filters.</td></tr>
                 @endforelse
             </tbody>
         </table>

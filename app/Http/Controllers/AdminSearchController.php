@@ -22,7 +22,7 @@ class AdminSearchController extends Controller
 
         $users = $viewer->can(Permission::USERS_VIEW)
             ? User::query()
-                ->whereIn('role', ['buyer', 'seller', 'courier', 'logistics'])
+                ->whereIn('role', ['buyer', 'seller'])
                 ->where(fn ($query) => $query
                     ->where('first_name', 'like', $like)
                     ->orWhere('last_name', 'like', $like)

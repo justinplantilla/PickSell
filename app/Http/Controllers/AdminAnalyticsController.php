@@ -47,7 +47,7 @@ class AdminAnalyticsController extends Controller
             'returnRate' => $completed->count() ? round($returns / $completed->count() * 100, 1) : null,
             'returnsOpened' => $returns,
             'complaintsOpened' => Complaint::whereBetween('created_at', $range)->count(),
-            'newUsers' => User::whereBetween('created_at', $range)->whereIn('role', ['buyer', 'seller', 'courier', 'logistics'])
+            'newUsers' => User::whereBetween('created_at', $range)->whereIn('role', ['buyer', 'seller'])
                 ->selectRaw('role, count(*) as total')->groupBy('role')->pluck('total', 'role'),
             'lifecycle' => $lifecycle,
             'lifecycleMax' => max(1, $lifecycle->max()),
