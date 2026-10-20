@@ -44,7 +44,7 @@
     </div>
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Province Hub</th><th>Operator</th><th>Stations</th><th>Status</th><th>Portal</th><th></th></tr></thead>
+            <thead><tr><th>Province Hub</th><th>Operator</th><th>Stations</th><th>Status</th><th></th></tr></thead>
             <tbody>
             @forelse($hubs as $hub)
                 <tr>
@@ -58,11 +58,10 @@
                     </td>
                     <td>{{ $hub->children->count() }}</td>
                     <td><span class="status-pill status-pill--{{ $hub->status }}">{{ ucfirst($hub->status) }}</span></td>
-                    <td>@if($hub->portalHost())<a class="portal-link" href="{{ $hub->portalUrl() }}" target="_blank" rel="noopener">{{ $hub->portalHost() }} ↗</a>@else — @endif</td>
                     <td><div class="cell-actions"><a class="btn btn-outline btn-sm" href="{{ route('logistics.branches.edit', $hub) }}">Edit</a></div></td>
                 </tr>
             @empty
-                <tr><td colspan="6"><div class="empty-state"><strong>No province hubs yet</strong><p>Province hubs are the backbone of your network.</p><a class="btn btn-coral" href="{{ route('logistics.branches') }}#create-hub">Create a province hub</a></div></td></tr>
+                <tr><td colspan="5"><div class="empty-state"><strong>No province hubs yet</strong><p>Province hubs are the backbone of your network.</p><a class="btn btn-coral" href="{{ route('logistics.branches') }}#create-hub">Create a province hub</a></div></td></tr>
             @endforelse
             </tbody>
         </table>

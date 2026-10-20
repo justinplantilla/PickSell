@@ -8,10 +8,8 @@ use App\Models\Order;
 use App\Services\BarangayImporter;
 use App\Services\HubOperatorService;
 use App\Services\LogisticsService;
-use App\Support\LogisticsDomains;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use RuntimeException;
 
 /**
@@ -152,7 +150,6 @@ class ProvinceHubController extends Controller
             'name' => 'required|string|max:120',
             'municipality' => 'required|string|max:120',
             'address' => 'nullable|string|max:255',
-            'subdomain' => ['required', 'string', 'max:'.LogisticsDomains::MAX_SUBDOMAIN_LENGTH, 'regex:/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/', Rule::unique('logistics_branches', 'subdomain')],
             'operator_first_name' => 'required|string|max:100',
             'operator_last_name' => 'required|string|max:100',
             'operator_sex' => 'required|in:Male,Female',
@@ -174,7 +171,6 @@ class ProvinceHubController extends Controller
                 'logistics_id' => $hub->logistics_id,
                 'hub_type' => 'station_hub',
                 'parent_id' => $hub->id,
-                'subdomain' => $data['subdomain'],
                 'name' => trim($data['name']),
                 'address' => $data['address'] ?? null,
                 'status' => 'active',

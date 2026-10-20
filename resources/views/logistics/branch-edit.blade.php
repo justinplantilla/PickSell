@@ -5,11 +5,10 @@
 <div class="page-heading">
     <div>
         <h1>{{ $branch->name }}</h1>
-        <p>Update the hub's details, portal address and status.</p>
+        <p>Update the hub's details and status.</p>
     </div>
     <div class="page-heading-actions">
         <a class="btn btn-outline" href="{{ route('logistics.branches') }}">← All province hubs</a>
-        @if($branch->portalHost())<a class="btn btn-outline" href="{{ $branch->portalUrl() }}" target="_blank" rel="noopener">Open portal ↗</a>@endif
     </div>
 </div>
 
@@ -23,15 +22,9 @@
         @method('PUT')
         <div class="form-section">
             <h2>Hub details</h2>
-            <p>Changing the subdomain changes the portal address; tell the operator before you do.</p>
+            <p>The operator signs in at {{ \App\Support\LogisticsDomains::superadminHost() }}/login.</p>
             <div class="branch-form-grid">
                 <div><label for="hub-name">Hub name *</label><input class="form-control" id="hub-name" name="name" value="{{ old('name', $branch->name) }}" required></div>
-                <div>
-                    <label for="hub-subdomain">Portal subdomain *</label>
-                    <input class="form-control" id="hub-subdomain" name="subdomain" value="{{ old('subdomain', $branch->subdomain) }}" required maxlength="{{ \App\Support\LogisticsDomains::MAX_SUBDOMAIN_LENGTH }}" pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-                        data-subdomain-input data-preview-target="hub-subdomain-preview" data-host-template="https://{{ \App\Support\LogisticsDomains::provinceHost('{subdomain}') }}">
-                    <small>Portal address: <code id="hub-subdomain-preview"></code></small>
-                </div>
                 <div><label for="hub-province">Province *</label><input class="form-control" id="hub-province" name="province" value="{{ old('province', $branch->municipality->province) }}" required></div>
                 <div><label for="hub-municipality">Municipality / City *</label><input class="form-control" id="hub-municipality" name="municipality" value="{{ old('municipality', $branch->municipality->name) }}" required></div>
                 <div><label for="hub-address">Address</label><input class="form-control" id="hub-address" name="address" value="{{ old('address', $branch->address) }}"></div>

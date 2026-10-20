@@ -7,6 +7,8 @@
 @endsection
 
 @section('content')
+{{-- Company, province hub and station hub portals each serve this page under their own route names. --}}
+@php($accountRoutes = match (request()->attributes->get('hub_context')) { 'province_hub' => 'province-hub', 'station_hub' => 'station-hub', default => 'logistics' })
 <h2 class="account-page-title">My Account</h2>
 
 <div class="account-page logistics-account-page">
@@ -17,7 +19,7 @@
                 <span class="badge badge-approved">{{ ucfirst($user->status) }}</span>
             </div>
             <div class="card-body">
-                <form method="POST" action="{{ route('logistics.account.update') }}">
+                <form method="POST" action="{{ route($accountRoutes.'.account.update') }}">
                     @csrf @method('PATCH')
 
                     <div class="form-row profile-name-row">
@@ -99,7 +101,7 @@
         <div class="card">
             <div class="card-header"><span class="card-title">Change Password</span></div>
             <div class="card-body">
-                <form method="POST" action="{{ route('logistics.account.password') }}">
+                <form method="POST" action="{{ route($accountRoutes.'.account.password') }}">
                     @csrf @method('PATCH')
                     <div class="form-group">
                         <label class="form-label">Current Password *</label>
@@ -132,7 +134,7 @@
                 @if($user->assignedHub->parent)
                     <div><span>Province Hub</span><strong>{{ $user->assignedHub->parent->name }}</strong></div>
                 @endif
-                <div><span>Portal</span><strong><a class="portal-link" href="{{ $user->assignedHub->portalUrl() }}">{{ $user->assignedHub->portalHost() }}</a></strong></div>
+                <div><span>Portal</span><strong><a class="portal-link" href="{{ $user->assignedHub->portalUrl() }}">{{ \App\Support\LogisticsDomains::superadminHost() }}</a></strong></div>
                 <div><span>Account Status</span><strong>{{ ucfirst($user->status) }}</strong></div>
             </div>
         </div>

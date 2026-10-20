@@ -12,7 +12,7 @@
         </select>
     </div>
     <div><label for="operator-birthday">Birthday *</label><input class="form-control" id="operator-birthday" name="operator_birthday" type="date" value="{{ old('operator_birthday') }}" max="{{ now()->subYears(18)->toDateString() }}" required><small>Operators must be at least 18.</small></div>
-    <div><label for="operator-email">Login email *</label><input class="form-control" id="operator-email" name="operator_email" type="email" value="{{ old('operator_email') }}" required autocomplete="off"><small>They sign in with this at the hub's portal address.</small></div>
+    <div><label for="operator-email">Login email *</label><input class="form-control" id="operator-email" name="operator_email" type="email" value="{{ old('operator_email') }}" required autocomplete="off"><small>They sign in with this at {{ \App\Support\LogisticsDomains::superadminHost() }}/login.</small></div>
     <div><label for="operator-contact">Mobile number *</label><input class="form-control" id="operator-contact" name="operator_contact_no" value="{{ old('operator_contact_no') }}" pattern="09[0-9]{9}" inputmode="numeric" maxlength="11" placeholder="09xxxxxxxxx" required></div>
     <div><label for="operator-password">Temporary password *</label><input class="form-control" id="operator-password" name="operator_password" type="password" minlength="8" required autocomplete="new-password"><small>At least 8 characters. Ask them to change it under My Account.</small></div>
     <div><label for="operator-password-confirmation">Confirm password *</label><input class="form-control" id="operator-password-confirmation" name="operator_password_confirmation" type="password" minlength="8" required autocomplete="new-password"></div>

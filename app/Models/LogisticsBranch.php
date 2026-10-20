@@ -54,22 +54,11 @@ class LogisticsBranch extends Model
             ->values();
     }
 
-    /** e.g. hub-cebu.pick-sell.shop or station-mandaue.pick-sell.shop; null without a subdomain. */
-    public function portalHost(): ?string
-    {
-        if (! $this->subdomain) {
-            return null;
-        }
-
-        return $this->isProvinceHub()
-            ? LogisticsDomains::provinceHost($this->subdomain)
-            : LogisticsDomains::stationHost($this->subdomain);
-    }
-
+    /** Dashboard of this hub's portal on the logistics host, e.g. logistics.pick-sell.shop/logistics/hub/dashboard. */
     public function portalUrl(): string
     {
-        $host = $this->portalHost();
+        $route = $this->isProvinceHub() ? 'province-hub.dashboard' : 'station-hub.dashboard';
 
-        return $host ? 'https://'.$host.'/logistics/dashboard' : url('/logistics/dashboard');
+        return LogisticsDomains::url(route($route, [], false));
     }
 }

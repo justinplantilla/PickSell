@@ -17,20 +17,20 @@
     <nav class="sidebar-nav">
         @if($provinceHub)
             <div class="nav-label nav-label--hub" title="{{ $provinceHub->name }}">{{ $provinceHub->name }}</div>
-            <a class="nav-item {{ request()->routeIs('province-hub.dashboard') ? 'active' : '' }}" href="/logistics/dashboard"><span class="nav-icon">▦</span><span class="nav-text">Province Dashboard</span></a>
-            <a class="nav-item {{ request()->routeIs('province-hub.parcels') ? 'active' : '' }}" href="/logistics/parcels"><span class="nav-icon">▣</span><span class="nav-text">Sorting Center</span></a>
-            <a class="nav-item {{ request()->routeIs('province-hub.stations') ? 'active' : '' }}" href="/logistics/stations"><span class="nav-icon">⌂</span><span class="nav-text">Station Hubs</span></a>
+            <a class="nav-item {{ request()->routeIs('province-hub.dashboard') ? 'active' : '' }}" href="{{ route('province-hub.dashboard') }}"><span class="nav-icon">▦</span><span class="nav-text">Province Dashboard</span></a>
+            <a class="nav-item {{ request()->routeIs('province-hub.parcels') ? 'active' : '' }}" href="{{ route('province-hub.parcels') }}"><span class="nav-icon">▣</span><span class="nav-text">Sorting Center</span></a>
+            <a class="nav-item {{ request()->routeIs('province-hub.stations') ? 'active' : '' }}" href="{{ route('province-hub.stations') }}"><span class="nav-icon">⌂</span><span class="nav-text">Station Hubs</span></a>
             <div class="nav-label">Account</div>
-            <a class="nav-item {{ request()->routeIs('*.account') ? 'active' : '' }}" href="/logistics/account"><span class="nav-icon">◎</span><span class="nav-text">My Account</span></a>
+            <a class="nav-item {{ request()->routeIs('*.account') ? 'active' : '' }}" href="{{ route('province-hub.account') }}"><span class="nav-icon">◎</span><span class="nav-text">My Account</span></a>
         @elseif($stationHub)
             <div class="nav-label nav-label--hub" title="{{ $stationHub->name }}">{{ $stationHub->name }}</div>
-            <a class="nav-item {{ request()->routeIs('station-hub.dashboard') ? 'active' : '' }}" href="/logistics/dashboard"><span class="nav-icon">▦</span><span class="nav-text">Station Dashboard</span></a>
-            <a class="nav-item {{ request()->routeIs('station-hub.parcels') ? 'active' : '' }}" href="/logistics/parcels"><span class="nav-icon">▣</span><span class="nav-text">Station Operations</span></a>
-            <a class="nav-item {{ request()->routeIs('station-hub.riders') ? 'active' : '' }}" href="/logistics/riders"><span class="nav-icon">♙</span><span class="nav-text">Riders</span></a>
+            <a class="nav-item {{ request()->routeIs('station-hub.dashboard') ? 'active' : '' }}" href="{{ route('station-hub.dashboard') }}"><span class="nav-icon">▦</span><span class="nav-text">Station Dashboard</span></a>
+            <a class="nav-item {{ request()->routeIs('station-hub.parcels') ? 'active' : '' }}" href="{{ route('station-hub.parcels') }}"><span class="nav-icon">▣</span><span class="nav-text">Station Operations</span></a>
+            <a class="nav-item {{ request()->routeIs('station-hub.riders') ? 'active' : '' }}" href="{{ route('station-hub.riders') }}"><span class="nav-icon">♙</span><span class="nav-text">Riders</span></a>
             @php($pendingRiderApplications = $stationHub->pendingCourierApplications()->count())
-            <a class="nav-item {{ request()->routeIs('station-hub.applications') ? 'active' : '' }}" href="/logistics/applications"><span class="nav-icon">＋</span><span class="nav-text">Rider Applications</span>@if($pendingRiderApplications > 0)<span class="nav-count" aria-label="{{ $pendingRiderApplications }} pending">{{ $pendingRiderApplications }}</span>@endif</a>
+            <a class="nav-item {{ request()->routeIs('station-hub.applications') ? 'active' : '' }}" href="{{ route('station-hub.applications') }}"><span class="nav-icon">＋</span><span class="nav-text">Rider Applications</span>@if($pendingRiderApplications > 0)<span class="nav-count" aria-label="{{ $pendingRiderApplications }} pending">{{ $pendingRiderApplications }}</span>@endif</a>
             <div class="nav-label">Account</div>
-            <a class="nav-item {{ request()->routeIs('*.account') ? 'active' : '' }}" href="/logistics/account"><span class="nav-icon">◎</span><span class="nav-text">My Account</span></a>
+            <a class="nav-item {{ request()->routeIs('*.account') ? 'active' : '' }}" href="{{ route('station-hub.account') }}"><span class="nav-icon">◎</span><span class="nav-text">My Account</span></a>
         @else
             <a class="nav-item {{ request()->routeIs('logistics.dashboard') ? 'active' : '' }}" href="/logistics/dashboard"><span class="nav-icon">▦</span><span class="nav-text">Company Dashboard</span></a>
             <a class="nav-item {{ request()->routeIs('logistics.branches*') ? 'active' : '' }}" href="/logistics/branches"><span class="nav-icon">⌂</span><span class="nav-text">Province Hubs</span></a>

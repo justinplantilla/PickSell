@@ -46,7 +46,7 @@ use Illuminate\Support\Facades\Schema;
 
 Route::get('/', function () {
     if (LogisticsDomains::isLogisticsHost(request()->getHost())) {
-        // Every logistics portal (company, province hub, station hub) serves its own /logistics/dashboard.
+        // Hub operators are sent on from the company dashboard to their own hub's portal.
         return redirect('/logistics/dashboard');
     }
 
@@ -138,10 +138,9 @@ Route::middleware('auth')->group(function () {
     }));
 });
 
-// Province Hub Portal (e.g. hub-cebu.pick-sell.shop)
+// Province Hub Portal (logistics.pick-sell.shop/logistics/hub/...), for the operator assigned to a province hub
 Route::middleware(['auth', LogisticsMiddleware::class, ResolveHubContext::class])
-    ->domain(LogisticsDomains::routeDomain('province_hub'))
-    ->prefix('logistics')
+    ->prefix('logistics/hub')
     ->group(function () {
         Route::get('/dashboard', [ProvinceHubController::class, 'dashboard'])->name('province-hub.dashboard');
         Route::get('/parcels', [ProvinceHubController::class, 'parcels'])->name('province-hub.parcels');
@@ -155,10 +154,9 @@ Route::middleware(['auth', LogisticsMiddleware::class, ResolveHubContext::class]
         Route::patch('/account/password', [LogisticsController::class, 'updatePassword'])->name('province-hub.account.password');
     });
 
-// Station Hub Portal (e.g. station-mandaue.pick-sell.shop)
+// Station Hub Portal (logistics.pick-sell.shop/logistics/station/...), for the operator assigned to a station hub
 Route::middleware(['auth', LogisticsMiddleware::class, ResolveHubContext::class])
-    ->domain(LogisticsDomains::routeDomain('station_hub'))
-    ->prefix('logistics')
+    ->prefix('logistics/station')
     ->group(function () {
         Route::get('/dashboard', [StationHubController::class, 'dashboard'])->name('station-hub.dashboard');
         Route::get('/parcels', [StationHubController::class, 'parcels'])->name('station-hub.parcels');

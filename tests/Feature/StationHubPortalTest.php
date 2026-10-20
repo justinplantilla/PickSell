@@ -39,7 +39,6 @@ class StationHubPortalTest extends TestCase
                 'hub_type' => 'province_hub',
                 'province' => 'Laguna',
                 'municipality' => 'Santa Cruz',
-                'subdomain' => 'laguna',
                 ...$this->operatorFields('laguna.operator@hubs.test'),
             ])
             ->assertRedirect();
@@ -48,18 +47,17 @@ class StationHubPortalTest extends TestCase
         $provinceOperator = User::where('email', 'laguna.operator@hubs.test')->sole();
         $this->assertSame($this->logistics->id, $provinceHub->logistics_id);
         $this->assertSame($provinceHub->id, $provinceOperator->assigned_hub_id);
-        $this->assertSame('https://hub-laguna.pick-sell.shop/logistics/dashboard', $provinceHub->portalUrl());
+        $this->assertStringEndsWith('/logistics/hub/dashboard', $provinceHub->portalUrl());
 
         $this->actingAs($provinceOperator)
             ->post($this->provinceRoute($provinceHub, 'province-hub.stations.store'), [
                 'name' => 'Calamba Station',
-                'subdomain' => 'calamba',
                 'municipality' => 'Calamba',
                 ...$this->operatorFields('calamba.operator@hubs.test'),
             ])
             ->assertRedirect();
 
-        $station = LogisticsBranch::where('subdomain', 'calamba')->sole();
+        $station = LogisticsBranch::where('name', 'Calamba Station')->sole();
         $this->assertSame('station_hub', $station->hub_type);
         $this->assertSame($provinceHub->id, $station->parent_id);
         $this->assertSame($this->logistics->id, $station->logistics_id);
@@ -101,9 +99,17 @@ class StationHubPortalTest extends TestCase
         $station = $this->station('santa-cruz');
         $otherOperator = $this->createHubOperator($this->station('calamba'));
 
+        // There is one station portal URL; it always shows the signed-in operator's own station.
         $this->actingAs($otherOperator)
             ->get($this->stationRoute($station, 'station-hub.dashboard'))
-            ->assertForbidden();
+            ->assertOk()
+            ->assertSee('Calamba')
+            ->assertDontSee($station->name);
+
+        // A station operator cannot open the province hub portal.
+        $this->actingAs($otherOperator)
+            ->get($this->provinceRoute($station->parent, 'province-hub.dashboard'))
+            ->assertRedirect($this->stationRoute($station, 'station-hub.dashboard'));
 
         $this->actingAs($this->logistics)
             ->get($this->stationRoute($station, 'station-hub.dashboard'))
@@ -114,16 +120,16 @@ class StationHubPortalTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_unknown_hub_subdomain_is_not_found(): void
+    public function test_old_hub_subdomains_are_not_portals(): void
     {
-        $this->actingAs($this->logistics)
-            ->get('https://station-nowhere.pick-sell.shop/logistics/dashboard')
+        $station = $this->station('santa-cruz');
+
+        $this->actingAs($this->createHubOperator($station))
+            ->get('https://station-santa-cruz.pick-sell.shop/logistics/station/dashboard')
             ->assertNotFound();
 
-        // Two-level hosts are not hub portals.
-        $this->assertNull(\App\Support\LogisticsDomains::parseHubHost('santa-cruz.station.pick-sell.shop'));
-        $this->assertSame(['station_hub', 'santa-cruz'], \App\Support\LogisticsDomains::parseHubHost('station-santa-cruz.pick-sell.shop'));
-        $this->assertSame(['province_hub', 'liliw-demo-hub'], \App\Support\LogisticsDomains::parseHubHost('hub-liliw-demo-hub.pick-sell.shop'));
+        $this->assertFalse(\App\Support\LogisticsDomains::isLogisticsHost('hub-laguna.pick-sell.shop'));
+        $this->assertTrue(\App\Support\LogisticsDomains::isLogisticsHost(config('logistics.superadmin_domain')));
     }
 
     public function test_hub_operator_is_sent_to_their_own_portal(): void
@@ -133,15 +139,15 @@ class StationHubPortalTest extends TestCase
 
         $this->actingAs($operator)
             ->get($this->companyRoute('logistics.dashboard'))
-            ->assertRedirect($station->portalUrl());
+            ->assertRedirect($this->stationRoute($station, 'station-hub.dashboard'));
 
         $this->actingAs($operator)
             ->get($this->stationRoute($station, 'station-hub.parcels', ['status' => 'all']))
             ->assertOk();
 
-        // Company-only pages do not exist on hub subdomains.
-        $this->get('https://'.$station->portalHost().'/logistics/branches')
-            ->assertNotFound();
+        // Company-only pages send hub operators back to their own portal.
+        $this->get($this->companyRoute('logistics.branches'))
+            ->assertRedirect($this->stationRoute($station, 'station-hub.dashboard'));
     }
 
     public function test_hub_operator_login_redirects_to_their_portal(): void
@@ -152,7 +158,7 @@ class StationHubPortalTest extends TestCase
         $this->post('https://'.config('logistics.superadmin_domain').'/login', [
             'email' => $operator->email,
             'password' => 'password',
-        ])->assertRedirect($station->portalUrl());
+        ])->assertRedirect($this->stationRoute($station, 'station-hub.dashboard'));
     }
 
     public function test_station_can_manage_its_riders(): void
@@ -264,7 +270,7 @@ class StationHubPortalTest extends TestCase
             $this->get($this->provinceRoute($provinceHub, 'province-hub.parcels', ['status' => $queue]))->assertOk();
         }
         $this->get($this->provinceRoute($provinceHub, 'province-hub.parcels', ['status' => 'ready_to_dispatch']))->assertSee('RENDER-PARCEL');
-        $this->get($this->provinceRoute($provinceHub, 'province-hub.stations'))->assertOk()->assertSee($origin->portalHost());
+        $this->get($this->provinceRoute($provinceHub, 'province-hub.stations'))->assertOk()->assertSee($origin->name);
         $this->get($this->provinceRoute($provinceHub, 'province-hub.account'))->assertOk()->assertSee('Hub Assignment')->assertDontSee('Delete Account');
 
         $this->actingAs($this->createHubOperator($origin));

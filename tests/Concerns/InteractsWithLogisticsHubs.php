@@ -53,16 +53,16 @@ trait InteractsWithLogisticsHubs
         ]);
     }
 
-    /** Absolute URL of a station-hub portal route, on that station's own subdomain. */
+    /** Absolute URL of a station-hub portal route; the signed-in operator decides which station it shows. */
     protected function stationRoute(LogisticsBranch $station, string $name, array $parameters = []): string
     {
-        return route($name, ['station' => $station->subdomain, ...$parameters]);
+        return $this->companyRoute($name, $parameters);
     }
 
-    /** Absolute URL of a province-hub portal route, on that hub's own subdomain. */
+    /** Absolute URL of a province-hub portal route; the signed-in operator decides which hub it shows. */
     protected function provinceRoute(LogisticsBranch $hub, string $name, array $parameters = []): string
     {
-        return route($name, ['province' => $hub->subdomain, ...$parameters]);
+        return $this->companyRoute($name, $parameters);
     }
 
     /** Absolute URL of a company (superadmin) logistics portal route. */

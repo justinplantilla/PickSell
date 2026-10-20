@@ -15,7 +15,7 @@
     <div class="card-header"><span class="card-title">Stations ({{ $stations->count() }})</span></div>
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Station</th><th>Operator</th><th>Active Riders</th><th>Portal</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Station</th><th>Operator</th><th>Active Riders</th><th>Status</th><th></th></tr></thead>
             <tbody>
             @forelse($stations as $station)
                 @php($activeRiders = $station->riderAssignments->where('status', 'active')->count())
@@ -29,7 +29,6 @@
                             {{ $activeRiders }}
                         @endif
                     </td>
-                    <td>@if($station->portalHost())<a class="portal-link" href="{{ $station->portalUrl() }}" target="_blank" rel="noopener">{{ $station->portalHost() }} ↗</a>@else — @endif</td>
                     <td><span class="status-pill status-pill--{{ $station->status }}">{{ ucfirst($station->status) }}</span></td>
                     <td>
                         <div class="cell-actions">
@@ -44,7 +43,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="6"><div class="empty-state"><strong>No station hubs yet</strong><p>Create one below for each town you deliver to.</p></div></td></tr>
+                <tr><td colspan="5"><div class="empty-state"><strong>No station hubs yet</strong><p>Create one below for each town you deliver to.</p></div></td></tr>
             @endforelse
             </tbody>
         </table>
@@ -57,16 +56,10 @@
         @csrf
         <div class="form-section">
             <h2>1. Station details</h2>
-            <p>The town this station serves in {{ $province ?? 'this province' }}, and its portal address.</p>
+            <p>The town this station serves in {{ $province ?? 'this province' }}.</p>
             <div class="branch-form-grid">
                 <div><label for="station-municipality">Municipality / City *</label><input class="form-control" id="station-municipality" name="municipality" value="{{ old('municipality') }}" required placeholder="Santa Cruz"><small>Must match the town name buyers and sellers use in their addresses.</small></div>
                 <div><label for="station-name">Station name *</label><input class="form-control" id="station-name" name="name" value="{{ old('name') }}" required placeholder="Santa Cruz Station Hub"></div>
-                <div>
-                    <label for="station-subdomain">Portal subdomain *</label>
-                    <input class="form-control" id="station-subdomain" name="subdomain" value="{{ old('subdomain') }}" required maxlength="{{ \App\Support\LogisticsDomains::MAX_SUBDOMAIN_LENGTH }}" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="santa-cruz"
-                        data-subdomain-input data-slug-source="station-municipality" data-preview-target="station-subdomain-preview" data-host-template="https://{{ \App\Support\LogisticsDomains::stationHost('{subdomain}') }}">
-                    <small>Portal address: <code id="station-subdomain-preview"></code></small>
-                </div>
                 <div><label for="station-address">Station address</label><input class="form-control" id="station-address" name="address" value="{{ old('address') }}" placeholder="Street address"></div>
             </div>
         </div>

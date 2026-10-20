@@ -10,7 +10,6 @@ use App\Models\Municipality;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\HubOperatorService;
-use App\Support\LogisticsDomains;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -232,7 +231,6 @@ class LogisticsController extends Controller
             'municipality' => 'required|string|max:120',
             'address' => 'nullable|string|max:255',
             'logistics_id' => 'prohibited',
-            'subdomain' => ['required', 'string', 'max:'.LogisticsDomains::MAX_SUBDOMAIN_LENGTH, 'regex:/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/', Rule::unique('logistics_branches', 'subdomain')],
             'operator_first_name' => 'required|string|max:100',
             'operator_last_name' => 'required|string|max:100',
             'operator_sex' => 'required|in:Male,Female',
@@ -254,7 +252,6 @@ class LogisticsController extends Controller
                 'logistics_id' => $manager->id,
                 'hub_type' => 'province_hub',
                 'parent_id' => null,
-                'subdomain' => $data['subdomain'],
                 'name' => trim($data['name']),
                 'address' => $data['address'] ?? null,
                 'status' => 'active',
@@ -284,7 +281,6 @@ class LogisticsController extends Controller
             'province' => 'required|string|max:120',
             'municipality' => 'required|string|max:120',
             'address' => 'nullable|string|max:255',
-            'subdomain' => ['required', 'string', 'max:'.LogisticsDomains::MAX_SUBDOMAIN_LENGTH, 'regex:/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/', Rule::unique('logistics_branches', 'subdomain')->ignore($branch->id)],
             'status' => 'required|in:active,inactive',
             'operator_first_name' => [$operatorRequired ? 'required' : 'nullable', 'string', 'max:100'],
             'operator_last_name' => [$operatorRequired ? 'required' : 'nullable', 'string', 'max:100'],
@@ -303,7 +299,6 @@ class LogisticsController extends Controller
         DB::transaction(function () use ($branch, $data, $municipality, $operatorRequired, $operators): void {
             $branch->update([
                 'municipality_id' => $municipality->id,
-                'subdomain' => $data['subdomain'],
                 'name' => trim($data['name']),
                 'address' => $data['address'] ?? null,
                 'status' => $data['status'],

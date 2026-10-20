@@ -1,6 +1,5 @@
 const provinceSelect = document.getElementById('hub-province');
 const municipalitySelect = document.getElementById('hub-municipality');
-const subdomainInput = document.getElementById('hub-subdomain');
 
 if (provinceSelect && municipalitySelect) {
     const apiBase = 'https://psgc.gitlab.io/api';
@@ -37,10 +36,6 @@ if (provinceSelect && municipalitySelect) {
 
     provinceSelect.addEventListener('change', async () => {
         await loadMunicipalities(provinceSelect.value);
-        if (subdomainInput && !subdomainInput.value) {
-            subdomainInput.value = provinceSelect.value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-            subdomainInput.dispatchEvent(new Event('input'));
-        }
     });
 
     provinces.catch(error => {

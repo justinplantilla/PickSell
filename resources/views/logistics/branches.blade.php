@@ -21,7 +21,7 @@
     </div>
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Hub</th><th>Operator</th><th>Stations</th><th>Portal</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Hub</th><th>Operator</th><th>Stations</th><th>Status</th><th></th></tr></thead>
             <tbody>
             @forelse($branches as $hub)
                 <tr>
@@ -34,12 +34,11 @@
                         @endif
                     </td>
                     <td>{{ $hub->children->count() }}</td>
-                    <td>@if($hub->portalHost())<a class="portal-link" href="{{ $hub->portalUrl() }}" target="_blank" rel="noopener">{{ $hub->portalHost() }} ↗</a>@else — @endif</td>
                     <td><span class="status-pill status-pill--{{ $hub->status }}">{{ ucfirst($hub->status) }}</span></td>
                     <td><div class="cell-actions"><a class="btn btn-outline btn-sm" href="{{ route('logistics.branches.edit', $hub) }}">Edit</a></div></td>
                 </tr>
             @empty
-                <tr><td colspan="6"><div class="empty-state">
+                <tr><td colspan="5"><div class="empty-state">
                     @if($search !== '')
                         <strong>No hubs match “{{ $search }}”</strong><p>Try another hub name or province.</p>
                     @else
@@ -59,15 +58,9 @@
         <input type="hidden" name="hub_type" value="province_hub">
         <div class="form-section">
             <h2>1. Hub details</h2>
-            <p>Where the sorting center is and the web address its operator will use.</p>
+            <p>Where the sorting center is.</p>
             <div class="branch-form-grid">
                 <div><label for="hub-name">Hub name *</label><input class="form-control" id="hub-name" name="name" value="{{ old('name') }}" required placeholder="Laguna Province Hub"></div>
-                <div>
-                    <label for="hub-subdomain">Portal subdomain *</label>
-                    <input class="form-control" id="hub-subdomain" name="subdomain" value="{{ old('subdomain') }}" required maxlength="{{ \App\Support\LogisticsDomains::MAX_SUBDOMAIN_LENGTH }}" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="laguna"
-                        data-subdomain-input data-preview-target="hub-subdomain-preview" data-host-template="https://{{ \App\Support\LogisticsDomains::provinceHost('{subdomain}') }}">
-                    <small>Portal address: <code id="hub-subdomain-preview"></code></small>
-                </div>
                 <div><label for="hub-province">Province *</label><select class="form-control" id="hub-province" name="province" data-selected="{{ old('province') }}" required><option value="">Loading provinces…</option></select></div>
                 <div><label for="hub-municipality">Municipality / City *</label><select class="form-control" id="hub-municipality" name="municipality" data-selected="{{ old('municipality') }}" required disabled><option value="">Select a province first</option></select></div>
                 <div class="full"><label for="hub-address">Address</label><input class="form-control" id="hub-address" name="address" value="{{ old('address') }}" placeholder="Operations center street address"></div>
