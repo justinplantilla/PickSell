@@ -42,6 +42,12 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Pickrush logistics staff (portal on the logistics host).
+        'pickrush' => [
+            'driver' => 'session',
+            'provider' => 'pickrush_staff',
+        ],
     ],
 
     /*
@@ -65,6 +71,11 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
+        ],
+
+        'pickrush_staff' => [
+            'driver' => 'eloquent',
+            'model' => App\Pickrush\Models\Staff::class,
         ],
 
         // 'users' => [

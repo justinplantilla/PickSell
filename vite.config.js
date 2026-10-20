@@ -9,6 +9,7 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/css/layouts/app.css',
+                'resources/css/pickrush/app.css',
                 'resources/css/pages/login.css',
                 'resources/css/components/dashboard-clock.css',
                 'resources/css/components/stock-status-badge.css',

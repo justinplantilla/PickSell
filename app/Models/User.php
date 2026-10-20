@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Auth\Permission;
+use App\Services\Geo\AddressResolver;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -35,6 +36,14 @@ class User extends Authenticatable
 
     protected static function booted(): void
     {
+        // Keep the PSGC codes in step with the address names, however the address was saved
+        // (registration, account page, mobile API). Delivery routing uses the codes.
+        static::saving(function (User $user): void {
+            if ($user->isDirty(['province', 'municipality', 'barangay'])) {
+                $user->forceFill(app(AddressResolver::class)->resolve($user->province, $user->municipality, $user->barangay));
+            }
+        });
+
         static::updated(function (User $user): void {
             if (! $user->wasChanged('status')) {
                 return;

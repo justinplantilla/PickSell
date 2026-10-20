@@ -1,0 +1,99 @@
+/* Pickrush logistics portal. Separate from the PickSell marketplace styles on purpose. */
+:root {
+    --pr-ink: #14213d;
+    --pr-ink-soft: #3d4a66;
+    --pr-muted: #6b7280;
+    --pr-line: #e3e6ec;
+    --pr-bg: #f5f6f8;
+    --pr-surface: #ffffff;
+    --pr-brand: #e8590c;
+    --pr-brand-dark: #c2410c;
+    --pr-ok: #15803d;
+    --pr-warn: #b45309;
+    --pr-bad: #b91c1c;
+    --pr-radius: 10px;
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--pr-ink);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--pr-bg); font-size: 14px; line-height: 1.5; }
+a { color: var(--pr-brand-dark); }
+h1, h2, h3 { margin: 0 0 .5rem; line-height: 1.25; }
+h1 { font-size: 1.4rem; }
+h2 { font-size: 1.05rem; }
+
+/* Shell */
+.pr-shell { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
+.pr-sidebar { background: var(--pr-ink); color: #dfe4ee; padding: 1.25rem 1rem; display: flex; flex-direction: column; gap: 1.5rem; }
+.pr-brand { display: flex; align-items: center; gap: .5rem; font-weight: 800; font-size: 1.2rem; color: #fff; text-decoration: none; letter-spacing: .02em; }
+.pr-brand-mark { width: 30px; height: 30px; border-radius: 8px; background: var(--pr-brand); display: grid; place-items: center; font-size: .95rem; }
+.pr-nav { display: flex; flex-direction: column; gap: .15rem; }
+.pr-nav a { color: #dfe4ee; text-decoration: none; padding: .55rem .7rem; border-radius: 8px; }
+.pr-nav a:hover { background: rgba(255, 255, 255, .07); }
+.pr-nav a.is-active { background: rgba(232, 89, 12, .22); color: #fff; font-weight: 600; }
+.pr-who { margin-top: auto; font-size: .82rem; color: #aab3c5; }
+.pr-who strong { display: block; color: #fff; font-size: .9rem; }
+.pr-who form { margin-top: .6rem; }
+.pr-main { padding: 1.75rem 2rem; min-width: 0; }
+.pr-page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.pr-page-head p { margin: 0; color: var(--pr-muted); }
+
+/* Building blocks */
+.pr-card { background: var(--pr-surface); border: 1px solid var(--pr-line); border-radius: var(--pr-radius); padding: 1.1rem 1.25rem; }
+.pr-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin-bottom: 1.25rem; }
+.pr-stat-num { font-size: 1.7rem; font-weight: 700; }
+.pr-stat-label { color: var(--pr-muted); font-size: .85rem; }
+.pr-alert { border-radius: var(--pr-radius); padding: .8rem 1rem; margin-bottom: 1rem; border: 1px solid; }
+.pr-alert-warn { background: #fffbeb; border-color: #fcd34d; color: #78350f; }
+.pr-alert-bad { background: #fef2f2; border-color: #fca5a5; color: #7f1d1d; }
+.pr-alert-ok { background: #f0fdf4; border-color: #86efac; color: #14532d; }
+.pr-alert ul { margin: .3rem 0 0; padding-left: 1.2rem; }
+.pr-muted { color: var(--pr-muted); }
+
+.pr-btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; border: 1px solid transparent; border-radius: 8px; padding: .55rem 1rem; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
+.pr-btn-primary { background: var(--pr-brand); color: #fff; }
+.pr-btn-primary:hover { background: var(--pr-brand-dark); }
+.pr-btn-ghost { background: transparent; color: inherit; border-color: rgba(255, 255, 255, .25); }
+.pr-btn-outline { background: #fff; color: var(--pr-ink); border-color: var(--pr-line); }
+
+.pr-filters { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: 1rem; }
+.pr-input, .pr-select { border: 1px solid var(--pr-line); border-radius: 8px; padding: .5rem .7rem; font: inherit; background: #fff; min-width: 0; }
+.pr-input:focus, .pr-select:focus { outline: 2px solid rgba(232, 89, 12, .35); border-color: var(--pr-brand); }
+
+.pr-table-wrap { overflow-x: auto; background: var(--pr-surface); border: 1px solid var(--pr-line); border-radius: var(--pr-radius); }
+.pr-table { width: 100%; border-collapse: collapse; }
+.pr-table th, .pr-table td { text-align: left; padding: .65rem .85rem; border-bottom: 1px solid var(--pr-line); vertical-align: top; }
+.pr-table th { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--pr-muted); background: #fafbfc; }
+.pr-table tr:last-child td { border-bottom: 0; }
+
+.pr-badge { display: inline-block; padding: .1rem .55rem; border-radius: 999px; font-size: .75rem; font-weight: 600; background: #eef0f4; color: var(--pr-ink-soft); }
+.pr-badge-ok { background: #dcfce7; color: var(--pr-ok); }
+.pr-badge-warn { background: #fef3c7; color: var(--pr-warn); }
+.pr-badge-bad { background: #fee2e2; color: var(--pr-bad); }
+.pr-badge-brand { background: #ffedd5; color: var(--pr-brand-dark); }
+
+.pr-dl { display: grid; grid-template-columns: max-content 1fr; gap: .4rem 1.25rem; margin: 0; }
+.pr-dl dt { color: var(--pr-muted); }
+.pr-dl dd { margin: 0; }
+.pr-two { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.pr-pagination { margin-top: 1rem; }
+.pr-pagination nav { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+
+/* Sign-in */
+.pr-auth { min-height: 100vh; display: grid; place-items: center; padding: 1.5rem; background: linear-gradient(160deg, var(--pr-ink) 0%, #1f3157 100%); }
+.pr-auth-card { width: 100%; max-width: 400px; background: #fff; border-radius: 14px; padding: 2rem; box-shadow: 0 18px 50px rgba(0, 0, 0, .25); }
+.pr-auth-card .pr-brand { color: var(--pr-ink); margin-bottom: 1.25rem; }
+.pr-field { display: flex; flex-direction: column; gap: .3rem; margin-bottom: 1rem; }
+.pr-field label { font-weight: 600; font-size: .85rem; }
+.pr-field .pr-input { width: 100%; }
+.pr-field-error { color: var(--pr-bad); font-size: .82rem; }
+.pr-check { display: flex; align-items: center; gap: .4rem; margin-bottom: 1.2rem; color: var(--pr-ink-soft); }
+
+@media (max-width: 860px) {
+    .pr-shell { grid-template-columns: 1fr; }
+    .pr-sidebar { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .75rem; padding: .75rem 1rem; }
+    .pr-nav { flex-direction: row; flex-wrap: wrap; }
+    .pr-who { margin-top: 0; margin-left: auto; }
+    .pr-main { padding: 1.25rem 1rem; }
+}
