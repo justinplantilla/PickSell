@@ -5,6 +5,7 @@ namespace App\Pickrush\Http\Controllers;
 use App\Pickrush\Models\Manifest;
 use App\Pickrush\Models\ManifestParcel;
 use App\Pickrush\Models\Vehicle;
+use App\Pickrush\Services\Labels;
 use App\Pickrush\Services\ManifestService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -29,6 +30,12 @@ trait ManagesTrips
             'readyCount' => $manifest->status === 'draft' ? $manifests->readyFor($manifest->fromHub, $manifest->toHub)->count() : 0,
             'vehicles' => Vehicle::where('is_active', true)->orderBy('plate_no')->get(),
         ]);
+    }
+
+    /** Printable manifest with the trip barcode, for the driver and the receiving hub. */
+    public function print(Manifest $manifest, Labels $labels)
+    {
+        return $labels->manifest($manifest);
     }
 
     public function add(Request $request, Manifest $manifest, ManifestService $manifests)

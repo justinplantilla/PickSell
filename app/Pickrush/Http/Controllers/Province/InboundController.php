@@ -30,6 +30,9 @@ class InboundController extends PortalController
     {
         $data = $request->validate(['tracking_no' => 'required|string|max:30', 'scan_key' => 'nullable|string|max:80']);
         $hub = $this->hub();
+        if ($trip = self::arrivingTrip($data['tracking_no'], $hub->id)) {
+            return redirect()->route('pickrush.province.trips.show', $trip)->with('success', "Trip {$trip->manifest_no}: scan each parcel off the vehicle.");
+        }
 
         return $this->attempt(function () use ($data, $manifests, $hub) {
             $parcel = Parcel::withoutGlobalScopes()->where('tracking_no', ManifestService::normalize($data['tracking_no']))->first()

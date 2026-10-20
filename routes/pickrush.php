@@ -37,6 +37,7 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
 
         Route::get('/parcels', [ParcelController::class, 'index'])->name('parcels.index');
         Route::get('/parcels/{parcel}', [ParcelController::class, 'show'])->name('parcels.show');
+        Route::get('/parcels/{parcel}/label', [ParcelController::class, 'label'])->name('parcels.label');
 
         Route::get('/account', [AccountController::class, 'edit'])->name('account');
         Route::put('/account/password', [AccountController::class, 'updatePassword'])->name('account.password');
@@ -97,6 +98,7 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
             Route::get('/trips', [Province\TripController::class, 'index'])->name('trips.index');
             Route::post('/trips', [Province\TripController::class, 'store'])->name('trips.store');
             Route::get('/trips/{manifest}', [Province\TripController::class, 'show'])->name('trips.show');
+            Route::get('/trips/{manifest}/print', [Province\TripController::class, 'print'])->name('trips.print');
             Route::post('/trips/{manifest}/parcels', [Province\TripController::class, 'add'])->name('trips.add');
             Route::post('/trips/{manifest}/parcels/all', [Province\TripController::class, 'addAll'])->name('trips.add-all');
             Route::delete('/trips/{manifest}/parcels/{item}', [Province\TripController::class, 'remove'])->name('trips.remove');
@@ -115,6 +117,7 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
             Route::get('/trips', [Station\TripController::class, 'index'])->name('trips.index');
             Route::post('/trips', [Station\TripController::class, 'store'])->name('trips.store');
             Route::get('/trips/{manifest}', [Station\TripController::class, 'show'])->name('trips.show');
+            Route::get('/trips/{manifest}/print', [Station\TripController::class, 'print'])->name('trips.print');
             Route::post('/trips/{manifest}/parcels', [Station\TripController::class, 'add'])->name('trips.add');
             Route::post('/trips/{manifest}/parcels/all', [Station\TripController::class, 'addAll'])->name('trips.add-all');
             Route::delete('/trips/{manifest}/parcels/{item}', [Station\TripController::class, 'remove'])->name('trips.remove');

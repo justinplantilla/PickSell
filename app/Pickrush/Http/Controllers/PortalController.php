@@ -29,6 +29,16 @@ abstract class PortalController extends Controller
         return empty($data['scan_key']) ? null : $data['scan_key'].':'.ManifestService::normalize($data['tracking_no']);
     }
 
+    /** A scanned manifest barcode (MF…) of a trip arriving at this hub, if that is what was scanned. */
+    protected static function arrivingTrip(string $scanned, int $hubId): ?\App\Pickrush\Models\Manifest
+    {
+        $code = ManifestService::normalize($scanned);
+
+        return str_starts_with($code, 'MF')
+            ? \App\Pickrush\Models\Manifest::where('manifest_no', $code)->where('to_hub_id', $hubId)->whereIn('status', ['dispatched', 'received'])->first()
+            : null;
+    }
+
     /** Run an operation; a business-rule refusal goes back to the form as an error message. */
     protected function attempt(callable $operation, string|callable $success): RedirectResponse
     {

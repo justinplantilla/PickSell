@@ -4,6 +4,7 @@ namespace App\Pickrush\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Pickrush\Models\Parcel;
+use App\Pickrush\Services\Labels;
 use App\Pickrush\Services\ManifestService;
 use Illuminate\Http\Request;
 
@@ -23,6 +24,14 @@ class ParcelController extends Controller
                 ->when($q !== '', fn ($query) => $query->where(fn ($w) => $w->where('tracking_no', 'like', "%{$q}%")->orWhere('consignee_name', 'like', "%{$request->query('q')}%")))
                 ->latest('updated_at')->paginate(40)->withQueryString(),
         ]);
+    }
+
+    /** The 4×6 label (barcode + QR) to print or reprint. */
+    public function label(Parcel $parcel, Labels $labels)
+    {
+        \App\Pickrush\Models\AuditLog::record($parcel, 'label_printed');
+
+        return $labels->parcel($parcel);
     }
 
     public function show(Parcel $parcel)

@@ -28,6 +28,9 @@ class ReceivingController extends StationController
     public function scan(Request $request, StationReceiving $receiving)
     {
         $data = $request->validate(['tracking_no' => 'required|string|max:30', 'scan_key' => 'nullable|string|max:80']);
+        if ($trip = self::arrivingTrip($data['tracking_no'], $this->station()->id)) {
+            return redirect()->route('pickrush.station.trips.show', $trip)->with('success', "Trip {$trip->manifest_no}: scan each parcel off the vehicle.");
+        }
 
         return $this->attempt(
             fn () => $receiving->scan($data['tracking_no'], $this->staff(), self::scanKey($data)),

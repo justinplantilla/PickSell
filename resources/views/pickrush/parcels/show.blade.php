@@ -8,6 +8,7 @@
         <p>{{ $parcel->item_description }} · <a href="{{ route('pickrush.parcels.index') }}">All parcels</a></p>
     </div>
     <div>
+        <a href="{{ route('pickrush.parcels.label', $parcel) }}" target="_blank" rel="noopener" class="pr-btn pr-btn-outline pr-btn-sm">Print label</a>
         <span class="pr-badge pr-badge-brand">{{ $parcel->current_status?->label() }}</span>
         @if($parcel->is_return)<span class="pr-badge pr-badge-warn">Return to seller</span>@endif
     </div>

@@ -11,7 +11,10 @@
         <h1>Trip {{ $manifest->manifest_no }}</h1>
         <p>{{ $manifest->fromHub->name }} → {{ $manifest->toHub->name }} · <a href="{{ route($prefix.'.index') }}">All trips</a></p>
     </div>
-    <span class="pr-badge pr-badge-brand">{{ ucfirst($manifest->status) }}</span>
+    <div>
+        <a href="{{ route($prefix.'.print', $manifest) }}" target="_blank" rel="noopener" class="pr-btn pr-btn-outline pr-btn-sm">Print manifest</a>
+        <span class="pr-badge pr-badge-brand">{{ ucfirst($manifest->status) }}</span>
+    </div>
 </div>
 
 @if($outbound && $manifest->status === 'draft')

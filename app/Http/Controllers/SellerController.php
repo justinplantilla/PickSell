@@ -488,6 +488,11 @@ class SellerController extends Controller
     {
         abort_if($order->seller_id !== $this->seller()->id, 403);
 
+        // Handed over to Pickrush: the waybill is Pickrush's 4×6 label with barcode and QR code.
+        if ($parcel = PicksellBridge::parcelFor($order)) {
+            return app(\App\Pickrush\Services\Labels::class)->parcel($parcel);
+        }
+
         $pdf = Pdf::loadView('seller.pdf.waybill', compact('order'))
             ->setPaper([0, 0, 226.77, 560], 'portrait');
 
