@@ -9,22 +9,22 @@
 <div class="pr-page-head">
     <div>
         <h1>Trip {{ $manifest->manifest_no }}</h1>
-        <p>{{ $manifest->fromHub->name }} → {{ $manifest->toHub->name }} · <a href="{{ route('pickrush.station.trips.index') }}">All trips</a></p>
+        <p>{{ $manifest->fromHub->name }} → {{ $manifest->toHub->name }} · <a href="{{ route($prefix.'.index') }}">All trips</a></p>
     </div>
     <span class="pr-badge pr-badge-brand">{{ ucfirst($manifest->status) }}</span>
 </div>
 
 @if($outbound && $manifest->status === 'draft')
-    @include('pickrush.partials.scan-box', ['action' => route('pickrush.station.trips.add', $manifest), 'label' => 'Scan each parcel as it goes on the vehicle', 'button' => 'Add'])
+    @include('pickrush.partials.scan-box', ['action' => route($prefix.'.add', $manifest), 'label' => 'Scan each parcel as it goes on the vehicle', 'button' => 'Add'])
     <div class="pr-actions" style="margin-top:-.5rem;margin-bottom:1rem">
         @if($readyCount)
-            <form method="POST" action="{{ route('pickrush.station.trips.add-all', $manifest) }}">@csrf
+            <form method="POST" action="{{ route($prefix.'.add-all', $manifest) }}">@csrf
                 <button class="pr-btn pr-btn-outline" type="submit">Add all {{ $readyCount }} ready parcels</button>
             </form>
         @endif
     </div>
 @elseif(! $outbound && in_array($manifest->status, ['dispatched', 'received'], true))
-    @include('pickrush.partials.scan-box', ['action' => route('pickrush.station.trips.receive', $manifest), 'label' => 'Scan each parcel off the vehicle', 'button' => 'Receive'])
+    @include('pickrush.partials.scan-box', ['action' => route($prefix.'.receive', $manifest), 'label' => 'Scan each parcel off the vehicle', 'button' => 'Receive'])
 @endif
 
 <div class="pr-grid">
@@ -46,7 +46,7 @@
                 <td>{{ $item->parcel->is_return ? $item->parcel->shipper_name : $item->parcel->consignee_name }}</td>
                 <td><span class="pr-badge {{ $badge($item->scan_status) }}">{{ ucfirst($item->scan_status) }}</span></td>
                 @if($outbound && $manifest->status === 'draft')
-                    <td><form method="POST" action="{{ route('pickrush.station.trips.remove', [$manifest, $item]) }}">@csrf @method('DELETE')
+                    <td><form method="POST" action="{{ route($prefix.'.remove', [$manifest, $item]) }}">@csrf @method('DELETE')
                         <button class="pr-btn pr-btn-danger pr-btn-sm" type="submit">Remove</button></form></td>
                 @endif
             </tr>
@@ -58,9 +58,15 @@
 </div>
 
 @if($outbound && $manifest->status === 'draft')
-    <form method="POST" action="{{ route('pickrush.station.trips.dispatch', $manifest) }}" class="pr-sticky-bar">
+    <form method="POST" action="{{ route($prefix.'.dispatch', $manifest) }}" class="pr-sticky-bar">
         @csrf
         <strong>Dispatch</strong>
+        @if(! empty($vehicles) && $vehicles->isNotEmpty())
+            <select class="pr-select" aria-label="Fleet vehicle" onchange="const o=this.selectedOptions[0];this.form.vehicle_plate.value=o.dataset.plate||'';this.form.driver_name.value=o.dataset.driver||''">
+                <option value="">Pick from fleet…</option>
+                @foreach($vehicles as $vehicle)<option data-plate="{{ $vehicle->plate_no }}" data-driver="{{ $vehicle->driver_name }}">{{ $vehicle->plate_no }} · {{ $vehicle->vehicle_type }}{{ $vehicle->driver_name ? ' · '.$vehicle->driver_name : '' }}</option>@endforeach
+            </select>
+        @endif
         <input name="vehicle_plate" class="pr-input" placeholder="Vehicle plate" value="{{ old('vehicle_plate') }}" required aria-label="Vehicle plate">
         <input name="driver_name" class="pr-input" placeholder="Driver name" value="{{ old('driver_name') }}" required aria-label="Driver name">
         <button type="submit" class="pr-btn pr-btn-primary" onclick="return confirm('Dispatch this trip with {{ $manifest->items->count() }} parcels?')">Dispatch trip</button>
@@ -74,7 +80,7 @@
             <dt>Closed</dt><dd>{{ $manifest->closed_at?->format('M d, Y h:i A') ?? '—' }}</dd>
         </dl>
         @if(! $outbound && in_array($manifest->status, ['dispatched', 'received'], true))
-            <form method="POST" action="{{ route('pickrush.station.trips.close', $manifest) }}" class="pr-actions">
+            <form method="POST" action="{{ route($prefix.'.close', $manifest) }}" class="pr-actions">
                 @csrf
                 <button type="submit" class="pr-btn pr-btn-outline" onclick="return confirm('Close the check? Unscanned parcels will be marked missing.')">Close check</button>
             </form>

@@ -31,6 +31,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'buyer'  => \App\Http\Middleware\BuyerMiddleware::class,
             'pickrush.role' => \App\Pickrush\Http\Middleware\StaffRole::class,
             'pickrush.station' => \App\Pickrush\Http\Middleware\StationStaff::class,
+            'pickrush.province' => \App\Pickrush\Http\Middleware\ProvinceStaff::class,
+            'pickrush.hub' => \App\Pickrush\Http\Middleware\HubStaff::class,
         ]);
 
         $onPickrush = fn (Request $request) => \App\Pickrush\Support\PickrushHost::matches($request);

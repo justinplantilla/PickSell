@@ -6,6 +6,7 @@ use App\Pickrush\Enums\ParcelStatus;
 use App\Pickrush\Models\Assignment;
 use App\Pickrush\Models\Manifest;
 use App\Pickrush\Models\Parcel;
+use App\Pickrush\Models\ParcelException;
 use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\ManifestService;
 use App\Pickrush\Services\OperationRefused;
@@ -41,7 +42,18 @@ class StationReceiving
                 // A walk-in makes any open pickup task unnecessary.
                 Assignment::where('parcel_id', $parcel->id)->where('type', 'pickup')->where('status', 'assigned')
                     ->update(['status' => 'cancelled', 'fail_note' => 'Seller dropped the parcel off']);
+
+                // No destination station: it must not leave until the address is fixed.
+                if (! $parcel->dest_hub_id) {
+                    $this->ledger->record($parcel, ParcelStatus::OnHold, $station, ['note' => 'Delivery address did not match a station']);
+                    ParcelException::create(['hub_id' => $station->id, 'parcel_id' => $parcel->id, 'type' => 'no_route',
+                        'note' => 'The delivery address did not match a station. Confirm it with the buyer.']);
+                }
             });
+
+            if (! $parcel->dest_hub_id) {
+                return "{$parcel->tracking_no} received and put on hold: the delivery address needs fixing (see Exceptions).";
+            }
 
             return $parcel->dest_hub_id === $station->id
                 ? "{$parcel->tracking_no} received. Same-city parcel: it is in the dispatch queue."

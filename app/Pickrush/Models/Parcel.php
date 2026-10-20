@@ -29,6 +29,7 @@ class Parcel extends Model
         'needs_address_fix' => 'boolean',
         'is_return' => 'boolean',
         'delivered_at' => 'datetime',
+        'sorted_at' => 'datetime',
     ];
 
     public function events()

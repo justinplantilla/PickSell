@@ -30,9 +30,10 @@ enum ParcelStatus: string
         'waiting_pickup' => ['picked_up', 'at_origin_hub', 'cancelled'],
         'picked_up' => ['at_origin_hub', 'on_hold'],
         'at_origin_hub' => ['in_transit_to_province', 'assigned_to_rider', 'on_hold', 'returned_to_sender'],
-        'in_transit_to_province' => ['at_province_hub', 'lost'],
+        // A trip can drop a parcel at the wrong kind of hub (mis-sort); it is received there and rerouted.
+        'in_transit_to_province' => ['at_province_hub', 'arrived_at_station', 'lost'],
         'at_province_hub' => ['in_transit_to_province', 'in_transit_to_station', 'on_hold'],
-        'in_transit_to_station' => ['arrived_at_station', 'lost'],
+        'in_transit_to_station' => ['arrived_at_station', 'at_province_hub', 'lost'],
         'arrived_at_station' => ['assigned_to_rider', 'in_transit_to_province', 'returning_to_sender', 'returned_to_sender', 'on_hold'],
         'assigned_to_rider' => ['out_for_delivery', 'arrived_at_station'],
         'out_for_delivery' => ['delivered', 'delivery_failed', 'returned_to_sender'],

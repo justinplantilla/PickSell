@@ -24,6 +24,20 @@ final class Navigation
                 ['label' => 'Riders', 'route' => 'pickrush.station.riders.index', 'active' => 'pickrush.station.riders.*'],
                 ['label' => 'Zones', 'route' => 'pickrush.station.zones.index', 'active' => 'pickrush.station.zones.*'],
                 ['label' => 'Cash (COD)', 'route' => 'pickrush.station.cash', 'active' => 'pickrush.station.cash*'],
+                ['label' => 'Exceptions', 'route' => 'pickrush.exceptions.index', 'active' => 'pickrush.exceptions.*'],
+                ['label' => 'Parcels', 'route' => 'pickrush.parcels.index', 'active' => 'pickrush.parcels.*'],
+            ];
+        }
+
+        if ($staff->hub?->isProvince()) {
+            return [
+                ['label' => 'Dashboard', 'route' => 'pickrush.province.dashboard', 'active' => 'pickrush.province.dashboard'],
+                ['label' => 'Inbound', 'route' => 'pickrush.province.inbound', 'active' => 'pickrush.province.inbound*'],
+                ['label' => 'Sorting', 'route' => 'pickrush.province.sorting', 'active' => 'pickrush.province.sorting*'],
+                ['label' => 'Outbound trips', 'route' => 'pickrush.province.trips.index', 'active' => 'pickrush.province.trips.*'],
+                ['label' => 'Inventory on hand', 'route' => 'pickrush.province.inventory', 'active' => 'pickrush.province.inventory'],
+                ['label' => 'Exceptions', 'route' => 'pickrush.exceptions.index', 'active' => 'pickrush.exceptions.*'],
+                ['label' => 'Vehicles & drivers', 'route' => 'pickrush.fleet.index', 'active' => 'pickrush.fleet.*'],
                 ['label' => 'Parcels', 'route' => 'pickrush.parcels.index', 'active' => 'pickrush.parcels.*'],
             ];
         }

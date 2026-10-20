@@ -60,6 +60,9 @@ class SyncOrderWithParcel
         }
 
         try {
+            if ($changed->event->status === ParcelStatus::Lost) {
+                $this->flag($parcel, "Pickrush reported parcel {$parcel->tracking_no} as lost. Decide the refund or replacement with the buyer and seller.");
+            }
             $this->sync($parcel, $changed->event->loadMissing('hub', 'toHub'));
         } catch (Throwable $e) {
             report($e);

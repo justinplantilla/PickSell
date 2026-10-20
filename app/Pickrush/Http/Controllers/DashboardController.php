@@ -18,6 +18,9 @@ class DashboardController extends Controller
         if ($staff->hub?->isStation()) {
             return redirect()->route('pickrush.station.dashboard');
         }
+        if ($staff->hub?->isProvince()) {
+            return redirect()->route('pickrush.province.dashboard');
+        }
         $parcels = Parcel::query();   // already limited to the viewer's hub by ParcelHubScope
 
         $counts = (clone $parcels)->selectRaw('current_status, count(*) as total')->groupBy('current_status')->pluck('total', 'current_status');

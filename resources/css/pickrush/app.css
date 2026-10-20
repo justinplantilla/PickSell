@@ -128,3 +128,13 @@ h2 { font-size: 1.05rem; }
 .pr-checklist small { color: var(--pr-muted); }
 .pr-sticky-bar { position: sticky; bottom: 0; background: var(--pr-surface); border: 1px solid var(--pr-line); border-radius: var(--pr-radius); padding: .75rem 1rem; margin-top: 1rem; display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; box-shadow: 0 -6px 18px rgba(20, 33, 61, .06); }
 .pr-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* Sort result: read from across the sorting floor */
+.pr-bin { border-radius: 14px; padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; background: var(--pr-ink); color: #fff; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; }
+.pr-bin-name { font-size: clamp(2.2rem, 6vw, 4.5rem); font-weight: 800; letter-spacing: .03em; line-height: 1; }
+.pr-bin-meta { font-size: 1rem; opacity: .85; }
+.pr-bin.is-exception { background: var(--pr-bad); }
+.pr-bin-grid { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.pr-bin-tile { background: var(--pr-surface); border: 1px solid var(--pr-line); border-radius: var(--pr-radius); padding: .8rem 1rem; }
+.pr-bin-tile strong { display: block; font-size: 1.05rem; }
+.pr-bin-tile.is-exception { border-color: #fca5a5; background: #fef2f2; }

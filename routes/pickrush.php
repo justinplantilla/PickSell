@@ -2,6 +2,9 @@
 
 use App\Pickrush\Http\Controllers\AuthController;
 use App\Pickrush\Http\Controllers\DashboardController;
+use App\Pickrush\Http\Controllers\ExceptionController;
+use App\Pickrush\Http\Controllers\FleetController;
+use App\Pickrush\Http\Controllers\Province;
 use App\Pickrush\Http\Controllers\HubController;
 use App\Pickrush\Http\Controllers\ParcelController;
 use App\Pickrush\Http\Controllers\Station;
@@ -36,6 +39,37 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
         Route::middleware('pickrush.role:super_admin,finance,support')->group(function () {
             Route::get('/hubs', [HubController::class, 'index'])->name('hubs.index');
             Route::get('/hubs/{hub}', [HubController::class, 'show'])->name('hubs.show');
+        });
+
+        // Shared by station and province hubs.
+        Route::middleware('pickrush.hub')->group(function () {
+            Route::get('/exceptions', [ExceptionController::class, 'index'])->name('exceptions.index');
+            Route::post('/exceptions', [ExceptionController::class, 'store'])->name('exceptions.store');
+            Route::post('/exceptions/{exception}/resolve', [ExceptionController::class, 'resolve'])->name('exceptions.resolve');
+            Route::get('/fleet', [FleetController::class, 'index'])->name('fleet.index');
+            Route::post('/fleet', [FleetController::class, 'store'])->name('fleet.store');
+            Route::put('/fleet/{vehicle}', [FleetController::class, 'update'])->name('fleet.update');
+        });
+
+        // Province hub portal (sorting center): receive, sort and move parcels in bulk.
+        Route::prefix('province')->name('province.')->middleware('pickrush.province')->group(function () {
+            Route::get('/', Province\DashboardController::class)->name('dashboard');
+            Route::get('/inbound', [Province\InboundController::class, 'index'])->name('inbound');
+            Route::post('/inbound', [Province\InboundController::class, 'scan'])->name('inbound.scan');
+            Route::post('/inbound/mis-sorted', [Province\InboundController::class, 'misSorted'])->name('inbound.mis-sorted');
+            Route::get('/sorting', [Province\SortingController::class, 'index'])->name('sorting');
+            Route::post('/sorting', [Province\SortingController::class, 'scan'])->name('sorting.scan');
+            Route::get('/inventory', Province\InventoryController::class)->name('inventory');
+
+            Route::get('/trips', [Province\TripController::class, 'index'])->name('trips.index');
+            Route::post('/trips', [Province\TripController::class, 'store'])->name('trips.store');
+            Route::get('/trips/{manifest}', [Province\TripController::class, 'show'])->name('trips.show');
+            Route::post('/trips/{manifest}/parcels', [Province\TripController::class, 'add'])->name('trips.add');
+            Route::post('/trips/{manifest}/parcels/all', [Province\TripController::class, 'addAll'])->name('trips.add-all');
+            Route::delete('/trips/{manifest}/parcels/{item}', [Province\TripController::class, 'remove'])->name('trips.remove');
+            Route::post('/trips/{manifest}/dispatch', [Province\TripController::class, 'dispatch'])->name('trips.dispatch');
+            Route::post('/trips/{manifest}/receive', [Province\TripController::class, 'receive'])->name('trips.receive');
+            Route::post('/trips/{manifest}/close', [Province\TripController::class, 'close'])->name('trips.close');
         });
 
         // Station hub portal: first mile, last mile, riders and cash for one municipality.

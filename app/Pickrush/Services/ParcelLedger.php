@@ -70,7 +70,8 @@ class ParcelLedger
 
     private function cachedState(Parcel $parcel, ParcelStatus $status, ?Hub $hub, ?Hub $toHub): array
     {
-        $state = ['current_status' => $status];
+        // A sort scan only holds for the parcel's current stay; any movement clears it.
+        $state = ['current_status' => $status, 'sorted_at' => null, 'sorted_by' => null];
         $returning = $parcel->is_return || $status === ParcelStatus::ReturningToSender;
 
         if ($status->isAtHub() && $hub) {

@@ -7,6 +7,7 @@ use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\Manifest;
 use App\Pickrush\Models\ManifestParcel;
 use App\Pickrush\Models\Parcel;
+use App\Pickrush\Models\ParcelException;
 use App\Pickrush\Models\Staff;
 use App\Pickrush\Support\Actor;
 use Illuminate\Support\Facades\DB;
@@ -157,10 +158,25 @@ class ManifestService
         if (! in_array($manifest->status, ['dispatched', 'received'], true) || $manifest->to_hub_id !== $staff->hub_id) {
             throw new OperationRefused('Only the receiving hub can close this trip.');
         }
-        $missing = $manifest->items()->where('scan_status', 'expected')->update(['scan_status' => 'missing']);
-        $manifest->update(['status' => 'closed', 'closed_at' => now(), 'received_by' => $manifest->received_by ?? $staff->id]);
+        return DB::transaction(function () use ($manifest, $staff) {
+            $missing = $manifest->items()->where('scan_status', 'expected')->get();
+            foreach ($missing as $item) {
+                $item->update(['scan_status' => 'missing']);
+                // The hub that cannot produce a scan answers for the parcel.
+                ParcelException::create([
+                    'hub_id' => $manifest->to_hub_id,
+                    'against_hub_id' => $manifest->from_hub_id,
+                    'parcel_id' => $item->parcel_id,
+                    'manifest_id' => $manifest->id,
+                    'type' => 'missing',
+                    'note' => "Listed on trip {$manifest->manifest_no} but not scanned on arrival.",
+                    'opened_by' => $staff->id,
+                ]);
+            }
+            $manifest->update(['status' => 'closed', 'closed_at' => now(), 'received_by' => $manifest->received_by ?? $staff->id]);
 
-        return $missing;
+            return $missing->count();
+        });
     }
 
     /** Arrival scan at a hub for a parcel in transit to it. */
@@ -169,13 +185,18 @@ class ManifestService
         $inTransit = in_array($parcel->current_status, [ParcelStatus::InTransitToProvince, ParcelStatus::InTransitToStation], true);
         if (! $inTransit || $parcel->next_hub_id !== $hub->id) {
             $where = $parcel->currentHub?->name ?? $parcel->nextHub?->name ?? 'elsewhere';
-            throw new OperationRefused("{$parcel->tracking_no} is not on its way to {$hub->name} ({$parcel->current_status->label()}, {$where}).");
+            throw new OperationRefused("{$parcel->tracking_no} is not on its way to {$hub->name} ({$parcel->current_status->label()}, {$where})."
+                .($inTransit ? ' If it is physically here, report it as mis-sorted.' : ''));
         }
 
         $this->ledger->record($parcel, $hub->isProvince() ? ParcelStatus::AtProvinceHub : ParcelStatus::ArrivedAtStation, $hub, [
             'idempotency_key' => $idempotencyKey,
             'meta' => $manifestNo ? ['manifest' => $manifestNo] : null,
         ]);
+
+        // A parcel reported missing has turned up.
+        ParcelException::withoutGlobalScopes()->where('parcel_id', $parcel->id)->where('type', 'missing')->where('status', 'open')
+            ->update(['status' => 'resolved', 'resolution' => 'found', 'resolution_note' => "Scanned in at {$hub->name}.", 'resolved_at' => now()]);
     }
 
     public static function normalize(string $trackingNo): string
