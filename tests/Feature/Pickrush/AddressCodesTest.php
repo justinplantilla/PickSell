@@ -62,6 +62,24 @@ class AddressCodesTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'joy@example.com', 'municipality_code' => '041029000', 'barangay_code' => '041029001']);
     }
 
+    public function test_metro_manila_registration_stores_codes(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $this->post(config('app.url').'/register', [
+            'role' => 'buyer', 'last_name' => 'Cruz', 'first_name' => 'Ben', 'sex' => 'Male',
+            'email' => 'ben@example.com', 'password' => 'secret-pass', 'password_confirmation' => 'secret-pass', 'confirmed' => '1',
+            'contact_no' => '09171113333', 'birthday' => '1995-05-05',
+            // What the picker sends for Metro Manila: the region choice, then PSGC city and barangay names.
+            'province' => 'Metro Manila', 'municipality' => 'Quezon City', 'barangay' => 'Bagong Pag-asa',
+            'id_upload' => \Illuminate\Http\UploadedFile::fake()->create('id.pdf', 20, 'application/pdf'),
+        ])->assertRedirect('/login');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'ben@example.com', 'province' => 'Metro Manila',
+            'province_code' => '137400000', 'municipality_code' => '137404000', 'barangay_code' => '137404001',
+        ]);
+    }
+
     public function test_backfill_command_resolves_existing_accounts_and_lists_misses(): void
     {
         $ok = $this->user('Batangas', 'City of Tanauan', 'Altura Bata');
