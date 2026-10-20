@@ -97,3 +97,10 @@ h2 { font-size: 1.05rem; }
     .pr-who { margin-top: 0; margin-left: auto; }
     .pr-main { padding: 1.25rem 1rem; }
 }
+
+/* Tracking timeline (public page and parcel detail) */
+.pr-timeline { list-style: none; margin: 0; padding: 0 0 0 1.1rem; border-left: 2px solid var(--pr-line); }
+.pr-timeline li { position: relative; padding: 0 0 1rem .9rem; display: flex; flex-direction: column; }
+.pr-timeline li::before { content: ""; position: absolute; left: -1.55rem; top: .3rem; width: 12px; height: 12px; border-radius: 50%; background: #cbd2dc; }
+.pr-timeline li.is-current::before { background: var(--pr-brand); box-shadow: 0 0 0 3px rgba(232, 89, 12, .2); }
+.pr-timeline time { color: var(--pr-muted); font-size: .82rem; }

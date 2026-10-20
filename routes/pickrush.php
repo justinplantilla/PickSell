@@ -3,6 +3,7 @@
 use App\Pickrush\Http\Controllers\AuthController;
 use App\Pickrush\Http\Controllers\DashboardController;
 use App\Pickrush\Http\Controllers\HubController;
+use App\Pickrush\Http\Controllers\TrackingController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -15,6 +16,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
+    // Public: anyone with a tracking number.
+    Route::get('/track', TrackingController::class)->middleware('throttle:30,1')->name('track');
+
     Route::middleware('guest:pickrush')->group(function () {
         Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
         Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login.attempt');

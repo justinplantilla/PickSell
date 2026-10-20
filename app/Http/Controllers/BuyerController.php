@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\ProductReview;
 use App\Models\User;
 use App\Notifications\NewSellerOrder;
+use App\Pickrush\Bridge\PicksellBridge;
 use App\Services\CommissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -288,8 +289,9 @@ class BuyerController extends Controller
         $query  = Order::where('buyer_id', $this->buyer()->id)->with('product', 'seller', 'returnRequest');
         if ($status !== 'all') $query->where('status', $status);
         $orders    = $query->latest()->paginate(10);
+        $tracking  = $orders->getCollection()->mapWithKeys(fn ($order) => [$order->id => PicksellBridge::tracking($order)]);
         $cartCount = CartItem::whereHas('cart', fn($q) => $q->where('buyer_id', $this->buyer()->id))->count();
-        return view('buyer.orders', compact('orders', 'status', 'cartCount'));
+        return view('buyer.orders', compact('orders', 'status', 'cartCount', 'tracking'));
     }
 
     public function submitFeedback(Request $request, Order $order)

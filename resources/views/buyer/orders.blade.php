@@ -74,6 +74,8 @@
     </div>
     @endif
 
+    @include('partials.pickrush-tracking', ['tracking' => $tracking[$order->id] ?? null])
+
     @if($order->returnRequest)
         @php
             $returnStatus = $order->returnRequest->status;

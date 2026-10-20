@@ -101,6 +101,7 @@
             <div><dt>Delivered</dt><dd>{{ $order->delivered_at?->format('M d, Y h:i A') ?? '—' }}</dd></div>
             <div><dt>Tracking note</dt><dd>{{ $order->tracking_status ?? '—' }}</dd></div>
         </dl>
+        <div class="order-pad">@include('partials.pickrush-tracking', ['tracking' => \App\Pickrush\Bridge\PicksellBridge::tracking($order), 'open' => true])</div>
     </section>
 
     {{-- Admin actions --}}

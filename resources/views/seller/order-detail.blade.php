@@ -57,6 +57,7 @@
                     <tr><td class="blade-inline-18">Handed Over</td><td>{{ $order->handed_over_at ? $order->handed_over_at->format('M d, Y h:i A') : '—' }}</td></tr>
                     <tr><td class="blade-inline-19">Delivered At</td><td>{{ $order->delivered_at ? $order->delivered_at->format('M d, Y h:i A') : '—' }}</td></tr>
                 </table>
+                @include('partials.pickrush-tracking', ['tracking' => \App\Pickrush\Bridge\PicksellBridge::tracking($order)])
 
                 <div class="blade-inline-20">
                     @if(in_array($order->status, ['placed', 'confirmed', 'pending'], true))
@@ -69,12 +70,12 @@
                         @csrf @method('PATCH')
                         <div class="waybill-generation-note">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-                            <span>A unique waybill will be generated automatically when this parcel is handed over.</span>
+                            <span>Pickrush books the pickup when you hand over; its tracking number becomes your waybill.</span>
                         </div>
                         <button type="submit" class="btn btn-success">Generate Waybill &amp; Hand Over</button>
                     </form>
                     @elseif(in_array($order->status, ['shipped', 'ready_for_pickup'], true))
-                    <div class="alert alert-info blade-inline-23">Waybill generated: <strong>{{ $order->waybill_number }}</strong>. Awaiting logistics scan.</div>
+                    <div class="alert alert-info blade-inline-23">Waybill generated: <strong>{{ $order->waybill_number }}</strong>. Waiting for Pickrush to pick it up.</div>
                     @elseif($order->status === 'delivered')
                     <div class="alert alert-success blade-inline-24">Order delivered. Please confirm buyer receipt.</div>
                     @if(!$order->confirmed_by_seller_at)

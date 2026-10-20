@@ -13,6 +13,7 @@ export default defineConfig({
                 'resources/css/pages/login.css',
                 'resources/css/components/dashboard-clock.css',
                 'resources/css/components/stock-status-badge.css',
+                'resources/css/components/pickrush-tracking.css',
                 'resources/js/app.js',
                 'resources/js/pages/login.js',
                 'resources/js/components/dashboard-clock.js',

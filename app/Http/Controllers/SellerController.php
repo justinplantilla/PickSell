@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ReturnRequest;
 use App\Models\User;
 use App\Notifications\SellerDeliveryReceived;
+use App\Pickrush\Bridge\PicksellBridge;
 use App\Services\CommissionService;
 use App\Services\Finance\FinancialLedgerService;
 use App\Services\Orders\OrderLifecycleService;
@@ -436,39 +437,33 @@ class SellerController extends Controller
         return back()->with('success', 'Order marked as being prepared.');
     }
 
-    public function handoverOrder(Order $order, OrderLifecycleService $lifecycle)
+    public function handoverOrder(Order $order, OrderLifecycleService $lifecycle, PicksellBridge $pickrush)
     {
-        $waybillNumber = DB::transaction(function () use ($order, $lifecycle): string {
+        $parcel = DB::transaction(function () use ($order, $lifecycle, $pickrush) {
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             abort_if($locked->seller_id !== $this->seller()->id, 403);
             abort_unless(in_array($locked->status, ['preparing', 'processing'], true), 422, 'Prepare the order before handing it over.');
 
-            $waybillNumber = $locked->waybill_number ?: $this->generateWaybill($locked);
+            // Pickrush books the pickup; its tracking number is the waybill.
+            $parcel = $pickrush->book($locked);
             $lifecycle->transition($locked, 'ready_for_pickup', $this->seller()->id, 'seller', null, [
-                'waybill_number' => $waybillNumber,
+                'waybill_number' => $parcel->tracking_no,
                 'handed_over_at' => now(),
                 'tracking_status' => 'Pickup requested from seller',
             ]);
             $order->setRawAttributes($locked->getAttributes(), true);
 
-            return $waybillNumber;
+            return $parcel;
         });
+        $waybillNumber = $parcel->tracking_no;
 
         $message = 'Order #'.$order->order_number.' has been handed over to Pickrush. Waybill: '.$waybillNumber.'.';
         $this->notifyUser($order->buyer, 'Order handed over', $message, $order);
         User::where('role', 'admin')->where('status', 'approved')->get()
             ->each(fn (User $admin) => $this->notifyUser($admin, 'Parcel handed over', $message, $order));
 
-        return back()->with('success', 'Order handed over. Waybill '.$waybillNumber.' was generated automatically.');
-    }
-
-    private function generateWaybill(Order $order): string
-    {
-        do {
-            $waybill = 'WB-'.now()->format('ymd').'-'.strtoupper(Str::random(8));
-        } while (Order::where('waybill_number', $waybill)->exists());
-
-        return $waybill;
+        return back()->with('success', 'Order handed over to Pickrush. Tracking number '.$waybillNumber.' is your waybill.'
+            .($parcel->needs_address_fix ? ' Pickrush could not match the pickup or delivery address to a station yet; its team will confirm the address before pickup.' : ''));
     }
 
     private function notifyUser(?User $user, string $title, string $message, Order $order): void

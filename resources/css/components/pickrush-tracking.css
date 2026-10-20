@@ -1,0 +1,14 @@
+.pickrush-tracking { margin-top: .75rem; border: 1px solid var(--border, #e5e7eb); border-radius: 10px; padding: .6rem .9rem; background: var(--surface, #fff); }
+.pickrush-tracking summary { cursor: pointer; display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem; font-size: .9rem; list-style: none; }
+.pickrush-tracking summary::-webkit-details-marker { display: none; }
+.pickrush-tracking summary::after { content: "Show route ▾"; font-size: .8rem; opacity: .7; }
+.pickrush-tracking[open] summary::after { content: "Hide route ▴"; }
+.pickrush-tracking-latest { font-weight: 600; color: #c2410c; }
+.pickrush-tracking-list { list-style: none; margin: .75rem 0 .25rem; padding: 0; }
+.pickrush-tracking-list li { display: grid; grid-template-columns: 14px 1fr auto; gap: .6rem; align-items: baseline; padding: .35rem 0; position: relative; font-size: .88rem; }
+.pickrush-tracking-list li:not(:last-child)::before { content: ""; position: absolute; left: 5px; top: 1.1rem; bottom: -.4rem; width: 2px; background: #e5e7eb; }
+.pickrush-tracking-dot { width: 12px; height: 12px; border-radius: 50%; background: #d1d5db; position: relative; z-index: 1; }
+.pickrush-tracking-list li.is-current .pickrush-tracking-dot { background: #e8590c; box-shadow: 0 0 0 3px rgba(232, 89, 12, .2); }
+.pickrush-tracking-list li.is-current .pickrush-tracking-text { font-weight: 600; }
+.pickrush-tracking-list time { font-size: .78rem; opacity: .7; white-space: nowrap; }
+@media (max-width: 560px) { .pickrush-tracking-list li { grid-template-columns: 14px 1fr; } .pickrush-tracking-list time { grid-column: 2; } }

@@ -69,12 +69,12 @@
 <!-- Handover Modal -->
 <div class="modal-overlay" id="handoverModal">
     <div class="modal">
-        <div class="modal-title">Hand Over to Logistics</div>
+        <div class="modal-title">Hand Over to Pickrush</div>
         <form method="POST" id="handoverForm">
             @csrf @method('PATCH')
             <div class="waybill-generation-note">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-                <span>PickSell will generate the waybill automatically and notify the buyer, logistics, and admin.</span>
+                <span>Pickrush books the pickup and its tracking number becomes your waybill. The buyer and admin are notified.</span>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="document.getElementById('handoverModal').classList.remove('open')">Cancel</button>
