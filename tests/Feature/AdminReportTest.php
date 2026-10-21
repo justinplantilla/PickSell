@@ -27,7 +27,6 @@ class AdminReportTest extends TestCase
 
     private User $otherSeller;
 
-    private User $courier;
 
     protected function setUp(): void
     {
@@ -36,7 +35,6 @@ class AdminReportTest extends TestCase
         $this->buyer = $this->makeUser('buyer');
         $this->seller = $this->makeUser('seller');
         $this->otherSeller = $this->makeUser('seller');
-        $this->courier = $this->makeUser('courier');
     }
 
     private function makeUser(string $role): User
@@ -93,12 +91,12 @@ class AdminReportTest extends TestCase
 
     public function test_operational_report_applies_date_status_and_seller_filters_to_all_order_metrics(): void
     {
-        $completed = $this->makeOrder('completed', $this->seller, ['courier_id' => $this->courier->id]);
+        $completed = $this->makeOrder('completed', $this->seller);
         Order::whereKey($completed->id)->update([
             'created_at' => '2026-10-02 09:00:00',
             'completed_at' => '2026-10-02 11:00:00',
         ]);
-        $failed = $this->makeOrder('delivery_failed', $this->seller, ['courier_id' => $this->courier->id]);
+        $failed = $this->makeOrder('delivery_failed', $this->seller);
         Order::whereKey($failed->id)->update(['created_at' => '2026-10-02 10:00:00']);
         OrderStatusHistory::create([
             'order_id' => $failed->id,

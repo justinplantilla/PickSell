@@ -63,8 +63,6 @@
                 @foreach([
                     'seller' => ['Seller', 'All sellers', $options['sellers'], fn ($u) => $u->business_name ?? $u->full_name],
                     'buyer' => ['Buyer', 'All buyers', $options['buyers'], fn ($u) => $u->full_name],
-                    'courier' => ['Courier', 'All couriers', $options['couriers'], fn ($u) => $u->full_name],
-                    'branch' => ['Branch', 'All branches', $options['branches'], fn ($b) => $b->name],
                 ] as $key => [$label, $placeholder, $choices, $labelOf])
                     <label class="list-field">
                         <span>{{ $label }}</span>
@@ -123,7 +121,6 @@
                     @php
                         $stuck = in_array($order->status, \App\Services\Admin\AdminDashboardService::IN_PROGRESS_STATUSES, true)
                             && $order->updated_at->lt(now()->subHours($stuckAfterHours));
-                        $needsRider = $order->status === 'sorted' && ! $order->courier_id;
                     @endphp
                     <tr class="list-row {{ $stuck ? 'is-stale' : '' }}" data-list-row data-preview-url="{{ route('admin.orders.preview', $order) }}">
                         @if($canBulk)
@@ -149,11 +146,6 @@
                         <td class="list-status list-cell-sub" data-label="Status">
                             <x-admin-order-status :status="$order->status" />
                             @if($order->tracking_status && strcasecmp(trim($order->tracking_status), \App\Services\Orders\OrderLifecycleService::label($order->status)) !== 0)<span class="oversight-meta">{{ $order->tracking_status }}</span>@endif
-                            @if($order->courier)
-                                <span class="oversight-meta">Rider: {{ $order->courier->full_name }}</span>
-                            @elseif($needsRider)
-                                <span class="oversight-flag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>No rider assigned</span>
-                            @endif
                         </td>
                         <td class="list-age list-cell-sub-aside" data-label="Age">
                             <time datetime="{{ $order->updated_at->toIso8601String() }}" title="Last updated {{ $order->updated_at->format('M d, Y h:i A') }}">{{ $order->updated_at->diffForHumans(null, \Carbon\CarbonInterface::DIFF_ABSOLUTE, true) }}</time>

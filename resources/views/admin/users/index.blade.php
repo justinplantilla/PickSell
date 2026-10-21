@@ -16,7 +16,7 @@
         <input type="search" name="search" value="{{ $search }}" class="search-input" placeholder="Name, email, business or phone" aria-label="Search users">
         <select name="role" class="filter-select" aria-label="Role" data-submit-on-change>
             <option value="all" {{ $role === 'all' ? 'selected' : '' }}>All roles</option>
-            @foreach(['buyer' => 'Buyers', 'seller' => 'Sellers', 'logistics' => 'Logistics partners'] as $value => $label)
+            @foreach(['buyer' => 'Buyers', 'seller' => 'Sellers'] as $value => $label)
                 <option value="{{ $value }}" {{ $role === $value ? 'selected' : '' }}>{{ $label }}</option>
             @endforeach
         </select>

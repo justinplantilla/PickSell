@@ -11,7 +11,6 @@ use App\Http\Controllers\AdminComplaintController;
 use App\Http\Controllers\AdminComplianceController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminDashboardController;
-use App\Http\Controllers\AdminLogisticsController;
 use App\Http\Controllers\AdminOrderController;
 use App\Http\Controllers\AdminProductController;
 use App\Http\Controllers\AdminRefundController;
@@ -21,36 +20,23 @@ use App\Http\Controllers\AdminReturnController;
 use App\Http\Controllers\AdminReturnDisputeController;
 use App\Http\Controllers\AdminSearchController;
 use App\Http\Controllers\AdminSettingsController;
-use App\Http\Controllers\AdminLogisticsExceptionController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BuyerController;
 use App\Http\Controllers\BuyerReturnRequestController;
-use App\Http\Controllers\CourierController;
-use App\Http\Controllers\LogisticsController;
 use App\Http\Controllers\SellerController;
 use App\Http\Controllers\SellerProductImageController;
 use App\Http\Controllers\RegistrationResubmissionController;
 use App\Http\Controllers\SellerReturnRequestController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\BuyerMiddleware;
-use App\Http\Middleware\CourierMiddleware;
-use App\Http\Middleware\EnsureCompanyLogisticsPortal;
-use App\Http\Middleware\LogisticsMiddleware;
-use App\Http\Middleware\ResolveHubContext;
 use App\Http\Middleware\SellerMiddleware;
 use App\Models\Product;
-use App\Support\LogisticsDomains;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 
 Route::get('/', function () {
-    if (LogisticsDomains::isLogisticsHost(request()->getHost())) {
-        // Hub operators are sent on from the company dashboard to their own hub's portal.
-        return redirect('/logistics/dashboard');
-    }
-
     if (! Schema::hasTable('products')) {
         return view('welcome', ['featuredProducts' => collect()]);
     }
@@ -131,84 +117,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::delete('/account', [AuthController::class, 'deleteAccount'])->name('account.delete');
     Route::get('/buyer/dashboard', fn () => view('dashboard'))->name('buyer.dashboard');
-    Route::get('/courier/dashboard', fn () => redirect('/courier/orders'))->name('courier.dashboard');
     Route::get('/dashboard', fn () => redirect(match (auth()->user()->role) {
         'seller' => '/seller/dashboard',
-        'courier' => '/courier/dashboard',
         'admin' => '/admin/dashboard',
-        'logistics' => '/logistics/dashboard',
         default => '/buyer/dashboard',
     }));
-});
-
-// Province Hub Portal (logistics.pick-sell.shop/logistics/hub/...), for the operator assigned to a province hub
-Route::middleware(['auth', LogisticsMiddleware::class, ResolveHubContext::class])
-    ->prefix('logistics/hub')
-    ->group(function () {
-        Route::get('/dashboard', [ProvinceHubController::class, 'dashboard'])->name('province-hub.dashboard');
-        Route::get('/parcels', [ProvinceHubController::class, 'parcels'])->name('province-hub.parcels');
-        Route::patch('/parcels/{order}/receive-linehaul', [ProvinceHubController::class, 'receiveLinehaul'])->name('province-hub.receive-linehaul');
-        Route::patch('/parcels/{order}/dispatch-linehaul', [ProvinceHubController::class, 'dispatchLinehaul'])->name('province-hub.dispatch-linehaul');
-        Route::get('/stations', [ProvinceHubController::class, 'stationHubs'])->name('province-hub.stations');
-        Route::post('/stations', [ProvinceHubController::class, 'storeStationHub'])->name('province-hub.stations.store');
-        Route::patch('/stations/{branch}/status', [ProvinceHubController::class, 'updateStationStatus'])->name('province-hub.stations.status');
-        Route::get('/account', [LogisticsController::class, 'account'])->name('province-hub.account');
-        Route::patch('/account', [LogisticsController::class, 'updateAccount'])->name('province-hub.account.update');
-        Route::patch('/account/password', [LogisticsController::class, 'updatePassword'])->name('province-hub.account.password');
-    });
-
-// Station Hub Portal (logistics.pick-sell.shop/logistics/station/...), for the operator assigned to a station hub
-Route::middleware(['auth', LogisticsMiddleware::class, ResolveHubContext::class])
-    ->prefix('logistics/station')
-    ->group(function () {
-        Route::get('/dashboard', [StationHubController::class, 'dashboard'])->name('station-hub.dashboard');
-        Route::get('/parcels', [StationHubController::class, 'parcels'])->name('station-hub.parcels');
-        Route::get('/riders', [StationHubController::class, 'riders'])->name('station-hub.riders');
-        Route::post('/riders', [StationHubController::class, 'assignRider'])->name('station-hub.riders.assign');
-        Route::patch('/riders/{user}/status', [StationHubController::class, 'updateRiderStatus'])->name('station-hub.riders.status');
-        Route::get('/applications', [StationHubController::class, 'applications'])->name('station-hub.applications');
-        Route::patch('/applications/{user}/approve', [StationHubController::class, 'approveApplication'])->name('station-hub.applications.approve');
-        Route::patch('/applications/{user}/disapprove', [StationHubController::class, 'disapproveApplication'])->name('station-hub.applications.disapprove');
-        Route::post('/barangays/import', [StationHubController::class, 'importBarangays'])->name('station-hub.barangays.import');
-        Route::patch('/parcels/{order}/approve-pickup', [StationHubController::class, 'approvePickup'])->name('station-hub.approve-pickup');
-        Route::patch('/parcels/{order}/scan', [StationHubController::class, 'scanParcel'])->name('station-hub.scan');
-        Route::patch('/parcels/{order}/sort', [StationHubController::class, 'sortParcel'])->name('station-hub.sort');
-        Route::patch('/parcels/{order}/assign', [StationHubController::class, 'assignCourier'])->name('station-hub.assign');
-        Route::patch('/parcels/{order}/mark-returned', [StationHubController::class, 'markReturned'])->name('station-hub.mark-returned');
-        Route::post('/parcels/{order}/exceptions', [StationHubController::class, 'openException'])->name('station-hub.exceptions.store');
-        Route::patch('/exceptions/{exception}/resolve', [StationHubController::class, 'resolveException'])->name('station-hub.exceptions.resolve');
-        Route::get('/account', [LogisticsController::class, 'account'])->name('station-hub.account');
-        Route::patch('/account', [LogisticsController::class, 'updateAccount'])->name('station-hub.account.update');
-        Route::patch('/account/password', [LogisticsController::class, 'updatePassword'])->name('station-hub.account.password');
-    });
-
-// Logistics / Sorting Center Staff Routes
-Route::middleware(['auth', LogisticsMiddleware::class, ResolveHubContext::class, EnsureCompanyLogisticsPortal::class])->prefix('logistics')->group(function () {
-    Route::get('/dashboard', [LogisticsController::class, 'dashboard'])->name('logistics.dashboard');
-    Route::get('/branches', [LogisticsController::class, 'branches'])->name('logistics.branches');
-    Route::post('/branches', [LogisticsController::class, 'storeBranch'])->name('logistics.branches.store');
-    Route::get('/branches/{branch}/edit', [LogisticsController::class, 'editBranch'])->name('logistics.branches.edit');
-    Route::put('/branches/{branch}', [LogisticsController::class, 'updateBranch'])->name('logistics.branches.update');
-    Route::get('/reports/deliveries', [LogisticsController::class, 'deliveryReports'])->name('logistics.reports.deliveries');
-    Route::get('/reports/deliveries/export', [LogisticsController::class, 'exportDeliveryReports'])->name('logistics.reports.deliveries.export');
-    Route::get('/complaints', [LogisticsController::class, 'module'])->defaults('module', 'complaints')->name('logistics.complaints');
-    Route::get('/messages', [LogisticsController::class, 'messages'])->name('logistics.messages');
-    Route::post('/messages/send', [LogisticsController::class, 'sendMessage'])->name('logistics.messages.send');
-    Route::get('/account', [LogisticsController::class, 'account'])->name('logistics.account');
-    Route::patch('/account', [LogisticsController::class, 'updateAccount'])->name('logistics.account.update');
-    Route::patch('/account/password', [LogisticsController::class, 'updatePassword'])->name('logistics.account.password');
-});
-
-// Courier / Rider Routes
-Route::middleware(['auth', CourierMiddleware::class])->prefix('courier')->group(function () {
-    Route::get('/orders', [CourierController::class, 'dashboard'])->name('courier.orders');
-    Route::patch('/orders/{order}/status', [CourierController::class, 'updateStatus'])->name('courier.orders.status');
-    Route::get('/reports', [CourierController::class, 'reports'])->name('courier.reports');
-    Route::get('/chat', [CourierController::class, 'chat'])->name('courier.chat');
-    Route::post('/chat/send', [CourierController::class, 'sendMessage'])->name('courier.chat.send');
-    Route::get('/account', [CourierController::class, 'account'])->name('courier.account');
-    Route::patch('/account', [CourierController::class, 'updateAccount'])->name('courier.account.update');
-    Route::patch('/account/password', [CourierController::class, 'updatePassword'])->name('courier.account.password');
 });
 
 // Buyer Routes
@@ -398,13 +311,6 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
     });
     Route::patch('/complaints/{complaint}', [AdminComplaintController::class, 'update'])->middleware($can(Permission::COMPLAINTS_MANAGE))->name('admin.complaints.update');
     Route::patch('/complaints/{complaint}/resolve', [AdminComplaintController::class, 'resolve'])->middleware($can(Permission::COMPLAINTS_MANAGE))->name('admin.complaints.resolve');
-
-    Route::middleware($can(Permission::LOGISTICS_VIEW))->group(function () {
-        Route::get('/logistics', [AdminLogisticsController::class, 'index'])->name('admin.logistics.index');
-    });
-    Route::post('/logistics/{order}/resolve-exception', [AdminLogisticsExceptionController::class, 'resolveException'])->middleware($can(Permission::LOGISTICS_RESOLVE_EXCEPTION))->name('admin.logistics.resolve-exception');
-    Route::post('/logistics/{order}/exceptions', [AdminLogisticsExceptionController::class, 'openException'])->middleware($can(Permission::LOGISTICS_MANAGE))->name('admin.logistics.exceptions.store');
-    Route::patch('/logistics/exceptions/{exception}/resolve', [AdminLogisticsExceptionController::class, 'resolveParcelException'])->middleware($can(Permission::LOGISTICS_RESOLVE_EXCEPTION))->name('admin.logistics.exceptions.resolve');
 
     Route::get('/commission', [AdminController::class, 'commission'])->middleware($can(Permission::COMMISSION_VIEW))->name('admin.commission');
 

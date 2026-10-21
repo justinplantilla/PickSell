@@ -49,7 +49,7 @@ class AdminAuthorizationTest extends TestCase
             $this->assertTrue(Gate::forUser($admin)->allows($permission), "Super Admin lacks [{$permission}].");
         }
 
-        foreach (['buyer', 'seller', 'courier', 'logistics'] as $role) {
+        foreach (['buyer', 'seller'] as $role) {
             $user = $this->user($role);
             $this->assertFalse($user->isSuperAdmin());
             foreach (Permission::ALL as $permission) {
@@ -68,7 +68,6 @@ class AdminAuthorizationTest extends TestCase
             'products.view', 'products.moderate',
             'seller-compliance.view', 'seller-compliance.manage',
             'orders.view', 'orders.manage', 'orders.override-status',
-            'logistics.view', 'logistics.manage', 'logistics.scan', 'logistics.assign-rider', 'logistics.resolve-exception',
             'complaints.view', 'complaints.manage',
             'returns.view', 'returns.manage',
             'refunds.view', 'refunds.manage', 'refunds.approve',

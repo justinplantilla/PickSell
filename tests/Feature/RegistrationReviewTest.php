@@ -124,29 +124,28 @@ class RegistrationReviewTest extends TestCase
 
     public function test_review_history_is_retained_with_snapshot_and_shown(): void
     {
-        $logistics = $this->user('logistics', 'pending', ['provider_type' => 'company']);
-        $logistics->forceFill(['email_verified_at' => now()])->save();
+        $applicant = $this->user('seller', 'pending');
 
-        $this->actingAs($this->admin)->patch(route('admin.registrations.approve', $logistics), [
-            'checklist' => $this->allChecks($logistics),
+        $this->actingAs($this->admin)->patch(route('admin.registrations.approve', $applicant), [
+            'checklist' => $this->allChecks($applicant),
             'reason' => 'Permit verified with the issuing LGU.',
         ])->assertSessionHasNoErrors();
 
         $review = RegistrationReview::sole();
-        $this->assertSame($logistics->id, $review->user_id);
+        $this->assertSame($applicant->id, $review->user_id);
         $this->assertSame($this->admin->id, $review->reviewed_by);
         $this->assertSame(RegistrationReview::APPROVED, $review->decision);
         $this->assertNotNull($review->reviewed_at);
-        $this->assertSame(['identity', 'contact', 'address', 'business_permit', 'business_details', 'provider_type'], array_keys($review->verification_snapshot['checklist']));
+        $this->assertSame(['identity', 'contact', 'address', 'business_permit', 'business_details'], array_keys($review->verification_snapshot['checklist']));
         $this->assertSame('uploads/permits/permit.pdf', $review->verification_snapshot['documents']['business_permit']);
         $this->assertSame('Reg Goods', $review->verification_snapshot['applicant']['business_name']);
 
         // A later re-application keeps the earlier decision in the history.
-        $logistics->refresh()->update(['status' => 'pending']);
-        $this->actingAs($this->admin)->patch(route('admin.registrations.disapprove', $logistics), ['reason' => 'Permit expired since the first review.']);
-        $this->assertSame(2, $logistics->registrationReviews()->count());
+        $applicant->refresh()->update(['status' => 'pending']);
+        $this->actingAs($this->admin)->patch(route('admin.registrations.disapprove', $applicant), ['reason' => 'Permit expired since the first review.']);
+        $this->assertSame(2, $applicant->registrationReviews()->count());
 
-        $this->actingAs($this->admin)->get(route('admin.registrations.show', $logistics))->assertOk()
+        $this->actingAs($this->admin)->get(route('admin.registrations.show', $applicant))->assertOk()
             ->assertSeeInOrder(['Review history', 'Disapproved', 'Permit expired since the first review.', 'Approved', 'Permit verified with the issuing LGU.'])
             ->assertSee('Audit history')->assertSee('user.registration_disapproved');
     }
@@ -241,34 +240,20 @@ class RegistrationReviewTest extends TestCase
         User::whereKey($old->id)->update(['created_at' => now()->subDays(10)]);
         $new = $this->user('buyer');
         $approved = $this->user('seller', 'approved', ['business_name' => 'Done Shop']);
-        $logistics = $this->user('logistics', 'pending', ['provider_type' => 'company']);
-        $logistics->forceFill(['email_verified_at' => now()])->save();
-        $individualLogistics = $this->user('logistics', 'pending', ['provider_type' => 'individual']);
-        $courier = $this->user('courier');
 
         $this->actingAs($this->admin)->get(route('admin.registrations'))->assertOk()
             ->assertSeeInOrder([$old->email, $new->email])
             ->assertSee('Review / Decide')
             ->assertSee('registration-review-link')
-            ->assertSee('Logistics company')
-            ->assertDontSee($approved->email)
-            ->assertSee($logistics->email)
-            ->assertDontSee($individualLogistics->email)
-            ->assertDontSee($courier->email)
-            ->assertDontSee('Courier');
+            ->assertDontSee('registration-logistics-link')
+            ->assertDontSee($approved->email);
         $this->actingAs($this->admin)->get(route('admin.registrations.show', $old))->assertOk()
             ->assertSee('class="btn registration-approve"', false)
             ->assertSee('class="btn registration-disapprove"', false);
-        $this->actingAs($this->admin)->get(route('admin.registrations.show', $courier))->assertOk()
-            ->assertSee('Courier applications are reviewed in the Logistics portal.')
-            ->assertDontSee('>Approve</button>', false)
-            ->assertDontSee('>Disapprove</button>', false);
         $this->actingAs($this->admin)->get(route('admin.registrations', ['search' => 'Old Shop']))
             ->assertSee($old->email)->assertDontSee($new->email);
         $this->actingAs($this->admin)->get(route('admin.registrations', ['role' => 'buyer']))
             ->assertSee($new->email)->assertDontSee($old->email);
-        $this->actingAs($this->admin)->get(route('admin.registrations', ['role' => 'courier']))
-            ->assertDontSee($courier->email)->assertSee($old->email);
         $this->actingAs($this->admin)->get(route('admin.registrations', ['date' => 'older_7d']))
             ->assertSee($old->email)->assertDontSee($new->email);
         $this->actingAs($this->admin)->get(route('admin.registrations', ['status' => 'approved']))

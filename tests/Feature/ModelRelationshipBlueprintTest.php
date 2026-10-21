@@ -3,14 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\AuditLog;
-use App\Models\BranchRider;
 use App\Models\Complaint;
 use App\Models\ComplianceCase;
 use App\Models\FinancialTransaction;
-use App\Models\LogisticsException;
 use App\Models\Order;
 use App\Models\OrderStatusHistory;
-use App\Models\ParcelScan;
 use App\Models\Refund;
 use App\Models\RegistrationReview;
 use App\Models\ReturnRequest;
@@ -33,9 +30,6 @@ class ModelRelationshipBlueprintTest extends TestCase
         $this->assertHasMany($user->complaints(), Complaint::class, 'filed_by');
         $this->assertHasMany($user->ordersAsBuyer(), Order::class, 'buyer_id');
         $this->assertHasMany($user->ordersAsSeller(), Order::class, 'seller_id');
-        $this->assertHasMany($user->ordersAsCourier(), Order::class, 'courier_id');
-        $this->assertHasMany($user->courierAssignments(), BranchRider::class, 'user_id');
-        $this->assertHasMany($user->branchAssignments(), BranchRider::class, 'user_id');
         $this->assertHasMany($user->auditLogs(), AuditLog::class, 'actor_id');
         $this->assertHasMany($user->financialTransactions(), FinancialTransaction::class, 'seller_id');
     }
@@ -46,10 +40,7 @@ class ModelRelationshipBlueprintTest extends TestCase
 
         $this->assertBelongsTo($order->buyer(), User::class, 'buyer_id');
         $this->assertBelongsTo($order->seller(), User::class, 'seller_id');
-        $this->assertBelongsTo($order->courier(), User::class, 'courier_id');
         $this->assertHasMany($order->statusHistories(), OrderStatusHistory::class, 'order_id');
-        $this->assertHasMany($order->parcelScans(), ParcelScan::class, 'order_id');
-        $this->assertHasMany($order->logisticsExceptions(), LogisticsException::class, 'order_id');
         $this->assertHasMany($order->complaints(), Complaint::class, 'order_id');
         $this->assertHasOne($order->returns(), ReturnRequest::class, 'order_id');
         $this->assertHasOne($order->returnRequest(), ReturnRequest::class, 'order_id');

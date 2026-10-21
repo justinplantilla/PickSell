@@ -20,6 +20,6 @@ class ProductImage extends Model
 
     public function getUrlAttribute(): string
     {
-        return Storage::url($this->image_url);
+        return Storage::disk('public')->url($this->image_url);
     }
 }

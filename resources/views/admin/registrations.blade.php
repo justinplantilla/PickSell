@@ -9,14 +9,14 @@
     <div class="card-header">
         <div>
             <span class="card-title">Registration queue</span>
-            <p class="oversight-description">{{ $status === 'pending' ? 'Oldest applications first.' : 'Newest first.' }} Logistics registrations are for companies.</p>
+            <p class="oversight-description">{{ $status === 'pending' ? 'Oldest applications first.' : 'Newest first.' }}</p>
         </div>
     </div>
     <form method="GET" class="oversight-filters oversight-note registration-filters" role="search" aria-label="Filter registrations">
         <input type="search" name="search" value="{{ $search }}" class="search-input" placeholder="Name, email or business" aria-label="Search applicants">
         <select name="role" class="filter-select" aria-label="Role" data-submit-on-change>
             <option value="all" {{ $role === 'all' ? 'selected' : '' }}>All roles</option>
-            @foreach(['buyer' => 'Buyer', 'seller' => 'Seller', 'logistics' => 'Logistics company'] as $value => $label)
+            @foreach(['buyer' => 'Buyer', 'seller' => 'Seller'] as $value => $label)
                 <option value="{{ $value }}" {{ $role === $value ? 'selected' : '' }}>{{ $label }}</option>
             @endforeach
         </select>
@@ -50,7 +50,7 @@
                             <strong>{{ $user->full_name }}</strong>
                             <span class="oversight-meta">{{ $user->email }}@if($user->business_name) · {{ $user->business_name }}@endif</span>
                         </td>
-                        <td><span class="badge badge-{{ $user->role }}">{{ $user->role === 'logistics' ? 'Logistics company' : ucfirst($user->role) }}</span></td>
+                        <td><span class="badge badge-{{ $user->role }}">{{ ucfirst($user->role) }}</span></td>
                         <td>
                             <time datetime="{{ $user->created_at->toIso8601String() }}">{{ $user->created_at->format('M d, Y') }}</time>
                             <span class="oversight-meta">{{ $user->created_at->diffForHumans() }}</span>

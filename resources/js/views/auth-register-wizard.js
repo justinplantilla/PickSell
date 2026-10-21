@@ -3,7 +3,6 @@ const registerConfig = document.querySelector('[data-register-config]');
 if (registerForm && registerConfig) {
     const roleBtns = document.querySelectorAll('.role-btn');
     const sellerFields = document.getElementById('sellerFields');
-    const courierFields = document.getElementById('courierFields');
     const submitButton = registerForm.querySelector('.btn-submit');
     const passwordInput = registerForm.querySelector('input[name="password"]');
     const passwordMeter = registerForm.querySelector('.password-meter');
@@ -26,7 +25,7 @@ if (registerForm && registerConfig) {
     });
     let currentWizardStep = 0;
 
-    // Buyers, sellers and logistics providers verify their email with a one-time code on the Account step before they can continue.
+    // Buyers and sellers verify their email with a one-time code on the Account step before they can continue.
     const emailOtp = (() => {
         const box = document.getElementById('emailOtp');
         const emailInput = registerForm.querySelector('input[name="email"]');
@@ -120,7 +119,7 @@ if (registerForm && registerConfig) {
         emailInput.addEventListener('input', () => { if (!isVerified()) reset(); });
 
         return {
-            toggle(role) { active = ['buyer', 'seller', 'logistics'].includes(role); box.hidden = !active; render(); },
+            toggle(role) { active = ['buyer', 'seller'].includes(role); box.hidden = !active; render(); },
             blocksStep(panel) {
                 if (!active || !panel.contains(box) || isVerified()) return false;
                 if (!emailInput.checkValidity()) { emailInput.reportValidity(); return true; }
@@ -136,7 +135,6 @@ if (registerForm && registerConfig) {
             .filter(field => field.required && !field.disabled && (field.type !== 'radio' || field.checked) && (field.type === 'radio' || field.type === 'file' || field.offsetParent !== null));
         const invalidField = fields.find(field => !field.checkValidity());
         if (invalidField) { invalidField.reportValidity(); return false; }
-        if (!serviceAreasValid(wizardPanels[currentWizardStep])) return false;
         return !emailOtp.blocksStep(wizardPanels[currentWizardStep]);
     };
     const setWizardStep = step => {
@@ -166,26 +164,6 @@ if (registerForm && registerConfig) {
     });
     registerForm.querySelector('input[name="role"]')?.setAttribute('required', 'required');
 
-    // Logistics providers pick at least one region they serve.
-    const serviceAreas = document.getElementById('serviceAreas');
-    const serviceAreasError = document.getElementById('serviceAreasError');
-    const serviceAreasValid = panel => {
-        if (!panel.contains(serviceAreas) || serviceAreas.style.display === 'none') return true;
-        const valid = serviceAreas.querySelector('input:checked') !== null;
-        serviceAreasError.hidden = valid;
-        if (!valid) serviceAreas.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return valid;
-    };
-    serviceAreas.addEventListener('change', () => { if (serviceAreas.querySelector('input:checked')) serviceAreasError.hidden = true; });
-
-    const updateProviderFields = () => {
-        const logisticsSelected = selectedRole() === 'logistics';
-        const businessName = document.querySelector('input[name="business_name"]');
-        document.getElementById('businessNameLabel').innerHTML = (logisticsSelected ? 'Company Name' : 'Shop Name') + ' <span class="req">*</span>';
-        businessName.placeholder = logisticsSelected ? 'e.g. Bilis Hatid Express Inc.' : "e.g. Juan's Store";
-        // Company names are 2 to 100 characters; shop names 3 to 30.
-        if (logisticsSelected) { businessName.minLength = 2; businessName.maxLength = 100; } else { businessName.minLength = 3; businessName.maxLength = 30; }
-    };
     const syncRoleFields = role => {
         const sellerType = document.getElementById('seller_type').value;
         registerForm.querySelectorAll('[data-roles]').forEach(group => {
@@ -197,20 +175,17 @@ if (registerForm && registerConfig) {
         });
     };
     const updateRegistrationNote = role => {
-        const messages = { courier: 'Courier applications are reviewed by the station hub for your town. Please wait for the approval result before logging in.', logistics: 'Logistics provider applications are reviewed by the PickSell Admin team. Please wait for approval before logging in.', seller: 'Seller applications are reviewed by the PickSell Admin team. Please wait for the approval result before logging in.', buyer: 'Your registration will be reviewed by PickSell. Please wait for the approval result before logging in.' };
+        const messages = { seller: 'Seller applications are reviewed by the PickSell Admin team. Please wait for the approval result before logging in.', buyer: 'Your registration will be reviewed by PickSell. Please wait for the approval result before logging in.' };
         document.getElementById('registrationNote').textContent = messages[role] || messages.buyer;
     };
     const updateRole = role => {
         roleBtns.forEach(button => button.classList.remove('active'));
         document.getElementById('role-' + role)?.classList.add('active');
-        sellerFields.style.display = ['seller', 'logistics'].includes(role) ? 'block' : 'none';
-        courierFields.style.display = role === 'courier' ? 'block' : 'none';
-        document.querySelectorAll('#courierFields input, #courierFields select').forEach(element => { element.required = role === 'courier'; });
-        syncRoleFields(role); updateProviderFields(); updateRegistrationNote(role); emailOtp.toggle(role);
+        sellerFields.style.display = role === 'seller' ? 'block' : 'none';
+        syncRoleFields(role); updateRegistrationNote(role); emailOtp.toggle(role);
     };
     const selectedRole = () => registerForm.querySelector('input[name="role"]:checked')?.value;
     roleBtns.forEach(button => button.addEventListener('click', () => { const role = button.querySelector('input').value; button.querySelector('input').checked = true; updateRole(role); }));
-    document.querySelector('input[name="sec_registration_no"]').addEventListener('input', function () { this.value = this.value.toUpperCase(); });
     document.getElementById('seller_type').addEventListener('change', () => syncRoleFields(selectedRole()));
     passwordInput.addEventListener('input', () => {
         const password = passwordInput.value;
@@ -240,7 +215,7 @@ if (registerForm && registerConfig) {
     // Documents must be JPG, PNG or PDF files of at most 5 MB; anything else is cleared with a message.
     const ACCEPTED_FILE = /\.(jpe?g|png|pdf)$/i;
     const MAX_FILE_BYTES = 5 * 1024 * 1024;
-    ['id_upload', 'business_permit', 'or_cr_upload', 'dti_certificate', 'sec_certificate', 'bir_certificate'].forEach(inputId => document.getElementById(inputId).addEventListener('change', function () {
+    ['id_upload', 'dti_certificate', 'sec_certificate', 'bir_certificate'].forEach(inputId => document.getElementById(inputId).addEventListener('change', function () {
         const group = this.closest('.form-group');
         const file = this.files[0];
         const problem = !file ? '' : !ACCEPTED_FILE.test(file.name) ? `${file.name} was not accepted. Only JPG, PNG and PDF files are accepted.` : file.size > MAX_FILE_BYTES ? `${file.name} was not accepted. Each file must be 5 MB or smaller.` : '';

@@ -7,9 +7,9 @@
 
 @section('content')
 @php
-    $delivery = $order->delivery;
-    $logs = $delivery?->logs ?? collect();
-    $currentStatus = $delivery?->status ?? $order->status;
+    // Pickrush lists parcel events newest first; the timeline reads oldest to newest.
+    $events = collect($tracking['events'] ?? [])->reverse()->values();
+    $currentStatus = $order->status;
 
     $assuranceMap = [
         'placed'             => ['next' => 'Waiting for the seller to confirm and start packing your order.', 'icon' => '🛍️'],
@@ -51,7 +51,7 @@
             </div>
             <div>
                 <span class="tracking-meta">Tracking number</span>
-                <strong>{{ $delivery?->tracking_number ?? 'Not available' }}</strong>
+                <strong>{{ $tracking['tracking_no'] ?? 'Not available' }}</strong>
             </div>
             <div>
                 <span class="tracking-meta">Delivering to</span>
@@ -72,26 +72,19 @@
         <div class="order-card-header">
             <h2 id="tracking-events-heading">Delivery updates</h2>
         </div>
-        @if($logs->isEmpty())
+        @if($events->isEmpty())
             <p class="tracking-empty">No delivery scans or status updates have been recorded yet.</p>
         @else
             <ol class="tracking-timeline">
-                @foreach($logs as $log)
-                    @php
-                        $logAssurance = $assuranceMap[$log->to_status] ?? null;
-                    @endphp
+                @foreach($events as $event)
                     <li class="tracking-event {{ $loop->last ? 'is-latest' : '' }}" @if($loop->last) aria-current="step" @endif>
                         <span class="tracking-event-marker" aria-hidden="true"></span>
                         <div class="tracking-event-content">
                             <div class="tracking-event-heading">
-                                <strong>{{ ucfirst(str_replace('_', ' ', $log->to_status)) }}</strong>
-                                <time datetime="{{ $log->created_at->toIso8601String() }}">{{ $log->created_at->format('M d, Y h:i A') }}</time>
+                                <strong>{{ $event['headline'] }}</strong>
+                                <time datetime="{{ $event['at']->toIso8601String() }}">{{ $event['at']->format('M d, Y h:i A') }}</time>
                             </div>
-                            @if($log->note)<p>{{ $log->note }}</p>@endif
-                            @if($logAssurance && !$loop->last)
-                                <p class="tracking-event-assurance">{{ $logAssurance['next'] }}</p>
-                            @endif
-                            <span class="tracking-event-actor">{{ ucfirst($log->actor_role) }}</span>
+                            <span class="tracking-event-actor">Pickrush</span>
                         </div>
                     </li>
                 @endforeach

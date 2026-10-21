@@ -67,7 +67,7 @@
         </table>
 
         <div class="rule"></div>
-        <div class="footer"><strong>Keep this receipt for tracking.</strong><br>Present the waybill number when handing the parcel to logistics.<br>Thank you for using PickSell.</div>
+        <div class="footer"><strong>Keep this receipt for tracking.</strong><br>Present the waybill number when handing the parcel to Pickrush.<br>Thank you for using PickSell.</div>
     </div>
 </body>
 </html>

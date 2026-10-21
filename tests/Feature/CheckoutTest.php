@@ -80,27 +80,6 @@ class CheckoutTest extends TestCase
         ]);
         config()->set('app.platform_commission_rate', 12.5);
 
-        $logistics = User::create([
-            'role' => 'logistics',
-            'status' => 'approved',
-            'last_name' => 'Logistics',
-            'first_name' => 'Test',
-            'middle_initial' => null,
-            'sex' => 'Male',
-            'email' => 'logistics.checkout@example.com',
-            'password' => Hash::make('secret123'),
-            'contact_no' => '09112223344',
-            'birthday' => '1988-02-15',
-            'age' => 38,
-            'province' => 'Metro Manila',
-            'municipality' => 'Quezon City',
-            'barangay' => 'Diliman',
-            'street' => "Teacher's Village",
-            'house_no' => '8',
-            'id_upload' => 'uploads/logistics.jpg',
-            'business_name' => 'Fast Route Logistics',
-        ]);
-
         $this->actingAs($buyer)
             ->get('/buyer/cart/checkout?' . http_build_query(['item_ids' => [$item->id]]))
             ->assertOk()
@@ -111,7 +90,6 @@ class CheckoutTest extends TestCase
             ->post('/buyer/cart/checkout', [
                 'item_ids' => [$item->id],
                 'payment_method' => 'cod',
-                'logistics_id' => $logistics->id,
             ]);
 
         $response->assertRedirect('/buyer/orders');
@@ -119,7 +97,6 @@ class CheckoutTest extends TestCase
             'buyer_id' => $buyer->id,
             'seller_id' => $seller->id,
             'product_id' => $product->id,
-            'logistics_id' => $logistics->id,
             'quantity' => 1,
             'status' => 'placed',
             'commission' => 62.50,

@@ -23,7 +23,7 @@ class ComplaintPolicy
         }
 
         $orderPartyIds = $complaint->order
-            ? [$complaint->order->buyer_id, $complaint->order->seller_id, $complaint->order->courier_id]
+            ? [$complaint->order->buyer_id, $complaint->order->seller_id]
             : [];
 
         return in_array((int) $admin->id, array_map('intval', array_filter([

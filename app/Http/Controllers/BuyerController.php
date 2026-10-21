@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\ProductReview;
 use App\Models\User;
 use App\Notifications\NewSellerOrder;
+use App\Pickrush\Bridge\PicksellBridge;
 use App\Services\CommissionService;
 use App\Services\LogisticsRoutingService;
 use App\Services\Orders\OrderCancellationService;
@@ -313,13 +314,7 @@ class BuyerController extends Controller
 
         $total = $items->sum(fn ($i) => $i->product->effective_price * $i->quantity);
         $cartCount = CartItem::where('cart_id', $cart->id)->count();
-        $logisticsProvider = User::where('role', 'logistics')
-            ->where('status', 'approved')
-            ->orderBy('business_name')
-            ->orderBy('last_name')
-            ->first();
-
-        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount', 'logisticsProvider'));
+        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount'));
     }
 
     public function updateCart(Request $request, CartItem $item)
@@ -352,13 +347,7 @@ class BuyerController extends Controller
             'voucher_code' => 'nullable|string',
         ]);
 
-        $logisticsProvider = User::where('role', 'logistics')
-            ->where('status', 'approved')
-            ->orderBy('business_name')
-            ->orderBy('last_name')
-            ->firstOrFail();
-
-        $cart = $this->getCart();
+        $cart  = $this->getCart();
         $items = CartItem::whereIn('id', $data['item_ids'])
             ->where('cart_id', $cart->id)
             ->with('product')
@@ -368,10 +357,8 @@ class BuyerController extends Controller
             return back()->withErrors(['item_ids' => 'No items selected.']);
         }
 
-        $routing = app(LogisticsRoutingService::class);
-
         try {
-            $placed = DB::transaction(function () use ($items, $data, $logisticsProvider, $routing) {
+            $placed = DB::transaction(function () use ($items, $data) {
                 // Lock the products so moderation, other buyers and stock changes cannot interleave.
                 $products = Product::whereIn('id', $items->pluck('product_id'))->with('seller')->lockForUpdate()->get()->keyBy('id');
                 $unavailable = $items->filter(fn ($item) => ! $products->get($item->product_id)?->isPurchasable());
@@ -388,7 +375,7 @@ class BuyerController extends Controller
                 $placed = [];
                 foreach ($items as $item) {
                     $item->setRelation('product', $products[$item->product_id]);
-                    $placed[] = $this->createOrderFromCartItem($item, $data, $logisticsProvider, $routing);
+                    $placed[] = $this->createOrderFromCartItem($item, $data);
                 }
 
                 return $placed;
@@ -405,7 +392,7 @@ class BuyerController extends Controller
     }
 
     /** Builds one order from a cart line inside placeOrder's transaction. */
-    private function createOrderFromCartItem(CartItem $item, array $data, User $logisticsProvider, LogisticsRoutingService $routing): Order
+    private function createOrderFromCartItem(CartItem $item, array $data): Order
     {
         $product = $item->product;
         $price = $product->effective_price;
@@ -419,20 +406,18 @@ class BuyerController extends Controller
         $commissionCalculation = app(CommissionService::class)->calculate((string) round($amount, 2));
 
         $order = Order::create([
-            'order_number' => 'ORD-'.strtoupper(Str::random(8)),
-            'product_id' => $product->id,
-            'buyer_id' => $this->buyer()->id,
-            'seller_id' => $product->seller_id,
-            'logistics_id' => $logisticsProvider->id,
-            'product_name' => $product->name,
-            'quantity' => $item->quantity,
-            'amount' => $amount,
-            'commission' => $commissionCalculation['commission'],
+            'order_number'   => 'ORD-' . strtoupper(Str::random(8)),
+            'product_id'     => $product->id,
+            'buyer_id'       => $this->buyer()->id,
+            'seller_id'      => $product->seller_id,
+            'product_name'   => $product->name,
+            'quantity'       => $item->quantity,
+            'amount'         => $amount,
+            'commission'     => $commissionCalculation['commission'],
             'commission_rate' => $commissionCalculation['rate'],
             'status' => 'placed',
             'tracking_status' => 'Order placed and awaiting seller preparation',
         ]);
-        $routing->routeOrder($order, $product->seller, $this->buyer());
 
         // Deduct stock
         $product->decrement('stock', $item->quantity);
@@ -451,11 +436,11 @@ class BuyerController extends Controller
     public function orders(Request $request)
     {
         $status = $request->get('status', 'all');
-        $query = Order::where('buyer_id', $this->buyer()->id)->with('product', 'seller', 'returnRequest', 'delivery');
+        $query = Order::where('buyer_id', $this->buyer()->id)->with('product', 'seller', 'returnRequest');
         $statusGroups = [
             'pending' => ['pending', 'placed', 'confirmed'],
             'processing' => ['processing', 'preparing', 'ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted'],
-            'shipped' => ['shipped', 'in_transit', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed'],
+            'shipped' => ['shipped', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed'],
             'completed' => ['delivered', 'completed'],
             'returned' => ['returned'],
             'cancelled' => ['cancelled'],
@@ -466,9 +451,10 @@ class BuyerController extends Controller
             $status = 'all';
         }
         $orders = $query->latest()->paginate(10);
+        $tracking = $orders->getCollection()->mapWithKeys(fn ($order) => [$order->id => PicksellBridge::tracking($order)]);
         $cartCount = CartItem::whereHas('cart', fn ($q) => $q->where('buyer_id', $this->buyer()->id))->count();
 
-        return view('buyer.orders', compact('orders', 'status', 'cartCount'));
+        return view('buyer.orders', compact('orders', 'status', 'cartCount', 'tracking'));
     }
 
     public function trackOrder(Order $order)
@@ -476,10 +462,11 @@ class BuyerController extends Controller
         $order = Order::query()
             ->whereKey($order->id)
             ->where('buyer_id', $this->buyer()->id)
-            ->with(['delivery.logs', 'returnRequest'])
+            ->with('returnRequest')
             ->firstOrFail();
+        $tracking = PicksellBridge::tracking($order);
 
-        return view('buyer.order-tracking', compact('order'));
+        return view('buyer.order-tracking', compact('order', 'tracking'));
     }
 
     public function cancelOrder(Request $request, Order $order, OrderCancellationService $cancellations)

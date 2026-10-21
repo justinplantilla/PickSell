@@ -55,15 +55,13 @@ class AdminOrderListTest extends TestCase
         $response->assertSee('href="'.e(route('admin.orders', ['stage' => 'fulfillment'])).'" class="list-chips-clear"', false);
     }
 
-    public function test_rows_flag_stuck_orders_and_sorted_parcels_without_a_rider(): void
+    public function test_rows_flag_stuck_orders(): void
     {
         $stuck = $this->order('preparing');
         Order::whereKey($stuck->id)->update(['updated_at' => now()->subDays(3)]);
-        $this->order('sorted');
 
         $this->actingAs($this->admin)->get(route('admin.orders'))->assertOk()
             ->assertSee('Stuck')
-            ->assertSee('No rider assigned')
             ->assertSee('data-preview-url="'.route('admin.orders.preview', $stuck).'"', false);
     }
 

@@ -1,6 +1,5 @@
 @extends('layouts.app')
-@php($isLogisticsSite = \App\Support\LogisticsDomains::isLogisticsHost(request()->getHost()))
-@section('title', $isLogisticsSite ? 'Log In | PickSell Logistics' : 'Log In')
+@section('title', 'Log In')
 
 @section('styles')
 @vite('resources/css/pages/login.css')
@@ -11,8 +10,8 @@
     <div class="auth-shell">
         <div class="auth-card">
         <div class="auth-logo"><a href="/"><img src="{{ asset('images/transparent logo.png') }}" alt="PickSell logo"><span>Pick<span>Sell</span></span></a></div>
-        <h1 class="auth-title">{{ $isLogisticsSite ? 'PickSell Logistics' : 'Welcome back' }}</h1>
-        <p class="auth-sub">{{ $isLogisticsSite ? 'Log in to your logistics portal' : 'Log in to your PickSell account' }}</p>
+        <h1 class="auth-title">Welcome back</h1>
+        <p class="auth-sub">Log in to your PickSell account</p>
 
         @if(session('success'))
             <div class="alert-success">{{ session('success') }}</div>

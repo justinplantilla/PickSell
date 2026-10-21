@@ -89,13 +89,12 @@ class ComplaintResolution
 
     private function notifyParticipants(Complaint $complaint, string $message): void
     {
-        $complaint->loadMissing(['filer', 'against', 'order.buyer', 'order.seller', 'order.courier']);
+        $complaint->loadMissing(['filer', 'against', 'order.buyer', 'order.seller']);
         $participants = collect([
             $complaint->filer,
             $complaint->against,
             $complaint->order?->buyer,
             $complaint->order?->seller,
-            $complaint->order?->courier,
         ])->filter()->unique('id');
 
         foreach ($participants as $participant) {

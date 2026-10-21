@@ -3,55 +3,43 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BuyerController;
-use App\Http\Controllers\Api\V1\RiderController;
-use App\Http\Middleware\RiderApiMiddleware;
 use App\Models\Product;
 use Illuminate\Support\Facades\Storage;
 
-Route::prefix('v1')->group(function () {
-    Route::middleware('throttle:api')->group(function () {
-        Route::post('/auth/login', [RiderController::class, 'login'])
-            ->middleware('throttle:10,1')
-            ->name('api.v1.auth.login');
-
-        Route::middleware(['auth:sanctum', RiderApiMiddleware::class])->group(function () {
-            Route::middleware('abilities:rider:read')->group(function () {
-                Route::get('/rider/assignments', [RiderController::class, 'assignments'])
-                    ->name('api.v1.rider.assignments');
-                Route::get('/rider/deliveries', [RiderController::class, 'deliveries'])
-                    ->name('api.v1.rider.deliveries');
-                Route::get('/rider/deliveries/{delivery}', [RiderController::class, 'showDeliveryById'])
-                    ->name('api.v1.rider.deliveries.show');
-                Route::get('/rider/deliveries/{delivery}/proof/{log}', [RiderController::class, 'showProofImage'])
-                    ->name('api.v1.rider.deliveries.proof');
-                Route::get('/rider/me', [RiderController::class, 'me'])
-                    ->name('api.v1.rider.me');
-            });
-
-            Route::middleware('abilities:rider:write')->group(function () {
-                Route::post('/auth/logout', [RiderController::class, 'logout'])
-                    ->name('api.v1.auth.logout');
-                Route::post('/rider/assignments/{assignment}/respond', [RiderController::class, 'respondToOffer'])
-                    ->name('api.v1.rider.assignments.respond');
-                Route::post('/rider/deliveries/{delivery}/status', [RiderController::class, 'updateDeliveryStatus'])
-                    ->name('api.v1.rider.deliveries.status');
-            });
-        });
-
-        // Temporary route aliases preserve compatibility with the first Rider API iteration.
-        Route::post('/rider/login', [RiderController::class, 'login'])
-            ->middleware('throttle:10,1')
-            ->name('api.v1.rider.login');
-        Route::middleware(['auth:sanctum', RiderApiMiddleware::class])->group(function () {
-            Route::post('/rider/logout', [RiderController::class, 'logout'])
-                ->middleware('abilities:rider:write')
-                ->name('api.v1.rider.logout');
-        });
-    });
-});
-
 Route::middleware('auth')->group(function () {
     Route::patch('/buyer/account', [BuyerController::class, 'updateAccount']);
+});
+
+Route::get('/products', function (Request $request) {
+    $products = Product::with('images', 'seller')
+        ->purchasable()
+        ->when($request->get('category'), fn ($q, $cat) => $q->where('category', $cat))
+        ->when($request->get('search'), fn ($q, $s) => $q->where('name', 'like', "%{$s}%"))
+        ->latest()
+        ->paginate(20);
+
+    return response()->json([
+        'products' => $products->map(fn ($p) => [
+            'id'              => $p->id,
+            'name'            => $p->name,
+            'category'        => $p->category,
+            'price'           => (float) $p->effective_price,
+            'original_price'  => $p->discount > 0 ? (float) $p->price : null,
+            'stock'           => $p->stock,
+            'description'     => $p->description,
+            'seller_name'     => $p->seller?->business_name
+                                    ?: trim(($p->seller?->first_name ?? '').' '.($p->seller?->last_name ?? '')),
+            'seller_location' => implode(', ', array_filter([
+                $p->seller?->barangay,
+                $p->seller?->municipality,
+            ])),
+            'images'          => $p->images->map(fn ($img) => $img->url)->values(),
+            'primary_image'   => $p->images->isNotEmpty()
+                                    ? ($p->images->firstWhere('is_primary', true) ?? $p->images->first())?->url
+                                    : null,
+        ]),
+        'next_page_url' => $products->nextPageUrl(),
+    ]);
 });
 
 Route::get('/ping', function (Request $request) {

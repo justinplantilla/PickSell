@@ -12,8 +12,6 @@ use App\Models\Product;
  */
 class OrderLifecycleService
 {
-    public function __construct(private DeliveryStatusTransitionPolicy $transitionPolicy) {}
-
     /** status => statuses it may move to */
     public const TRANSITIONS = [
         'placed' => ['confirmed', 'preparing', 'cancelled'],
@@ -22,11 +20,10 @@ class OrderLifecycleService
         'ready_for_pickup' => ['picked_up', 'cancelled'],
         'picked_up' => ['at_sorting_center'],
         'at_sorting_center' => ['sorted'],
-        'sorted' => ['assigned_to_rider', 'in_transit'],
-        'in_transit' => ['at_sorting_center'],
+        'sorted' => ['assigned_to_rider'],
         'assigned_to_rider' => ['out_for_delivery', 'at_sorting_center'],
         'out_for_delivery' => ['delivered', 'delivery_failed'],
-        'delivery_failed' => ['assigned_to_rider', 'at_sorting_center', 'returned'],
+        'delivery_failed' => ['at_sorting_center', 'returned'],
         'delivered' => ['completed'],
         'completed' => [],
         'returned' => [],
@@ -49,7 +46,6 @@ class OrderLifecycleService
         'picked_up' => 'picked_up_at',
         'at_sorting_center' => 'sorting_received_at',
         'sorted' => 'sorted_at',
-        'in_transit' => 'linehaul_dispatched_at',
         'assigned_to_rider' => 'assigned_to_rider_at',
         'out_for_delivery' => 'out_for_delivery_at',
         'delivered' => 'delivered_at',
@@ -62,7 +58,7 @@ class OrderLifecycleService
     public const TERMINAL = ['completed', 'returned', 'cancelled'];
 
     /** The main path, for timelines. */
-    public const MAIN_PATH = ['placed', 'confirmed', 'preparing', 'ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'in_transit', 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed'];
+    public const MAIN_PATH = ['placed', 'confirmed', 'preparing', 'ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivered', 'completed'];
 
     public static function allowedNext(string $from): array
     {
@@ -82,28 +78,11 @@ class OrderLifecycleService
     /**
      * Guarded transition. Caller holds a row lock and runs inside a transaction.
      *
-     * @param  array<string, mixed>  $extra  extra column updates (e.g. clearing the courier)
+     * @param  array<string, mixed>  $extra  extra column updates (e.g. the waybill number)
      */
     public function transition(Order $order, string $to, ?int $actorId, string $source, ?string $reason, array $extra = []): void
     {
         abort_unless(self::canTransition($order->status, $to), 409, 'An order cannot move from ' . self::label($order->status) . ' to ' . self::label($to) . '.');
-        $delivery = $order->delivery()->first();
-        abort_unless(
-            $this->transitionPolicy->canTransition(
-                $order->status,
-                $to,
-                $source,
-                (int) ($delivery?->delivery_attempts ?? 0),
-                $delivery?->status,
-            ),
-            409,
-            'This actor cannot make the requested delivery status transition.',
-        );
-
-        // Moving a parcel back to sorting releases its rider so it can be reassigned.
-        if ($to === 'at_sorting_center' && in_array($order->status, ['assigned_to_rider', 'delivery_failed'], true)) {
-            $extra += ['courier_id' => null];
-        }
 
         $order->statusChangedBy = $actorId;
         $order->statusChangeSource = $source;

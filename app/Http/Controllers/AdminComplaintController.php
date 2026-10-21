@@ -27,14 +27,14 @@ class AdminComplaintController extends Controller
         return view('admin.complaints', [
             'complaints' => $query->latest()->paginate(15),
             'status' => $status,
-            'users' => User::whereIn('role', ['buyer', 'seller', 'courier'])->where('status', 'approved')->get(),
+            'users' => User::whereIn('role', ['buyer', 'seller'])->where('status', 'approved')->get(),
         ]);
     }
 
     public function show(Complaint $complaint)
     {
         Gate::authorize('view', $complaint);
-        $complaint->load(['filer', 'against', 'order.buyer', 'order.seller', 'order.courier', 'order.product']);
+        $complaint->load(['filer', 'against', 'order.buyer', 'order.seller', 'order.product']);
 
         return view('admin.complaint-detail', compact('complaint'));
     }

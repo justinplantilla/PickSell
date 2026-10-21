@@ -38,16 +38,5 @@
             @endforelse
         </tbody>
     </table>
-    <h2>Rider Workload</h2>
-    <table class="data">
-        <thead><tr><th>Rider</th><th>Assigned orders</th></tr></thead>
-        <tbody>
-            @forelse($data['rider_workload'] as $rider)
-                <tr><td>{{ $rider['name'] }}</td><td>{{ number_format($rider['orders']) }}</td></tr>
-            @empty
-                <tr><td colspan="2">No assigned rider orders match these filters.</td></tr>
-            @endforelse
-        </tbody>
-    </table>
 </body>
 </html>

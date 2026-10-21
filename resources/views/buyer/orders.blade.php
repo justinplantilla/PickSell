@@ -39,8 +39,7 @@
             <div class="blade-inline-11">₱{{ number_format($order->amount, 2) }}</div>
         </div>
         <div class="blade-inline-12">
-            @if($order->delivery?->tracking_number)
-            <div class="blade-inline-13">Tracking #: <strong>{{ $order->delivery->tracking_number }}</strong></div>
+            @if($tracking[$order->id] ?? null)
             <a class="btn btn-outline btn-sm" href="{{ route('buyer.orders.tracking', $order) }}">View delivery tracking</a>
             @endif
             @if(in_array($order->status, ['placed', 'confirmed', 'preparing'], true))
@@ -93,6 +92,8 @@
         </div>
     </div>
     @endif
+
+    @include('partials.pickrush-tracking', ['tracking' => $tracking[$order->id] ?? null])
 
     @if($order->returnRequest)
         @php

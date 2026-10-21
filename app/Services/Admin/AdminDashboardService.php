@@ -21,27 +21,27 @@ class AdminDashboardService
 
     public const IN_PROGRESS_STATUSES = [
         'placed', 'confirmed', 'preparing', 'ready_for_pickup',
-        'picked_up', 'at_sorting_center', 'sorted', 'in_transit', 'assigned_to_rider', 'out_for_delivery',
+        'picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery',
     ];
 
     /** Lifecycle strip: stage => statuses (order follows the marketplace lifecycle). */
     public const LIFECYCLE = [
         'placed' => ['label' => 'Placed', 'statuses' => ['placed', 'confirmed']],
         'preparing' => ['label' => 'Preparing', 'statuses' => ['preparing', 'ready_for_pickup']],
-        'sorting' => ['label' => 'Sorting', 'statuses' => ['picked_up', 'at_sorting_center', 'sorted', 'in_transit']],
+        'sorting' => ['label' => 'With Pickrush', 'statuses' => ['picked_up', 'at_sorting_center', 'sorted']],
         'delivery' => ['label' => 'Delivery', 'statuses' => ['assigned_to_rider', 'out_for_delivery']],
         'awaiting_confirmation' => ['label' => 'Awaiting buyer', 'statuses' => ['delivered']],
     ];
 
-    /** Accounts Admin can approve (couriers are reviewed by Logistics). */
-    public const ADMIN_REVIEWED_ROLES = ['buyer', 'seller', 'logistics'];
+    /** Accounts Admin can approve. */
+    public const ADMIN_REVIEWED_ROLES = ['buyer', 'seller'];
 
     public function __construct(private FinancialSummary $finance) {}
 
     public function build(User $viewer): array
     {
         $can = fn (string $permission) => $viewer->hasPermission($permission);
-        $statusCounts = $can(Permission::ORDERS_VIEW) || $can(Permission::LOGISTICS_VIEW)
+        $statusCounts = $can(Permission::ORDERS_VIEW)
             ? Order::selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status')
             : collect();
 
@@ -55,9 +55,7 @@ class AdminDashboardService
             'finance' => $can(Permission::REPORTS_VIEW) || $can(Permission::COMMISSION_VIEW) ? $this->finance() : null,
             'users' => $can(Permission::USERS_VIEW) ? $this->users() : null,
             'pendingApplications' => $can(Permission::REGISTRATIONS_VIEW)
-                ? User::whereIn('role', self::ADMIN_REVIEWED_ROLES)
-                    ->where(fn ($query) => $query->where('role', '!=', 'logistics')->orWhere('provider_type', 'company'))
-                    ->where('status', 'pending')->oldest()->take(5)->get()
+                ? User::whereIn('role', self::ADMIN_REVIEWED_ROLES)->where('status', 'pending')->oldest()->take(5)->get()
                 : collect(),
         ];
     }
@@ -71,9 +69,7 @@ class AdminDashboardService
     /** Pending approvals count, also used for the sidebar badge. */
     public function pendingApprovals(): int
     {
-        return User::whereIn('role', self::ADMIN_REVIEWED_ROLES)
-            ->where(fn ($query) => $query->where('role', '!=', 'logistics')->orWhere('provider_type', 'company'))
-            ->where('status', 'pending')->count();
+        return User::whereIn('role', self::ADMIN_REVIEWED_ROLES)->where('status', 'pending')->count();
     }
 
     private function kpis(User $viewer, $statusCounts, array $exceptions): array
@@ -92,7 +88,7 @@ class AdminDashboardService
         if ($viewer->hasPermission(Permission::REGISTRATIONS_VIEW)) {
             $kpis[] = [
                 'key' => 'pending_approvals', 'label' => 'Pending approvals', 'value' => $this->pendingApprovals(),
-                'detail' => 'Buyer, seller and logistics applications',
+                'detail' => 'Buyer and seller applications',
                 'url' => route('admin.registrations', ['status' => 'pending']),
             ];
         }
@@ -149,6 +145,7 @@ class AdminDashboardService
                 'detail' => 'Delivery attempts that did not reach the buyer',
                 'url' => route('admin.orders', ['status' => 'delivery_failed'])];
         }
+
         return $exceptions;
     }
 
@@ -162,11 +159,11 @@ class AdminDashboardService
 
     private function users(): array
     {
-        $byRole = User::where('status', 'approved')->whereIn('role', ['buyer', 'seller', 'logistics', 'courier'])
+        $byRole = User::where('status', 'approved')->whereIn('role', ['buyer', 'seller'])
             ->selectRaw('role, count(*) as total')->groupBy('role')->pluck('total', 'role');
 
         $start = now()->startOfMonth()->subMonths(5);
-        $registrations = User::whereIn('role', ['buyer', 'seller', 'logistics', 'courier'])
+        $registrations = User::whereIn('role', ['buyer', 'seller'])
             ->where('created_at', '>=', $start)->get(['created_at'])
             ->countBy(fn (User $user) => $user->created_at->format('Y-m'));
         $months = collect(range(0, 5))->map(fn ($i) => $start->copy()->addMonths($i));
@@ -175,8 +172,6 @@ class AdminDashboardService
             'distribution' => [
                 'Buyers' => (int) ($byRole['buyer'] ?? 0),
                 'Sellers' => (int) ($byRole['seller'] ?? 0),
-                'Logistics' => (int) ($byRole['logistics'] ?? 0),
-                'Riders' => (int) ($byRole['courier'] ?? 0),
             ],
             'suspended' => User::where('status', 'suspended')->count(),
             'trend' => [

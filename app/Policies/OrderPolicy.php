@@ -25,7 +25,10 @@ class OrderPolicy
             return Response::deny('You do not have permission to override order status.');
         }
         if (in_array($to, OrderAdministrationService::OVERRIDE_BLOCKED_TARGETS, true)) {
-            return Response::deny(OrderLifecycleService::label($to) . ' is set by the seller or logistics team, who supply the waybill or rider.');
+            return Response::deny(OrderLifecycleService::label($to) . ' is set by the seller or by Pickrush scans.');
+        }
+        if (in_array($to, OrderAdministrationService::PICKRUSH_CONTROLLED, true) && \App\Pickrush\Bridge\PicksellBridge::hasParcel($order)) {
+            return Response::deny(OrderLifecycleService::label($to) . ' follows the Pickrush parcel scans for this order.');
         }
 
         return in_array($to, OrderAdministrationService::overrideTargets($order), true)

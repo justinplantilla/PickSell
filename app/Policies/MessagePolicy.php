@@ -34,6 +34,6 @@ class MessagePolicy
     {
         return $contact->id !== $user->id
             && $contact->status === 'approved'
-            && in_array($contact->role, ['buyer', 'seller', 'courier', 'logistics'], true);
+            && in_array($contact->role, ['buyer', 'seller'], true);
     }
 }

@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\Complaint;
 use App\Models\Order;
 use App\Models\User;
+use App\Policies\UserPolicy;
 use App\Services\Admin\UserModerationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -22,9 +23,6 @@ class AdminUserController extends Controller
     ];
 
     public const STATUSES = ['approved', 'suspended', 'deactivated', 'pending', 'disapproved'];
-
-    /** Accounts listed on User Accounts; riders are managed by their logistics provider, not here. */
-    public const LISTED_ROLES = ['buyer', 'seller', 'logistics'];
 
     public function index(Request $request)
     {
@@ -124,7 +122,6 @@ class AdminUserController extends Controller
         $column = match ($user->role) {
             'buyer' => 'buyer_id',
             'seller' => 'seller_id',
-            'courier' => 'courier_id',
             default => null,
         };
         if (! $column) {
@@ -135,12 +132,12 @@ class AdminUserController extends Controller
         $byStatus = (clone $orders)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
 
         return [
-            'perspective' => ['buyer_id' => 'Purchases', 'seller_id' => 'Sales', 'courier_id' => 'Deliveries'][$column],
+            'perspective' => ['buyer_id' => 'Purchases', 'seller_id' => 'Sales'][$column],
             'total' => (int) $byStatus->sum(),
             'completed' => (int) ($byStatus['completed'] ?? 0),
             'in_progress' => (int) $byStatus->except(['completed', 'delivered', 'cancelled', 'returned', 'delivery_failed'])->sum(),
             'problems' => (int) $byStatus->only(['cancelled', 'returned', 'delivery_failed'])->sum(),
-            'completed_value' => $column === 'courier_id' ? null : (float) (clone $orders)->where('status', 'completed')->sum('amount'),
+            'completed_value' => (float) (clone $orders)->where('status', 'completed')->sum('amount'),
             'recent' => (clone $orders)->latest()->take(5)->get(['id', 'order_number', 'product_name', 'amount', 'status', 'created_at']),
         ];
     }
@@ -148,7 +145,7 @@ class AdminUserController extends Controller
     private function filters(Request $request): array
     {
         return [
-            'role' => in_array($request->input('role'), self::LISTED_ROLES, true) ? $request->input('role') : 'all',
+            'role' => in_array($request->input('role'), UserPolicy::MANAGED_ROLES, true) ? $request->input('role') : 'all',
             'status' => in_array($request->input('filter_status', $request->input('status')), self::STATUSES, true) ? $request->input('filter_status', $request->input('status')) : 'all',
             'joined' => array_key_exists($request->input('joined'), self::JOINED_FILTERS) ? $request->input('joined') : 'any',
             'search' => trim((string) $request->input('search', '')),
@@ -157,7 +154,7 @@ class AdminUserController extends Controller
 
     private function filteredUsers(array $filters)
     {
-        $query = User::whereIn('role', self::LISTED_ROLES)
+        $query = User::whereIn('role', UserPolicy::MANAGED_ROLES)
             ->withCount(['ordersAsBuyer', 'ordersAsSeller']);
         if ($filters['role'] !== 'all') {
             $query->where('role', $filters['role']);

@@ -5,9 +5,7 @@ namespace Tests\Feature;
 use App\Auth\Permission;
 use App\Mail\AccountStatusChangedMail;
 use App\Models\AuditLog;
-use App\Models\BranchRider;
 use App\Models\Complaint;
-use App\Models\Municipality;
 use App\Models\Order;
 use App\Models\RegistrationReview;
 use App\Models\User;
@@ -16,13 +14,11 @@ use App\Support\RegistrationChecklist;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
-use Tests\Concerns\InteractsWithLogisticsHubs;
 use Tests\TestCase;
 
 /** Module 3 — User Accounts: status history, transitions, confirmation, profile inspection, audit. */
 class UserAccountModerationTest extends TestCase
 {
-    use InteractsWithLogisticsHubs;
     use RefreshDatabase;
 
     private User $admin;
@@ -58,17 +54,6 @@ class UserAccountModerationTest extends TestCase
         ], $overrides));
     }
 
-    public function test_admin_user_accounts_list_excludes_courier_accounts(): void
-    {
-        $buyer = $this->user('buyer');
-        $courier = $this->user('courier');
-
-        $this->actingAs($this->admin)->get(route('admin.users'))->assertOk()
-            ->assertSee($buyer->email)
-            ->assertDontSee($courier->email)
-            ->assertDontSee('Riders');
-    }
-
     // Every status change is recorded ------------------------------------------------------
 
     public function test_admin_status_change_is_recorded_with_actor_and_reason(): void
@@ -98,15 +83,6 @@ class UserAccountModerationTest extends TestCase
             'checklist' => array_fill_keys(array_keys(RegistrationChecklist::for($seller)), '1'),
         ]);
         $this->assertDatabaseHas('user_status_histories', ['user_id' => $seller->id, 'to_status' => 'approved']);
-
-        // Station hub suspending one of its riders
-        $municipality = Municipality::create(['province' => 'Metro Manila', 'name' => 'Pasig']);
-        $station = $this->createStationHub($this->createProvinceHub($this->user('logistics'), $municipality, 'metro-manila'), $municipality, 'pasig');
-        $operator = $this->createHubOperator($station);
-        $rider = $this->user('courier');
-        BranchRider::create(['branch_id' => $station->id, 'user_id' => $rider->id, 'status' => 'active']);
-        $this->actingAs($operator)->patch($this->stationRoute($station, 'station-hub.riders.status', ['user' => $rider]), ['status' => 'suspended']);
-        $this->assertDatabaseHas('user_status_histories', ['user_id' => $rider->id, 'from_status' => 'approved', 'to_status' => 'suspended', 'changed_by' => $operator->id]);
     }
 
     // Invalid transitions are rejected ------------------------------------------------------
@@ -199,16 +175,12 @@ class UserAccountModerationTest extends TestCase
         $active = $this->user('buyer');
         $suspended = $this->user('seller', 'suspended');
         $pending = $this->user('buyer', 'pending');
-        $pendingCourier = $this->user('courier', 'pending');
 
         $this->actingAs($this->admin)->get(route('admin.users'))
             ->assertOk()
             ->assertSee('Review / Decide')
             ->assertSee('registration-review-link')
             ->assertSee(route('admin.registrations.show', $pending), false)
-            // Riders are managed by their logistics provider, so they are not listed here.
-            ->assertDontSee($pendingCourier->email)
-            ->assertDontSee('Review application')
             ->assertSee('btn-suspend', false)
             ->assertSee('btn-deactivate', false)
             ->assertSee('Suspend', false)
@@ -219,9 +191,6 @@ class UserAccountModerationTest extends TestCase
         $this->actingAs($this->admin)->get(route('admin.registrations.show', $pending))
             ->assertOk()
             ->assertSee('>Approve</button>', false);
-        $this->actingAs($this->admin)->get(route('admin.registrations.show', $pendingCourier))
-            ->assertOk()
-            ->assertSee('Courier applications are reviewed in the Logistics portal.');
 
         config(['permissions.roles.admin' => [Permission::USERS_VIEW]]);
         $this->actingAs($this->admin)->get(route('admin.users'))

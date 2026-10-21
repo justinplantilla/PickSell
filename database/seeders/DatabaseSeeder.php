@@ -4,12 +4,16 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // Locations first so user addresses resolve to PSGC codes; then the Pickrush hub network.
+        Artisan::call('pickrush:build-hubs', ['--import' => true]);
+
         // Admin
         User::firstOrCreate(['email' => 'admin@picksell.ph'], [
             'role'           => 'admin',
@@ -70,14 +74,12 @@ class DatabaseSeeder extends Seeder
             'id_upload'      => null,
         ]);
 
-        $this->call([
-            ProductSeeder::class,
-            CourierSeeder::class,
-            LogisticsNetworkSeeder::class,
-        ]);
+            $this->call([
+                ProductSeeder::class,
+            ]);
 
-        if (app()->environment(['local', 'testing'])) {
-            $this->call(AdminDemoDataSeeder::class);
+        if (! app()->isProduction()) {
+            Artisan::call('pickrush:seed-samples');
         }
     }
 }

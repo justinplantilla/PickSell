@@ -98,12 +98,8 @@
 
                     <div class="checkout-defaults">
                         <div><strong>Payment</strong><span>Cash on Delivery</span></div>
-                        <div><strong>Delivery</strong><span>{{ $logisticsProvider?->business_name ?: $logisticsProvider?->full_name ?: 'PickSell Logistics' }}</span></div>
+                        <div><strong>Delivery</strong><span>Pickrush</span></div>
                     </div>
-
-                    @if(!$logisticsProvider)
-                        <small class="blade-inline-20">Checkout is temporarily unavailable while logistics is being configured.</small>
-                    @endif
 
                     <hr class="blade-inline-21">
 
@@ -120,8 +116,7 @@
                         <span>Total</span>
                         <span class="blade-inline-25" id="summaryTotal">₱{{ number_format($total, 2) }}</span>
                     </div>
-
-                    <button type="submit" class="btn btn-coral blade-inline-26" {{ !$logisticsProvider ? 'disabled' : '' }}>
+                    <button type="submit" class="btn btn-coral blade-inline-26">
                         Place Order
                     </button>
                 </form>

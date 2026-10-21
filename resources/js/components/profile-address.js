@@ -5,6 +5,9 @@ const barangaySelect = document.querySelector('[data-profile-barangay]');
 
 if (addressConfig && provinceSelect && municipalitySelect && barangaySelect) {
     const baseUrl = 'https://psgc.gitlab.io/api';
+    // Metro Manila has districts, not provinces: list it as one choice and load its cities by region.
+    const metroManila = { code: '130000000', name: 'Metro Manila' };
+    const citiesUrl = code => code === metroManila.code ? `${baseUrl}/regions/${code}/cities-municipalities/` : `${baseUrl}/provinces/${code}/cities-municipalities/`;
     const address = {
         province: addressConfig.dataset.province || '',
         municipality: addressConfig.dataset.municipality || '',
@@ -53,10 +56,10 @@ if (addressConfig && provinceSelect && municipalitySelect && barangaySelect) {
     const loadAddress = async () => {
         try {
             const provinces = await fetchJson(`${baseUrl}/provinces/`, 'picksell.psgc.provinces');
-            setOptions(provinceSelect, provinces, '-- Select Province --', address.province);
+            setOptions(provinceSelect, [...provinces, metroManila], '-- Select Province --', address.province);
             const provinceCode = provinceSelect.selectedOptions[0]?.dataset.code;
             if (!provinceCode) return;
-            const municipalities = await fetchJson(`${baseUrl}/provinces/${provinceCode}/cities-municipalities/`, `picksell.psgc.municipalities.${provinceCode}`);
+            const municipalities = await fetchJson(citiesUrl(provinceCode), `picksell.psgc.municipalities.${provinceCode}`);
             setOptions(municipalitySelect, municipalities, '-- Select Municipality --', address.municipality);
             const municipalityCode = municipalitySelect.selectedOptions[0]?.dataset.code;
             if (!municipalityCode) {

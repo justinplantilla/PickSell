@@ -13,11 +13,7 @@
         <div><dt>Amount</dt><dd class="oversight-number">₱{{ number_format($order->amount, 2) }}</dd></div>
         <div><dt>Buyer</dt><dd>{{ $order->buyer?->full_name ?? '—' }}</dd></div>
         <div><dt>Seller</dt><dd>{{ $order->seller?->business_name ?? $order->seller?->full_name ?? '—' }}</dd></div>
-        <div><dt>Rider</dt><dd>{{ $order->courier?->full_name ?? ($order->status === 'sorted' ? 'Not assigned yet' : '—') }}</dd></div>
         <div><dt>Waybill</dt><dd>@if($order->waybill_number)<code>{{ $order->waybill_number }}</code>@else — @endif</dd></div>
-        @if($order->originBranch || $order->destinationBranch)
-            <div><dt>Route</dt><dd>{{ $order->originBranch?->name ?? '—' }} → {{ $order->destinationBranch?->name ?? '—' }}</dd></div>
-        @endif
         <div><dt>Placed</dt><dd>{{ $order->created_at->format('M d, Y h:i A') }}</dd></div>
         <div><dt>Updated</dt><dd>{{ $order->updated_at->format('M d, Y h:i A') }} · {{ $order->updated_at->diffForHumans() }}</dd></div>
     </dl>

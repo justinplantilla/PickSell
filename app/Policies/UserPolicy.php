@@ -15,7 +15,7 @@ use Illuminate\Auth\Access\Response;
 class UserPolicy
 {
     /** Account roles the admin portal manages. Admin accounts are never targets. */
-    public const MANAGED_ROLES = ['buyer', 'seller', 'courier', 'logistics'];
+    public const MANAGED_ROLES = ['buyer', 'seller'];
 
     public function viewAccount(User $admin, User $user): Response
     {

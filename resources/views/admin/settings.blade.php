@@ -117,7 +117,7 @@
                 <div class="form-group">
                     <label class="form-label" for="announcement-audience">Audience</label>
                     <select id="announcement-audience" name="audience" class="form-control" required>
-                        @foreach(['all' => 'All users', 'buyer' => 'Buyers only', 'seller' => 'Sellers only', 'courier' => 'Couriers only'] as $value => $label)
+                        @foreach(['all' => 'All users', 'buyer' => 'Buyers only', 'seller' => 'Sellers only'] as $value => $label)
                             <option value="{{ $value }}" @selected(old('audience', 'all') === $value)>{{ $label }}</option>
                         @endforeach
                     </select>

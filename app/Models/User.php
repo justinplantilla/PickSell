@@ -3,38 +3,33 @@
 namespace App\Models;
 
 use App\Auth\Permission;
+use App\Services\Geo\AddressResolver;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, Notifiable;
+    use Notifiable;
 
     protected $fillable = [
-        'role', 'status', 'provider_type', 'assigned_hub_id',
+        'role', 'status',
         'last_name', 'first_name', 'middle_initial', 'sex',
         'email', 'password', 'contact_no', 'birthday', 'age',
-        'province', 'municipality', 'barangay', 'region', 'street', 'house_no', 'postal_code',
-        'municipality_id', 'barangay_id',
+        'province', 'municipality', 'barangay', 'street', 'house_no', 'postal_code',
         'id_upload',
         // Seller
         'business_name', 'line_of_business', 'business_permit',
         'seller_type', 'tin', 'dti_certificate', 'sec_certificate', 'bir_certificate',
-        // Logistics provider
-        'sec_registration_no', 'service_areas',
-        // Courier
-        'vehicle_type', 'plate_number', 'or_cr_upload', 'delivery_area',
     ];
 
     protected $hidden = ['password', 'remember_token'];
 
-    protected $casts = ['birthday' => 'date', 'email_verified_at' => 'datetime', 'service_areas' => 'array'];
+    protected $casts = ['birthday' => 'date', 'email_verified_at' => 'datetime'];
 
     /**
      * Context for the next status change (not persisted on users). Services set these before
      * update(); the history row below picks them up, so every status change is recorded
-     * wherever it happens — Admin, Logistics portal or registration review.
+     * wherever it happens — Admin or registration review.
      */
     public ?string $statusChangeReason = null;
 
@@ -42,6 +37,14 @@ class User extends Authenticatable
 
     protected static function booted(): void
     {
+        // Keep the PSGC codes in step with the address names, however the address was saved
+        // (registration, account page, mobile API). Delivery routing uses the codes.
+        static::saving(function (User $user): void {
+            if ($user->isDirty(['province', 'municipality', 'barangay'])) {
+                $user->forceFill(app(AddressResolver::class)->resolve($user->province, $user->municipality, $user->barangay));
+            }
+        });
+
         static::updated(function (User $user): void {
             if (! $user->wasChanged('status')) {
                 return;
@@ -83,21 +86,6 @@ class User extends Authenticatable
     public function isApproved(): bool
     {
         return $this->status === 'approved';
-    }
-
-    public function assignedHub()
-    {
-        return $this->belongsTo(LogisticsBranch::class, 'assigned_hub_id');
-    }
-
-    public function logisticsBranches()
-    {
-        return $this->hasMany(LogisticsBranch::class, 'logistics_id');
-    }
-
-    public function logisticsCompanyId(): int
-    {
-        return (int) ($this->assignedHub?->logistics_id ?? $this->id);
     }
 
     public function isPending(): bool
@@ -176,21 +164,6 @@ class User extends Authenticatable
         return $this->hasMany(Order::class, 'seller_id');
     }
 
-    public function ordersAsCourier()
-    {
-        return $this->hasMany(Order::class, 'courier_id');
-    }
-
-    public function deliveryAssignments()
-    {
-        return $this->hasMany(DeliveryAssignment::class, 'rider_id');
-    }
-
-    public function courierAssignments()
-    {
-        return $this->hasMany(BranchRider::class, 'user_id');
-    }
-
     public function auditLogs()
     {
         return $this->hasMany(AuditLog::class, 'actor_id');
@@ -204,20 +177,5 @@ class User extends Authenticatable
     public function products()
     {
         return $this->hasMany(Product::class, 'seller_id');
-    }
-
-    public function municipality()
-    {
-        return $this->belongsTo(Municipality::class);
-    }
-
-    public function barangay()
-    {
-        return $this->belongsTo(Barangay::class);
-    }
-
-    public function branchAssignments()
-    {
-        return $this->courierAssignments();
     }
 }

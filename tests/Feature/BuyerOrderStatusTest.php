@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\DeliveryLog;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -88,37 +87,5 @@ class BuyerOrderStatusTest extends TestCase
             ->assertOk()
             ->assertSee($returned->order_number)
             ->assertDontSee($delivered->order_number);
-    }
-
-    public function test_tracking_highlights_the_latest_event_without_reversing_history(): void
-    {
-        $buyer = $this->user('buyer', 1);
-        $seller = $this->user('seller', 2);
-        $order = $this->order($buyer, $seller, 'out_for_delivery', 1);
-
-        DeliveryLog::create([
-            'delivery_id' => $order->delivery->id,
-            'actor_id' => null,
-            'actor_role' => 'system',
-            'to_status' => 'picked_up',
-            'note' => 'Earlier scan',
-        ]);
-        DeliveryLog::create([
-            'delivery_id' => $order->delivery->id,
-            'actor_id' => null,
-            'actor_role' => 'system',
-            'to_status' => 'out_for_delivery',
-            'note' => 'Latest scan',
-        ]);
-
-        $response = $this->actingAs($buyer)
-            ->get(route('buyer.orders.tracking', $order))
-            ->assertOk()
-            ->assertSeeInOrder(['Earlier scan', 'Latest scan']);
-
-        $this->assertMatchesRegularExpression(
-            '~<li class="tracking-event is-latest"[^>]*>.*?Latest scan~s',
-            $response->getContent(),
-        );
     }
 }

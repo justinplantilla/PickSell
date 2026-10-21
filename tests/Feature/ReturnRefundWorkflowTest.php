@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\DeliveryLog;
 use App\Models\Order;
 use App\Models\ReturnRequest;
 use App\Models\User;
@@ -85,29 +84,18 @@ class ReturnRefundWorkflowTest extends TestCase
             ->assertStatus(409);
     }
 
-    public function test_buyer_has_an_owned_delivery_tracking_page_with_the_delivery_log_timeline(): void
+    public function test_buyer_tracking_page_belongs_to_the_buyer_who_placed_the_order(): void
     {
         $buyer = $this->makeUser('buyer');
         $seller = $this->makeUser('seller');
         $otherBuyer = $this->makeUser('buyer');
-        $order = $this->makeOrder($buyer, $seller, 'out_for_delivery');
-        $delivery = $order->delivery()->firstOrFail();
-        DeliveryLog::create([
-            'delivery_id' => $delivery->id,
-            'actor_id' => $seller->id,
-            'actor_role' => 'logistics',
-            'from_status' => 'picked_up',
-            'to_status' => 'at_sorting_center',
-            'note' => 'Parcel received at the destination hub.',
-        ]);
+        $order = $this->makeOrder($buyer, $seller, 'preparing');
 
         $this->actingAs($buyer)
             ->get(route('buyer.orders.tracking', $order))
             ->assertOk()
             ->assertSee('Delivery updates')
-            ->assertSee($delivery->tracking_number)
-            ->assertSee('Parcel received at the destination hub.')
-            ->assertSee('Out for delivery');
+            ->assertSee('No delivery scans or status updates have been recorded yet.');
 
         $this->actingAs($otherBuyer)
             ->get(route('buyer.orders.tracking', $order))

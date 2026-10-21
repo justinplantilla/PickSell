@@ -6,6 +6,7 @@ use App\Auth\Permission;
 use App\Models\Order;
 use App\Models\User;
 use App\Notifications\OrderChangedByAdminNotification;
+use App\Pickrush\Bridge\PicksellBridge;
 use App\Services\AuditLogger;
 use App\Services\Finance\FinancialLedgerService;
 use Illuminate\Support\Facades\DB;
@@ -40,16 +41,28 @@ class OrderAdministrationService
         private FinancialLedgerService $ledger,
     ) {}
 
+    /** Once Pickrush has the parcel these follow its scans; Admin cannot set them. */
+    public const PICKRUSH_CONTROLLED = ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivered', 'delivery_failed', 'returned'];
+
     /** @return string[] statuses an admin may override this order to */
     public static function overrideTargets(Order $order): array
     {
-        return array_values(array_diff(OrderLifecycleService::allowedNext($order->status), self::OVERRIDE_BLOCKED_TARGETS));
+        $blocked = PicksellBridge::hasParcel($order)
+            ? [...self::OVERRIDE_BLOCKED_TARGETS, ...self::PICKRUSH_CONTROLLED]
+            : self::OVERRIDE_BLOCKED_TARGETS;
+
+        return array_values(array_diff(OrderLifecycleService::allowedNext($order->status), $blocked));
     }
 
     /** @return array<string, array> exception remedies applicable to this order */
     public static function exceptionActions(Order $order): array
     {
-        return array_filter(self::EXCEPTION_ACTIONS, fn ($action) => in_array($order->status, $action['from'], true));
+        $actions = array_filter(self::EXCEPTION_ACTIONS, fn ($action) => in_array($order->status, $action['from'], true));
+
+        // Re-attempts, returns and rider changes are handled at the Pickrush station.
+        return PicksellBridge::hasParcel($order)
+            ? array_filter($actions, fn ($action) => ! in_array($action['to'], self::PICKRUSH_CONTROLLED, true) && $action['to'] !== 'at_sorting_center')
+            : $actions;
     }
 
     public function overrideStatus(Order $order, User $admin, string $to, string $reason): void
@@ -85,6 +98,9 @@ class OrderAdministrationService
             $from = $locked->status;
             $to = $target($locked);
 
+            if ($to === 'cancelled') {
+                app(PicksellBridge::class)->cancel($locked, $reason);   // 409 if Pickrush already picked it up
+            }
             $this->lifecycle->transition($locked, $to, $admin->id, 'admin', $reason);
             if ($to === 'completed') {
                 $this->ledger->postCompletedOrder($locked, $admin);
