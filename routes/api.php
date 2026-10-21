@@ -9,6 +9,38 @@ Route::middleware('auth')->group(function () {
     Route::patch('/buyer/account', [BuyerController::class, 'updateAccount']);
 });
 
+Route::get('/products', function (Request $request) {
+    $products = Product::with('images', 'seller')
+        ->purchasable()
+        ->when($request->get('category'), fn ($q, $cat) => $q->where('category', $cat))
+        ->when($request->get('search'), fn ($q, $s) => $q->where('name', 'like', "%{$s}%"))
+        ->latest()
+        ->paginate(20);
+
+    return response()->json([
+        'products' => $products->map(fn ($p) => [
+            'id'              => $p->id,
+            'name'            => $p->name,
+            'category'        => $p->category,
+            'price'           => (float) $p->effective_price,
+            'original_price'  => $p->discount > 0 ? (float) $p->price : null,
+            'stock'           => $p->stock,
+            'description'     => $p->description,
+            'seller_name'     => $p->seller?->business_name
+                                    ?: trim(($p->seller?->first_name ?? '').' '.($p->seller?->last_name ?? '')),
+            'seller_location' => implode(', ', array_filter([
+                $p->seller?->barangay,
+                $p->seller?->municipality,
+            ])),
+            'images'          => $p->images->map(fn ($img) => $img->url)->values(),
+            'primary_image'   => $p->images->isNotEmpty()
+                                    ? ($p->images->firstWhere('is_primary', true) ?? $p->images->first())?->url
+                                    : null,
+        ]),
+        'next_page_url' => $products->nextPageUrl(),
+    ]);
+});
+
 Route::get('/ping', function (Request $request) {
     return response()->json(['ok' => true]);
 });
