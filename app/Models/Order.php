@@ -117,6 +117,7 @@ class Order extends Model
                         "Delivery failed for order {$order->order_number}.",
                         route('admin.orders.show', ['order' => $order], false),
                         priority: 'critical',
+                        subject: "order:{$order->id}",
                     );
                 } elseif ($order->status === 'sorted' && $order->courier_id === null) {
                     $notifications->notifyAdmins(
@@ -124,6 +125,7 @@ class Order extends Model
                         'Unassigned parcel',
                         "Order {$order->order_number} was sorted but has no assigned courier.",
                         route('admin.orders.show', ['order' => $order], false),
+                        subject: "order:{$order->id}",
                     );
                 }
             }

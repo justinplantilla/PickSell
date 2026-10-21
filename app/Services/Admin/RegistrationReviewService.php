@@ -7,6 +7,7 @@ use App\Models\RegistrationReview;
 use App\Models\User;
 use App\Notifications\RegistrationApprovedNotification;
 use App\Notifications\RegistrationDisapprovedNotification;
+use App\Services\AdminNotificationService;
 use App\Services\AuditLogger;
 use App\Support\RegistrationChecklist;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +24,7 @@ class RegistrationReviewService
     /** Whether the last notification attempt reached the mailer (false = decision saved, email failed). */
     public bool $notified = true;
 
-    public function __construct(private AuditLogger $audit) {}
+    public function __construct(private AuditLogger $audit, private AdminNotificationService $adminNotifications) {}
 
     /** @param array<string, bool> $checklist confirmed checklist items */
     public function approve(User $applicant, User $reviewer, array $checklist, ?string $note = null): RegistrationReview
@@ -69,6 +70,8 @@ class RegistrationReviewService
                 array_filter(['review_id' => $review->id, 'reason' => $reason]),
                 Permission::REGISTRATIONS_MANAGE,
             );
+
+            $this->adminNotifications->resolve("registration:{$applicant->id}");
 
             return $review;
         });

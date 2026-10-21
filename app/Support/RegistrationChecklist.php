@@ -43,7 +43,7 @@ final class RegistrationChecklist
         }
 
         if ($applicant->role === 'logistics') {
-            $items['provider_type'] = ['Provider type (company / individual) matches the documents', null];
+            $items['provider_type'] = ['Provider account is a registered company', null];
         }
 
         return collect($items)->map(fn ($item) => [

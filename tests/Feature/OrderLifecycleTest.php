@@ -83,6 +83,13 @@ class OrderLifecycleTest extends TestCase
         $order->refresh();
         $this->assertSame('preparing', $order->status);
 
+        $admin = \App\Models\User::create([
+            'first_name' => 'Admin', 'last_name' => 'User', 'email' => 'admin.lifecycle@example.com',
+            'password' => bcrypt('password'), 'role' => 'admin', 'status' => 'approved', 'sex' => 'Male',
+            'contact_no' => '09170000014', 'birthday' => '1985-01-01', 'age' => 41,
+            'province' => 'Metro Manila', 'municipality' => 'Quezon City', 'barangay' => 'Bahay',
+        ]);
+
         $this->actingAs($seller)
             ->patch('/seller/orders/' . $order->id . '/handover', [
                 'waybill_number' => 'WB-LIFECYCLE-1',
@@ -91,6 +98,8 @@ class OrderLifecycleTest extends TestCase
 
         $order->refresh();
         $this->assertSame('ready_for_pickup', $order->status);
+        $this->assertSame(1, $buyer->notifications()->count(), 'The buyer is told the parcel was handed over.');
+        $this->assertSame(0, $admin->notifications()->count(), 'Routine handovers are not admin alerts.');
 
         $courier = \App\Models\User::create([
             'first_name' => 'Courier',

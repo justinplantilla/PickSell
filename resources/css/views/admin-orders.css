@@ -60,3 +60,8 @@ body.dark .order-step-dot { background: #1e1e1e; border-color: #555; }
 body.dark .order-step::before { background: #333; }
 body.dark .order-step-label { color: #e5e7eb; }
 body.dark .order-error, body.dark .order-action-form.is-override h3 { color: #fca5a5; }
+
+
+/* Order preview drawer (list layout lives in admin-list.css) */
+.list-preview .order-fields dt { font-size: 0.8rem; }
+.list-preview .order-history { padding: 0; }

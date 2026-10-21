@@ -90,6 +90,11 @@ class User extends Authenticatable
         return $this->belongsTo(LogisticsBranch::class, 'assigned_hub_id');
     }
 
+    public function logisticsBranches()
+    {
+        return $this->hasMany(LogisticsBranch::class, 'logistics_id');
+    }
+
     public function logisticsCompanyId(): int
     {
         return (int) ($this->assignedHub?->logistics_id ?? $this->id);
@@ -98,18 +103,6 @@ class User extends Authenticatable
     public function isPending(): bool
     {
         return $this->status === 'pending';
-    }
-
-    /** Logistics applicants confirm their email with a one-time code after submitting; until then they are "Unverified". */
-    public function isAwaitingEmailVerification(): bool
-    {
-        return $this->role === 'logistics' && $this->isPending() && $this->email_verified_at === null;
-    }
-
-    /** Applications an admin can review: everything except logistics applicants still verifying their email. */
-    public function scopeReadyForReview($query)
-    {
-        return $query->where(fn ($q) => $q->where('role', '!=', 'logistics')->orWhereNotNull('email_verified_at'));
     }
 
     public function isDeactivated(): bool

@@ -228,12 +228,9 @@
             <div class="form-section seller-fields" id="sellerFields">
                 <div class="form-section-title">Business Information</div>
                 <div class="form-group" data-roles="logistics">
-                    <label>Provider Type <span class="req">*</span></label>
-                    <select name="provider_type" id="provider_type" data-required>
-                        <option value="">-- Select Provider Type --</option>
-                        <option value="company" {{ old('provider_type') === 'company' ? 'selected' : '' }}>Company Logistics Provider</option>
-                        <option value="individual" {{ old('provider_type') === 'individual' ? 'selected' : '' }}>Individual Logistics Provider</option>
-                    </select>
+                    <label>Provider Type</label>
+                    <input type="hidden" name="provider_type" id="provider_type" value="company">
+                    <span class="field-hint">Logistics accounts are registered as companies.</span>
                     @error('provider_type')<div class="field-error">{{ $message }}</div>@enderror
                 </div>
                 <div class="form-group" data-roles="seller">
@@ -264,7 +261,7 @@
                         @error('line_of_business')<div class="field-error">{{ $message }}</div>@enderror
                     </div>
                 </div>
-                <div class="form-group" data-roles="logistics" data-provider-types="company">
+                <div class="form-group" data-roles="logistics">
                     <label>SEC Registration No. <span class="req">*</span></label>
                     <input type="text" name="sec_registration_no" value="{{ old('sec_registration_no') }}" placeholder="e.g. CS202012345" maxlength="11" pattern="[A-Za-z]{2}[0-9]{9}" title="2 letters followed by 9 digits, like CS202012345" autocapitalize="characters" data-required>
                     <small class="field-hint">2 letters followed by 9 digits, as shown on your SEC Certificate.</small>
@@ -296,8 +293,7 @@
                     @error('business_permit')<div class="field-error">{{ $message }}</div>@enderror
                 </div>
                 @foreach(\App\Support\SellerTypes::DOCUMENT_LABELS as $document => $label)
-                    {{-- Logistics companies upload the SEC and BIR certificates; individual providers only the BIR certificate. --}}
-                    <div class="form-group" data-roles="seller{{ $document === 'dti_certificate' ? '' : ' logistics' }}" data-seller-types="{{ implode(' ', \App\Support\SellerTypes::typesRequiring($document)) }}" data-provider-types="{{ $document === 'sec_certificate' ? 'company' : 'company individual' }}">
+                    <div class="form-group" data-roles="seller{{ $document === 'dti_certificate' ? '' : ' logistics' }}" data-seller-types="{{ implode(' ', \App\Support\SellerTypes::typesRequiring($document)) }}">
                         <label>Upload {{ $label }} <span class="req">*</span></label>
                         <label class="file-upload-label" for="{{ $document }}">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 6v11.5a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10.5a1 1 0 0 1-2 0V6H10v9.5a2.5 2.5 0 0 0 5 0V5a4 4 0 0 0-8 0v12.5a5.5 5.5 0 0 0 11 0V6h-1.5z"/></svg> <span id="{{ $document }}_name">Click to upload (JPG, PNG, PDF — max 5MB)</span>

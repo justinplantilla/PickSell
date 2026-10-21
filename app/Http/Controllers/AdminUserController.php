@@ -7,7 +7,6 @@ use App\Models\AuditLog;
 use App\Models\Complaint;
 use App\Models\Order;
 use App\Models\User;
-use App\Policies\UserPolicy;
 use App\Services\Admin\UserModerationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -23,6 +22,9 @@ class AdminUserController extends Controller
     ];
 
     public const STATUSES = ['approved', 'suspended', 'deactivated', 'pending', 'disapproved'];
+
+    /** Accounts listed on User Accounts; riders are managed by their logistics provider, not here. */
+    public const LISTED_ROLES = ['buyer', 'seller', 'logistics'];
 
     public function index(Request $request)
     {
@@ -146,7 +148,7 @@ class AdminUserController extends Controller
     private function filters(Request $request): array
     {
         return [
-            'role' => in_array($request->input('role'), UserPolicy::MANAGED_ROLES, true) ? $request->input('role') : 'all',
+            'role' => in_array($request->input('role'), self::LISTED_ROLES, true) ? $request->input('role') : 'all',
             'status' => in_array($request->input('filter_status', $request->input('status')), self::STATUSES, true) ? $request->input('filter_status', $request->input('status')) : 'all',
             'joined' => array_key_exists($request->input('joined'), self::JOINED_FILTERS) ? $request->input('joined') : 'any',
             'search' => trim((string) $request->input('search', '')),
@@ -155,8 +157,8 @@ class AdminUserController extends Controller
 
     private function filteredUsers(array $filters)
     {
-        $query = User::whereIn('role', UserPolicy::MANAGED_ROLES)
-            ->withCount(['ordersAsBuyer', 'ordersAsSeller', 'ordersAsCourier']);
+        $query = User::whereIn('role', self::LISTED_ROLES)
+            ->withCount(['ordersAsBuyer', 'ordersAsSeller']);
         if ($filters['role'] !== 'all') {
             $query->where('role', $filters['role']);
         }

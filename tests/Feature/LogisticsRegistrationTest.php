@@ -15,9 +15,9 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
- * Logistics provider registration on the logistics portal. Applicants submit the form, are saved as
- * Unverified, confirm their email with a 6-digit code and then wait for admin approval; method names
- * reference the TC-LOG test sheet.
+ * Logistics provider registration on the logistics portal. Like buyers and sellers, applicants verify their
+ * email with a 6-digit code on the form's Account step before the account exists, then wait for admin
+ * approval; method names reference the TC-LOG test sheet.
  */
 class LogisticsRegistrationTest extends TestCase
 {
@@ -80,19 +80,36 @@ class LogisticsRegistrationTest extends TestCase
         return UploadedFile::fake()->create($name, $kilobytes, $mime);
     }
 
+    /** Submit the form, first verifying its email the way the Account step does. */
     private function register(array $overrides = [])
     {
-        return $this->from("{$this->portal}/register")->post("{$this->portal}/register", $this->payload($overrides));
+        $payload = $this->payload($overrides);
+        $this->verifyEmail((string) $payload['email']);
+
+        return $this->from("{$this->portal}/register")->post("{$this->portal}/register", $payload);
+    }
+
+    private function sendCode(string $email = 'operations@bilishatid.example.com')
+    {
+        return $this->postJson("{$this->portal}/register/email-code", ['email' => $email, 'first_name' => 'Carlos']);
+    }
+
+    private function checkCode(string $code, string $email = 'operations@bilishatid.example.com')
+    {
+        return $this->postJson("{$this->portal}/register/email-code/verify", ['email' => $email, 'code' => $code]);
     }
 
     private function lastCode(string $email = 'operations@bilishatid.example.com'): ?string
     {
-        return Mail::sent(EmailVerificationCodeMail::class, fn ($mail) => $mail->hasTo($email))->last()?->code;
+        return Mail::sent(EmailVerificationCodeMail::class, fn ($mail) => $mail->hasTo(strtolower(trim($email))))->last()?->code;
     }
 
-    private function verify(string $code)
+    private function verifyEmail(string $email): void
     {
-        return $this->from("{$this->portal}/register/verify-email")->post("{$this->portal}/register/verify-email", ['code' => $code]);
+        if ($this->sendCode($email)->isOk() && ($code = $this->lastCode($email))) {
+            $this->checkCode($code, $email);
+        }
+        $this->travel(61)->seconds();
     }
 
     private function assertRejected(array $overrides, string $field): void
@@ -103,7 +120,7 @@ class LogisticsRegistrationTest extends TestCase
 
     private function assertAccepted(array $overrides): void
     {
-        $this->register($overrides)->assertSessionHasNoErrors()->assertRedirectContains('/register/verify-email');
+        $this->register($overrides)->assertSessionHasNoErrors()->assertRedirect('/login');
         User::where('role', 'logistics')->delete();
     }
 
@@ -130,14 +147,21 @@ class LogisticsRegistrationTest extends TestCase
         ]);
     }
 
-    public function test_tc_log_001_valid_registration_is_saved_unverified_and_opens_the_verification_page(): void
+    public function test_tc_log_001_valid_registration_after_email_verification(): void
     {
-        $this->register()->assertSessionHasNoErrors()
-            ->assertRedirectContains('/register/verify-email')
+        $this->sendCode()->assertOk();
+        $code = $this->lastCode();
+        $this->assertMatchesRegularExpression('/^\d{6}$/', $code);
+        $this->checkCode($code)->assertOk()->assertJsonPath('verified', true);
+
+        $this->from("{$this->portal}/register")->post("{$this->portal}/register", $this->payload())
+            ->assertSessionHasNoErrors()
+            ->assertRedirect('/login')
             ->assertSessionHas('success');
 
         $applicant = User::where('email', 'operations@bilishatid.example.com')->sole();
-        $this->assertTrue($applicant->isAwaitingEmailVerification());
+        $this->assertSame('pending', $applicant->status);
+        $this->assertNotNull($applicant->email_verified_at);
         $this->assertSame('CS202012345', $applicant->sec_registration_no);
         $this->assertSame(['NCR', 'Region III', 'Region IV-A'], $applicant->service_areas);
         $this->assertSame('National Capital Region (NCR)', $applicant->region);
@@ -145,8 +169,6 @@ class LogisticsRegistrationTest extends TestCase
         foreach (['sec_certificate', 'bir_certificate', 'business_permit', 'id_upload'] as $document) {
             Storage::disk('public')->assertExists($applicant->{$document});
         }
-        $this->assertMatchesRegularExpression('/^\d{6}$/', $this->lastCode());
-        $this->get("{$this->portal}/register/verify-email")->assertOk()->assertSee('Unverified')->assertSee('Bilis Hatid Express Inc.');
         $this->assertGuest();
     }
 
@@ -230,9 +252,10 @@ class LogisticsRegistrationTest extends TestCase
     public function test_tc_log_020_repeated_submission_creates_one_account_and_sends_one_code(): void
     {
         $payload = $this->payload();
-        $this->post("{$this->portal}/register", $payload)->assertRedirectContains('/register/verify-email');
-        $this->post("{$this->portal}/register", $payload)->assertRedirectContains('/register/verify-email');
-        $this->post("{$this->portal}/register", $payload)->assertRedirectContains('/register/verify-email');
+        $this->verifyEmail($payload['email']);
+        $this->post("{$this->portal}/register", $payload)->assertRedirect('/login');
+        $this->post("{$this->portal}/register", $payload)->assertRedirect('/login');
+        $this->post("{$this->portal}/register", $payload)->assertRedirect('/login');
 
         $this->assertSame(1, User::where('email', 'operations@bilishatid.example.com')->count());
         Mail::assertSent(EmailVerificationCodeMail::class, 1);
@@ -256,12 +279,14 @@ class LogisticsRegistrationTest extends TestCase
         $this->assertRejected([], 'sec_registration_no');
     }
 
-    public function test_individual_provider_does_not_need_sec_details(): void
+    public function test_only_company_logistics_registrations_are_allowed(): void
     {
-        $this->register(['provider_type' => 'individual', 'sec_registration_no' => null, 'sec_certificate' => null])->assertSessionHasNoErrors();
-        $applicant = User::where('email', 'operations@bilishatid.example.com')->sole();
-        $this->assertNull($applicant->sec_registration_no);
-        $this->assertNull($applicant->sec_certificate);
+        $this->get("{$this->portal}/register")->assertOk()
+            ->assertSee('Logistics accounts are registered as companies.')
+            ->assertDontSee('Individual Logistics Provider');
+
+        $this->register(['provider_type' => 'individual'])->assertSessionHasErrors('provider_type');
+        $this->assertDatabaseMissing('users', ['email' => 'operations@bilishatid.example.com']);
     }
 
     public function test_tc_log_024_several_service_areas_are_saved(): void
@@ -302,72 +327,54 @@ class LogisticsRegistrationTest extends TestCase
         $this->assertRejected(['business_permit' => $this->file('size_5_1MB.pdf', 5121)], 'business_permit');
     }
 
-    public function test_tc_log_032_correct_code_moves_the_application_to_pending_approval(): void
+    public function test_tc_log_032_037_registration_is_blocked_until_the_email_is_verified(): void
     {
-        Notification::fake();
-        $this->register();
+        $this->from("{$this->portal}/register")->post("{$this->portal}/register", $this->payload())
+            ->assertSessionHasErrors(['email' => 'Verify your email with the 6-digit code we send you before submitting.']);
+        $this->assertSame(0, User::count());
 
-        $this->verify($this->lastCode())->assertSessionHasNoErrors()->assertRedirect('/login')
-            ->assertSessionHas('success', fn ($message) => str_contains($message, 'waiting for admin approval'));
-
-        $applicant = User::where('email', 'operations@bilishatid.example.com')->sole();
-        $this->assertNotNull($applicant->email_verified_at);
-        $this->assertSame('pending', $applicant->status);
-        $this->assertFalse($applicant->isAwaitingEmailVerification());
-        $this->assertGuest();
+        $this->sendCode()->assertOk();
+        $this->checkCode($this->lastCode())->assertOk()->assertJsonPath('verified', true);
+        $this->from("{$this->portal}/register")->post("{$this->portal}/register", $this->payload())->assertSessionHasNoErrors();
+        $this->assertSame('pending', User::where('role', 'logistics')->sole()->status);
     }
 
     public function test_tc_log_033_034_incorrect_or_malformed_codes_are_rejected(): void
     {
-        $this->register();
+        $this->sendCode()->assertOk();
         $wrong = $this->lastCode() === '000000' ? '111111' : '000000';
 
-        $this->verify($wrong)->assertSessionHasErrors(['code' => 'That code is incorrect. You have 4 tries left.']);
+        $this->checkCode($wrong)->assertStatus(422)->assertJsonPath('message', 'That code is incorrect. You have 4 tries left.');
         foreach (['48291', '4829137', '48A91B', ''] as $code) {
-            $this->verify($code)->assertSessionHasErrors('code');
+            $this->checkCode($code)->assertStatus(422)->assertJsonValidationErrors('code');
         }
-        $this->assertTrue(User::where('role', 'logistics')->sole()->isAwaitingEmailVerification());
+        $this->assertSame(0, User::count());
     }
 
-    public function test_tc_log_035_expired_code_is_rejected_and_resend_is_offered(): void
+    public function test_tc_log_035_expired_code_is_rejected(): void
     {
-        $this->register();
+        $this->sendCode()->assertOk();
         $code = $this->lastCode();
         $this->travel(5 * 60 + 1)->seconds();
 
-        $this->verify($code)->assertSessionHasErrors(['code' => 'This code has expired. Click Resend code to get a new one.']);
-        $this->get("{$this->portal}/register/verify-email")->assertSee('Resend code');
-        $this->assertTrue(User::where('role', 'logistics')->sole()->isAwaitingEmailVerification());
+        $this->checkCode($code)->assertStatus(422)->assertJsonPath('message', 'This code has expired. Send a new code and try again.');
     }
 
     public function test_tc_log_036_resend_replaces_the_previous_code(): void
     {
-        $this->register();
+        $this->sendCode()->assertOk();
         $first = $this->lastCode();
 
-        $this->from("{$this->portal}/register/verify-email")->post("{$this->portal}/register/verify-email/resend")->assertSessionHasErrors('code');
+        $this->sendCode()->assertStatus(429);
         $this->travel(61)->seconds();
-        $this->from("{$this->portal}/register/verify-email")->post("{$this->portal}/register/verify-email/resend")->assertSessionHas('success');
+        $this->sendCode()->assertOk();
         $second = $this->lastCode();
         Mail::assertSent(EmailVerificationCodeMail::class, 2);
 
         if ($first !== $second) {
-            $this->verify($first)->assertSessionHasErrors('code');
+            $this->checkCode($first)->assertStatus(422);
         }
-        $this->verify($second)->assertSessionHasNoErrors()->assertRedirect('/login');
-        $this->assertNotNull(User::where('role', 'logistics')->sole()->email_verified_at);
-    }
-
-    public function test_tc_log_037_login_before_verifying_opens_the_verification_page(): void
-    {
-        $this->register();
-        $this->flushSession();
-
-        $this->post("{$this->portal}/login", ['email' => 'operations@bilishatid.example.com', 'password' => 'Hatid@2026'])
-            ->assertRedirectContains('/register/verify-email')
-            ->assertSessionHas('warning');
-        $this->assertGuest();
-        $this->get("{$this->portal}/register/verify-email")->assertOk()->assertSee('Verify your email');
+        $this->checkCode($second)->assertOk()->assertJsonPath('verified', true);
     }
 
     public function test_tc_log_038_pending_provider_cannot_log_in(): void
@@ -378,18 +385,13 @@ class LogisticsRegistrationTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_tc_log_039_040_verified_application_is_in_the_admin_queue_and_can_be_approved(): void
+    public function test_tc_log_039_040_application_is_in_the_admin_queue_and_can_be_approved(): void
     {
         Notification::fake();
         $admin = $this->admin();
         $this->register();
         $applicant = User::where('role', 'logistics')->sole();
 
-        // Unverified applications are not in the pending queue yet.
-        $this->actingAs($admin)->get(route('admin.registrations'))->assertDontSee('<span class="oversight-meta">'.$applicant->email, false);
-        auth()->logout();
-
-        $this->verify($this->lastCode());
         $this->actingAs($admin)->get(route('admin.registrations'))->assertSee($applicant->email);
         $this->actingAs($admin)->get(route('admin.registrations.show', $applicant))->assertOk()
             ->assertSee('CS202012345')->assertSee('234-567-890-000')

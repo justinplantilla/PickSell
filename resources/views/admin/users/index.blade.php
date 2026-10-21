@@ -9,14 +9,14 @@
     <div class="card-header">
         <div>
             <span class="card-title">User accounts</span>
-            <p class="oversight-description">Buyers, sellers, riders and logistics partners. Open an account to see its history and manage its status.</p>
+            <p class="oversight-description">Buyers, sellers and logistics partners. Open an account to see its history and manage its status.</p>
         </div>
     </div>
     <form method="GET" class="oversight-filters oversight-note" role="search" aria-label="Filter user accounts" data-saved-filter-scope="users" data-saved-filter-user="{{ auth()->id() }}">
         <input type="search" name="search" value="{{ $search }}" class="search-input" placeholder="Name, email, business or phone" aria-label="Search users">
         <select name="role" class="filter-select" aria-label="Role" data-submit-on-change>
             <option value="all" {{ $role === 'all' ? 'selected' : '' }}>All roles</option>
-            @foreach(['buyer' => 'Buyers', 'seller' => 'Sellers', 'courier' => 'Riders', 'logistics' => 'Logistics partners'] as $value => $label)
+            @foreach(['buyer' => 'Buyers', 'seller' => 'Sellers', 'logistics' => 'Logistics partners'] as $value => $label)
                 <option value="{{ $value }}" {{ $role === $value ? 'selected' : '' }}>{{ $label }}</option>
             @endforeach
         </select>
@@ -80,7 +80,6 @@
                         $orders = match ($user->role) {
                             'buyer' => $user->orders_as_buyer_count,
                             'seller' => $user->orders_as_seller_count,
-                            'courier' => $user->orders_as_courier_count,
                             default => null,
                         };
                         $userActions = collect(\App\Services\Admin\UserModerationService::allowedTransitions((string) $user->status))
@@ -90,7 +89,7 @@
                     @endphp
                     <tr>
                         <td><strong>{{ $user->full_name }}</strong><span class="oversight-meta">{{ $user->email }}@if($user->business_name) · {{ $user->business_name }}@endif</span></td>
-                        <td><span class="badge badge-{{ $user->role }}">{{ $user->role === 'courier' ? 'Rider' : ucfirst($user->role) }}</span></td>
+                        <td><span class="badge badge-{{ $user->role }}">{{ ucfirst($user->role) }}</span></td>
                         <td><span class="badge badge-{{ $user->status }}">{{ $user->status === 'approved' ? 'Active' : ucfirst($user->status) }}</span></td>
                         <td class="oversight-number">{{ $orders === null ? '—' : number_format($orders) }}</td>
                         <td><time datetime="{{ $user->created_at->toIso8601String() }}">{{ $user->created_at->format('M d, Y') }}</time></td>
@@ -98,7 +97,7 @@
                             <div class="user-row-actions-inner">
                                 @if($user->status === 'pending' && auth()->user()->can(\App\Auth\Permission::REGISTRATIONS_VIEW))
                                     <a href="{{ route('admin.registrations.show', $user) }}" class="btn btn-sm registration-review-link">
-                                        {{ $user->role === 'courier' ? 'Review application' : 'Review / Decide' }}<span class="sr-only"> for {{ $user->full_name }}</span>
+                                        Review / Decide<span class="sr-only"> for {{ $user->full_name }}</span>
                                     </a>
                                 @endif
                                 <a href="{{ route('admin.users.show', $user) }}" class="btn btn-outline btn-sm">View<span class="sr-only"> {{ $user->full_name }}</span></a>

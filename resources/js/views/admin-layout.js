@@ -115,43 +115,73 @@ document.getElementById('notifList')?.addEventListener('click', event => {
         }).catch(error => console.error(error));
     }
 });
-document.querySelector('.oversight-list')?.addEventListener('click', event => {
+function adminCsrfHeaders() {
+    return {
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+    };
+}
+function markNotificationRowRead(row, ids) {
+    if (!row?.classList.contains('is-unread') || !ids.length) return Promise.resolve();
+    return fetch(`/admin/notifications/${encodeURIComponent(ids[0])}/read`, {
+        method: 'POST',
+        headers: adminCsrfHeaders(),
+        body: JSON.stringify({ ids }),
+        keepalive: true
+    }).then(response => {
+        if (!response.ok) throw new Error('Unable to mark notification as read');
+        row.classList.remove('is-unread');
+        const group = row.closest('.notification-group');
+        if (group && !group.querySelector('.notification-row.is-nested.is-unread')) group.classList.remove('is-unread');
+    }).catch(error => console.error(error));
+}
+function notificationRowIds(element) {
+    return (element.dataset.notificationIds || element.dataset.notificationId || '').split(',').filter(Boolean);
+}
+document.addEventListener('click', event => {
+    const action = event.target.closest('.notification-action');
+    if (action) {
+        markNotificationRowRead(action.closest('.notification-row'), notificationRowIds(action));
+        return;
+    }
     const item = event.target.closest('.notification-detail-trigger');
     if (!item) return;
-    const notification = {
+    const row = item.closest('.notification-row');
+    showAdminNotificationDetail({
         id: item.dataset.notificationId,
         created_at: item.dataset.notificationCreatedAt,
-        read_at: item.closest('.notification-row')?.classList.contains('is-unread') ? null : new Date().toISOString(),
+        read_at: row?.classList.contains('is-unread') ? null : new Date().toISOString(),
         data: {
             title: item.dataset.notificationTitle,
             message: item.dataset.notificationMessage,
             url: item.dataset.notificationUrl || null,
             priority: item.dataset.notificationPriority
         }
-    };
-    showAdminNotificationDetail(notification);
-    if (!notification.read_at) {
-        fetch(`/admin/notifications/${encodeURIComponent(item.dataset.notificationId)}/read`, {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, Accept: 'application/json' }
-        }).then(response => {
-            if (!response.ok) throw new Error('Unable to mark notification as read');
-            item.closest('.notification-row')?.classList.remove('is-unread');
-            notification.read_at = new Date().toISOString();
-        }).catch(error => console.error(error));
-    }
+    });
+    markNotificationRowRead(row, notificationRowIds(item));
 });
-function markAdminNotificationsRead() {
-    fetch('/admin/notifications/read', {
+function markAdminNotificationsRead(filter) {
+    const scoped = typeof filter === 'string';
+    return fetch('/admin/notifications/read', {
         method: 'POST',
-        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, Accept: 'application/json' }
+        headers: adminCsrfHeaders(),
+        body: JSON.stringify(scoped ? { filter } : {})
     }).then(response => {
         if (!response.ok) throw new Error('Unable to mark notifications as read');
-        document.getElementById('notifDot').style.display = 'none';
-        document.getElementById('notifCount').textContent = '';
-    });
+        return response.json();
+    }).then(result => {
+        const unread = Number(result.unread || 0);
+        document.getElementById('notifDot').style.display = unread ? 'block' : 'none';
+        document.getElementById('notifCount').textContent = unread ? `(${unread})` : '';
+        if (document.querySelector('[data-mark-notifications-read]')) window.location.reload();
+    }).catch(error => console.error(error));
 }
-document.getElementById('markAdminNotificationsRead')?.addEventListener('click', markAdminNotificationsRead);
+document.querySelector('[data-mark-notifications-read]')?.addEventListener('click', event => {
+    event.currentTarget.disabled = true;
+    markAdminNotificationsRead(event.currentTarget.dataset.markNotificationsRead);
+});
+document.getElementById('markAdminNotificationsRead')?.addEventListener('click', () => markAdminNotificationsRead());
 document.addEventListener('click', e => {
     if (!document.getElementById('notifBtn').contains(e.target) && !document.getElementById('notifDropdown').contains(e.target)) {
         document.getElementById('notifDropdown').classList.remove('open');

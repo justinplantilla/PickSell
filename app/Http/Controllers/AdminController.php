@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CommissionRateHistory;
 use App\Models\Order;
+use App\Services\Admin\AdminNotificationInbox;
 use App\Services\CommissionService;
 use App\Services\Finance\CommissionReconciliationService;
 use App\Services\Finance\FinancialSummary;
@@ -83,21 +84,15 @@ class AdminController extends Controller
     }
 
     // Notifications
-    public function notificationCenter()
+    public function notificationCenter(Request $request, AdminNotificationInbox $inbox)
     {
-        $notifications = auth()->user()->notifications()->latest()->paginate(25);
-        $notifications->getCollection()->each(function ($notification): void {
-            $data = $notification->data;
-            if (is_string($data)) {
-                $data = json_decode($data, true) ?: [];
-            }
-            $notification->setAttribute('message', $data['message'] ?? 'Notification');
-            $notification->setAttribute('title', $data['title'] ?? 'PickSell notification');
-            $notification->setAttribute('resourceUrl', $this->safeAdminNotificationUrl($data['url'] ?? null));
-            $notification->setAttribute('priority', $data['priority'] ?? 'normal');
-        });
+        $filter = AdminNotificationInbox::normalizeFilter($request->query('filter'));
+        $notifications = $inbox->query($request->user(), $filter)->latest()->paginate(25)->withQueryString();
+        $sections = $inbox->present($notifications);
+        $filters = AdminNotificationInbox::FILTERS;
+        $unreadCounts = $inbox->unreadCounts($request->user());
 
-        return view('admin.notifications', compact('notifications'));
+        return view('admin.notifications', compact('notifications', 'sections', 'filter', 'filters', 'unreadCounts'));
     }
 
     /** JSON feed for the header bell. */
@@ -110,36 +105,32 @@ class AdminController extends Controller
             if (is_string($data)) {
                 $data = json_decode($data, true) ?: [];
             }
-            $data['url'] = $this->safeAdminNotificationUrl($data['url'] ?? null);
+            $data['url'] = AdminNotificationInbox::safeUrl($data['url'] ?? null);
             $notification->setAttribute('data', $data);
         });
 
         return response()->json($notifications)->header('X-Unread-Count', $unreadCount);
     }
 
-    public function markNotificationsRead()
+    /** Marks all unread notifications read, or only those in the given filter tab. */
+    public function markNotificationsRead(Request $request, AdminNotificationInbox $inbox)
     {
-        auth()->user()->unreadNotifications()->update(['read_at' => now()]);
+        $inbox->markRead($request->user(), AdminNotificationInbox::normalizeFilter($request->input('filter')));
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'unread' => $request->user()->unreadNotifications()->count(),
+        ]);
     }
 
-    public function markNotificationRead(string $notification)
+    /** Marks one notification read; `ids` also clears the repeats merged into the same row. */
+    public function markNotificationRead(Request $request, string $notification)
     {
-        $record = auth()->user()->notifications()->whereKey($notification)->firstOrFail();
-        $record->markAsRead();
+        $ids = collect($request->input('ids', []))->filter(fn ($id) => is_string($id))->push($notification)->unique();
+        $records = $request->user()->notifications()->whereKey($ids->all())->get();
+        abort_unless($records->contains('id', $notification), 404);
+        $records->each->markAsRead();
 
         return response()->json(['success' => true]);
-    }
-
-    private function safeAdminNotificationUrl(mixed $url): ?string
-    {
-        return is_string($url)
-            && str_starts_with($url, '/')
-            && ! str_starts_with($url, '//')
-            && ! str_contains($url, '\\')
-            && ! preg_match('/[\x00-\x1F\x7F]/', $url)
-            ? $url
-            : null;
     }
 }

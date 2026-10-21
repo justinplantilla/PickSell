@@ -96,7 +96,7 @@ class AdminOrderControlTest extends TestCase
         $see(['branch' => $hub->id], $a, $b);
         $see(['date' => '30d'], $a, $old);
 
-        $this->actingAs($this->admin)->get(route('admin.orders'))->assertSeeInOrder(['Order', 'Buyer', 'Seller', 'Amount', 'Status', 'Courier', 'Updated', 'Action']);
+        $this->actingAs($this->admin)->get(route('admin.orders'))->assertSeeInOrder(['Order', 'Buyer / Seller', 'Amount', 'Status', 'Age']);
     }
 
     // Complete lifecycle visible -------------------------------------------------------------

@@ -102,7 +102,7 @@ class AdminNavigationTest extends TestCase
             'Overview' => ['Dashboard', 'Notifications'],
             'Marketplace' => ['Orders', 'Products', 'Seller Compliance'],
             'Users' => ['Registrations', 'User Accounts'],
-            'Operations' => ['Logistics', 'Sorting Center', 'Rider Assignment'],
+            'Operations' => ['Logistics'],
             'Customer Care' => ['Complaints & Disputes', 'Returns', 'Refunds'],
             'Finance' => ['Commission', 'Financial Reports'],
             'Analytics' => ['Reports'],
@@ -147,7 +147,9 @@ class AdminNavigationTest extends TestCase
         config(['permissions.roles.admin' => [Permission::DASHBOARD_VIEW, Permission::LOGISTICS_VIEW]]);
         $html = $this->actingAs($this->admin)->get('/admin/dashboard')->assertOk()->getContent();
 
-        $this->assertStringContainsString('<span class="nav-label">Sorting Center</span>', $html);
+        $this->assertStringContainsString('<span class="nav-label">Logistics</span>', $html);
+        $this->assertStringNotContainsString('Sorting Center', $html);
+        $this->assertStringNotContainsString('Rider Assignment', $html);
         foreach (['Marketplace', 'Customer Care', 'Finance', 'System'] as $hiddenGroup) {
             $this->assertStringNotContainsString('>'.$hiddenGroup.'</div>', $html);
         }
@@ -164,15 +166,27 @@ class AdminNavigationTest extends TestCase
             ->assertSee('ORD-NAV')->assertSee('Out for delivery');
     }
 
-    public function test_sorting_center_flags_idle_parcels(): void
+    public function test_admin_logistics_only_shows_company_accounts_and_removes_operations_pages(): void
     {
-        $seeded = $this->seedMarketplace();
+        $company = $this->user('logistics');
+        $company->update(['business_name' => 'PickSell Delivery', 'provider_type' => 'company']);
+        $municipality = Municipality::create(['province' => 'Metro Manila', 'name' => 'Pasig']);
+        LogisticsBranch::create([
+            'municipality_id' => $municipality->id,
+            'logistics_id' => $company->id,
+            'name' => 'Pasig Hub',
+            'status' => 'active',
+        ]);
 
-        $this->actingAs($this->admin)->get('/admin/logistics/sorting-center?stale=1')->assertOk()
-            ->assertSee($seeded['stale']->order_number)->assertSee('Idle');
-        $this->actingAs($this->admin)->get('/admin/logistics')->assertOk()->assertSee('Pasig Hub');
-        $this->actingAs($this->admin)->get('/admin/logistics/rider-assignment')->assertOk()
-            ->assertSee($seeded['rider']->full_name)->assertSee('WB-NAV-1');
+        $this->actingAs($this->admin)->get('/admin/logistics')->assertOk()
+            ->assertSee('Logistics companies')
+            ->assertSee('PickSell Delivery')
+            ->assertSee($company->email)
+            ->assertSee('1')
+            ->assertDontSee('Sorting-center workload')
+            ->assertDontSee('Rider Assignment');
+        $this->actingAs($this->admin)->get('/admin/logistics/sorting-center')->assertNotFound();
+        $this->actingAs($this->admin)->get('/admin/logistics/rider-assignment')->assertNotFound();
     }
 
     public function test_returns_refunds_and_non_escalated_detail_are_read_only(): void

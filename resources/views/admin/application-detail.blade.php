@@ -35,7 +35,6 @@
                 'TIN' => $user->tin,
                 'SEC registration no.' => $user->sec_registration_no,
                 'Service areas' => \App\Support\PhilippineRegions::labels($user->service_areas) ?: null,
-                'Email verified' => $user->role === 'logistics' ? ($user->email_verified_at?->format('F d, Y g:i A') ?? 'Not yet (Unverified)') : null,
                 'Provider type' => $user->provider_type ? ucfirst($user->provider_type) : null,
                 'Vehicle' => $user->vehicle_type ? $user->vehicle_type . ($user->plate_number ? ' · ' . $user->plate_number : '') : null,
                 'Delivery area' => $user->delivery_area,

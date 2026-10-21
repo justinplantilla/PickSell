@@ -467,8 +467,6 @@ class SellerController extends Controller
         $message = 'Order #'.$order->order_number.' has been handed over to logistics. Waybill: '.$waybillNumber.'.';
         $this->notifyUser($order->buyer, 'Order handed over', $message, $order);
         $this->notifyUser($order->logistics, 'Parcel ready for pickup', $message, $order);
-        User::where('role', 'admin')->where('status', 'approved')->get()
-            ->each(fn (User $admin) => $this->notifyUser($admin, 'Parcel handed over', $message, $order));
 
         return back()->with('success', 'Order handed over. Waybill '.$waybillNumber.' was generated automatically.');
     }

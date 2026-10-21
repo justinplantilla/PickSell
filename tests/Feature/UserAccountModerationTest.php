@@ -58,6 +58,17 @@ class UserAccountModerationTest extends TestCase
         ], $overrides));
     }
 
+    public function test_admin_user_accounts_list_excludes_courier_accounts(): void
+    {
+        $buyer = $this->user('buyer');
+        $courier = $this->user('courier');
+
+        $this->actingAs($this->admin)->get(route('admin.users'))->assertOk()
+            ->assertSee($buyer->email)
+            ->assertDontSee($courier->email)
+            ->assertDontSee('Riders');
+    }
+
     // Every status change is recorded ------------------------------------------------------
 
     public function test_admin_status_change_is_recorded_with_actor_and_reason(): void
@@ -195,7 +206,9 @@ class UserAccountModerationTest extends TestCase
             ->assertSee('Review / Decide')
             ->assertSee('registration-review-link')
             ->assertSee(route('admin.registrations.show', $pending), false)
-            ->assertSee('Review application')
+            // Riders are managed by their logistics provider, so they are not listed here.
+            ->assertDontSee($pendingCourier->email)
+            ->assertDontSee('Review application')
             ->assertSee('btn-suspend', false)
             ->assertSee('btn-deactivate', false)
             ->assertSee('Suspend', false)

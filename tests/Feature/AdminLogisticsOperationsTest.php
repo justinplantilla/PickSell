@@ -5,14 +5,11 @@ namespace Tests\Feature;
 use App\Auth\Permission;
 use App\Models\AuditLog;
 use App\Models\Barangay;
-use App\Models\BranchRider;
 use App\Models\LogisticsBranch;
 use App\Models\LogisticsException;
 use App\Models\Municipality;
 use App\Models\Order;
-use App\Models\ParcelScan;
 use App\Models\ReturnRequest;
-use App\Models\RiderBarangay;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithLogisticsHubs;
@@ -45,8 +42,6 @@ class AdminLogisticsOperationsTest extends TestCase
         $municipality = Municipality::create(['province' => 'Metro Manila', 'name' => 'Pasig']);
         $this->barangay = Barangay::create(['municipality_id' => $municipality->id, 'name' => 'San Miguel']);
         $this->branch = LogisticsBranch::create(['municipality_id' => $municipality->id, 'name' => 'Pasig Hub', 'status' => 'active']);
-        $assignment = BranchRider::create(['branch_id' => $this->branch->id, 'user_id' => $this->courier->id, 'status' => 'active']);
-        RiderBarangay::create(['branch_rider_id' => $assignment->id, 'barangay_id' => $this->barangay->id]);
     }
 
     private function user(string $role): User
@@ -91,17 +86,24 @@ class AdminLogisticsOperationsTest extends TestCase
         ]);
     }
 
-    public function test_logistics_index_route_keeps_the_existing_overview(): void
+    public function test_logistics_index_shows_company_accounts_and_branch_counts(): void
     {
+        $company = $this->user('logistics');
+        $company->update(['business_name' => 'PickSell Delivery', 'provider_type' => 'company']);
+        $this->branch->update(['logistics_id' => $company->id]);
+
         $this->order('at_sorting_center', 'Received and scanned at sorting center');
         $this->actingAs($this->admin)
             ->get(route('admin.logistics.index'))
             ->assertOk()
-            ->assertSee('Central dispatch — all branches')
-            ->assertSee('Sorting-center workload');
+            ->assertSee('Logistics companies')
+            ->assertSee('PickSell Delivery')
+            ->assertSee('1')
+            ->assertDontSee('Sorting-center workload')
+            ->assertDontSee('Rider Assignment');
     }
 
-    public function test_central_dispatch_dashboard_surfaces_return_requests_with_open_logistics_exceptions(): void
+    public function test_logistics_company_overview_surfaces_return_requests_with_open_exceptions(): void
     {
         $order = $this->order('delivery_failed', 'Delivery failed');
         $return = ReturnRequest::create([
@@ -128,21 +130,6 @@ class AdminLogisticsOperationsTest extends TestCase
             ->assertSee('/admin/returns/'.$return->id);
     }
 
-    public function test_admin_scan_uses_permission_guard_and_records_lifecycle_and_audit(): void
-    {
-        $order = $this->order('picked_up', 'Pickup approved by logistics');
-
-        $this->actingAs($this->admin)
-            ->post(route('admin.logistics.scan', $order))
-            ->assertRedirect();
-
-        $this->assertSame('at_sorting_center', $order->fresh()->status);
-        $this->assertSame('admin', $order->statusHistories()->where('to_status', 'at_sorting_center')->value('source'));
-        $this->assertSame(Permission::LOGISTICS_SCAN, AuditLog::where('action', 'logistics.parcel_scanned')->sole()->permission);
-        $this->assertSame($this->admin->id, $order->parcelScans()->sole()->scanned_by);
-        $this->assertSame('sorting_center_received', $order->parcelScans()->sole()->scan_type);
-    }
-
     public function test_logistics_pickup_approval_uses_the_shared_order_lifecycle(): void
     {
         $company = $this->user('logistics');
@@ -165,56 +152,6 @@ class AdminLogisticsOperationsTest extends TestCase
             [$order->statusHistories()->where('to_status', 'picked_up')->sole()->source,
                 $order->statusHistories()->where('to_status', 'picked_up')->sole()->changed_by],
         );
-    }
-
-    public function test_admin_can_assign_only_sorted_parcels_and_records_assignment(): void
-    {
-        $order = $this->order('sorted', 'Sorted for Pasig, Metro Manila');
-        ParcelScan::create([
-            'order_id' => $order->id,
-            'scanned_by' => $this->admin->id,
-            'scan_type' => 'sorting_center_received',
-            'location' => 'Pasig Hub',
-            'scanned_at' => now(),
-        ]);
-
-        $this->actingAs($this->admin)
-            ->post(route('admin.logistics.assign', $order), ['courier_id' => $this->courier->id])
-            ->assertRedirect();
-
-        $order->refresh();
-        $this->assertSame('assigned_to_rider', $order->status);
-        $this->assertSame($this->courier->id, $order->courier_id);
-        $this->assertNotNull($order->assigned_to_rider_at);
-        $this->assertSame(Permission::LOGISTICS_ASSIGN_RIDER, AuditLog::where('action', 'logistics.rider_assigned')->sole()->permission);
-        $courierNotification = $this->courier->notifications()->sole();
-        $this->assertSame('logistics.rider_assigned', $courierNotification->data['event']);
-        $this->assertSame(route('courier.orders', [], false), $courierNotification->data['url']);
-
-        $notSorted = $this->order('at_sorting_center', 'Received and scanned at sorting center');
-        $this->post(route('admin.logistics.assign', $notSorted), ['courier_id' => $this->courier->id])->assertStatus(422);
-        $this->assertSame('at_sorting_center', $notSorted->fresh()->status);
-    }
-
-    public function test_admin_without_assignment_permission_cannot_assign_or_create_audit_or_notification(): void
-    {
-        $order = $this->order('sorted', 'Sorted for Pasig, Metro Manila');
-        ParcelScan::create([
-            'order_id' => $order->id,
-            'scanned_by' => $this->admin->id,
-            'scan_type' => 'sorting_center_received',
-            'location' => 'Pasig Hub',
-            'scanned_at' => now(),
-        ]);
-        config(['permissions.roles.admin' => [Permission::LOGISTICS_VIEW]]);
-
-        $this->actingAs($this->admin)
-            ->post(route('admin.logistics.assign', $order), ['courier_id' => $this->courier->id])
-            ->assertForbidden();
-
-        $this->assertSame('sorted', $order->fresh()->status);
-        $this->assertSame(0, AuditLog::where('action', 'logistics.rider_assigned')->count());
-        $this->assertSame(0, $this->courier->notifications()->count());
     }
 
     public function test_admin_exception_resolution_uses_logistics_permission_and_existing_resolution_rules(): void
@@ -255,15 +192,15 @@ class AdminLogisticsOperationsTest extends TestCase
         $this->assertSame(Permission::LOGISTICS_RESOLVE_EXCEPTION, AuditLog::where('action', 'logistics.exception_resolved')->sole()->permission);
     }
 
-    public function test_logistics_scan_route_denies_admin_without_scan_permission(): void
+    public function test_admin_sorting_and_rider_assignment_endpoints_are_removed(): void
     {
-        config(['permissions.roles.admin' => [Permission::DASHBOARD_VIEW, Permission::LOGISTICS_VIEW]]);
-        $order = $this->order('picked_up', 'Pickup approved by logistics');
+        $order = $this->order('sorted', 'Sorted for Pasig, Metro Manila');
 
         $this->actingAs($this->admin)
-            ->post(route('admin.logistics.scan', $order))
-            ->assertForbidden();
-
-        $this->assertSame('picked_up', $order->fresh()->status);
+            ->post("/admin/logistics/{$order->id}/scan")
+            ->assertNotFound();
+        $this->post("/admin/logistics/{$order->id}/assign", ['courier_id' => $this->courier->id])
+            ->assertNotFound();
+        $this->assertSame('sorted', $order->fresh()->status);
     }
 }

@@ -95,7 +95,9 @@
             @if($errors->any())
                 <div class="alert alert-error">{{ $errors->first() }}</div>
             @endif
-            @include('partials.page-intro')
+            @unless(request()->routeIs('admin.dashboard'))
+                @include('partials.page-intro')
+            @endunless
             @yield('content')
         </div>
     </div>

@@ -2,13 +2,11 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
  * Logistics provider registration asks for the SEC registration number (companies), the region of the
- * company address and the regions the provider serves. Logistics applicants now confirm their email with
- * a one-time code after submitting, so applicants registered before this are treated as already verified.
+ * company address and the regions the provider serves.
  */
 return new class extends Migration
 {
@@ -19,9 +17,6 @@ return new class extends Migration
             $table->string('region', 100)->nullable()->after('house_no');
             $table->json('service_areas')->nullable()->after('sec_registration_no');
         });
-
-        DB::table('users')->where('role', 'logistics')->whereNull('email_verified_at')
-            ->update(['email_verified_at' => DB::raw('created_at')]);
     }
 
     public function down(): void

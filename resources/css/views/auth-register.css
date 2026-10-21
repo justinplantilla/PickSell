@@ -212,8 +212,6 @@
 body.dark .email-otp { background:#1f1a17;border-color:#3a302a; }
 body.dark .email-otp.is-verified { background:#0f2a1a;border-color:#166534; }
 body.dark .otp-button { background:transparent; }
-.otp-code-input { letter-spacing:.35em;text-align:center;font-family:ui-monospace,Consolas,monospace;font-size:1.1rem; }
-.otp-resend-form { margin-top:.75rem;text-align:center; }
 .service-areas { display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.35rem .75rem; }
 .service-areas label { display:flex;gap:.45rem;align-items:flex-start;font-weight:500;font-size:.82rem;cursor:pointer; }
 .service-areas input { width:auto;margin-top:.2rem; }

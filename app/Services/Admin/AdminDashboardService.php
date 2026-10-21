@@ -3,7 +3,6 @@
 namespace App\Services\Admin;
 
 use App\Auth\Permission;
-use App\Models\BranchRider;
 use App\Models\Complaint;
 use App\Models\Order;
 use App\Models\ReturnRequest;
@@ -56,7 +55,9 @@ class AdminDashboardService
             'finance' => $can(Permission::REPORTS_VIEW) || $can(Permission::COMMISSION_VIEW) ? $this->finance() : null,
             'users' => $can(Permission::USERS_VIEW) ? $this->users() : null,
             'pendingApplications' => $can(Permission::REGISTRATIONS_VIEW)
-                ? User::whereIn('role', self::ADMIN_REVIEWED_ROLES)->where('status', 'pending')->readyForReview()->oldest()->take(5)->get()
+                ? User::whereIn('role', self::ADMIN_REVIEWED_ROLES)
+                    ->where(fn ($query) => $query->where('role', '!=', 'logistics')->orWhere('provider_type', 'company'))
+                    ->where('status', 'pending')->oldest()->take(5)->get()
                 : collect(),
         ];
     }
@@ -70,7 +71,9 @@ class AdminDashboardService
     /** Pending approvals count, also used for the sidebar badge. */
     public function pendingApprovals(): int
     {
-        return User::whereIn('role', self::ADMIN_REVIEWED_ROLES)->where('status', 'pending')->readyForReview()->count();
+        return User::whereIn('role', self::ADMIN_REVIEWED_ROLES)
+            ->where(fn ($query) => $query->where('role', '!=', 'logistics')->orWhere('provider_type', 'company'))
+            ->where('status', 'pending')->count();
     }
 
     private function kpis(User $viewer, $statusCounts, array $exceptions): array
@@ -94,27 +97,12 @@ class AdminDashboardService
             ];
         }
 
-        if ($viewer->hasPermission(Permission::LOGISTICS_VIEW)) {
-            $activeRiders = BranchRider::where('status', 'active')
-                ->whereHas('rider', fn ($q) => $q->where('role', 'courier')->where('status', 'approved'))
-                ->distinct()->count('user_id');
-            $onDelivery = Order::whereIn('status', ['assigned_to_rider', 'out_for_delivery'])->whereNotNull('courier_id')->distinct()->count('courier_id');
-            $kpis[] = [
-                'key' => 'active_riders', 'label' => 'Active riders', 'value' => $activeRiders,
-                'detail' => number_format($onDelivery) . ' carrying parcels now',
-                'url' => route('admin.logistics.riders'),
-            ];
-        }
-
-        if ($viewer->hasPermission(Permission::ORDERS_VIEW) || $viewer->hasPermission(Permission::LOGISTICS_VIEW)) {
+        if ($viewer->hasPermission(Permission::ORDERS_VIEW)) {
             $issues = collect($exceptions)->sum('count');
             $kpis[] = [
                 'key' => 'issues', 'label' => 'Issues', 'value' => $issues,
-                'detail' => $issues ? 'Stuck, failed or unassigned orders' : 'No operational exceptions',
-                // Orders view lists every exception type together; logistics-only viewers get the sorting queue.
-                'url' => $viewer->hasPermission(Permission::ORDERS_VIEW)
-                    ? route('admin.orders', ['issues' => 1])
-                    : route('admin.logistics.sorting', ['status' => 'sorted']),
+                'detail' => $issues ? 'Stuck or failed orders' : 'No operational exceptions',
+                'url' => route('admin.orders', ['issues' => 1]),
                 'alert' => $issues > 0,
             ];
         }
@@ -161,12 +149,6 @@ class AdminDashboardService
                 'detail' => 'Delivery attempts that did not reach the buyer',
                 'url' => route('admin.orders', ['status' => 'delivery_failed'])];
         }
-        if ($viewer->hasPermission(Permission::LOGISTICS_VIEW)) {
-            $exceptions[] = ['key' => 'unassigned', 'label' => 'Unassigned parcels', 'count' => Order::where('status', 'sorted')->whereNull('courier_id')->count(),
-                'detail' => 'Sorted and waiting for a rider',
-                'url' => route('admin.logistics.sorting', ['status' => 'sorted'])];
-        }
-
         return $exceptions;
     }
 

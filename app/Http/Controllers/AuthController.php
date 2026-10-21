@@ -21,7 +21,7 @@ use Carbon\Carbon;
 class AuthController extends Controller
 {
     /** Roles whose email is confirmed with a one-time code on the registration form before the account exists. */
-    private const EMAIL_VERIFIED_ROLES = ['buyer', 'seller'];
+    private const EMAIL_VERIFIED_ROLES = ['buyer', 'seller', 'logistics'];
 
     private const FILE_RULES = ['file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'];
 
@@ -49,14 +49,6 @@ class AuthController extends Controller
 
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
             return back()->withErrors(['email' => 'Invalid email or password.'])->onlyInput('email');
-        }
-
-        if ($user->isAwaitingEmailVerification()) {
-            // Not signed in yet: the applicant first confirms their email with the code sent at registration.
-            $request->session()->put(RegistrationEmailVerificationController::SESSION_KEY, $user->id);
-
-            return redirect()->route('register.verify-email')
-                ->with('warning', 'Verify your email before logging in. Enter the 6-digit code we sent you, or resend a new code.');
         }
 
         if ($user->isPending()) {
@@ -141,13 +133,13 @@ class AuthController extends Controller
 
         $rules = [
             'role'           => 'required|in:'.implode(',', $registrationRoles),
-            'provider_type'  => 'required_if:role,logistics|nullable|in:company,individual',
+            'provider_type'  => 'required_if:role,logistics|nullable|in:company',
             'last_name'      => ['required', 'string', 'min:2', 'max:50', "regex:{$namePattern}"],
             'first_name'     => ['required', 'string', 'min:2', 'max:50', "regex:{$namePattern}"],
             'middle_initial' => ['nullable', 'string', 'max:5', "regex:/^[\\pL.\\s]+$/u"],
             'sex'            => 'required|in:Male,Female',
             'email'          => [...$this->emailRules(), function (string $attribute, $value, $fail) use ($request, $role): void {
-                // Buyers and sellers confirm their email with a one-time code on the form's Account step.
+                // Buyers, sellers and logistics providers confirm their email with a one-time code on the form's Account step.
                 if (in_array($role, self::EMAIL_VERIFIED_ROLES, true) && $request->session()->get('registration_verified_email') !== $value) {
                     $fail('Verify your email with the 6-digit code we send you before submitting.');
                 }
@@ -208,12 +200,11 @@ class AuthController extends Controller
                     $fail('This company name is already registered.');
                 }
             }];
-            // Companies are registered with the SEC; individual providers have no SEC number or certificate.
-            $rules['sec_registration_no'] = ['required_if:provider_type,company', 'nullable', 'regex:/^[A-Z]{2}\d{9}$/', Rule::unique('users', 'sec_registration_no')];
+            $rules['sec_registration_no'] = ['required', 'regex:/^[A-Z]{2}\d{9}$/', Rule::unique('users', 'sec_registration_no')];
             $rules['tin']                 = ['required', 'regex:/^\d{3}-\d{3}-\d{3}-\d{3}$/', Rule::unique('users', 'tin')];
             $rules['service_areas']       = ['required', 'array', 'min:1'];
             $rules['service_areas.*']     = ['distinct', Rule::in(PhilippineRegions::keys())];
-            $rules['sec_certificate']     = ['required_if:provider_type,company', 'nullable', ...self::FILE_RULES];
+            $rules['sec_certificate']     = ['required', ...self::FILE_RULES];
             $rules['bir_certificate']     = ['required', ...self::FILE_RULES];
             $rules['business_permit']     = ['required', ...self::FILE_RULES];
         }
@@ -240,7 +231,7 @@ class AuthController extends Controller
             'confirmed.accepted' => 'Confirm that the information and documents you provided are accurate.',
             'business_name.min' => $role === 'logistics' ? 'The company name must be at least 2 characters.' : 'The shop name must be at least 3 characters.',
             'business_name.max' => $role === 'logistics' ? 'The company name may not be longer than 100 characters.' : 'The shop name may not be longer than 30 characters.',
-            'sec_registration_no.required_if' => 'Companies must enter their SEC registration number.',
+            'sec_registration_no.required' => 'Logistics companies must enter their SEC registration number.',
             'sec_registration_no.regex' => 'Enter the SEC registration number as 2 letters followed by 9 digits, like CS202012345.',
             'sec_registration_no.unique' => 'This SEC registration number is already registered to another account.',
             'service_areas.required' => 'Select at least one service area.',
@@ -249,7 +240,8 @@ class AuthController extends Controller
             'tin.unique' => 'This TIN is already registered to another account.',
             'postal_code.regex' => 'Enter a valid 4-digit postal code.',
             'dti_certificate.required_if' => 'Sole proprietorships must upload their DTI Certificate.',
-            'sec_certificate.required_if' => $role === 'logistics' ? 'Companies must upload their SEC Certificate.' : 'Corporations must upload their SEC Certificate.',
+            'sec_certificate.required' => $role === 'logistics' ? 'Logistics companies must upload their SEC Certificate.' : 'Corporations must upload their SEC Certificate.',
+            'sec_certificate.required_if' => 'Corporations must upload their SEC Certificate.',
             'bir_certificate.required_if' => 'Upload your BIR Certificate of Registration (Form 2303).',
             'bir_certificate.required' => 'Upload your BIR Certificate of Registration (Form 2303).',
             'business_permit.required' => 'Upload your Mayor\'s / Business Permit.',
@@ -272,14 +264,13 @@ class AuthController extends Controller
         }
         if ($role === 'logistics') {
             $extra['business_name']       = $data['business_name'];
-            $extra['sec_registration_no'] = $data['provider_type'] === 'company' ? $data['sec_registration_no'] : null;
+            $extra['provider_type']      = 'company';
+            $extra['sec_registration_no'] = $data['sec_registration_no'];
             $extra['tin']                 = $data['tin'];
             $extra['service_areas']       = array_values($data['service_areas']);
             $extra['business_permit']     = $request->file('business_permit')->store('uploads/permits', 'public');
             $extra['bir_certificate']     = $request->file('bir_certificate')->store('uploads/permits', 'public');
-            if ($data['provider_type'] === 'company') {
-                $extra['sec_certificate'] = $request->file('sec_certificate')->store('uploads/permits', 'public');
-            }
+            $extra['sec_certificate'] = $request->file('sec_certificate')->store('uploads/permits', 'public');
         }
         if ($role === 'courier') {
             $extra['vehicle_type'] = $data['vehicle_type'];
@@ -322,11 +313,6 @@ class AuthController extends Controller
 
     private function afterRegistration(Request $request, User $applicant, bool $justCreated)
     {
-        if ($applicant->role === 'logistics') {
-            // Logistics applicants verify their email after submitting; admins are told once that is done.
-            return app(RegistrationEmailVerificationController::class)->start($request, $applicant, $justCreated);
-        }
-
         if ($justCreated) {
             $request->session()->forget('registration_verified_email');
             app(\App\Services\AdminNotificationService::class)->notifyAdmins(
@@ -334,6 +320,7 @@ class AuthController extends Controller
                 'Pending registration',
                 "{$applicant->first_name} {$applicant->last_name} submitted a {$applicant->role} registration.",
                 route('admin.registrations.show', $applicant, false),
+                subject: "registration:{$applicant->id}",
             );
         }
 

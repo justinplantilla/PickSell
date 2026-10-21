@@ -69,6 +69,7 @@ class RegistrationResubmissionController extends Controller
             'Resubmitted registration',
             "{$applicant->first_name} {$applicant->last_name} resubmitted their {$applicant->role} registration with corrected documents.",
             route('admin.registrations.show', $applicant, false),
+            subject: "registration:{$applicant->id}",
         );
         $request->session()->forget('resubmission_user_id');
 

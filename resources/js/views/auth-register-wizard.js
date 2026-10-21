@@ -26,7 +26,7 @@ if (registerForm && registerConfig) {
     });
     let currentWizardStep = 0;
 
-    // Buyers and sellers verify their email with a one-time code on the Account step before they can continue.
+    // Buyers, sellers and logistics providers verify their email with a one-time code on the Account step before they can continue.
     const emailOtp = (() => {
         const box = document.getElementById('emailOtp');
         const emailInput = registerForm.querySelector('input[name="email"]');
@@ -120,7 +120,7 @@ if (registerForm && registerConfig) {
         emailInput.addEventListener('input', () => { if (!isVerified()) reset(); });
 
         return {
-            toggle(role) { active = ['buyer', 'seller'].includes(role); box.hidden = !active; render(); },
+            toggle(role) { active = ['buyer', 'seller', 'logistics'].includes(role); box.hidden = !active; render(); },
             blocksStep(panel) {
                 if (!active || !panel.contains(box) || isVerified()) return false;
                 if (!emailInput.checkValidity()) { emailInput.reportValidity(); return true; }
@@ -179,30 +179,25 @@ if (registerForm && registerConfig) {
     serviceAreas.addEventListener('change', () => { if (serviceAreas.querySelector('input:checked')) serviceAreasError.hidden = true; });
 
     const updateProviderFields = () => {
-        const providerType = document.getElementById('provider_type').value;
         const logisticsSelected = selectedRole() === 'logistics';
         const businessName = document.querySelector('input[name="business_name"]');
-        const individualProvider = logisticsSelected && providerType === 'individual';
-        document.getElementById('businessNameLabel').innerHTML = (individualProvider ? 'Provider Name' : logisticsSelected ? 'Company Name' : 'Shop Name') + ' <span class="req">*</span>';
-        businessName.placeholder = individualProvider ? 'e.g. Juan Dela Cruz Delivery' : logisticsSelected ? 'e.g. Bilis Hatid Express Inc.' : "e.g. Juan's Store";
+        document.getElementById('businessNameLabel').innerHTML = (logisticsSelected ? 'Company Name' : 'Shop Name') + ' <span class="req">*</span>';
+        businessName.placeholder = logisticsSelected ? 'e.g. Bilis Hatid Express Inc.' : "e.g. Juan's Store";
         // Company names are 2 to 100 characters; shop names 3 to 30.
         if (logisticsSelected) { businessName.minLength = 2; businessName.maxLength = 100; } else { businessName.minLength = 3; businessName.maxLength = 30; }
     };
     const syncRoleFields = role => {
         const sellerType = document.getElementById('seller_type').value;
-        const providerType = document.getElementById('provider_type').value;
         registerForm.querySelectorAll('[data-roles]').forEach(group => {
             const sellerTypes = group.dataset.sellerTypes?.split(' ');
-            const providerTypes = group.dataset.providerTypes?.split(' ');
             const shown = group.dataset.roles.split(' ').includes(role)
-                && (role !== 'seller' || !sellerTypes || sellerTypes.includes(sellerType))
-                && (role !== 'logistics' || !providerTypes || providerTypes.includes(providerType));
+                && (role !== 'seller' || !sellerTypes || sellerTypes.includes(sellerType));
             group.style.display = shown ? 'block' : 'none';
             group.querySelectorAll('[data-required]').forEach(field => { field.required = shown; });
         });
     };
     const updateRegistrationNote = role => {
-        const messages = { courier: 'Courier applications are reviewed by the station hub for your town. Please wait for the approval result before logging in.', logistics: 'After you submit, we email a 6-digit code to verify your email address. Your application is then reviewed by the PickSell Admin team; please wait for approval before logging in.', seller: 'Seller applications are reviewed by the PickSell Admin team. Please wait for the approval result before logging in.', buyer: 'Your registration will be reviewed by PickSell. Please wait for the approval result before logging in.' };
+        const messages = { courier: 'Courier applications are reviewed by the station hub for your town. Please wait for the approval result before logging in.', logistics: 'Logistics provider applications are reviewed by the PickSell Admin team. Please wait for approval before logging in.', seller: 'Seller applications are reviewed by the PickSell Admin team. Please wait for the approval result before logging in.', buyer: 'Your registration will be reviewed by PickSell. Please wait for the approval result before logging in.' };
         document.getElementById('registrationNote').textContent = messages[role] || messages.buyer;
     };
     const updateRole = role => {
@@ -215,7 +210,6 @@ if (registerForm && registerConfig) {
     };
     const selectedRole = () => registerForm.querySelector('input[name="role"]:checked')?.value;
     roleBtns.forEach(button => button.addEventListener('click', () => { const role = button.querySelector('input').value; button.querySelector('input').checked = true; updateRole(role); }));
-    document.getElementById('provider_type').addEventListener('change', () => { updateProviderFields(); syncRoleFields(selectedRole()); });
     document.querySelector('input[name="sec_registration_no"]').addEventListener('input', function () { this.value = this.value.toUpperCase(); });
     document.getElementById('seller_type').addEventListener('change', () => syncRoleFields(selectedRole()));
     passwordInput.addEventListener('input', () => {

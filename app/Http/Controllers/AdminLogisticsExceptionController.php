@@ -3,45 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Auth\Permission;
-use App\Http\Requests\AssignCourierRequest;
 use App\Http\Requests\OpenLogisticsExceptionRequest;
 use App\Http\Requests\ResolveLogisticsExceptionRequest;
 use App\Http\Requests\ResolveParcelExceptionRequest;
-use App\Http\Requests\ScanParcelRequest;
 use App\Models\LogisticsException;
 use App\Models\Order;
-use App\Services\CourierAssignmentService;
-use App\Services\LogisticsService;
 use App\Services\LogisticsExceptionService;
 use App\Services\Orders\OrderAdministrationService;
-use Illuminate\Support\Facades\Gate;
 
-class AdminSortingCenterController extends Controller
+class AdminLogisticsExceptionController extends Controller
 {
-    public function scan(ScanParcelRequest $request, Order $order, LogisticsService $logistics)
-    {
-        $logistics->scanParcel($order, $request->user(), 'admin', Permission::LOGISTICS_SCAN, $request->validated());
-
-        return back()->with('success', "Parcel {$order->order_number} scanned.");
-    }
-
-    public function assign(AssignCourierRequest $request, Order $order, CourierAssignmentService $assignments)
-    {
-        Gate::authorize(Permission::LOGISTICS_ASSIGN_RIDER);
-        Gate::authorize('assignCourier', $order);
-
-        $data = $request->validated();
-        $courier = $assignments->assign(
-            $order,
-            $request->user(),
-            (int) $data['courier_id'],
-            'admin',
-            Permission::LOGISTICS_ASSIGN_RIDER,
-        );
-
-        return back()->with('success', "Parcel {$order->order_number} assigned to {$courier->full_name}.");
-    }
-
     public function resolveException(ResolveLogisticsExceptionRequest $request, Order $order, OrderAdministrationService $orders)
     {
         $data = $request->validated();
@@ -53,7 +24,7 @@ class AdminSortingCenterController extends Controller
             Permission::LOGISTICS_RESOLVE_EXCEPTION,
         );
 
-        return back()->with('success', OrderAdministrationService::EXCEPTION_ACTIONS[$data['action']]['label'] . " applied to {$order->order_number}.");
+        return back()->with('success', OrderAdministrationService::EXCEPTION_ACTIONS[$data['action']]['label']." applied to {$order->order_number}.");
     }
 
     public function openException(

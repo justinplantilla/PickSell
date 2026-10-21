@@ -21,7 +21,7 @@ use App\Http\Controllers\AdminReturnController;
 use App\Http\Controllers\AdminReturnDisputeController;
 use App\Http\Controllers\AdminSearchController;
 use App\Http\Controllers\AdminSettingsController;
-use App\Http\Controllers\AdminSortingCenterController;
+use App\Http\Controllers\AdminLogisticsExceptionController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BuyerController;
@@ -30,7 +30,6 @@ use App\Http\Controllers\CourierController;
 use App\Http\Controllers\LogisticsController;
 use App\Http\Controllers\SellerController;
 use App\Http\Controllers\SellerProductImageController;
-use App\Http\Controllers\RegistrationEmailVerificationController;
 use App\Http\Controllers\RegistrationResubmissionController;
 use App\Http\Controllers\SellerReturnRequestController;
 use App\Http\Middleware\AdminMiddleware;
@@ -120,9 +119,6 @@ Route::middleware('guest')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/register/email-code', [AuthController::class, 'sendRegistrationCode'])->middleware('throttle:6,1')->name('register.email-code');
     Route::post('/register/email-code/verify', [AuthController::class, 'verifyRegistrationCode'])->middleware('throttle:20,1')->name('register.email-code.verify');
-    Route::get('/register/verify-email', [RegistrationEmailVerificationController::class, 'show'])->name('register.verify-email');
-    Route::post('/register/verify-email', [RegistrationEmailVerificationController::class, 'verify'])->middleware('throttle:20,1')->name('register.verify-email.verify');
-    Route::post('/register/verify-email/resend', [RegistrationEmailVerificationController::class, 'resend'])->middleware('throttle:6,1')->name('register.verify-email.resend');
     Route::get('/registration/resubmit', [RegistrationResubmissionController::class, 'show'])->name('registration.resubmit');
     Route::post('/registration/resubmit', [RegistrationResubmissionController::class, 'store'])->name('registration.resubmit.store');
     Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request');
@@ -327,20 +323,25 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
     Route::patch('/account/password', [AdminAccountController::class, 'changePassword'])->middleware($can(Permission::ACCOUNT_MANAGE))->name('admin.account.password');
     Route::delete('/account', [AdminAccountController::class, 'delete'])->middleware($can(Permission::ACCOUNT_MANAGE))->name('admin.account.delete');
 
-    Route::middleware($can(Permission::ORDERS_VIEW))->group(function () {
-        Route::get('/orders', [AdminOrderController::class, 'index'])->name('admin.orders');
+    Route::middleware($can(Permission::ORDERS_VIEW))->group(function () use ($can) {
+        Route::get('/orders',[AdminOrderController::class, 'index'])->name('admin.orders');
+        Route::get('/orders/export', [AdminOrderController::class, 'export'])->middleware($can(Permission::REPORTS_EXPORT))->name('admin.orders.export');
         Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('admin.orders.show');
+        Route::get('/orders/{order}/preview', [AdminOrderController::class, 'preview'])->name('admin.orders.preview');
     });
     Route::post('/orders/bulk-status', [AdminOrderController::class, 'bulkOverrideStatus'])->middleware($can(Permission::ORDERS_OVERRIDE_STATUS))->name('admin.orders.bulk-status');
     Route::patch('/orders/{order}/status', [AdminOrderController::class, 'overrideStatus'])->middleware($can(Permission::ORDERS_OVERRIDE_STATUS))->name('admin.orders.status');
     Route::patch('/orders/{order}/resolve', [AdminOrderController::class, 'resolveException'])->middleware($can(Permission::ORDERS_MANAGE))->name('admin.orders.resolve');
 
-    Route::middleware($can(Permission::PRODUCTS_VIEW))->group(function () {
+    Route::middleware($can(Permission::PRODUCTS_VIEW))->group(function () use ($can) {
         Route::get('/products', [AdminProductController::class, 'index'])->name('admin.products');
+        Route::get('/products/export', [AdminProductController::class, 'export'])->middleware($can(Permission::REPORTS_EXPORT))->name('admin.products.export');
         Route::get('/products/{product}', [AdminProductController::class, 'show'])->name('admin.products.show');
+        Route::get('/products/{product}/preview', [AdminProductController::class, 'preview'])->name('admin.products.preview');
     });
     Route::middleware($can(Permission::PRODUCTS_MODERATE))->group(function () {
         Route::post('/products/bulk-status', [AdminProductController::class, 'bulkModerate'])->name('admin.products.bulk-status');
+        Route::post('/products/bulk-featured', [AdminProductController::class, 'bulkFeature'])->name('admin.products.bulk-featured');
         Route::patch('/products/{product}/featured', [AdminProductController::class, 'toggleFeatured'])->name('admin.products.featured');
         Route::patch('/products/{product}/status', [AdminProductController::class, 'moderate'])->name('admin.products.status');
     });
@@ -400,14 +401,10 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
 
     Route::middleware($can(Permission::LOGISTICS_VIEW))->group(function () {
         Route::get('/logistics', [AdminLogisticsController::class, 'index'])->name('admin.logistics.index');
-        Route::get('/logistics/sorting-center', [AdminLogisticsController::class, 'sorting'])->name('admin.logistics.sorting');
-        Route::get('/logistics/rider-assignment', [AdminLogisticsController::class, 'riders'])->name('admin.logistics.riders');
     });
-    Route::post('/logistics/{order}/scan', [AdminSortingCenterController::class, 'scan'])->middleware($can(Permission::LOGISTICS_SCAN))->name('admin.logistics.scan');
-    Route::post('/logistics/{order}/assign', [AdminSortingCenterController::class, 'assign'])->middleware($can(Permission::LOGISTICS_ASSIGN_RIDER))->name('admin.logistics.assign');
-    Route::post('/logistics/{order}/resolve-exception', [AdminSortingCenterController::class, 'resolveException'])->middleware($can(Permission::LOGISTICS_RESOLVE_EXCEPTION))->name('admin.logistics.resolve-exception');
-    Route::post('/logistics/{order}/exceptions', [AdminSortingCenterController::class, 'openException'])->middleware($can(Permission::LOGISTICS_MANAGE))->name('admin.logistics.exceptions.store');
-    Route::patch('/logistics/exceptions/{exception}/resolve', [AdminSortingCenterController::class, 'resolveParcelException'])->middleware($can(Permission::LOGISTICS_RESOLVE_EXCEPTION))->name('admin.logistics.exceptions.resolve');
+    Route::post('/logistics/{order}/resolve-exception', [AdminLogisticsExceptionController::class, 'resolveException'])->middleware($can(Permission::LOGISTICS_RESOLVE_EXCEPTION))->name('admin.logistics.resolve-exception');
+    Route::post('/logistics/{order}/exceptions', [AdminLogisticsExceptionController::class, 'openException'])->middleware($can(Permission::LOGISTICS_MANAGE))->name('admin.logistics.exceptions.store');
+    Route::patch('/logistics/exceptions/{exception}/resolve', [AdminLogisticsExceptionController::class, 'resolveParcelException'])->middleware($can(Permission::LOGISTICS_RESOLVE_EXCEPTION))->name('admin.logistics.exceptions.resolve');
 
     Route::get('/commission', [AdminController::class, 'commission'])->middleware($can(Permission::COMMISSION_VIEW))->name('admin.commission');
 

@@ -6,7 +6,6 @@ use App\Http\Requests\Admin\ApproveRegistrationRequest;
 use App\Http\Requests\Admin\DisapproveRegistrationRequest;
 use App\Models\AuditLog;
 use App\Models\User;
-use App\Policies\UserPolicy;
 use App\Services\Admin\RegistrationReviewService;
 use App\Support\RegistrationChecklist;
 use Illuminate\Http\Request;
@@ -14,6 +13,8 @@ use Illuminate\Support\Facades\Gate;
 
 class AdminRegistrationController extends Controller
 {
+    private const REGISTRATION_ROLES = ['buyer', 'seller', 'logistics'];
+
     public const DATE_FILTERS = [
         'today' => 'Submitted today',
         '7d' => 'Last 7 days',
@@ -23,21 +24,20 @@ class AdminRegistrationController extends Controller
 
     public function index(Request $request)
     {
-        $role = in_array($request->query('role'), UserPolicy::MANAGED_ROLES, true) ? $request->query('role') : 'all';
+        $role = in_array($request->query('role'), self::REGISTRATION_ROLES, true) ? $request->query('role') : 'all';
         $status = in_array($request->query('status'), ['pending', 'approved', 'disapproved', 'all'], true) ? $request->query('status') : 'pending';
         $date = array_key_exists($request->query('date'), self::DATE_FILTERS) ? $request->query('date') : 'any';
         $search = trim((string) $request->query('search', ''));
 
-        $query = User::whereIn('role', UserPolicy::MANAGED_ROLES)->with('latestRegistrationReview.reviewer');
+        $query = User::query()->where(function ($roles) {
+            $roles->whereIn('role', ['buyer', 'seller'])
+                ->orWhere(fn ($company) => $company->where('role', 'logistics')->where('provider_type', 'company'));
+        })->with('latestRegistrationReview.reviewer');
         if ($role !== 'all') {
             $query->where('role', $role);
         }
         if ($status !== 'all') {
             $query->where('status', $status);
-        }
-        if ($status === 'pending') {
-            // Logistics applicants reach the queue only after confirming their email.
-            $query->readyForReview();
         }
         match ($date) {
             'today' => $query->whereDate('created_at', today()),

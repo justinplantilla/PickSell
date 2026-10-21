@@ -13,11 +13,13 @@ use App\Models\User;
 use App\Services\Admin\AdminDashboardService;
 use App\Services\Finance\FinancialSummary;
 use App\Services\Orders\OrderAdministrationService;
+use App\Services\AuditLogger;
 use App\Services\Orders\OrderLifecycleService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /** Marketplace-wide order control surface (orders.view; overrides need their own permissions). */
@@ -37,13 +39,19 @@ class AdminOrderController extends Controller
         $filters = $this->filters($request);
         $query = $this->filteredOrders($filters, $dashboard);
         $activeFilter = match (true) {
-            $filters['issues'] => 'Operational exceptions: stuck, failed delivery or unassigned',
+            $filters['issues'] => 'Operational exceptions: stuck orders or failed deliveries',
             $filters['stuck'] => 'Stuck: in progress with no update for '.AdminDashboardService::STUCK_AFTER_HOURS.'h+',
-            (bool) $filters['statuses'] => 'Status: '.implode(', ', array_map(fn ($s) => str_replace('_', ' ', $s), $filters['statuses'])),
+            (bool) $filters['statuses'] => 'Status: '.implode(', ', array_map(fn ($s) => OrderLifecycleService::label($s), $filters['statuses'])),
             default => null,
         };
 
         $statusCounts = Order::selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+        $options = [
+            'sellers' => User::where('role', 'seller')->whereHas('ordersAsSeller')->orderBy('business_name')->get(['id', 'first_name', 'last_name', 'business_name']),
+            'buyers' => User::where('role', 'buyer')->whereHas('ordersAsBuyer')->orderBy('last_name')->get(['id', 'first_name', 'last_name', 'middle_initial']),
+            'couriers' => User::where('role', 'courier')->whereHas('ordersAsCourier')->orderBy('last_name')->get(['id', 'first_name', 'last_name', 'middle_initial']),
+            'branches' => LogisticsBranch::orderBy('name')->get(['id', 'name']),
+        ];
 
         return view('admin.orders.index', [
             'orders' => $query->paginate(20)->withQueryString(),
@@ -56,14 +64,73 @@ class AdminOrderController extends Controller
             'stageCounts' => collect(self::STAGES)->map(fn ($definition) => $statusCounts->only($definition['statuses'])->sum()),
             'totalOrders' => $statusCounts->sum(),
             'activeFilter' => $activeFilter,
+            'chips' => $this->activeChips($request, $filters, $options, $activeFilter),
+            'moreFiltersCount' => count(array_filter($filters['parties'])),
             'matchingCount' => (clone $query)->count(),
-            'options' => [
-                'sellers' => User::where('role', 'seller')->whereHas('ordersAsSeller')->orderBy('business_name')->get(['id', 'first_name', 'last_name', 'business_name']),
-                'buyers' => User::where('role', 'buyer')->whereHas('ordersAsBuyer')->orderBy('last_name')->get(['id', 'first_name', 'last_name', 'middle_initial']),
-                'couriers' => User::where('role', 'courier')->whereHas('ordersAsCourier')->orderBy('last_name')->get(['id', 'first_name', 'last_name', 'middle_initial']),
-                'branches' => LogisticsBranch::orderBy('name')->get(['id', 'name']),
-            ],
+            'stuckAfterHours' => AdminDashboardService::STUCK_AFTER_HOURS,
+            'options' => $options,
         ]);
+    }
+
+    /** Side-panel summary of one order, loaded into the list page without leaving it. */
+    public function preview(Order $order)
+    {
+        Gate::authorize('view', $order);
+        $order->load(['buyer', 'seller', 'courier', 'originBranch', 'destinationBranch',
+            'statusHistories' => fn ($q) => $q->with('changer')->reorder()->latest('id')->limit(5)]);
+
+        return view('admin.orders._preview', [
+            'order' => $order,
+            'isStuck' => $this->isStuck($order),
+        ]);
+    }
+
+    /** CSV of the orders matching the current filters, or of the selected `order_ids`. */
+    public function export(Request $request, AdminDashboardService $dashboard, AuditLogger $audit): StreamedResponse
+    {
+        $selected = $this->selectedIds($request);
+        $filters = $this->filters($request);
+        $query = $selected
+            ? Order::with(['buyer', 'seller', 'courier'])->whereKey($selected)
+            : $this->filteredOrders($filters, $dashboard);
+        $audit->record('orders.exported', null, [], array_filter([
+            'order_ids' => $selected ?: null,
+            'filters' => $selected ? null : array_filter([
+                'stage' => $filters['stage'] !== 'all' ? $filters['stage'] : null,
+                'search' => $filters['search'] ?: null,
+                'statuses' => $filters['statuses'] ?: null,
+                'date' => $filters['date'] !== 'any' ? $filters['date'] : null,
+                'parties' => array_filter($filters['parties']) ?: null,
+                'stuck' => $filters['stuck'] ?: null,
+                'issues' => $filters['issues'] ?: null,
+            ]),
+        ]), Permission::REPORTS_EXPORT);
+
+        $cell = fn (?string $value) => $value !== null && preg_match('/^[\s]*[=+\-@]/', $value) ? "'".$value : $value;
+
+        return response()->streamDownload(function () use ($query, $cell) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['order_number', 'status', 'tracking_status', 'product', 'quantity', 'amount', 'buyer', 'seller', 'courier', 'waybill', 'placed_at', 'updated_at']);
+            $query->reorder()->orderBy('id')->chunk(500, function ($orders) use ($out, $cell) {
+                foreach ($orders as $order) {
+                    fputcsv($out, [
+                        $order->order_number,
+                        $order->status,
+                        $cell($order->tracking_status),
+                        $cell($order->product_name),
+                        $order->quantity,
+                        number_format((float) $order->amount, 2, '.', ''),
+                        $cell($order->buyer?->full_name),
+                        $cell($order->seller?->business_name ?? $order->seller?->full_name),
+                        $cell($order->courier?->full_name),
+                        $cell($order->waybill_number),
+                        $order->created_at?->toIso8601String(),
+                        $order->updated_at?->toIso8601String(),
+                    ]);
+                }
+            });
+            fclose($out);
+        }, 'orders-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv']);
     }
 
     public function bulkOverrideStatus(
@@ -77,7 +144,10 @@ class AdminOrderController extends Controller
             'confirm' => ['accepted'],
             'matching_count' => ['required', 'integer', 'min:1'],
         ]);
-        $query = $this->filteredOrders($this->filters($request), $dashboard);
+        $selected = $this->selectedIds($request);
+        $query = $selected
+            ? Order::whereKey($selected)
+            : $this->filteredOrders($this->filters($request), $dashboard);
         $currentCount = (clone $query)->count();
         if ($currentCount !== (int) $validated['matching_count']) {
             return back()->with('warning', 'The matching order count changed. Review the refreshed results before applying this bulk action.');
@@ -129,8 +199,7 @@ class AdminOrderController extends Controller
                 ->where('created_at', '>=', $order->created_at->copy()->subDay())
                 ->latest()->get(),
             'auditHistory' => AuditLog::with('actor')->where('subject_type', $order->getMorphClass())->where('subject_id', $order->id)->latest('id')->get(),
-            'isStuck' => in_array($order->status, AdminDashboardService::IN_PROGRESS_STATUSES, true)
-                && $order->updated_at->lt(now()->subHours(AdminDashboardService::STUCK_AFTER_HOURS)),
+            'isStuck' => $this->isStuck($order),
         ]);
     }
 
@@ -146,6 +215,63 @@ class AdminOrderController extends Controller
         $orders->resolveException($order, $request->user(), $request->validated('action'), $request->validated('reason'));
 
         return back()->with('success', OrderAdministrationService::EXCEPTION_ACTIONS[$request->validated('action')]['label']." applied to {$order->order_number}.");
+    }
+
+    /** Up to 500 explicitly selected order ids from the list checkboxes; empty means "all matching". */
+    private function selectedIds(Request $request): array
+    {
+        $ids = $request->input('order_ids', []);
+        if (is_string($ids)) {
+            $ids = explode(',', $ids);
+        }
+
+        return collect(is_array($ids) ? $ids : [])
+            ->filter(fn ($id) => is_scalar($id) && ctype_digit((string) $id) && (int) $id > 0)
+            ->map(fn ($id) => (int) $id)
+            ->unique()->take(500)->values()->all();
+    }
+
+    private function isStuck(Order $order): bool
+    {
+        return in_array($order->status, AdminDashboardService::IN_PROGRESS_STATUSES, true)
+            && $order->updated_at->lt(now()->subHours(AdminDashboardService::STUCK_AFTER_HOURS));
+    }
+
+    /**
+     * Removable chips for every filter in effect besides the stage tab.
+     *
+     * @return list<array{label: string, url: string}>
+     */
+    private function activeChips(Request $request, array $filters, array $options, ?string $activeFilter): array
+    {
+        $without = fn (string ...$keys) => route('admin.orders', $request->except([...$keys, 'page']));
+        $name = fn (string $key, int $id, callable $label) => ($match = $options[$key]->firstWhere('id', $id)) ? $label($match) : "#{$id}";
+        $chips = [];
+
+        if ($filters['search'] !== '') {
+            $chips[] = ['label' => "Search: \u{201C}{$filters['search']}\u{201D}", 'url' => $without('search')];
+        }
+        if ($filters['statuses']) {
+            $chips[] = ['label' => 'Status: '.implode(', ', array_map(fn ($s) => OrderLifecycleService::label($s), $filters['statuses'])), 'url' => $without('status', 'filter_status')];
+        }
+        if ($filters['date'] !== 'any') {
+            $chips[] = ['label' => self::DATE_FILTERS[$filters['date']], 'url' => $without('date', 'placed')];
+        }
+        foreach ([
+            'seller' => ['Seller', 'sellers', fn ($u) => $u->business_name ?? $u->full_name],
+            'buyer' => ['Buyer', 'buyers', fn ($u) => $u->full_name],
+            'courier' => ['Courier', 'couriers', fn ($u) => $u->full_name],
+            'branch' => ['Branch', 'branches', fn ($b) => $b->name],
+        ] as $key => [$label, $optionKey, $labelOf]) {
+            if ($filters['parties'][$key]) {
+                $chips[] = ['label' => $label.': '.$name($optionKey, $filters['parties'][$key], $labelOf), 'url' => $without($key)];
+            }
+        }
+        if ($filters['issues'] || $filters['stuck']) {
+            $chips[] = ['label' => $activeFilter, 'url' => $without('issues', 'stuck')];
+        }
+
+        return $chips;
     }
 
     private function filters(Request $request): array
@@ -195,14 +321,23 @@ class AdminOrderController extends Controller
         if ($filters['issues']) {
             $query->where(fn ($q) => $q
                 ->whereIn('id', $dashboard->stuckOrdersQuery()->select('id'))
-                ->orWhere('status', 'delivery_failed')
-                ->orWhere(fn ($sorted) => $sorted->where('status', 'sorted')->whereNull('courier_id')));
+                ->orWhere('status', 'delivery_failed'));
         }
         if ($filters['search'] !== '') {
             $search = $filters['search'];
+            $words = preg_split('/\s+/', $search);
+            // Nested so the OR branches stay inside the relation's own constraint.
+            $party = fn ($q) => $q->where(fn ($name) => $name->whereLike('first_name', "%{$search}%")
+                ->orWhereLike('last_name', "%{$search}%")
+                ->orWhereLike('business_name', "%{$search}%")
+                ->when(count($words) > 1, fn ($full) => $full->orWhere(fn ($both) => $both
+                    ->whereLike('first_name', '%'.$words[0].'%')
+                    ->whereLike('last_name', '%'.end($words).'%'))));
             $query->where(fn ($q) => $q->whereLike('order_number', "%{$search}%")
                 ->orWhereLike('waybill_number', "%{$search}%")
                 ->orWhereLike('product_name', "%{$search}%")
+                // A numeric search means an order id or number, never a person's name.
+                ->when(! ctype_digit($search), fn ($byName) => $byName->orWhereHas('buyer', $party)->orWhereHas('seller', $party))
                 ->when(ctype_digit($search), fn ($byId) => $byId->orWhere('id', (int) $search)));
         }
 

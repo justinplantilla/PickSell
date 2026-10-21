@@ -125,6 +125,7 @@ class RegistrationReviewTest extends TestCase
     public function test_review_history_is_retained_with_snapshot_and_shown(): void
     {
         $logistics = $this->user('logistics', 'pending', ['provider_type' => 'company']);
+        $logistics->forceFill(['email_verified_at' => now()])->save();
 
         $this->actingAs($this->admin)->patch(route('admin.registrations.approve', $logistics), [
             'checklist' => $this->allChecks($logistics),
@@ -240,15 +241,21 @@ class RegistrationReviewTest extends TestCase
         User::whereKey($old->id)->update(['created_at' => now()->subDays(10)]);
         $new = $this->user('buyer');
         $approved = $this->user('seller', 'approved', ['business_name' => 'Done Shop']);
+        $logistics = $this->user('logistics', 'pending', ['provider_type' => 'company']);
+        $logistics->forceFill(['email_verified_at' => now()])->save();
+        $individualLogistics = $this->user('logistics', 'pending', ['provider_type' => 'individual']);
         $courier = $this->user('courier');
 
         $this->actingAs($this->admin)->get(route('admin.registrations'))->assertOk()
             ->assertSeeInOrder([$old->email, $new->email])
             ->assertSee('Review / Decide')
             ->assertSee('registration-review-link')
-            ->assertSee('View Logistics review')
-            ->assertSee('registration-logistics-link')
-            ->assertDontSee($approved->email);
+            ->assertSee('Logistics company')
+            ->assertDontSee($approved->email)
+            ->assertSee($logistics->email)
+            ->assertDontSee($individualLogistics->email)
+            ->assertDontSee($courier->email)
+            ->assertDontSee('Courier');
         $this->actingAs($this->admin)->get(route('admin.registrations.show', $old))->assertOk()
             ->assertSee('class="btn registration-approve"', false)
             ->assertSee('class="btn registration-disapprove"', false);
@@ -260,6 +267,8 @@ class RegistrationReviewTest extends TestCase
             ->assertSee($old->email)->assertDontSee($new->email);
         $this->actingAs($this->admin)->get(route('admin.registrations', ['role' => 'buyer']))
             ->assertSee($new->email)->assertDontSee($old->email);
+        $this->actingAs($this->admin)->get(route('admin.registrations', ['role' => 'courier']))
+            ->assertDontSee($courier->email)->assertSee($old->email);
         $this->actingAs($this->admin)->get(route('admin.registrations', ['date' => 'older_7d']))
             ->assertSee($old->email)->assertDontSee($new->email);
         $this->actingAs($this->admin)->get(route('admin.registrations', ['status' => 'approved']))
