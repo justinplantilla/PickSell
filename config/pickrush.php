@@ -71,13 +71,10 @@ return [
         'other' => 'Other (note required)',
     ],
 
+    // What a rider uploads in the rider app: the license (their government ID) and the OR/CR.
     'rider_documents' => [
-        'gov_id' => 'Government ID',
         'drivers_license' => "Driver's license",
         'or_cr' => 'OR/CR (vehicle registration)',
-        'nbi_clearance' => 'NBI clearance',
-        'barangay_clearance' => 'Barangay clearance',
-        'selfie_with_id' => 'Selfie holding ID',
     ],
 
 ];

@@ -20,6 +20,13 @@
     </div>
 @endif
 
+@if($riderApplications)
+    <div class="pr-alert pr-alert-warn" role="status">
+        <strong>{{ $riderApplications }} rider {{ \Illuminate\Support\Str::plural('application', $riderApplications) }} to review.</strong>
+        <a href="{{ route('pickrush.station.riders.index', ['status' => 'pending']) }}">Review applications</a>
+    </div>
+@endif
+
 <div class="pr-grid">
     <a class="pr-card" href="{{ route('pickrush.station.receiving') }}" style="text-decoration:none;color:inherit"><div class="pr-stat-num">{{ number_format($inbound) }}</div><div class="pr-stat-label">On the way here</div></a>
     <div class="pr-card"><div class="pr-stat-num">{{ number_format($arrivedToday) }}</div><div class="pr-stat-label">Arrived today</div></div>

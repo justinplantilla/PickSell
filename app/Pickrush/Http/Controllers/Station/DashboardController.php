@@ -34,6 +34,7 @@ class DashboardController extends StationController
             'cashOnHand' => $cash->stationCashOnHand($station),
             'ridersOnShift' => $riders->where('status', 'active')->where('shift_status', 'on_shift')->count(),
             'ridersActive' => $riders->where('status', 'active')->count(),
+            'riderApplications' => $riders->whereIn('status', ['pending', 'under_review'])->count(),
             'needsAddressFix' => Parcel::where('needs_address_fix', true)->whereNotIn('current_status', [ParcelStatus::Cancelled, ParcelStatus::Delivered])->count(),
         ]);
     }

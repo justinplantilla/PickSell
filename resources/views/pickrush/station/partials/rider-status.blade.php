@@ -1,8 +1,7 @@
 @php
     [$class, $label] = match ($status) {
         'active' => ['pr-badge-ok', 'Active'],
-        'pending' => ['pr-badge-warn', 'Pending verification'],
-        'under_review' => ['pr-badge-brand', 'Verified, to approve'],
+        'pending', 'under_review' => ['pr-badge-warn', 'Application'],
         'suspended' => ['pr-badge-bad', 'Suspended'],
         'rejected' => ['pr-badge-bad', 'Rejected'],
         default => ['', ucfirst($status)],

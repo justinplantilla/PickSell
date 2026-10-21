@@ -134,9 +134,8 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
 
             Route::get('/riders', [Station\RiderController::class, 'index'])->name('riders.index');
             Route::get('/riders/{rider}', [Station\RiderController::class, 'show'])->whereNumber('rider')->name('riders.show');
-            Route::post('/riders/{rider}/verify', [Station\RiderController::class, 'verify'])->name('riders.verify');
             Route::patch('/riders/{rider}/shift', [Station\RiderController::class, 'shift'])->name('riders.shift');
-            Route::get('/riders/{rider}/documents/{document}', [Station\RiderController::class, 'document'])->middleware('signed')->name('riders.document');
+            Route::get('/riders/{rider}/documents/{document}', [Station\RiderController::class, 'document'])->middleware('signed:relative')->name('riders.document');
 
             Route::get('/zones', [Station\ZoneController::class, 'index'])->name('zones.index');
 
@@ -144,10 +143,7 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
 
             // Hub manager only.
             Route::middleware('pickrush.station:manager')->group(function () {
-                Route::get('/riders/create', [Station\RiderController::class, 'create'])->name('riders.create');
-                Route::post('/riders', [Station\RiderController::class, 'store'])->name('riders.store');
                 Route::put('/riders/{rider}', [Station\RiderController::class, 'update'])->name('riders.update');
-                Route::post('/riders/{rider}/documents', [Station\RiderController::class, 'uploadDocument'])->name('riders.documents.store');
                 Route::post('/riders/{rider}/approve', [Station\RiderController::class, 'approve'])->name('riders.approve');
                 Route::post('/riders/{rider}/status', [Station\RiderController::class, 'changeStatus'])->name('riders.status');
                 Route::patch('/riders/{rider}/limits', [Station\RiderController::class, 'limits'])->name('riders.limits');
