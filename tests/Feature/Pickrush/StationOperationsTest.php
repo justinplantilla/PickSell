@@ -419,7 +419,8 @@ class StationOperationsTest extends TestCase
         $b = Zone::where('name', 'Zone B')->sole();
         $this->assertSame(['041029001'], $a->barangayLinks()->pluck('barangay_code')->all());
         $this->assertEqualsCanonicalizing(['041029002', '041029003'], $b->barangayLinks()->pluck('barangay_code')->all());
-        $this->assertSame(['No approved rider'], $this->tanauan->fresh()->readinessGaps(), 'manager and zones are in place; only a rider is missing');
+        $this->tanauan->update(['lat' => 14.0863, 'lng' => 121.1497]);
+        $this->assertSame(['No approved rider'], $this->tanauan->fresh()->readinessGaps(), 'manager, zones and map pin are in place; only a rider is missing');
     }
 
     // Pages -----------------------------------------------------------------------------------

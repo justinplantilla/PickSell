@@ -139,6 +139,10 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
 
             Route::get('/zones', [Station\ZoneController::class, 'index'])->name('zones.index');
 
+            Route::get('/location', [Station\LocationController::class, 'show'])->name('location');
+            Route::get('/location/barangays', [Station\LocationController::class, 'barangays'])->name('location.barangays');
+            Route::post('/rider-reports/{report}/resolve', [Station\LocationController::class, 'resolveReport'])->name('rider-reports.resolve');
+
             Route::get('/cash', [Station\CashController::class, 'index'])->name('cash');
 
             // Hub manager only.
@@ -147,6 +151,8 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
                 Route::post('/riders/{rider}/approve', [Station\RiderController::class, 'approve'])->name('riders.approve');
                 Route::post('/riders/{rider}/status', [Station\RiderController::class, 'changeStatus'])->name('riders.status');
                 Route::patch('/riders/{rider}/limits', [Station\RiderController::class, 'limits'])->name('riders.limits');
+
+                Route::put('/location', [Station\LocationController::class, 'update'])->name('location.update');
 
                 Route::get('/zones/create', [Station\ZoneController::class, 'create'])->name('zones.create');
                 Route::post('/zones', [Station\ZoneController::class, 'store'])->name('zones.store');

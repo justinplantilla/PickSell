@@ -7,6 +7,7 @@ use App\Pickrush\Models\Assignment;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\ParcelEvent;
 use App\Pickrush\Models\Rider;
+use App\Pickrush\Models\RiderReport;
 use App\Pickrush\Services\Station\CashHandling;
 
 class DashboardController extends StationController
@@ -35,6 +36,7 @@ class DashboardController extends StationController
             'ridersOnShift' => $riders->where('status', 'active')->where('shift_status', 'on_shift')->count(),
             'ridersActive' => $riders->where('status', 'active')->count(),
             'riderApplications' => $riders->whereIn('status', ['pending', 'under_review'])->count(),
+            'riderReports' => RiderReport::with('rider', 'batch')->where('station_hub_id', $station->id)->whereNull('resolved_at')->latest()->get(),
             'needsAddressFix' => Parcel::where('needs_address_fix', true)->whereNotIn('current_status', [ParcelStatus::Cancelled, ParcelStatus::Delivered])->count(),
         ]);
     }

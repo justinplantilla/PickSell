@@ -23,6 +23,7 @@ final class Navigation
                 ['label' => 'Trips', 'route' => 'pickrush.station.trips.index', 'active' => 'pickrush.station.trips.*'],
                 ['label' => 'Riders', 'route' => 'pickrush.station.riders.index', 'active' => 'pickrush.station.riders.*'],
                 ['label' => 'Zones', 'route' => 'pickrush.station.zones.index', 'active' => 'pickrush.station.zones.*'],
+                ['label' => 'Location', 'route' => 'pickrush.station.location', 'active' => 'pickrush.station.location*'],
                 ['label' => 'Cash (COD)', 'route' => 'pickrush.station.cash', 'active' => 'pickrush.station.cash*'],
                 ['label' => 'Exceptions', 'route' => 'pickrush.exceptions.index', 'active' => 'pickrush.exceptions.*'],
                 ['label' => 'Parcels', 'route' => 'pickrush.parcels.index', 'active' => 'pickrush.parcels.*'],

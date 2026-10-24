@@ -17,6 +17,7 @@ final class RiderProfile
             'id' => $rider->id,
             'status' => $rider->status,
             'status_reason' => $rider->status_reason,
+            'shift_status' => $rider->shift_status,
             'first_name' => $rider->first_name,
             'last_name' => $rider->last_name,
             'full_name' => $rider->full_name,

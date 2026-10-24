@@ -15,7 +15,13 @@
         <tbody>
         @forelse($parcels as $parcel)
             <tr>
-                <td><a href="{{ route('pickrush.parcels.show', $parcel) }}">{{ $parcel->tracking_no }}</a></td>
+                <td>
+                    <a href="{{ route('pickrush.parcels.show', $parcel) }}">{{ $parcel->tracking_no }}</a>
+                    @if($withRider = $parcel->assignments->first())
+                        <div><span class="pr-badge pr-badge-warn">Still with {{ $withRider->rider?->full_name }}</span></div>
+                        <div class="pr-muted">Scan it in at Receiving when they return.</div>
+                    @endif
+                </td>
                 <td>{{ $parcel->consignee_name }}<div class="pr-muted">{{ $parcel->consignee_mobile }}</div></td>
                 <td>{{ $parcel->events->last()?->note ?? '—' }}<div class="pr-muted">{{ $parcel->events->last()?->occurred_at->diffForHumans() }}</div></td>
                 <td class="pr-num">

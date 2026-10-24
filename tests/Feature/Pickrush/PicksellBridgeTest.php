@@ -85,6 +85,25 @@ class PicksellBridgeTest extends TestCase
         $this->assertSame(1, Parcel::withoutGlobalScopes()->count(), 'one parcel per order');
     }
 
+    public function test_the_seller_shop_pin_follows_parcels_still_waiting_for_a_rider(): void
+    {
+        $this->seller->update(['pickup_lat' => 14.0900, 'pickup_lng' => 121.1500]);
+        [, $booked] = $this->handedOver();
+        $this->assertEqualsWithDelta(14.09, (float) $booked->pickup_lat, 1e-6, 'booking copies the shop pin');
+
+        [, $collected] = $this->handedOver();
+        $this->scan($collected, ParcelStatus::PickedUp, '041029000');
+
+        $this->actingAs($this->seller)->patch(config('app.url').'/seller/account/pickup-location', ['lat' => 14.0950, 'lng' => 121.1550])
+            ->assertSessionHasNoErrors();
+        $this->assertEqualsWithDelta(14.095, (float) $booked->fresh()->pickup_lat, 1e-6);
+        $this->assertEqualsWithDelta(14.09, (float) $collected->fresh()->pickup_lat, 1e-6, 'a parcel already collected keeps where it was picked up');
+
+        $this->actingAs($this->seller)->patch(config('app.url').'/seller/account/pickup-location', ['lat' => 40.7, 'lng' => -74.0])
+            ->assertSessionHasErrors('lat');
+        $this->actingAs($this->seller)->get(config('app.url').'/seller/account')->assertOk()->assertSee('Shop Pin for Pickups');
+    }
+
     public function test_every_hub_scan_reaches_the_order_and_the_buyer(): void
     {
         Notification::fake();

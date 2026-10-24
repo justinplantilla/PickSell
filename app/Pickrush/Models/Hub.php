@@ -85,6 +85,9 @@ class Hub extends Model
             if (! Rider::withoutGlobalScopes()->where('station_hub_id', $this->id)->where('status', 'active')->exists()) {
                 $gaps[] = 'No approved rider';
             }
+            if ($this->lat === null || $this->lng === null) {
+                $gaps[] = 'No map pin: riders cannot navigate here or confirm arrival (set it under Location)';
+            }
         }
 
         return $gaps;

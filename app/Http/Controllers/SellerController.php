@@ -863,6 +863,20 @@ class SellerController extends Controller
         return back()->with('success', 'Account updated successfully.');
     }
 
+    /** The shop pin Pickrush riders check "Arrived" against (and navigate to). */
+    public function updatePickupLocation(Request $request)
+    {
+        $data = $request->validate([
+            'lat' => 'required|numeric|between:4,22',      // the Philippines
+            'lng' => 'required|numeric|between:116,127',
+        ], ['lat.required' => 'Drop a pin on the map first.', 'lat.between' => 'Pin a spot inside the Philippines.', 'lng.between' => 'Pin a spot inside the Philippines.']);
+        $seller = auth()->user();
+        $seller->update(['pickup_lat' => $data['lat'], 'pickup_lng' => $data['lng']]);
+        \App\Pickrush\Bridge\PicksellBridge::sellerPinned($seller);
+
+        return back()->with('success', 'Shop pin saved. Pickrush riders will come to this spot.');
+    }
+
     public function updatePassword(Request $request)
     {
         $request->validate(['current_password' => 'required', 'password' => 'required|min:8|confirmed']);

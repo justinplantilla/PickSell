@@ -47,6 +47,8 @@ class PicksellBridge
             'pickup_address' => self::address($seller),
             'pickup_barangay_code' => $pickup['barangay_code'],
             'pickup_municipality_code' => $pickup['municipality_code'],
+            'pickup_lat' => $seller?->pickup_lat,
+            'pickup_lng' => $seller?->pickup_lng,
             'consignee_name' => $buyer?->full_name ?? 'Picksell buyer',
             'consignee_mobile' => $buyer?->contact_no,
             'delivery_address' => self::address($buyer),
@@ -71,6 +73,34 @@ class PicksellBridge
             "Pickrush already has parcel {$parcel->tracking_no} ({$parcel->current_status->label()}); it cannot be cancelled, only returned.");
 
         $this->ledger->record($parcel, ParcelStatus::Cancelled, null, ['note' => $reason, 'actor' => Actor::picksell()]);
+    }
+
+    /**
+     * The seller moved their shop pin: parcels still waiting for a rider follow it, so the rider
+     * app checks arrival against the new spot.
+     */
+    public static function sellerPinned(User $seller): int
+    {
+        $orderIds = Order::where('seller_id', $seller->id)->pluck('id')->map(fn ($id) => (string) $id);
+
+        return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->whereIn('external_ref', $orderIds)
+            ->where('current_status', ParcelStatus::WaitingPickup)
+            ->update(['pickup_lat' => $seller->pickup_lat, 'pickup_lng' => $seller->pickup_lng]);
+    }
+
+    /**
+     * Marketplace order numbers for the rider app (parcel id => order number).
+     *
+     * @param  iterable<Parcel>  $parcels
+     * @return array<int, string>
+     */
+    public static function orderNumbers(iterable $parcels): array
+    {
+        $parcels = collect($parcels)->where('source', self::SOURCE);
+        $numbers = Order::whereIn('id', $parcels->pluck('external_ref')->map(fn ($ref) => (int) $ref))->pluck('order_number', 'id');
+
+        return $parcels->mapWithKeys(fn (Parcel $parcel) => [$parcel->id => $numbers[(int) $parcel->external_ref] ?? null])
+            ->filter()->all();
     }
 
     public static function parcelFor(Order $order): ?Parcel
