@@ -10,31 +10,41 @@
 <div class="pr-page-head">
     <div>
         <h1>{{ $rider->full_name }}</h1>
-        <p>{{ $rider->mobile_no }} · created by {{ $rider->creator?->full_name }} {{ $rider->created_at->diffForHumans() }} · <a href="{{ route('pickrush.station.riders.index') }}">All riders</a></p>
+        <p>{{ $rider->mobile_no }}@if($rider->email) · {{ $rider->email }}@endif ·
+            @if($rider->appliedInApp()) applied in the rider app {{ ($rider->applied_at ?? $rider->created_at)->diffForHumans() }}
+            @else added by {{ $rider->creator?->full_name }} {{ $rider->created_at->diffForHumans() }}@endif
+            · <a href="{{ route('pickrush.station.riders.index') }}">All riders</a></p>
     </div>
     @include('pickrush.station.partials.rider-status', ['status' => $rider->status])
 </div>
 
 @if($rider->status_reason)<div class="pr-alert pr-alert-warn">Reason: {{ $rider->status_reason }}</div>@endif
+@if($rider->approved_at)<p class="pr-muted">Approved by {{ $rider->approver?->full_name }} on {{ $rider->approved_at->format('M d, Y') }}.</p>@endif
 
-{{-- Next step in onboarding --}}
-@if($rider->status === 'pending')
-    <div class="pr-alert pr-alert-warn">
-        <strong>Step 2: a second staff member verifies identity, licence validity and that the OR/CR plate matches.</strong>
-        @if($rider->created_by === $me->id)<div>You created this account, so someone else must verify it.</div>
-        @else
-            <form method="POST" action="{{ route('pickrush.station.riders.verify', $rider) }}" class="pr-actions">@csrf
-                <button class="pr-btn pr-btn-primary" type="submit">I checked the documents in person: verify</button></form>
+{{-- Application review: the hub manager decides; the rider has no access until approved. --}}
+@if($rider->isApplication())
+    @php $missing = array_diff($required, $uploaded); @endphp
+    <section class="pr-card" style="margin-bottom:1rem">
+        <h2>Application</h2>
+        <dl class="pr-dl">
+            <dt>Name</dt><dd>{{ $rider->full_name }}</dd>
+            <dt>Birthdate</dt><dd>{{ $rider->birthdate?->format('M d, Y') ?? '—' }}@if($rider->birthdate) ({{ $rider->birthdate->age }} years old)@endif</dd>
+            <dt>Address</dt><dd>{{ $rider->address ?? '—' }}</dd>
+            <dt>Vehicle</dt><dd>{{ \App\Pickrush\Models\Rider::VEHICLE_TYPES[$rider->vehicle_type] ?? ucfirst((string) $rider->vehicle_type) }} · plate {{ $rider->plate_no ?? '—' }}</dd>
+            <dt>License no.</dt><dd>{{ $rider->license_no ?? '—' }}</dd>
+        </dl>
+        <p><strong>Before approving:</strong> open the license and OR/CR below. Check that the license photo matches the applicant and has not expired, and that the plate on the OR/CR matches. Interview the rider at the station if anything is unclear.</p>
+        @if($missing)
+            <div class="pr-alert pr-alert-warn">Missing: {{ collect($missing)->map(fn ($type) => config("pickrush.rider_documents.{$type}"))->join(', ') }}. Reject with a reason so the rider can resubmit.</div>
         @endif
-    </div>
-@elseif($rider->status === 'under_review')
-    <div class="pr-alert pr-alert-warn">
-        <strong>Step 3: verified by {{ $rider->verifier?->full_name }}. The hub manager approves the account.</strong>
         @if($isManager)
             <form method="POST" action="{{ route('pickrush.station.riders.approve', $rider) }}" class="pr-actions">@csrf
-                <button class="pr-btn pr-btn-primary" type="submit">Approve rider</button></form>
+                <button class="pr-btn pr-btn-primary" type="submit" @disabled($missing)>Approve rider</button></form>
+            <p class="pr-muted">To reject, use Account below and give the reason. The rider sees it in the app and can resubmit.</p>
+        @else
+            <p class="pr-muted">The hub manager approves or rejects applications.</p>
         @endif
-    </div>
+    </section>
 @endif
 
 <div class="pr-two">
@@ -68,10 +78,10 @@
             @foreach(config('pickrush.rider_documents') as $type => $label)
                 @php $docs = $rider->documents->where('doc_type', $type); @endphp
                 <tr>
-                    <td>{{ $label }}@if(in_array($type, $required, true)) <span class="pr-muted">(required)</span>@endif</td>
+                    <td>{{ $label }}</td>
                     <td>
                         @forelse($docs as $doc)
-                            <a href="{{ $documentLinks[$doc->id] }}" target="_blank" rel="noopener">View</a>
+                            <a href="{{ $documentLinks[$doc->id] }}" target="_blank" rel="noopener">{{ $doc->side ? 'View '.$doc->side : 'View' }}</a>
                             @if($doc->expiry_date)<span @class(['pr-badge', 'pr-badge-bad' => $doc->isExpired()])>{{ $doc->isExpired() ? 'Expired' : 'Expires' }} {{ $doc->expiry_date->format('M d, Y') }}</span>@endif
                         @empty
                             <span class="pr-muted">Not uploaded</span>
@@ -81,17 +91,7 @@
             @endforeach
             </tbody>
         </table>
-        @if($isManager)
-            <form method="POST" action="{{ route('pickrush.station.riders.documents.store', $rider) }}" enctype="multipart/form-data" class="pr-form-grid" style="margin-top:1rem">
-                @csrf
-                <div class="pr-field"><label for="doc_type">Document</label>
-                    <select id="doc_type" name="doc_type" class="pr-select">@foreach(config('pickrush.rider_documents') as $type => $label)<option value="{{ $type }}">{{ $label }}</option>@endforeach</select></div>
-                <div class="pr-field"><label for="file">File (JPG, PNG, PDF)</label><input id="file" type="file" name="file" accept=".jpg,.jpeg,.png,.pdf" required></div>
-                <div class="pr-field"><label for="expiry_date">Expiry date</label><input id="expiry_date" type="date" name="expiry_date" class="pr-input"></div>
-                <div class="pr-field" style="justify-content:flex-end"><button class="pr-btn pr-btn-outline" type="submit">Upload</button></div>
-            </form>
-            <p class="pr-muted">Files are private. Links open for 10 minutes and every view is logged.</p>
-        @endif
+        <p class="pr-muted">Uploaded by the rider in the app. Files are private: links work for 10 minutes and every view is logged.</p>
     </section>
 </div>
 

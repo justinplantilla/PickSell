@@ -60,6 +60,37 @@ return [
         'cod_fee_percent' => 1.5,
     ],
 
+    // What a rider earns per finished task, shown in the rider app (today's earnings, a batch's
+    // estimate). PLACEHOLDER amounts: replace with the real rider rates.
+    'rider_pay' => [
+        'pickup_per_parcel' => 15,
+        'delivery_per_parcel' => 35,
+    ],
+
+    // "Arrived" near a pinned seller or station (metres). The rider's distance is always recorded;
+    // only when enforced is a rider farther than this refused (off for now: set
+    // PICKRUSH_ENFORCE_ARRIVAL_RADIUS=true to lock the slider again).
+    'arrival_radius_m' => 150,
+    'enforce_arrival_radius' => (bool) env('PICKRUSH_ENFORCE_ARRIVAL_RADIUS', false),
+
+    // Why a rider could not collect a parcel at the seller (it goes back to the pickup queue).
+    'pickup_failure_reasons' => [
+        'not_ready' => 'Parcel not ready yet',
+        'seller_unavailable' => 'Seller not around / shop closed',
+        'no_waybill' => 'No waybill on the parcel',
+        'damaged' => 'Parcel damaged or not sealed',
+        'other' => 'Other (note required)',
+    ],
+
+    // "Report a problem" in the rider app; the station sees it on its dashboard.
+    'rider_problems' => [
+        'vehicle' => 'Vehicle problem',
+        'accident' => 'Accident',
+        'cannot_find' => "Can't find the location",
+        'too_many_parcels' => "Parcels don't fit my vehicle",
+        'other' => 'Other',
+    ],
+
     // Closed list so failure reports are comparable across hubs.
     'failure_reasons' => [
         'buyer_unavailable' => 'Buyer unavailable (no answer, nobody home)',
@@ -71,13 +102,10 @@ return [
         'other' => 'Other (note required)',
     ],
 
+    // What a rider uploads in the rider app: the license (their government ID) and the OR/CR.
     'rider_documents' => [
-        'gov_id' => 'Government ID',
         'drivers_license' => "Driver's license",
         'or_cr' => 'OR/CR (vehicle registration)',
-        'nbi_clearance' => 'NBI clearance',
-        'barangay_clearance' => 'Barangay clearance',
-        'selfie_with_id' => 'Selfie holding ID',
     ],
 
 ];

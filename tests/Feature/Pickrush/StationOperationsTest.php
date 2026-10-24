@@ -243,6 +243,7 @@ class StationOperationsTest extends TestCase
     public function test_delivery_needs_the_exact_cod_and_failed_attempts_need_a_reason(): void
     {
         $rider = $this->rider($this->sanJose);
+        $applicant = $this->rider($this->sanJose, ['status' => 'pending', 'created_by' => null, 'first_name' => 'Ana', 'last_name' => 'Reyes', 'applied_at' => now()]);
         $parcel = $this->bringToSanJose($this->parcel());
         $this->as($this->sanJoseManager);
         $tasks = app(RiderTaskService::class);
@@ -353,36 +354,46 @@ class StationOperationsTest extends TestCase
 
     // Riders ----------------------------------------------------------------------------------
 
-    public function test_rider_onboarding_needs_documents_and_a_second_person(): void
+    public function test_hub_manager_approves_an_application_once_the_documents_are_in(): void
     {
         Storage::fake('local');
-        $form = [
-            'full_name' => 'Ramon Cruz', 'mobile_no' => '09181112222', 'birthdate' => '1995-02-02', 'address' => 'Bagbag, Tanauan',
-            'emergency_contact_name' => 'Liza Cruz', 'emergency_contact_no' => '09183334444', 'vehicle_type' => 'motorcycle', 'plate_no' => 'NAB 1234',
-        ];
-        $this->as($this->dispatcher)->post($this->pickrushUrl('/station/riders'), $form)->assertForbidden();
-        $this->as($this->manager)->post($this->pickrushUrl('/station/riders'), $form)->assertRedirect();
-        $rider = Rider::sole();
-        $this->assertSame(['pending', '3000.00', 20, true], [$rider->status, $rider->cod_limit, $rider->max_parcels, $rider->on_probation]);
+        $rider = $this->rider($this->tanauan, ['status' => 'pending', 'shift_status' => 'off_duty', 'created_by' => null, 'applied_at' => now()]);
 
-        $this->as($this->dispatcher)->post($this->pickrushUrl("/station/riders/{$rider->id}/verify"))->assertSessionHas('errors', fn ($bag) => str_contains($bag->first('operation'), 'Missing documents'));
-        foreach (['gov_id', 'drivers_license', 'selfie_with_id', 'or_cr'] as $type) {
-            $this->as($this->manager)->post($this->pickrushUrl("/station/riders/{$rider->id}/documents"), [
-                'doc_type' => $type, 'file' => UploadedFile::fake()->create("{$type}.pdf", 50, 'application/pdf'), 'expiry_date' => now()->addYear()->toDateString(),
-            ])->assertSessionHasNoErrors();
+        $this->as($this->dispatcher)->post($this->pickrushUrl("/station/riders/{$rider->id}/approve"))->assertForbidden();
+        $this->as($this->manager)->post($this->pickrushUrl("/station/riders/{$rider->id}/approve"))->assertSessionHas('errors', fn ($bag) => str_contains($bag->first('operation'), 'Missing documents'));
+        // The rider uploads these in the app; the station only views them.
+        foreach (['drivers_license', 'or_cr'] as $type) {
+            $rider->documents()->create(['doc_type' => $type, 'expiry_date' => now()->addYear()->toDateString(),
+                'file_path' => UploadedFile::fake()->create("{$type}.jpg", 50, 'image/jpeg')->store("pickrush/riders/{$rider->id}", 'local')]);
         }
-        Storage::disk('local')->assertExists($rider->documents()->first()->file_path);
+        $this->as($this->dispatcher)->get($this->pickrushUrl('/station'))->assertOk()->assertSee('1 rider application to review');
+        $this->as($this->manager)->get($this->pickrushUrl("/station/riders/{$rider->id}"))->assertOk()
+            ->assertDontSee('NBI clearance')->assertDontSee('type="file"', false);
 
-        $this->as($this->manager)->post($this->pickrushUrl("/station/riders/{$rider->id}/verify"))->assertSessionHas('errors', fn ($bag) => str_contains($bag->first('operation'), 'cannot verify it'));
-        $this->as($this->manager)->post($this->pickrushUrl("/station/riders/{$rider->id}/approve"))->assertSessionHas('errors', fn ($bag) => str_contains($bag->first('operation'), 'Approve after'));
-        $this->as($this->dispatcher)->post($this->pickrushUrl("/station/riders/{$rider->id}/verify"))->assertSessionHasNoErrors();
         $this->as($this->manager)->post($this->pickrushUrl("/station/riders/{$rider->id}/approve"))->assertSessionHasNoErrors();
-        $this->assertSame(['active', $this->dispatcher->id, $this->manager->id], [$rider->fresh()->status, $rider->fresh()->verified_by, $rider->fresh()->approved_by]);
+        $this->assertSame(['active', $this->manager->id], [$rider->fresh()->status, $rider->fresh()->approved_by]);
+        $this->as($this->manager)->post($this->pickrushUrl("/station/riders/{$rider->id}/approve"))->assertSessionHas('errors', fn ($bag) => str_contains($bag->first('operation'), 'Only a pending application'));
 
         // Documents only open through a signed, short-lived link.
         $doc = $rider->documents()->first();
         $this->as($this->manager)->get($this->pickrushUrl("/station/riders/{$rider->id}/documents/{$doc->id}"))->assertForbidden();
-        $this->as($this->manager)->get($this->pickrushUrl("/station/riders/{$rider->id}"))->assertOk()->assertSee('signature=', false);
+        $page = $this->as($this->manager)->get($this->pickrushUrl("/station/riders/{$rider->id}"))->assertOk()->getContent();
+        preg_match('#href="(/station/riders/\d+/documents/'.$doc->id.'\?[^"]+)"#', $page, $link);
+        $this->assertNotEmpty($link, 'the page links the document by a signed path');
+
+        // The tunnel hands requests to Picksell over plain http; the link still opens there.
+        $this->as($this->manager)->get('http://'.config('pickrush.domain').html_entity_decode($link[1]))->assertOk();
+    }
+
+    public function test_a_rejected_application_keeps_the_reason_and_cannot_get_parcels(): void
+    {
+        $rider = $this->rider($this->tanauan, ['status' => 'pending', 'shift_status' => 'off_duty', 'created_by' => null]);
+
+        $this->as($this->manager)->post($this->pickrushUrl("/station/riders/{$rider->id}/status"), ['action' => 'reject'])->assertSessionHasErrors('reason');
+        $this->as($this->manager)->post($this->pickrushUrl("/station/riders/{$rider->id}/status"), ['action' => 'reject', 'reason' => 'License photo is blurry'])->assertSessionHasNoErrors();
+        $this->assertSame(['rejected', 'License photo is blurry'], [$rider->fresh()->status, $rider->fresh()->status_reason]);
+
+        $this->expectRefusal(fn () => app(DispatchService::class)->assign($this->parcel(), $rider->fresh(), $this->manager), 'not active');
     }
 
     public function test_stations_only_see_their_own_riders_and_hq_cannot_use_the_station_portal(): void
@@ -408,7 +419,8 @@ class StationOperationsTest extends TestCase
         $b = Zone::where('name', 'Zone B')->sole();
         $this->assertSame(['041029001'], $a->barangayLinks()->pluck('barangay_code')->all());
         $this->assertEqualsCanonicalizing(['041029002', '041029003'], $b->barangayLinks()->pluck('barangay_code')->all());
-        $this->assertSame(['No approved rider'], $this->tanauan->fresh()->readinessGaps(), 'manager and zones are in place; only a rider is missing');
+        $this->tanauan->update(['lat' => 14.0863, 'lng' => 121.1497]);
+        $this->assertSame(['No approved rider'], $this->tanauan->fresh()->readinessGaps(), 'manager, zones and map pin are in place; only a rider is missing');
     }
 
     // Pages -----------------------------------------------------------------------------------
@@ -416,12 +428,13 @@ class StationOperationsTest extends TestCase
     public function test_every_station_page_renders(): void
     {
         $rider = $this->rider($this->sanJose);
+        $applicant = $this->rider($this->sanJose, ['status' => 'pending', 'created_by' => null, 'first_name' => 'Ana', 'last_name' => 'Reyes', 'applied_at' => now()]);
         $parcel = $this->bringToSanJose($this->parcel());
         $trip = Manifest::where('to_hub_id', $this->sanJose->id)->sole();
 
         foreach (['/station', '/station/receiving', '/station/dispatch', '/station/dispatch?view=pickups', '/station/dispatch?view=assigned',
             '/station/failed', '/station/trips', "/station/trips/{$trip->manifest_no}", '/station/riders', "/station/riders/{$rider->id}",
-            '/station/riders/create', '/station/zones', '/station/zones/create', '/station/cash', '/parcels', "/parcels/{$parcel->tracking_no}"] as $page) {
+            '/station/riders?status=pending', "/station/riders/{$applicant->id}", '/station/zones', '/station/zones/create', '/station/cash', '/parcels', "/parcels/{$parcel->tracking_no}"] as $page) {
             $this->as($this->sanJoseManager)->get($this->pickrushUrl($page))->assertOk();
         }
     }

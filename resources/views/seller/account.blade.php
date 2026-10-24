@@ -65,6 +65,23 @@
     </div>
 
     <div>
+        <div class="card" id="pickup-location">
+            <div class="card-header"><span class="card-title">Shop Pin for Pickups</span></div>
+            <div class="card-body">
+                <p class="blade-inline-12">Pin where Pickrush riders collect your parcels. Riders can only confirm they arrived when they are near this pin, so place it at your shop's door.</p>
+                @if(auth()->user()->pickup_lat === null)
+                    <div class="alert alert-warning" style="margin-bottom:.75rem">No pin yet. Riders will rely on your typed address until you set one.</div>
+                @endif
+                <form method="POST" action="{{ route('seller.account.pickup-location') }}">
+                    @csrf @method('PATCH')
+                    @include('partials.map-pin', ['id' => 'seller-pin', 'lat' => auth()->user()->pickup_lat, 'lng' => auth()->user()->pickup_lng])
+                    @error('lat')<div class="blade-inline-1">{{ $message }}</div>@enderror
+                    @error('lng')<div class="blade-inline-1">{{ $message }}</div>@enderror
+                    <button type="submit" class="btn btn-coral" style="margin-top:.75rem">Save Pin</button>
+                </form>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header"><span class="card-title">Change Password</span></div>
             <div class="card-body">

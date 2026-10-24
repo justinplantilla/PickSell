@@ -17,7 +17,7 @@ class Assignment extends Model
 
     protected $guarded = ['id'];
 
-    protected $casts = ['assigned_at' => 'datetime', 'completed_at' => 'datetime', 'cod_collected' => 'decimal:2'];
+    protected $casts = ['assigned_at' => 'datetime', 'arrived_at' => 'datetime', 'loaded_at' => 'datetime', 'completed_at' => 'datetime', 'returned_at' => 'datetime', 'cod_collected' => 'decimal:2'];
 
     public const OPEN = ['assigned', 'out_for_delivery'];
 
@@ -29,6 +29,12 @@ class Assignment extends Model
     public function rider()
     {
         return $this->belongsTo(Rider::class)->withoutGlobalScopes();
+    }
+
+    /** The pickup batch this task was offered in, if any. */
+    public function batch()
+    {
+        return $this->belongsTo(RiderBatch::class, 'batch_id');
     }
 
     public function isOpen(): bool

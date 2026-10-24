@@ -10,6 +10,7 @@ use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\OperationRefused;
 use App\Pickrush\Services\ParcelLedger;
+use App\Pickrush\Services\Rider\RiderBatches;
 use App\Pickrush\Support\Actor;
 use Illuminate\Support\Facades\DB;
 
@@ -20,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  */
 class DispatchService
 {
-    public function __construct(private ParcelLedger $ledger, private RiderAvailability $availability) {}
+    public function __construct(private ParcelLedger $ledger, private RiderAvailability $availability, private RiderBatches $batches) {}
 
     /** What kind of rider task this parcel needs at this station right now, or null if none. */
     public static function taskFor(Parcel $parcel, Hub $station): ?string
@@ -41,6 +42,16 @@ class DispatchService
         return $ready ? ($parcel->is_return ? 'return' : 'delivery') : null;
     }
 
+    /**
+     * Assignments of a parcel the rider could not deliver and has not handed back yet (it is still
+     * on their vehicle until it is scanned in at Receiving).
+     */
+    public static function stillWithRider($query)
+    {
+        return $query->where('pr_assignments.type', 'delivery')->where('pr_assignments.status', 'failed')
+            ->whereNotNull('pr_assignments.batch_id')->whereNull('pr_assignments.returned_at');
+    }
+
     public function assign(Parcel $parcel, Rider $rider, Staff $staff): Assignment
     {
         return DB::transaction(function () use ($parcel, $rider, $staff) {
@@ -54,6 +65,9 @@ class DispatchService
             }
             if ($parcel->openAssignment()->exists()) {
                 throw new OperationRefused("{$parcel->tracking_no} already has a rider. Reassign it instead.");
+            }
+            if ($parcel->assignments()->where(fn ($q) => self::stillWithRider($q))->exists()) {
+                throw new OperationRefused("{$parcel->tracking_no} is still with the rider who tried to deliver it. Scan it in at Receiving when they return.");
             }
             if ($type === 'delivery' && $parcel->attempt_count >= config('pickrush.policies.max_delivery_attempts')) {
                 throw new OperationRefused("{$parcel->tracking_no} has reached the delivery attempt limit; return it to the seller.");
@@ -103,6 +117,7 @@ class DispatchService
             if ($assignment->type !== 'pickup') {
                 $this->ledger->record($assignment->parcel, ParcelStatus::ArrivedAtStation, $staff->hub, ['note' => "Unassigned: {$reason}"]);
             }
+            $this->batches->taskTakenBack($assignment, $reason);
         });
     }
 }

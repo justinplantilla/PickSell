@@ -20,6 +20,28 @@
     </div>
 @endif
 
+@foreach($riderReports as $report)
+    <div class="pr-alert pr-alert-bad" role="alert">
+        <strong>{{ $report->rider->full_name }} reported: {{ $report->label() }}</strong>
+        @if($report->batch) · batch #{{ $report->batch->batch_no }}@endif
+        · {{ $report->created_at->diffForHumans() }}
+        @if($report->rider->mobile_no) · <a href="tel:{{ $report->rider->mobile_no }}">{{ $report->rider->mobile_no }}</a>@endif
+        @if($report->note)<div>{{ $report->note }}</div>@endif
+        @if($report->lat !== null)<div><a href="https://www.google.com/maps/search/?api=1&amp;query={{ $report->lat }},{{ $report->lng }}" target="_blank" rel="noopener">Rider's location</a></div>@endif
+        <form method="POST" action="{{ route('pickrush.station.rider-reports.resolve', $report) }}" class="pr-inline" style="margin-top:.4rem">
+            @csrf
+            <button type="submit" class="pr-btn pr-btn-outline pr-btn-sm">Mark handled</button>
+        </form>
+    </div>
+@endforeach
+
+@if($riderApplications)
+    <div class="pr-alert pr-alert-warn" role="status">
+        <strong>{{ $riderApplications }} rider {{ \Illuminate\Support\Str::plural('application', $riderApplications) }} to review.</strong>
+        <a href="{{ route('pickrush.station.riders.index', ['status' => 'pending']) }}">Review applications</a>
+    </div>
+@endif
+
 <div class="pr-grid">
     <a class="pr-card" href="{{ route('pickrush.station.receiving') }}" style="text-decoration:none;color:inherit"><div class="pr-stat-num">{{ number_format($inbound) }}</div><div class="pr-stat-label">On the way here</div></a>
     <div class="pr-card"><div class="pr-stat-num">{{ number_format($arrivedToday) }}</div><div class="pr-stat-label">Arrived today</div></div>

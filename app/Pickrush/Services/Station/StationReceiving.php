@@ -11,15 +11,17 @@ use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\ManifestService;
 use App\Pickrush\Services\OperationRefused;
 use App\Pickrush\Services\ParcelLedger;
+use App\Pickrush\Services\Rider\RiderBatches;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The station's receiving scan. One scan box handles the three ways a parcel walks in:
- * a seller dropping it off, a rider bringing in a pickup, and a trip from the province hub.
+ * The station's receiving scan. One scan box handles the ways a parcel walks in: a seller
+ * dropping it off, a rider bringing in a pickup, a trip from the province hub, and a delivery
+ * rider handing back a parcel they could not deliver.
  */
 class StationReceiving
 {
-    public function __construct(private ParcelLedger $ledger, private ManifestService $manifests) {}
+    public function __construct(private ParcelLedger $ledger, private ManifestService $manifests, private RiderBatches $batches) {}
 
     /** @return string what happened, for the scan screen */
     public function scan(string $trackingNo, Staff $staff, ?string $idempotencyKey = null): string
@@ -58,6 +60,21 @@ class StationReceiving
             return $parcel->dest_hub_id === $station->id
                 ? "{$parcel->tracking_no} received. Same-city parcel: it is in the dispatch queue."
                 : "{$parcel->tracking_no} received. Put it on the next trip to {$parcel->nextHub?->name}.";
+        }
+
+        // A delivery rider back from their route with a parcel they could not deliver.
+        if ($parcel->current_status === ParcelStatus::DeliveryFailed && $parcel->current_hub_id === $station->id) {
+            $task = Assignment::with('rider', 'batch')->where('parcel_id', $parcel->id)
+                ->where(fn ($q) => DispatchService::stillWithRider($q))->latest('id')->first();
+            if (! $task) {
+                throw new OperationRefused("{$parcel->tracking_no} is already here after a failed delivery. Retry or return it under Failed deliveries.");
+            }
+            $task->update(['returned_at' => now()]);
+            if ($task->batch) {
+                $this->batches->sync($task->batch);
+            }
+
+            return "{$parcel->tracking_no} handed back by {$task->rider->full_name} after a failed delivery. Retry or return it under Failed deliveries.";
         }
 
         // Last mile: arriving from the province hub, with or without the trip list at hand.

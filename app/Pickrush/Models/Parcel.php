@@ -67,6 +67,12 @@ class Parcel extends Model
         return $this->hasOne(Assignment::class)->whereIn('status', Assignment::OPEN)->latestOfMany();
     }
 
+    /** The newest rider task, open or not (e.g. to show that a rider declined the pickup). */
+    public function latestAssignment()
+    {
+        return $this->hasOne(Assignment::class)->latestOfMany();
+    }
+
     /** Where the rider takes it: the buyer, or the seller when it is coming back. */
     public function dropOffBarangayCode(): ?string
     {

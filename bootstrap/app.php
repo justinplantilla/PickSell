@@ -33,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'pickrush.station' => \App\Pickrush\Http\Middleware\StationStaff::class,
             'pickrush.province' => \App\Pickrush\Http\Middleware\ProvinceStaff::class,
             'pickrush.hub' => \App\Pickrush\Http\Middleware\HubStaff::class,
+            'pickrush.rider' => \App\Pickrush\Http\Middleware\RiderToken::class,
         ]);
 
         $onPickrush = fn (Request $request) => \App\Pickrush\Support\PickrushHost::matches($request);
