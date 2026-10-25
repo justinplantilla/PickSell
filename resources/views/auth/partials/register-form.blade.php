@@ -1,16 +1,4 @@
-@extends('layouts.app')
-@section('title', 'Create Account')
-
-@section('styles')
-@vite('resources/css/views/auth-register.css')
-@endsection
-
-@section('content')
-<div class="auth-wrapper">
-    <div class="auth-shell">
-        <div class="auth-card">
-        <div class="auth-logo"><a href="/"><img src="{{ asset('images/transparent logo.png') }}" alt="PickSell logo"><span>Pick<span>Sell</span></span></a></div>
-        <h1 class="auth-title">Create your account</h1>
+        <h1 class="auth-title" id="registerTitle" tabindex="-1">Create your account</h1>
         <p class="auth-sub">How will you use PickSell?</p>
 
         @if($errors->any())
@@ -26,6 +14,7 @@
                 <div class="wizard-progress-item active">Role</div>
                 <div class="wizard-progress-item">Personal</div>
                 <div class="wizard-progress-item">Account</div>
+                <div class="wizard-progress-item">Address</div>
                 <div class="wizard-progress-item">Documents</div>
                 <div class="wizard-progress-item">Review</div>
             </div>
@@ -147,14 +136,14 @@
             {{-- Address --}}
             <div class="form-section">
                 <div class="form-section-title">Address</div>
-                <div class="form-group">
-                    <label>Region <span class="req">*</span></label>
-                    <select name="region" id="region" required>
-                        <option value="">-- Select Region --</option>
-                    </select>
-                    @error('region')<div class="field-error">{{ $message }}</div>@enderror
-                </div>
                 <div class="form-row">
+                    <div class="form-group">
+                        <label>Region <span class="req">*</span></label>
+                        <select name="region" id="region" required>
+                            <option value="">-- Select Region --</option>
+                        </select>
+                        @error('region')<div class="field-error">{{ $message }}</div>@enderror
+                    </div>
                     <div class="form-group">
                         <label>Province <span class="req">*</span></label>
                         <select name="province" id="province" required disabled>
@@ -162,6 +151,8 @@
                         </select>
                         @error('province')<div class="field-error">{{ $message }}</div>@enderror
                     </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label>Municipality / City <span class="req">*</span></label>
                         <select name="municipality" id="municipality" required disabled>
@@ -169,8 +160,6 @@
                         </select>
                         @error('municipality')<div class="field-error">{{ $message }}</div>@enderror
                     </div>
-                </div>
-                <div class="form-row">
                     <div class="form-group">
                         <label>Barangay <span class="req">*</span></label>
                         <select name="barangay" id="barangay" required disabled>
@@ -178,14 +167,16 @@
                         </select>
                         @error('barangay')<div class="field-error">{{ $message }}</div>@enderror
                     </div>
+                </div>
+                <div class="form-row">
                     <div class="form-group">
                         <label>House No. / Unit <span class="opt">(opt)</span></label>
                         <input type="text" name="house_no" value="{{ old('house_no') }}" placeholder="e.g. 123">
                     </div>
-                </div>
-                <div class="form-group">
-                    <label>Street / Subdivision <span class="opt">(opt)</span></label>
-                    <input type="text" name="street" value="{{ old('street') }}" placeholder="e.g. Rizal St., Sunshine Subd.">
+                    <div class="form-group">
+                        <label>Street / Subdivision <span class="opt">(opt)</span></label>
+                        <input type="text" name="street" value="{{ old('street') }}" placeholder="e.g. Rizal St., Sunshine Subd.">
+                    </div>
                 </div>
                 <div class="form-group" data-roles="seller">
                     <label>Postal Code <span class="req">*</span></label>
@@ -210,16 +201,22 @@
             {{-- Business Fields: each group shows for the roles in data-roles (and, for sellers, the seller types in data-seller-types); its data-required fields are required only while shown. --}}
             <div class="form-section seller-fields" id="sellerFields">
                 <div class="form-section-title">Business Information</div>
-                <div class="form-group" data-roles="seller">
-                    <label>Seller Type <span class="req">*</span></label>
-                    <select name="seller_type" id="seller_type" data-required>
-                        <option value="">-- Select Seller Type --</option>
-                        @foreach(\App\Support\SellerTypes::LABELS as $type => $label)
-                            <option value="{{ $type }}" {{ old('seller_type') === $type ? 'selected' : '' }}>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    <small class="field-hint">Individuals upload a government ID only. Sole proprietorships also upload DTI and BIR certificates; corporations upload SEC and BIR certificates.</small>
-                    @error('seller_type')<div class="field-error">{{ $message }}</div>@enderror
+                <div class="form-row">
+                    <div class="form-group" data-roles="seller">
+                        <label>Seller Type <span class="req">*</span></label>
+                        <select name="seller_type" id="seller_type" data-required>
+                            <option value="">-- Select Seller Type --</option>
+                            @foreach(\App\Support\SellerTypes::LABELS as $type => $label)
+                                <option value="{{ $type }}" {{ old('seller_type') === $type ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        @error('seller_type')<div class="field-error">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="form-group" data-roles="seller">
+                        <label>TIN <span class="req">*</span></label>
+                        <input type="text" name="tin" value="{{ old('tin') }}" placeholder="000-000-000-000" inputmode="numeric" maxlength="15" pattern="\d{3}[\-\s]?\d{3}[\-\s]?\d{3}[\-\s]?\d{3}" title="Enter the 12-digit TIN in the format 000-000-000-000" data-required>
+                        @error('tin')<div class="field-error">{{ $message }}</div>@enderror
+                    </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group" data-roles="seller">
@@ -238,11 +235,8 @@
                         @error('line_of_business')<div class="field-error">{{ $message }}</div>@enderror
                     </div>
                 </div>
-                <div class="form-group" data-roles="seller">
-                    <label>TIN (Tax Identification Number) <span class="req">*</span></label>
-                    <input type="text" name="tin" value="{{ old('tin') }}" placeholder="000-000-000-000" inputmode="numeric" maxlength="15" pattern="\d{3}[\-\s]?\d{3}[\-\s]?\d{3}[\-\s]?\d{3}" title="Enter the 12-digit TIN in the format 000-000-000-000" data-required>
-                    @error('tin')<div class="field-error">{{ $message }}</div>@enderror
-                </div>
+                {{-- Individuals upload the ID only; sole proprietorships add DTI + BIR, corporations SEC + BIR. --}}
+                <div class="form-row">
                 @foreach(\App\Support\SellerTypes::DOCUMENT_LABELS as $document => $label)
                     <div class="form-group" data-roles="seller" data-seller-types="{{ implode(' ', \App\Support\SellerTypes::typesRequiring($document)) }}">
                         <label>Upload {{ $label }} <span class="req">*</span></label>
@@ -253,6 +247,7 @@
                         @error($document)<div class="field-error">{{ $message }}</div>@enderror
                     </div>
                 @endforeach
+                </div>
             </div>
 
             <div class="notice-box">
@@ -277,17 +272,4 @@
             <button type="submit" class="btn-submit">Submit Registration</button>
         </form>
 
-        <div class="auth-footer">Already have an account? <a href="/login">Log in</a></div>
-        </div>
-
-    </div>
-</div>
-
-<button class="dm-toggle" data-theme-toggle title="Toggle dark mode">
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
-</button>
-
-@section('scripts')
-@vite(['resources/js/views/auth-register.js', 'resources/js/views/auth-register-wizard.js'])
-@endsection
-@endsection
+        <div class="auth-footer">Already have an account? <a href="{{ route('login') }}">Log in</a></div>

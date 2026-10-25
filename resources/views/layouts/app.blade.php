@@ -11,11 +11,16 @@
 </head>
 @php($isAuthPage = request()->is('login', 'register', 'forgot-password', 'reset-password/*'))
 <body class="{{ request()->is('/') ? 'landing-page' : '' }}{{ $isAuthPage ? ' auth-page' : '' }}">
-    @include('partials.navbar')
+    {{-- Full-screen pages (login / register) set the "bare" section to drop the site navbar and footer. --}}
+    @sectionMissing('bare')
+        @include('partials.navbar')
+    @endif
 
     @yield('content')
 
-    @include('partials.footer')
+    @sectionMissing('bare')
+        @include('partials.footer')
+    @endif
 
     <button class="dm-toggle" data-theme-toggle title="Toggle dark mode" aria-label="Toggle dark mode">
         <svg id="dmIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>

@@ -12,8 +12,8 @@ if (registerForm && registerConfig) {
     const wizardSections = [...registerForm.querySelectorAll('.form-section')];
     const wizardGroups = [
         [registerForm.querySelector('.role-selector')], [wizardSections[0]],
-        [wizardSections[1], wizardSections[2]],
-        [wizardSections[3], wizardSections[4], wizardSections[5]],
+        [wizardSections[1]], [wizardSections[2]],
+        [wizardSections[3], wizardSections[4]],
         [registerForm.querySelector('.notice-box'), registerForm.querySelector('.confirm-group'), submitButton]
     ];
     const wizardPanels = wizardGroups.map((nodes, index) => {
@@ -137,12 +137,16 @@ if (registerForm && registerConfig) {
         if (invalidField) { invalidField.reportValidity(); return false; }
         return !emailOtp.blocksStep(wizardPanels[currentWizardStep]);
     };
+    // On the split-screen page the register pane scrolls on its own; on phones the window does.
+    const wizardScroller = registerForm.closest('[data-auth-scroll]');
     const setWizardStep = step => {
+        registerForm.dataset.direction = step < currentWizardStep ? 'back' : 'forward';
         currentWizardStep = step;
         wizardPanels.forEach((panel, index) => panel.classList.toggle('active', index === step));
         wizardProgressItems.forEach((item, index) => { item.classList.toggle('active', index === step); item.classList.toggle('complete', index < step); });
         wizardPanels[step].querySelector('input, select, textarea, button')?.focus({ preventScroll: true });
-        window.scrollTo({ top: registerForm.offsetTop - 24, behavior: 'smooth' });
+        if (wizardScroller && getComputedStyle(wizardScroller).overflowY === 'auto') wizardScroller.scrollTo({ top: 0, behavior: 'smooth' });
+        else window.scrollTo({ top: registerForm.getBoundingClientRect().top + window.scrollY - 96, behavior: 'smooth' });
     };
     const setContinueLoading = (button, loading) => {
         button.classList.toggle('is-loading', loading); button.disabled = loading;
@@ -157,7 +161,7 @@ if (registerForm && registerConfig) {
         }
         if (index < wizardPanels.length - 1) {
             const nextButton = document.createElement('button'); nextButton.type = 'button'; nextButton.className = 'wizard-next'; nextButton.textContent = 'Continue';
-            nextButton.addEventListener('click', () => { if (!validateWizardStep()) return; setContinueLoading(nextButton, true); window.setTimeout(() => { setContinueLoading(nextButton, false); setWizardStep(currentWizardStep + 1); }, 420); });
+            nextButton.addEventListener('click', () => { if (!validateWizardStep()) return; setContinueLoading(nextButton, true); window.setTimeout(() => { setContinueLoading(nextButton, false); setWizardStep(currentWizardStep + 1); }, 220); });
             actions.appendChild(nextButton);
         } else { submitButton.style.marginTop = '0'; actions.appendChild(submitButton); }
         panel.appendChild(actions);
@@ -186,6 +190,7 @@ if (registerForm && registerConfig) {
     };
     const selectedRole = () => registerForm.querySelector('input[name="role"]:checked')?.value;
     roleBtns.forEach(button => button.addEventListener('click', () => { const role = button.querySelector('input').value; button.querySelector('input').checked = true; updateRole(role); }));
+    registerForm.querySelectorAll('input[name="role"]').forEach(input => input.addEventListener('change', () => updateRole(input.value)));
     document.getElementById('seller_type').addEventListener('change', () => syncRoleFields(selectedRole()));
     passwordInput.addEventListener('input', () => {
         const password = passwordInput.value;

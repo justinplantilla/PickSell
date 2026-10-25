@@ -25,15 +25,18 @@ class AuthController extends Controller
 
     public function __construct(private EmailVerificationService $verification) {}
 
-    public function showLogin()    { return view('auth.login'); }
+    public function showLogin(Request $request)    { return $this->authPage($request, 'login'); }
 
-    public function showRegister(Request $request)
+    public function showRegister(Request $request) { return $this->authPage($request, 'register'); }
+
+    // Login and register are one split-screen page; $mode picks which form is showing on load.
+    private function authPage(Request $request, string $mode)
     {
         $registrationToken = (string) Str::uuid();
         $email = strtolower(trim((string) $request->query('email', '')));
         $registrationRoles = ['buyer', 'seller'];
 
-        return view('auth.register', compact('registrationRoles', 'email', 'registrationToken'));
+        return view('auth.access', compact('mode', 'registrationRoles', 'email', 'registrationToken'));
     }
 
     public function login(Request $request)
