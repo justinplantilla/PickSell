@@ -58,3 +58,25 @@ body.dark .account-fields dt, body.dark .account-subheading, body.dark .account-
 body.dark .account-action, body.dark .account-stats > div, body.dark .account-timeline li { border-color: #2f2f2f; }
 body.dark .account-warning { background: #2d0a0a; color: #fca5a5; }
 body.dark .account-action.is-blocking > summary, body.dark .account-error { color: #fca5a5; }
+
+/* User list (layout: admin-list.css) */
+.user-table .user-contact { overflow-wrap: anywhere; }
+.user-table .user-status-link { color: var(--coral-dark); font-weight: 600; text-decoration: none; }
+.user-table .user-status-link:hover { text-decoration: underline; }
+.user-table .user-status-reason { max-width: 16rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* User preview drawer */
+.user-preview .user-preview-fields { padding: 0; }
+.user-preview-stats { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+.user-preview-stats > div { padding: 0.5rem 0.65rem; border: 1px solid #ece6db; border-radius: 8px; }
+.user-preview-stats > div.is-wide { grid-column: 1 / -1; }
+.user-preview-stats dt { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #8a8a8a; }
+.user-preview-stats dd { margin: 0.1rem 0 0; font-size: 1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.user-preview-history { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.user-preview-history li { display: grid; gap: 0.1rem; padding-left: 0.8rem; border-left: 2px solid #ece6db; font-size: 0.84rem; }
+.user-preview-reason { margin: 0.15rem 0 0; font-size: 0.8rem; white-space: pre-line; }
+.user-preview-actions { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.4rem; padding-top: 0.8rem; border-top: 1px solid #f0ebe0; }
+.user-preview-actions .user-preview-danger { color: #b91c1c; border-color: #f3c9c4; }
+body.dark .user-preview-stats > div, body.dark .user-preview-history li { border-color: #2f2f2f; }
+body.dark .user-preview-actions { border-color: #2a2a2a; }
+body.dark .user-preview-actions .user-preview-danger { color: #fca5a5; border-color: #5b1d1d; }

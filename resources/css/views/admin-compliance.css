@@ -48,6 +48,38 @@
 .compliance-fields dt { font-weight: 600; color: #6b6b6b; }
 .compliance-fields dd { margin: 0; overflow-wrap: anywhere; }
 
+
+/* Compliance list: risk summary cards, signals, preview */
+.compliance-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.6rem; padding: 1rem 1.2rem 0.2rem; }
+.compliance-summary-card { display: grid; gap: 0.1rem; padding: 0.7rem 0.85rem; border: 1px solid #ece6db; border-left-width: 4px; border-radius: 10px; background: #fff; color: inherit; text-decoration: none; }
+.compliance-summary-card:hover { box-shadow: 0 2px 10px rgba(17, 17, 17, 0.08); }
+.compliance-summary-card strong { font-size: 1.35rem; line-height: 1.2; font-variant-numeric: tabular-nums; color: var(--charcoal); }
+.compliance-summary-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #6b6b6b; }
+.compliance-summary-hint { font-size: 0.72rem; color: #8a8a8a; }
+.compliance-summary-card.is-high { border-left-color: #dc2626; }
+.compliance-summary-card.is-medium { border-left-color: #d97706; }
+.compliance-summary-card.is-low { border-left-color: #2563eb; }
+.compliance-summary-card.is-none { border-left-color: #9ca3af; }
+.compliance-summary-card.is-cases { border-left-color: var(--charcoal); }
+.compliance-summary-card.is-active { background: #fff6f3; box-shadow: inset 0 0 0 1px var(--coral); }
+.compliance-summary-card.is-high:not(.is-active) strong { color: #b91c1c; }
+.compliance-table abbr { text-decoration: none; cursor: help; }
+.compliance-risk-cell { width: 11rem; }
+.compliance-signal.is-zero { color: #c4bcae; }
+.compliance-signal.is-flagged { font-weight: 700; color: #b45309; }
+.compliance-signal a { color: inherit; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+.compliance-signal a:hover { color: var(--coral-dark); }
+.compliance-preview .compliance-fields { padding: 0; }
+.compliance-preview .compliance-fields > div { grid-template-columns: 10rem 1fr; }
+.compliance-preview .risk-factors { margin: 0; }
+.compliance-preview-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; font-size: 0.84rem; }
+.compliance-preview-list li { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; padding-bottom: 0.35rem; border-bottom: 1px solid #f0ebe0; }
+.compliance-preview-timeline { padding: 0; }
+@media (max-width: 720px) {
+    .compliance-risk-cell { width: auto; }
+    .compliance-signal.is-zero { display: none !important; }
+}
+
 body.dark .risk-none { background: #26282b; color: #bdc1c6; }
 body.dark .risk-low, body.dark .severity-low { background: #0c1a3a; color: #93c5fd; }
 body.dark .risk-medium, body.dark .severity-medium { background: #2d2100; color: #fdd663; }
@@ -57,3 +89,15 @@ body.dark .compliance-timeline li, body.dark .risk-factors li { border-color: #2
 body.dark .compliance-warning { background: #2d0a0a; color: #fca5a5; }
 body.dark .compliance-error, body.dark .compliance-form.is-blocking h3 { color: #fca5a5; }
 body.dark .compliance-fields dt { color: #a3a3a3; }
+body.dark .compliance-summary-card { background: #1e1e1e; border-color: #2f2f2f; }
+body.dark .compliance-summary-card.is-high { border-left-color: #f87171; }
+body.dark .compliance-summary-card.is-medium { border-left-color: #fbbf24; }
+body.dark .compliance-summary-card.is-low { border-left-color: #60a5fa; }
+body.dark .compliance-summary-card.is-cases { border-left-color: #e5e7eb; }
+body.dark .compliance-summary-card strong { color: #e5e7eb; }
+body.dark .compliance-summary-card.is-high:not(.is-active) strong { color: #fca5a5; }
+body.dark .compliance-summary-card.is-active { background: #2a1d1a; }
+body.dark .compliance-summary-label, body.dark .compliance-summary-hint { color: #a3a3a3; }
+body.dark .compliance-signal.is-zero { color: #525252; }
+body.dark .compliance-signal.is-flagged { color: #fbbf24; }
+body.dark .compliance-preview-list li { border-color: #2a2a2a; }

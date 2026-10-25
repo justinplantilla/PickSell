@@ -75,7 +75,7 @@ table?.addEventListener('click', event => {
         openPreview(row);
         return;
     }
-    if (event.target.closest('a, button, input, label, select, textarea, form')) return;
+    if (event.target.closest('a, button, input, label, select, textarea, form, summary, details')) return;
     if (window.getSelection()?.toString()) return;
     openPreview(row);
 });
@@ -165,7 +165,7 @@ document.querySelectorAll('[data-bulk-dialog] [data-bulk-cancel]').forEach(butto
 refreshBulkbar();
 
 // Popovers (More filters, Views): one open at a time, closed by an outside click or Escape.
-const popovers = () => [...document.querySelectorAll('.list-toolbar details.list-popover')];
+const popovers = () => [...document.querySelectorAll('.list-toolbar details.list-popover, details.list-menu')];
 document.addEventListener('toggle', event => {
     if (!event.target.matches?.('details.list-popover') || !event.target.open) return;
     popovers().filter(other => other !== event.target).forEach(other => { other.open = false; });
@@ -180,4 +180,44 @@ document.addEventListener('keydown', event => {
         popover.open = false;
         popover.querySelector('summary')?.focus();
     });
+});
+
+// Row "⋯" menus live inside a horizontally scrolling table, so their panel is positioned against the
+// viewport (fixed) when opened; it closes on scroll, outside click or Escape like the other popovers.
+document.addEventListener('toggle', event => {
+    const menu = event.target;
+    if (!menu.matches?.('details.list-menu') || !menu.open) return;
+    const panel = menu.querySelector('.list-menu-panel');
+    const trigger = menu.querySelector('summary').getBoundingClientRect();
+    panel.style.position = 'fixed';
+    panel.style.top = '0px';
+    panel.style.left = '0px';
+    const { width, height } = panel.getBoundingClientRect();
+    const below = trigger.bottom + 4;
+    panel.style.top = `${below + height > window.innerHeight - 8 ? Math.max(8, trigger.top - height - 4) : below}px`;
+    panel.style.left = `${Math.max(8, Math.min(trigger.right - width, window.innerWidth - width - 8))}px`;
+    panel.querySelector('a, button')?.focus();
+}, true);
+window.addEventListener('scroll', () => {
+    document.querySelectorAll('details.list-menu[open]').forEach(menu => { menu.open = false; });
+}, true);
+
+// Row actions that need a reason open one shared dialog per action; the button supplies the target.
+document.addEventListener('click', event => {
+    const trigger = event.target.closest('[data-row-dialog]');
+    if (!trigger) return;
+    const dialog = document.getElementById(trigger.dataset.rowDialog);
+    const form = dialog?.querySelector('form');
+    if (!form) return;
+    trigger.closest('details.list-menu')?.removeAttribute('open');
+    form.reset();
+    form.action = trigger.dataset.actionUrl;
+    form.querySelectorAll('[data-row-id]').forEach(input => { input.value = trigger.dataset.rowId || ''; });
+    dialog.querySelectorAll('[data-row-name]').forEach(node => { node.textContent = trigger.dataset.rowName || 'this item'; });
+    dialog.querySelectorAll('[data-row-error]').forEach(node => node.remove());
+    dialog.showModal();
+});
+document.querySelectorAll('dialog[data-open-on-load]').forEach(dialog => dialog.showModal());
+document.querySelectorAll('dialog [data-dialog-cancel]').forEach(button => {
+    button.addEventListener('click', () => button.closest('dialog')?.close());
 });

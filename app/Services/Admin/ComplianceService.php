@@ -27,6 +27,12 @@ class ComplianceService
 {
     public const EVIDENCE_DISK = 'local';
 
+    /** Minimum score per risk level, highest first. Shared with the SQL score on the compliance list. */
+    public const RISK_LEVELS = ['high' => 6, 'medium' => 3, 'low' => 1, 'none' => 0];
+
+    /** Each of these factors adds at most this many points, so volume alone cannot dominate the score. */
+    public const FACTOR_CAP = 3;
+
     /** Whether the last email attempt succeeded. */
     public bool $notified = true;
 
@@ -140,22 +146,28 @@ class ComplianceService
         $factors = [
             'Open-case severity points' => $openCaseWeight,
             'Warnings in 90 days' => $recentWarnings,
-            'Listings outside registered category' => min($mismatchedProducts, 3),
-            'Products archived by Admin' => min($heldProducts, 3),
-            'Open complaints against seller' => min($openComplaints, 3),
+            'Listings outside registered category' => min($mismatchedProducts, self::FACTOR_CAP),
+            'Products archived by Admin' => min($heldProducts, self::FACTOR_CAP),
+            'Open complaints against seller' => min($openComplaints, self::FACTOR_CAP),
         ];
         $score = array_sum($factors);
 
         return [
             'score' => $score,
-            'level' => match (true) {
-                $score >= 6 => 'high',
-                $score >= 3 => 'medium',
-                $score >= 1 => 'low',
-                default => 'none',
-            },
+            'level' => self::levelFor($score),
             'factors' => array_filter($factors),
         ];
+    }
+
+    public static function levelFor(int $score): string
+    {
+        foreach (self::RISK_LEVELS as $level => $minimum) {
+            if ($score >= $minimum) {
+                return $level;
+            }
+        }
+
+        return 'none';
     }
 
     private function changeSellerStatus(User $seller, User $actor, string $to, string $action, string $reason, ?ComplianceCase $case): void

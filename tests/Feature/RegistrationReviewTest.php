@@ -243,9 +243,8 @@ class RegistrationReviewTest extends TestCase
 
         $this->actingAs($this->admin)->get(route('admin.registrations'))->assertOk()
             ->assertSeeInOrder([$old->email, $new->email])
-            ->assertSee('Review / Decide')
-            ->assertSee('registration-review-link')
-            ->assertDontSee('registration-logistics-link')
+            ->assertSee('href="'.route('admin.registrations.show', $old).'" class="list-title" data-row-link', false)
+            ->assertSee('data-preview-url="'.route('admin.registrations.preview', $old).'"', false)
             ->assertDontSee($approved->email);
         $this->actingAs($this->admin)->get(route('admin.registrations.show', $old))->assertOk()
             ->assertSee('class="btn registration-approve"', false)

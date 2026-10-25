@@ -8,3 +8,46 @@
 .registration-logistics-link:hover { background: var(--coral); color: #fff; }
 .registration-view-link { color: #555; }
 body.dark .registration-view-link { color: #e5e7eb; }
+
+/* Registration queue (list layout: admin-list.css) */
+.registration-overdue { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; margin: 0 1.2rem 0.8rem; padding: 0.55rem 0.8rem; border: 1px solid #f3dcb4; border-radius: 8px; background: #fffaf0; font-size: 0.8rem; color: #92400e; }
+.registration-overdue a { font-weight: 700; color: var(--coral-dark); }
+.registration-table .registration-contact { overflow-wrap: anywhere; }
+.registration-table .oversight-flag.is-info { color: #2563eb; }
+.registration-table .oversight-flag svg { width: 0.85rem; height: 0.85rem; flex-shrink: 0; }
+.registration-docs .list-line { font-weight: 600; }
+.registration-docs.is-complete .list-line { color: #15803d; }
+.registration-docs.is-missing .list-line, .registration-docs.is-missing .oversight-meta { color: #b45309; }
+.list-age.is-overdue time { color: #b45309; font-weight: 700; }
+
+/* Preview drawer */
+.registration-fields { margin: 0; font-size: 0.85rem; }
+.registration-fields > div { display: grid; grid-template-columns: 8rem 1fr; gap: 0.6rem; padding: 0.35rem 0; border-bottom: 1px solid #f4efe6; }
+.registration-fields > div:last-child { border-bottom: 0; }
+.registration-fields dt { font-weight: 600; color: #6b6b6b; }
+.registration-fields dd { margin: 0; overflow-wrap: anywhere; }
+.registration-preview-warning { padding: 0.6rem 0.75rem; border: 1px solid #f3dcb4; border-radius: 8px; background: #fffaf0; font-size: 0.8rem; color: #92400e; }
+.registration-preview-warning ul { margin: 0.3rem 0 0; padding-left: 1.1rem; }
+.registration-preview-docs { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+.registration-preview-docs a { display: grid; gap: 0.3rem; font-size: 0.76rem; color: var(--charcoal); text-decoration: none; }
+.registration-preview-docs a:hover span { color: var(--coral-dark); text-decoration: underline; }
+.registration-preview-docs img, .registration-preview-file { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; border: 1px solid #ece6db; }
+.registration-preview-file { display: flex; align-items: center; justify-content: center; background: #f6f3ee; font-weight: 800; color: #8a8a8a; }
+.registration-preview-decision { margin: 0; font-size: 0.84rem; }
+.registration-preview-reason { display: block; margin-top: 0.25rem; white-space: pre-line; color: #4b4b4b; }
+.registration-quick-disapprove { margin-top: 0.4rem; border-top: 1px solid #f0ebe0; padding-top: 0.6rem; }
+.registration-quick-disapprove > summary { cursor: pointer; font-size: 0.8rem; font-weight: 600; color: #b91c1c; }
+.registration-action-form { display: grid; gap: 0.45rem; margin-top: 0.6rem; }
+.registration-action-form .btn { justify-self: start; }
+.registration-disapprove-button { color: #b91c1c; border-color: #f3c9c4; }
+
+body.dark .registration-overdue, body.dark .registration-preview-warning { background: #2a2310; border-color: #4a3a12; color: #fbbf24; }
+body.dark .registration-docs.is-complete .list-line { color: #86efac; }
+body.dark .registration-docs.is-missing .list-line, body.dark .registration-docs.is-missing .oversight-meta, body.dark .list-age.is-overdue time { color: #fbbf24; }
+body.dark .registration-table .oversight-flag.is-info { color: #93c5fd; }
+body.dark .registration-fields > div, body.dark .registration-quick-disapprove { border-color: #2a2a2a; }
+body.dark .registration-fields dt { color: #a3a3a3; }
+body.dark .registration-preview-docs a { color: #e5e7eb; }
+body.dark .registration-preview-docs img, body.dark .registration-preview-file { border-color: #2f2f2f; }
+body.dark .registration-preview-file { background: #2a2a2a; }
+body.dark .registration-preview-reason { color: #c4c4c4; }

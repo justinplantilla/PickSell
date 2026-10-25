@@ -178,14 +178,12 @@ class UserAccountModerationTest extends TestCase
 
         $this->actingAs($this->admin)->get(route('admin.users'))
             ->assertOk()
-            ->assertSee('Review / Decide')
-            ->assertSee('registration-review-link')
+            ->assertSee('Review in Registrations')
             ->assertSee(route('admin.registrations.show', $pending), false)
-            ->assertSee('btn-suspend', false)
-            ->assertSee('btn-deactivate', false)
-            ->assertSee('Suspend', false)
-            ->assertSee('Deactivate', false)
-            ->assertSee('Reactivate', false)
+            ->assertSee('data-row-dialog="user-status-suspended" data-action-url="'.route('admin.users.status', $active).'"', false)
+            ->assertSee('data-row-dialog="user-status-deactivated" data-action-url="'.route('admin.users.status', $active).'"', false)
+            ->assertSee('data-row-dialog="user-status-approved" data-action-url="'.route('admin.users.status', $suspended).'"', false)
+            ->assertDontSee('data-row-dialog="user-status-suspended" data-action-url="'.route('admin.users.status', $pending).'"', false)
             ->assertSee('name="confirm"', false);
 
         $this->actingAs($this->admin)->get(route('admin.registrations.show', $pending))
@@ -198,7 +196,8 @@ class UserAccountModerationTest extends TestCase
             ->assertSee($active->email)
             ->assertSee($suspended->email)
             ->assertSee($pending->email)
-            ->assertDontSee('Review / Decide')
+            ->assertDontSee('Review in Registrations')
+            ->assertDontSee('data-row-dialog=', false)
             ->assertDontSee('Suspend account')
             ->assertDontSee('Deactivate account')
             ->assertDontSee('Reactivate account');
@@ -247,7 +246,7 @@ class UserAccountModerationTest extends TestCase
         $html = $this->actingAs($this->admin)->get(route('admin.users', ['role' => 'buyer', 'status' => 'approved']))->assertOk()->getContent();
         $this->assertStringContainsString($buyer->email, $html);
         $this->assertStringNotContainsString($old->email, $html);
-        $this->assertMatchesRegularExpression('/' . preg_quote($buyer->email, '/') . '.*?oversight-number">3</s', $html);
+        $this->assertMatchesRegularExpression('/' . preg_quote($buyer->email, '/') . '.*?data-label="Orders">\s*<span class="list-line">3</s', $html);
 
         $this->actingAs($this->admin)->get(route('admin.users', ['joined' => 'over_90d']))->assertSee($old->email)->assertDontSee($buyer->email);
         $this->actingAs($this->admin)->get(route('admin.users', ['search' => 'Acct Store']))->assertSee($seller->email)->assertDontSee($buyer->email);

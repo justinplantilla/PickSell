@@ -1,6 +1,18 @@
+// Same flow as the Pickrush portal: a native <dialog> asks first; without <dialog> support the form submits directly.
 function confirmLogout() {
-    document.getElementById('logoutModal').style.display = 'flex';
+    const dialog = document.getElementById('logoutModal');
+    if (typeof dialog?.showModal !== 'function') {
+        document.getElementById('logoutForm').submit();
+        return;
+    }
+    dialog.showModal();
+    dialog.querySelector('[data-dialog-cancel]')?.focus();
 }
+document.getElementById('logoutModal')?.addEventListener('close', event => {
+    const dialog = event.currentTarget;
+    if (dialog.returnValue === 'confirm') document.getElementById('logoutForm').submit();
+    dialog.returnValue = '';
+});
 let adminNotifications = [];
 const adminNotificationIcon = '<svg class="notification-item-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>';
 function safeAdminNotificationHref(value) {
@@ -199,6 +211,12 @@ function toggleDark() {
     localStorage.setItem('adminDark', document.body.classList.contains('dark'));
 }
 if (localStorage.getItem('adminDark') === 'true') document.body.classList.add('dark');
+// form-behaviors.js relays clicks on [data-theme-toggle] as this event.
+window.addEventListener('picksell:theme-toggle', toggleDark);
+// A click on the backdrop (outside the panel) cancels; Escape is handled by <dialog> itself.
+document.getElementById('logoutModal')?.addEventListener('click', event => {
+    if (event.target === event.currentTarget) event.currentTarget.close('cancel');
+});
 window.confirmLogout = confirmLogout;
 window.toggleSidebar = toggleSidebar;
 window.toggleNotif = toggleNotif;

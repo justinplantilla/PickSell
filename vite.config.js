@@ -73,6 +73,7 @@ export default defineConfig({
                 'resources/css/views/admin-account.css',
                 'resources/css/views/admin-chat.css',
                 'resources/css/views/admin-layout.css',
+                'resources/css/views/admin-theme.css',
                 'resources/css/views/auth-forgot-password.css',
                 'resources/css/views/auth-register.css',
                 'resources/css/views/auth-reset-password.css',

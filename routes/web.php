@@ -260,27 +260,34 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
         Route::patch('/products/{product}/status', [AdminProductController::class, 'moderate'])->name('admin.products.status');
     });
 
-    Route::middleware($can(Permission::REGISTRATIONS_VIEW))->group(function () {
+    Route::middleware($can(Permission::REGISTRATIONS_VIEW))->group(function () use ($can) {
         Route::get('/registrations', [AdminRegistrationController::class, 'index'])->name('admin.registrations');
+        Route::get('/registrations/export', [AdminRegistrationController::class, 'export'])->middleware($can(Permission::REPORTS_EXPORT))->name('admin.registrations.export');
         Route::get('/registrations/{user}', [AdminRegistrationController::class, 'show'])->name('admin.registrations.show');
+        Route::get('/registrations/{user}/preview', [AdminRegistrationController::class, 'preview'])->name('admin.registrations.preview');
     });
     Route::middleware($can(Permission::REGISTRATIONS_MANAGE))->group(function () {
+        Route::post('/registrations/bulk-disapprove', [AdminRegistrationController::class, 'bulkDisapprove'])->name('admin.registrations.bulk-disapprove');
         Route::patch('/registrations/{user}/approve', [AdminRegistrationController::class, 'approve'])->name('admin.registrations.approve');
         Route::patch('/registrations/{user}/disapprove', [AdminRegistrationController::class, 'disapprove'])->name('admin.registrations.disapprove');
     });
 
-    Route::middleware($can(Permission::USERS_VIEW))->group(function () {
+    Route::middleware($can(Permission::USERS_VIEW))->group(function () use ($can) {
         Route::get('/users', [AdminUserController::class, 'index'])->name('admin.users');
+        Route::get('/users/export', [AdminUserController::class, 'export'])->middleware($can(Permission::REPORTS_EXPORT))->name('admin.users.export');
         Route::get('/users/{user}', [AdminUserController::class, 'show'])->name('admin.users.show');
+        Route::get('/users/{user}/preview', [AdminUserController::class, 'preview'])->name('admin.users.preview');
     });
     Route::patch('/users/{user}/status', [AdminUserController::class, 'updateStatus'])->middleware($can(Permission::USERS_MANAGE))->name('admin.users.status');
     Route::post('/users/bulk-status', [AdminUserController::class, 'bulkStatus'])->middleware($can(Permission::USERS_MANAGE))->name('admin.users.bulk-status');
 
-    Route::middleware($can(Permission::SELLER_COMPLIANCE_VIEW))->group(function () {
+    Route::middleware($can(Permission::SELLER_COMPLIANCE_VIEW))->group(function () use ($can) {
         Route::get('/compliance', [AdminComplianceController::class, 'index'])->name('admin.compliance');
+        Route::get('/compliance/export', [AdminComplianceController::class, 'export'])->middleware($can(Permission::REPORTS_EXPORT))->name('admin.compliance.export');
         Route::get('/compliance/cases', [AdminComplianceController::class, 'cases'])->name('admin.compliance.cases');
         Route::get('/compliance/cases/{case}', [AdminComplianceController::class, 'showCase'])->name('admin.compliance.cases.show');
         Route::get('/compliance/sellers/{user}', [AdminComplianceController::class, 'seller'])->name('admin.compliance.seller');
+        Route::get('/compliance/sellers/{user}/preview', [AdminComplianceController::class, 'sellerPreview'])->name('admin.compliance.seller.preview');
         Route::get('/compliance/evidence/{action}/{index}', [AdminComplianceController::class, 'evidence'])->whereNumber('index')->name('admin.compliance.evidence');
     });
     Route::middleware($can(Permission::SELLER_COMPLIANCE_MANAGE))->group(function () {
@@ -305,6 +312,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
     Route::patch('/returns/{returnRequest}/reject', [AdminReturnController::class, 'reject'])->middleware($can(Permission::RETURNS_MANAGE))->name('admin.returns.reject');
     Route::patch('/returns/{returnRequest}/inspect', [AdminReturnController::class, 'inspect'])->middleware($can(Permission::RETURNS_MANAGE))->name('admin.returns.inspect');
     Route::patch('/returns/{returnRequest}/approve-refund', [AdminReturnController::class, 'approveRefund'])->middleware($can(Permission::RETURNS_MANAGE))->name('admin.returns.approve-refund');
+
 
     Route::middleware($can(Permission::COMPLAINTS_VIEW))->group(function () {
         Route::get('/complaints', [AdminComplaintController::class, 'index'])->name('admin.complaints');
