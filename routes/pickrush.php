@@ -26,13 +26,15 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
     // Public: anyone with a tracking number.
     Route::get('/track', TrackingController::class)->middleware('throttle:30,1')->name('track');
 
+    // Guests get the landing page; signed-in staff are sent on to their own portal.
+    Route::get('/', DashboardController::class)->name('dashboard');
+
     Route::middleware('guest:pickrush')->group(function () {
         Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
         Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login.attempt');
     });
 
     Route::middleware(['auth:pickrush', 'pickrush.role'])->group(function () {
-        Route::get('/', DashboardController::class)->name('dashboard');
         Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
         Route::get('/parcels', [ParcelController::class, 'index'])->name('parcels.index');

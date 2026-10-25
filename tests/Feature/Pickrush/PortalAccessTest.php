@@ -14,7 +14,7 @@ class PortalAccessTest extends TestCase
 
     public function test_the_logistics_host_serves_only_pickrush(): void
     {
-        $this->get($this->pickrushUrl('/'))->assertRedirect($this->pickrushUrl('/login'));
+        $this->get($this->pickrushUrl('/'))->assertOk()->assertSee('From the seller');
         $this->get($this->pickrushUrl('/login'))->assertOk()->assertSee('Staff sign-in')->assertSee('Pickrush Logistics');
 
         foreach (['/shop', '/about', '/register', '/buyer/dashboard', '/admin/dashboard'] as $marketplacePage) {

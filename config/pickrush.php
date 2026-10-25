@@ -20,6 +20,9 @@ return [
     // signs staff out of the logistics portal, and the other way round.
     'session_cookie' => env('PICKRUSH_SESSION_COOKIE', 'pickrush_session'),
 
+    // Where the landing page's "Get the rider app" button points. Unset hides the button.
+    'rider_app_url' => env('PICKRUSH_RIDER_APP_URL'),
+
     // Tracking numbers look like PR2610200000123X (prefix, yymmdd, sequence, check letter).
     'tracking_prefix' => 'PR',
 

@@ -5,12 +5,20 @@ namespace App\Pickrush\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Pickrush\Support\Actor;
 
-/** Landing page after sign-in: each staff member goes to their own portal. */
+/**
+ * "/" on the logistics host: the public landing page for guests, and for signed-in staff a redirect to
+ * their own portal (whose routes check the role and sign out deactivated accounts).
+ */
 class DashboardController extends Controller
 {
     public function __invoke()
     {
-        $hub = Actor::staff()->hub;
+        $staff = Actor::staff();
+        if (! $staff) {
+            return view('pickrush.landing');
+        }
+
+        $hub = $staff->hub;
 
         return redirect()->route(match (true) {
             $hub?->isStation() => 'pickrush.station.dashboard',

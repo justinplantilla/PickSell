@@ -4,12 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Track a Parcel | Pickrush Logistics</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('images/pickrush-logo.svg') }}">
     @vite('resources/css/pickrush/app.css')
 </head>
 <body>
 <div class="pr-auth" style="align-items:start">
     <div class="pr-auth-card" style="max-width:620px;margin-top:2rem">
-        <div class="pr-brand"><span class="pr-brand-mark" aria-hidden="true">PR</span> Pickrush Logistics</div>
+        <div class="pr-brand">@include('pickrush.partials.logo-mark', ['class' => 'pr-brand-logo', 'tone' => 'light', 'size' => 32]) Pickrush Logistics</div>
         <h1>Track a parcel</h1>
         <form method="GET" action="{{ route('pickrush.track') }}" class="pr-filters" role="search">
             <input type="search" name="no" value="{{ $number }}" class="pr-input" style="flex:1" placeholder="Tracking number, e.g. PR2610200483921K" aria-label="Tracking number" required>
