@@ -250,8 +250,6 @@ body.ad-theme .settings-history, body.ad-theme .settings-history-row { border-co
 body.ad-theme .settings-history-row small, body.ad-theme .settings-audience { color: var(--ad-muted); }
 body.ad-theme .account-role-badge { background: var(--ad-brand-tint); color: var(--ad-brand-dark); }
 
-/* Pagination */
-body.ad-theme .dashboard-pagination a, body.ad-theme .dashboard-pagination span { border-radius: 8px; }
 
 /* ---------- Logout dialog (mirrors the Pickrush portal) & confirm dialog ---------- */
 /* margin: auto re-centres the modal; admin-layout.css resets every margin to 0. */

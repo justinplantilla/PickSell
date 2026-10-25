@@ -370,15 +370,8 @@
             .buyer-top-pick:hover, .buyer-top-pick:focus-visible { transform: none; }
             .product-hover-details { transition: none; }
         }
-        .buyer-pagination { display: flex; justify-content: center; margin-top: 1.4rem; }
+        .buyer-pagination { margin-top: 1.4rem; }
         .buyer-pagination nav { position: static; height: auto; background: transparent; padding: 0; }
-        .buyer-pagination nav > div:first-child { display: none; }
-        .buyer-pagination nav > div:last-child { display: flex; align-items: center; gap: 0.3rem; }
-        .buyer-pagination nav a, .buyer-pagination nav span { min-width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; padding: 0 0.45rem; border: 1px solid #e8e2d8; border-radius: 5px; background: #fff; color: #777; font-size: 0.75rem; text-decoration: none; }
-        .buyer-pagination nav a:hover { border-color: var(--coral); color: var(--coral); }
-        .buyer-pagination nav span[aria-current="page"] { background: var(--coral); border-color: var(--coral); color: #fff; font-weight: 700; }
-        .buyer-pagination nav svg { width: 14px; height: 14px; }
-        body.dark .buyer-pagination nav a, body.dark .buyer-pagination nav span { background: #1b1b1b; border-color: #333; color: #d1d5db; }
         .buyer-layout-footer { background: #fff; color: #8b8580; border-top: 1px solid #eee9e4; margin-top: 0; }
         .buyer-layout-footer .footer-main { padding-top: 2rem; padding-bottom: 1.5rem; }
         .buyer-layout-footer .footer-logo span { color: var(--charcoal); }

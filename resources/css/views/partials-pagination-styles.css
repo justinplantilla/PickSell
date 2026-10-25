@@ -1,23 +1,53 @@
-.dashboard-pagination { display: flex; justify-content: center; padding: 1rem 1.2rem; overflow-x: auto; }
-    .dashboard-pagination nav,
-    nav[role="navigation"] { display: flex; width: 100%; justify-content: center; }
-    .dashboard-pagination nav > div:first-child,
-    nav[role="navigation"] > div:first-child { display: none; }
-    .dashboard-pagination nav > div:last-child,
-    nav[role="navigation"] > div:last-child { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0.35rem; }
-    .dashboard-pagination nav a,
-    .dashboard-pagination nav span,
-    nav[role="navigation"] a,
-    nav[role="navigation"] span { min-width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; padding: 0 0.55rem; border: 1px solid #e8e2d8; border-radius: 6px; background: #fff; color: #777; font-size: 0.76rem; line-height: 1; text-decoration: none; }
-    .dashboard-pagination nav a:hover,
-    nav[role="navigation"] a:hover { border-color: var(--coral); color: var(--coral); }
-    .dashboard-pagination nav span[aria-current="page"],
-    nav[role="navigation"] span[aria-current="page"] { background: var(--coral); border-color: var(--coral); color: #fff; font-weight: 700; }
-    .dashboard-pagination nav svg,
-    nav[role="navigation"] svg { width: 14px; height: 14px; }
-    body.dark .dashboard-pagination nav a,
-    body.dark .dashboard-pagination nav span,
-    body.dark nav[role="navigation"] a,
-    body.dark nav[role="navigation"] span { background: #1b1b1b; border-color: #333; color: #d1d5db; }
-    body.dark .dashboard-pagination nav span[aria-current="page"],
-    body.dark nav[role="navigation"] span[aria-current="page"] { background: var(--coral); border-color: var(--coral); color: #fff; }
+/* PickSell pagination (resources/views/vendor/pagination/picksell.blade.php): range on the left, controls on the right.
+   Only the current page gets a fill; the rest are quiet until hovered. Dark mode follows body.dark. */
+.dashboard-pagination { padding: 1rem 1.2rem; }
+
+.ps-pager {
+    --pg-ink: #1d2430; --pg-muted: #667085; --pg-line: #e8e2d8; --pg-hover: #f6f1ea; --pg-surface: #fff;
+    --pg-brand: #E8472A; --pg-brand-dark: #c93a20;
+    position: static; inset: auto; z-index: auto; width: 100%; height: auto; margin: 0; padding: 0;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1.25rem;
+    background: transparent; box-shadow: none; color: var(--pg-ink); font-size: .86rem; line-height: 1;
+}
+body.dark .ps-pager, body.ad-theme.dark .ps-pager { --pg-ink: #f3f1ed; --pg-muted: #9a958c; --pg-line: #343a42; --pg-hover: #262b31; --pg-surface: #1d2126; --pg-brand-dark: #ff8a6e; }
+
+.ps-pager-info { margin: 0; color: var(--pg-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ps-pager-info b { color: var(--pg-ink); font-weight: 700; }
+
+.ps-pager-controls { display: flex; align-items: center; gap: .35rem; margin-left: auto; }
+.ps-pager-pages { display: flex; align-items: center; gap: .25rem; margin: 0; padding: 0; list-style: none; }
+.ps-pager-pages li { display: flex; margin: 0; padding: 0; }
+
+.ps-pager-page, .ps-pager-step {
+    display: inline-flex; align-items: center; justify-content: center; gap: .35rem;
+    height: 38px; border: 1px solid transparent; border-radius: 10px; background: transparent;
+    color: var(--pg-ink); font: inherit; font-weight: 600; font-variant-numeric: tabular-nums; text-decoration: none;
+    transition: background .2s, color .2s, border-color .2s, transform .2s cubic-bezier(.22, 1, .36, 1), box-shadow .2s;
+}
+.ps-pager-page { min-width: 38px; padding: 0 .5rem; }
+.ps-pager-step { padding: 0 .85rem; border-color: var(--pg-line); background: var(--pg-surface); }
+.ps-pager-page:hover { background: var(--pg-hover); color: var(--pg-brand-dark); }
+.ps-pager-step:hover { border-color: var(--pg-ink); color: var(--pg-ink); transform: translateY(-1px); }
+a.ps-pager-step[rel="prev"]:hover svg { transform: translateX(-2px); }
+a.ps-pager-step[rel="next"]:hover svg { transform: translateX(2px); }
+.ps-pager-step svg { flex-shrink: 0; transition: transform .2s cubic-bezier(.22, 1, .36, 1); }
+.ps-pager-page:active, .ps-pager-step:active { transform: scale(.95); }
+.ps-pager-page.is-current { background: var(--pg-brand); color: #fff; font-weight: 800; box-shadow: 0 6px 16px rgba(232, 71, 42, .3); cursor: default; animation: ps-pager-pop .35s cubic-bezier(.34, 1.56, .64, 1); }
+.ps-pager-step.is-disabled { opacity: .4; cursor: not-allowed; }
+.ps-pager-gap { min-width: 24px; justify-content: center; color: var(--pg-muted); font-weight: 700; letter-spacing: .05em; }
+.ps-pager a:focus-visible { outline: 2px solid var(--pg-brand); outline-offset: 2px; }
+.ps-pager-compact { display: none; padding: 0 .5rem; color: var(--pg-muted); white-space: nowrap; }
+.ps-pager-compact b { color: var(--pg-ink); }
+
+@keyframes ps-pager-pop { from { transform: scale(.8); } to { transform: none; } }
+
+/* Phones: "Page 2 of 9" between two arrows; the range drops its first word. */
+@media (max-width: 640px) {
+    .ps-pager { gap: .6rem; }
+    .ps-pager-info-word, .ps-pager-pages, .ps-pager-step-label { display: none; }
+    .ps-pager-compact { display: inline; }
+    .ps-pager-step { width: 40px; padding: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ps-pager *, .ps-pager *::before { animation: none !important; transition: none !important; }
+}

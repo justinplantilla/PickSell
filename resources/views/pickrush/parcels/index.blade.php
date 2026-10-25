@@ -30,5 +30,5 @@
         </tbody>
     </table>
 </div>
-<div class="pr-pagination">{{ $parcels->links() }}</div>
+<div class="pr-pagination">{{ $parcels->links('pagination::tailwind') }}</div>
 @endsection

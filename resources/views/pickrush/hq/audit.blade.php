@@ -46,5 +46,5 @@
         </tbody>
     </table>
 </div>
-<div class="pr-pagination">{{ $logs->links() }}</div>
+<div class="pr-pagination">{{ $logs->links('pagination::tailwind') }}</div>
 @endsection

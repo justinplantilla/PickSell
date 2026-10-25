@@ -23,6 +23,7 @@ use App\Policies\ReturnRequestPolicy;
 use App\Policies\SellerCompliancePolicy;
 use App\Policies\UserPolicy;
 use App\Services\Admin\AdminDashboardService;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
@@ -44,6 +45,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // PickSell's own pagination markup (admin, seller, buyer); Pickrush pages pass 'pagination::tailwind'.
+        Paginator::defaultView('vendor.pagination.picksell');
+
         // One Gate per explicit permission; roles map to permissions in config/permissions.php.
         foreach (Permission::ALL as $permission) {
             Gate::define($permission, fn (User $user) => $user->hasPermission($permission));

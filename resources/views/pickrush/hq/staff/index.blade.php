@@ -42,7 +42,7 @@
         </tbody>
     </table>
 </div>
-<div class="pr-pagination">{{ $staff->links() }}</div>
+<div class="pr-pagination">{{ $staff->links('pagination::tailwind') }}</div>
 
 <section class="pr-card" style="margin-top:1.25rem">
     <h2>Permission matrix</h2>

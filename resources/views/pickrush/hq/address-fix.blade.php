@@ -30,7 +30,7 @@
         </tbody>
     </table>
 </div>
-<div class="pr-pagination">{{ $parcels->links() }}</div>
+<div class="pr-pagination">{{ $parcels->links('pagination::tailwind') }}</div>
 
 @if($selected)
     <section class="pr-card" id="fix">

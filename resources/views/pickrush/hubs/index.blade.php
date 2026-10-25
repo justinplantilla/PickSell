@@ -44,5 +44,5 @@
         </tbody>
     </table>
 </div>
-<div class="pr-pagination">{{ $hubs->links() }}</div>
+<div class="pr-pagination">{{ $hubs->links('pagination::tailwind') }}</div>
 @endsection
