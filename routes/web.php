@@ -11,6 +11,7 @@ use App\Http\Controllers\AdminComplaintController;
 use App\Http\Controllers\AdminComplianceController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\AdminLogisticsController;
 use App\Http\Controllers\AdminOrderController;
 use App\Http\Controllers\AdminProductController;
 use App\Http\Controllers\AdminRefundController;
@@ -313,6 +314,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
     Route::patch('/returns/{returnRequest}/inspect', [AdminReturnController::class, 'inspect'])->middleware($can(Permission::RETURNS_MANAGE))->name('admin.returns.inspect');
     Route::patch('/returns/{returnRequest}/approve-refund', [AdminReturnController::class, 'approveRefund'])->middleware($can(Permission::RETURNS_MANAGE))->name('admin.returns.approve-refund');
 
+    Route::get('/logistics', [AdminLogisticsController::class, 'index'])->middleware($can(Permission::LOGISTICS_VIEW))->name('admin.logistics.index');
 
     Route::middleware($can(Permission::COMPLAINTS_VIEW))->group(function () {
         Route::get('/complaints', [AdminComplaintController::class, 'index'])->name('admin.complaints');

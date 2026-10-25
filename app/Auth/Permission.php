@@ -38,6 +38,8 @@ final class Permission
 
     public const ORDERS_OVERRIDE_STATUS = 'orders.override-status'; // reserved
 
+    public const LOGISTICS_VIEW = 'logistics.view';
+
     public const COMPLAINTS_VIEW = 'complaints.view';
 
     public const COMPLAINTS_MANAGE = 'complaints.manage';
@@ -86,6 +88,7 @@ final class Permission
         self::PRODUCTS_VIEW, self::PRODUCTS_MODERATE,
         self::SELLER_COMPLIANCE_VIEW, self::SELLER_COMPLIANCE_MANAGE,
         self::ORDERS_VIEW, self::ORDERS_MANAGE, self::ORDERS_OVERRIDE_STATUS,
+        self::LOGISTICS_VIEW,
         self::COMPLAINTS_VIEW, self::COMPLAINTS_MANAGE,
         self::RETURNS_VIEW, self::RETURNS_MANAGE,
         self::REFUNDS_VIEW, self::REFUNDS_MANAGE, self::REFUNDS_APPROVE,

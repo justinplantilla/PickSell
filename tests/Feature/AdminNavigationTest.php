@@ -94,6 +94,7 @@ class AdminNavigationTest extends TestCase
             'Overview' => ['Dashboard', 'Notifications'],
             'Marketplace' => ['Orders', 'Products', 'Seller Compliance'],
             'Users' => ['Registrations', 'User Accounts'],
+            'Operations' => ['Logistics'],
             'Customer Care' => ['Complaints & Disputes', 'Returns', 'Refunds'],
             'Finance' => ['Commission', 'Financial Reports'],
             'Analytics' => ['Reports'],

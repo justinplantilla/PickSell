@@ -68,6 +68,7 @@ class AdminAuthorizationTest extends TestCase
             'products.view', 'products.moderate',
             'seller-compliance.view', 'seller-compliance.manage',
             'orders.view', 'orders.manage', 'orders.override-status',
+            'logistics.view',
             'complaints.view', 'complaints.manage',
             'returns.view', 'returns.manage',
             'refunds.view', 'refunds.manage', 'refunds.approve',

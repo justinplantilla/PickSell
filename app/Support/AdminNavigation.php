@@ -29,6 +29,9 @@ final class AdminNavigation
                 self::item('registrations', 'Registrations', 'admin.registrations', Permission::REGISTRATIONS_VIEW, ['admin/registrations*']),
                 self::item('users', 'User Accounts', 'admin.users', Permission::USERS_VIEW, ['admin/users*']),
             ]],
+            ['label' => 'Operations', 'items' => [
+                self::item('logistics', 'Logistics', 'admin.logistics.index', Permission::LOGISTICS_VIEW, ['admin/logistics']),
+            ]],
             ['label' => 'Customer Care', 'items' => [
                 self::item('complaints', 'Complaints & Disputes', 'admin.complaints', Permission::COMPLAINTS_VIEW, ['admin/complaints*', 'admin/disputes*']),
                 self::item('returns', 'Returns', 'admin.returns', Permission::RETURNS_VIEW, ['admin/returns*']),
@@ -71,7 +74,8 @@ final class AdminNavigation
         'compliance' => '<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>',
         'registrations' => '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM6 20V4h5v7h7v9H6z"/>',
         'users' => '<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>',
-        'sorting' => '<path d="M20 2H4a2 2 0 0 0-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4a2 2 0 0 0-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z"/>',
+        'logistics' => '<path d="M20 8h-3V4H3a2 2 0 0 0-2 2v11h2a3 3 0 0 0 6 0h6a3 3 0 0 0 6 0h2v-5l-3-4zM6 18.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm13.5-9 1.96 2.5H17V9.5h2.5zM18 18.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>',
+        'sorting' =>'<path d="M20 2H4a2 2 0 0 0-2 2v3.01c0 .72.43 1.34 1 1.69V20c0 1.1 1.1 2 2 2h14c.9 0 2-.9 2-2V8.7c.57-.35 1-.97 1-1.69V4a2 2 0 0 0-2-2zm-5 12H9v-2h6v2zm5-7H4V4h16v3z"/>',
         'riders' => '<path d="M13.5 5.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM9.8 8.9 7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3A7.3 7.3 0 0 0 19 13v-2a5.2 5.2 0 0 1-4.5-2.5l-1-1.6a2 2 0 0 0-1.7-1c-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/>',
         'complaints' => '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>',
         'returns' => '<path d="M12 5V2L7 7l5 5V8c3.31 0 6 2.69 6 6a6 6 0 0 1-10.24 4.24l-1.42 1.42A8 8 0 0 0 20 14c0-4.42-3.58-8-8-8z"/>',
