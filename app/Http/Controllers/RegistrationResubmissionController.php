@@ -9,7 +9,7 @@ use App\Support\SellerTypes;
 use Illuminate\Http\Request;
 
 /**
- * A rejected seller or logistics provider corrects their documents and sends the application back for review.
+ * A rejected seller corrects their documents and sends the application back for review.
  * They reach this page by logging in with their email and password (AuthController::login), which does not
  * sign them in; the application then returns to Pending Approval and reappears in the admin's pending list.
  */
@@ -79,7 +79,7 @@ class RegistrationResubmissionController extends Controller
     private function applicant(Request $request): ?User
     {
         return User::whereKey($request->session()->get('resubmission_user_id'))
-            ->whereIn('role', ['seller', 'logistics'])
+            ->where('role', 'seller')
             ->where('status', 'disapproved')
             ->first();
     }
@@ -87,12 +87,6 @@ class RegistrationResubmissionController extends Controller
     /** Documents this applicant may replace, keyed by field. @return array<string, string> */
     private function documents(User $applicant): array
     {
-        if ($applicant->role === 'logistics') {
-            return ['id_upload' => 'Valid government-issued ID']
-                + ($applicant->provider_type === 'company' ? ['sec_certificate' => SellerTypes::DOCUMENT_LABELS['sec_certificate']] : [])
-                + ['bir_certificate' => SellerTypes::DOCUMENT_LABELS['bir_certificate'], 'business_permit' => 'Mayor’s / Business Permit'];
-        }
-
         $fields = $applicant->seller_type
             ? SellerTypes::requiredDocuments($applicant->seller_type)
             : ['business_permit'];

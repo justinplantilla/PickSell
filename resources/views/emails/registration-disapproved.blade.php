@@ -36,7 +36,7 @@
         <p style="font-size:0.78rem;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Reason</p>
         <div class="reason-box">{{ $reason }}</div>
 
-        @if(in_array($user->role, ['seller', 'logistics'], true))
+        @if($user->role === 'seller')
         <p style="margin-top:20px;">To fix this, <a href="{{ url('/login') }}" style="color:#E8472A;text-decoration:none;">log in</a> with your email and password, replace the documents mentioned above and resubmit your application for review.</p>
         @endif
 

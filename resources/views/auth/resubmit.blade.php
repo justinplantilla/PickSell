@@ -10,7 +10,7 @@
     <div class="auth-shell">
         <div class="auth-card">
         <div class="auth-logo"><a href="/"><img src="{{ asset('images/transparent logo.png') }}" alt="PickSell logo"><span>Pick<span>Sell</span></span></a></div>
-        <h1 class="auth-title">Resubmit your {{ $applicant->role === 'logistics' ? 'logistics provider' : 'seller' }} application</h1>
+        <h1 class="auth-title">Resubmit your seller application</h1>
         <p class="auth-sub">{{ $applicant->business_name }} · {{ $applicant->email }}</p>
 
         @if($errors->any())
