@@ -175,8 +175,10 @@
                 <tr>
                     <td><a href="{{ route('pickrush.station.riders.show', $r->rider) }}">{{ $r->rider->full_name }}</a></td>
                     <td>{{ $r->rider->zone?->name ?? '—' }}</td>
-                    <td class="pr-num">{{ $r->open }} / {{ $r->rider->max_parcels }}</td>
-                    <td class="pr-num">₱{{ number_format($r->cod, 2) }} / ₱{{ number_format((float) $r->rider->cod_limit, 2) }}</td>
+                    @php($loadPct = $r->rider->max_parcels > 0 ? min(100, round($r->open / $r->rider->max_parcels * 100)) : 0)
+                    @php($codPct = (float) $r->rider->cod_limit > 0 ? min(100, round($r->cod / (float) $r->rider->cod_limit * 100)) : 0)
+                    <td class="pr-num">{{ $r->open }} / {{ $r->rider->max_parcels }}<span @class(['pr-meter', 'is-high' => $loadPct >= 90]) aria-hidden="true"><span style="width: {{ $loadPct }}%"></span></span></td>
+                    <td class="pr-num">₱{{ number_format($r->cod, 2) }} / ₱{{ number_format((float) $r->rider->cod_limit, 2) }}<span @class(['pr-meter', 'is-high' => $codPct >= 90]) aria-hidden="true"><span style="width: {{ $codPct }}%"></span></span></td>
                     <td>@if($r->blocker)<span class="pr-badge pr-badge-warn">Unavailable</span> <span class="pr-muted">{{ $r->blocker }}</span>@else<span class="pr-badge pr-badge-ok">Available</span>@endif</td>
                 </tr>
             @empty

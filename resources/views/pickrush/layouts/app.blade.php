@@ -7,11 +7,13 @@
     <title>@yield('title', 'Dashboard') | Pickrush Logistics</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('images/pickrush-logo.svg') }}">
     @php($staff = \App\Pickrush\Support\Actor::staff())
-    {{-- HQ accounts get the dark console theme; province and station portals keep the original look. --}}
-    @php($hqTheme = $staff->isCompany())
+    {{-- Every portal (HQ, province, station) uses the dark console theme; the hub class adds hub-only pieces. --}}
+    @php($isStation = (bool) $staff->hub?->isStation())
+    @php($isProvince = (bool) $staff->hub?->isProvince())
+    @php($hqTheme = $staff->isCompany() || $isStation || $isProvince)
     @vite($hqTheme ? ['resources/css/pickrush/app.css', 'resources/css/pickrush/hq.css', 'resources/js/pickrush/portal.js'] : ['resources/css/pickrush/app.css', 'resources/js/pickrush/portal.js'])
 </head>
-<body @class(['pr-hq' => $hqTheme])>
+<body @class(['pr-hq' => $hqTheme, 'pr-station' => $isStation, 'pr-province' => $isProvince])>
 <div class="pr-shell">
     @if($hqTheme)
         @include('pickrush.partials.hq-sidebar')

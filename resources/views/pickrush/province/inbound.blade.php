@@ -36,9 +36,9 @@
     <section class="pr-section">
         <h2>Receive without the trip list</h2>
         @include('pickrush.partials.scan-box', ['action' => route('pickrush.province.inbound.scan'), 'button' => 'Receive'])
-        <form method="POST" action="{{ route('pickrush.province.inbound.mis-sorted') }}" class="pr-card">
+        <form method="POST" action="{{ route('pickrush.province.inbound.mis-sorted') }}" class="pr-card pr-missort">
             @csrf
-            <h3>Arrived here by mistake?</h3>
+            <h3><span class="pr-kpi-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg></span>Arrived here by mistake?</h3>
             <p class="pr-muted">A parcel that was going to another hub: receive it here and it will be rerouted. It is logged against the hub that sent it.</p>
             <div class="pr-inline">
                 <input name="tracking_no" class="pr-input" placeholder="Tracking number" required aria-label="Tracking number of the mis-sorted parcel">

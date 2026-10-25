@@ -239,3 +239,126 @@ body.pr-hq {
 .pr-hq .pr-dialog::backdrop { background: rgba(0, 0, 0, .6); }
 .pr-hq .pr-dialog-icon { background: rgba(255, 143, 133, .14); color: var(--pr-bad); }
 .pr-hq .pr-dialog h2 { font-family: 'Manrope', sans-serif; }
+
+/* ---------- Hub portals (station and province, body.pr-hq.pr-station / .pr-province): same console, plus hub-only pieces ---------- */
+.pr-hq .pr-page-head .pr-actions { gap: .6rem; }
+.pr-hq a.pr-card { color: inherit; text-decoration: none; }
+.pr-hq a.pr-card:hover { color: inherit; }
+
+/* Dashboard: parcel flow */
+.pr-hq .pr-flow-card { margin-bottom: 1.25rem; }
+.pr-hq .pr-flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .75rem; margin: 0; padding: 0; list-style: none; counter-reset: flow; }
+.pr-hq .pr-flow > li { position: relative; display: flex; }
+.pr-hq .pr-flow > li + li::before { content: ''; position: absolute; left: -.62rem; top: 50%; width: .5rem; height: .5rem; border-top: 2px solid #5a626c; border-right: 2px solid #5a626c; transform: translate(-25%, -50%) rotate(45deg); }
+.pr-hq .pr-flow-step { position: relative; display: flex; flex: 1; flex-direction: column; gap: .2rem; padding: 1rem 1.05rem; border: 1px solid transparent; border-radius: 12px; background: var(--pr-sunken); color: inherit; text-decoration: none; transition: background .2s, border-color .2s, transform .25s var(--pr-ease); }
+.pr-hq .pr-flow-step .pr-stat-num { margin: 0; font-size: 1.75rem; }
+.pr-hq a.pr-flow-step:hover { border-color: rgba(255, 138, 110, .35); background: #1b1e22; color: inherit; transform: translateY(-3px); }
+.pr-hq a.pr-flow-step::after { content: '→'; position: absolute; top: .85rem; right: 1rem; color: var(--pr-muted); transition: transform .25s var(--pr-ease), color .2s; }
+.pr-hq a.pr-flow-step:hover::after { color: var(--pr-brand-dark); transform: translateX(3px); }
+.pr-hq .pr-flow-step.is-done .pr-stat-num { color: var(--pr-ok); }
+.pr-hq .pr-flow-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin-top: .75rem; padding-top: .75rem; border-top: 1px dashed var(--pr-line); }
+.pr-hq .pr-flow-step.is-warn { border-color: rgba(245, 181, 68, .35); background: rgba(245, 181, 68, .08); }
+.pr-hq .pr-flow-step.is-warn .pr-stat-num { color: var(--pr-warn); }
+.pr-hq .pr-flow > li { animation: pr-rise .5s var(--pr-ease) both; }
+.pr-hq .pr-flow > li:nth-child(2) { animation-delay: .06s; }
+.pr-hq .pr-flow > li:nth-child(3) { animation-delay: .12s; }
+.pr-hq .pr-flow > li:nth-child(4) { animation-delay: .18s; }
+.pr-hq .pr-flow > li:nth-child(5) { animation-delay: .24s; }
+
+/* Dashboard: money & riders */
+.pr-hq .pr-money .pr-card { display: flex; flex-direction: column; }
+.pr-hq .pr-kpi-icon { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; margin-bottom: .6rem; border-radius: 10px; background: rgba(232, 71, 42, .16); color: var(--pr-brand-dark); transition: transform .3s var(--pr-ease); }
+.pr-hq .pr-money .pr-card:hover .pr-kpi-icon { transform: rotate(-8deg) scale(1.08); }
+
+/* Dashboard: rider reports */
+.pr-hq .pr-report { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .85rem 1rem; }
+.pr-hq .pr-report-icon { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; background: rgba(255, 107, 94, .18); color: var(--pr-bad); animation: pr-pulse 2s ease-in-out infinite; }
+.pr-hq .pr-report-body { flex: 1 1 260px; min-width: 0; }
+.pr-hq .pr-report-meta { display: flex; flex-wrap: wrap; gap: .25rem .9rem; margin-top: .25rem; color: #e9b8b2; font-size: .86rem; }
+.pr-hq .pr-report-meta a { font-weight: 700; }
+.pr-hq .pr-report-note { margin-top: .45rem; padding: .55rem .75rem; border-radius: 8px; background: rgba(0, 0, 0, .2); color: var(--pr-ink); }
+.pr-hq .pr-report form { margin: 0; align-self: center; }
+
+/* Scan box (receiving, trip checks) */
+.pr-hq .pr-scan { margin-bottom: 1.4rem; padding: 1.2rem 1.25rem; border: 1px solid rgba(255, 138, 110, .35); border-radius: var(--pr-radius); background: linear-gradient(180deg, rgba(232, 71, 42, .1), rgba(232, 71, 42, .03)), var(--pr-surface); box-shadow: inset 0 0 0 1px rgba(232, 71, 42, .08); }
+.pr-hq .pr-scan-label { margin-bottom: .6rem; color: var(--pr-ink); font-family: 'Manrope', sans-serif; font-size: 1rem; font-weight: 800; }
+.pr-hq .pr-scan-row { gap: .6rem; }
+.pr-hq .pr-scan-input { height: 52px; font-family: ui-monospace, Consolas, monospace; font-size: 1.2rem; letter-spacing: .08em; }
+.pr-hq .pr-scan-row .pr-btn { height: 52px; padding: 0 1.3rem; }
+.pr-hq .pr-scan-input:focus { box-shadow: 0 0 0 4px rgba(232, 71, 42, .3); }
+.pr-hq .pr-scan-video { border: 1px solid var(--pr-line); }
+
+/* Tick list (dispatch, trips) and meters (rider load / COD) */
+.pr-hq .pr-checklist { border-color: var(--pr-line); background: var(--pr-sunken); }
+.pr-hq .pr-checklist label { padding: .3rem .4rem; border-radius: 6px; transition: background .15s; }
+.pr-hq .pr-checklist label:hover { background: var(--pr-surface-2); }
+.pr-hq .pr-table input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--pr-brand); cursor: pointer; }
+.pr-hq .pr-meter { display: block; width: 100%; min-width: 90px; height: 6px; margin-top: .4rem; overflow: hidden; border-radius: 3px; background: #353b43; }
+.pr-hq .pr-meter > span { display: block; height: 100%; border-radius: 3px; background: var(--pr-brand-dark); transform-origin: left; animation: pr-grow .9s var(--pr-ease) .2s both; }
+.pr-hq .pr-meter.is-high > span { background: var(--pr-warn); }
+
+/* Map pin partial (station location, hubs): its inline light colours, darkened */
+.pr-hq .map-pin [id$="-map"] { border-color: var(--pr-line) !important; }
+.pr-hq .map-pin [data-map-pin-locate] { border-color: rgba(246, 243, 238, .25) !important; background: transparent !important; color: var(--pr-ink); font-weight: 600; transition: background .2s; }
+.pr-hq .map-pin [data-map-pin-locate]:hover { background: rgba(246, 243, 238, .06) !important; }
+.pr-hq .map-pin [data-map-pin-label] { color: var(--pr-muted) !important; }
+
+@media (max-width: 860px) {
+    .pr-hq .pr-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pr-hq .pr-flow > li + li::before { display: none; }
+}
+@media (max-width: 480px) {
+    .pr-hq .pr-flow, .pr-hq .pr-flow-side { grid-template-columns: 1fr; }
+    .pr-hq .pr-scan-row { flex-wrap: wrap; }
+}
+
+/* Cash: open variances block dispatch, so they read as an alert */
+.pr-hq .pr-variances > h2 { display: flex; align-items: center; gap: .5rem; color: var(--pr-bad); }
+.pr-hq .pr-variances .pr-table-wrap { border-color: rgba(255, 107, 94, .4); background: rgba(255, 107, 94, .05); }
+
+/* ---------- Province portal ---------- */
+.pr-hq .pr-flow.pr-flow-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pr-hq .pr-volume { display: flex; flex-wrap: wrap; gap: .3rem 1.1rem; margin-top: .35rem; color: #c9c3b9; font-size: .92rem; }
+.pr-hq .pr-volume b { margin-right: .2rem; color: var(--pr-ink); font-family: 'Manrope', sans-serif; font-size: 1.55rem; font-weight: 800; letter-spacing: -0.02em; }
+.pr-hq .pr-money .pr-stat-label + .pr-stat-num { margin-top: .35rem; font-size: 1.55rem; }
+
+/* Sorting: the bin to drop the parcel in, readable from across the floor; it pops in on every scan */
+.pr-hq .pr-bin { position: relative; overflow: hidden; gap: 1rem 1.5rem; padding: 1.5rem 1.75rem; border: 1px solid rgba(255, 138, 110, .45); border-radius: 18px; background: radial-gradient(120% 140% at 0% 0%, rgba(232, 71, 42, .35), rgba(232, 71, 42, .08) 60%), var(--pr-surface); color: var(--pr-ink); box-shadow: 0 20px 50px rgba(0, 0, 0, .3); animation: pr-bin-in .5s cubic-bezier(.34, 1.56, .64, 1) both; }
+.pr-hq .pr-bin::after { content: ''; position: absolute; inset: 0; background: rgba(255, 255, 255, .18); opacity: 0; animation: pr-bin-flash .7s ease-out; pointer-events: none; }
+.pr-hq .pr-bin-icon { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 16px; background: var(--pr-brand); color: #fff; }
+.pr-hq .pr-bin-main { flex: 1 1 260px; min-width: 0; }
+.pr-hq .pr-bin-name { font-family: 'Manrope', sans-serif; letter-spacing: .01em; overflow-wrap: anywhere; }
+.pr-hq .pr-bin-meta { color: #e6d7cf; opacity: 1; }
+.pr-hq .pr-bin > .pr-bin-meta { padding: .55rem .9rem; border-radius: 10px; background: rgba(0, 0, 0, .25); font-weight: 600; }
+.pr-hq .pr-bin.is-exception { border: 2px solid #f04438; background: radial-gradient(120% 140% at 0% 0%, rgba(217, 45, 32, .6), rgba(217, 45, 32, .18) 65%), var(--pr-surface); animation-name: pr-bin-in, pr-shake; animation-duration: .5s, .45s; animation-delay: 0s, .15s; }
+.pr-hq .pr-bin.is-exception .pr-bin-icon { background: #d92d20; }
+
+/* Sorting: bin tiles */
+.pr-hq .pr-bin-grid { gap: .8rem; }
+.pr-hq .pr-bin-tile { display: flex; flex-direction: column; gap: .2rem; padding: 1rem 1.1rem; border-color: rgba(246, 243, 238, .07); border-radius: 14px; background: var(--pr-surface); transition: transform .25s var(--pr-ease), border-color .2s; }
+.pr-hq .pr-bin-tile:hover { border-color: rgba(255, 138, 110, .3); transform: translateY(-3px); }
+.pr-hq .pr-bin-tile strong { font-family: 'Manrope', sans-serif; font-size: 1.15rem; letter-spacing: .02em; }
+.pr-hq .pr-bin-tile.is-complete .pr-meter > span { background: var(--pr-ok); }
+.pr-hq .pr-bin-tile.is-exception { border-color: rgba(255, 107, 94, .45); background: rgba(255, 107, 94, .08); }
+.pr-hq .pr-bin-tile.is-exception strong { color: var(--pr-bad); }
+
+/* Inbound: mis-sorted form; Outbound: trips being loaded */
+.pr-hq .pr-missort h3 { display: flex; align-items: center; gap: .6rem; margin-bottom: .4rem; font-family: 'Manrope', sans-serif; }
+.pr-hq .pr-missort .pr-kpi-icon { width: 32px; height: 32px; margin: 0; }
+.pr-hq .pr-missort .pr-inline { flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+.pr-hq .pr-loading { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; }
+.pr-hq .pr-loading-list { display: flex; flex-wrap: wrap; gap: .5rem; }
+.pr-hq .pr-loading-trip { display: inline-flex; align-items: center; gap: .35rem; padding: .4rem .8rem; border: 1px solid rgba(245, 181, 68, .35); border-radius: 999px; background: rgba(0, 0, 0, .2); color: var(--pr-ink); font-weight: 600; text-decoration: none; transition: background .2s, transform .2s var(--pr-ease); }
+.pr-hq .pr-loading-trip:hover { background: rgba(245, 181, 68, .16); color: var(--pr-ink); transform: translateY(-2px); }
+.pr-hq .pr-loading-trip b { color: var(--pr-warn); }
+
+@keyframes pr-bin-in { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes pr-bin-flash { 0% { opacity: .9; } 100% { opacity: 0; } }
+@keyframes pr-shake { 0%, 100% { translate: 0; } 25% { translate: -8px; } 50% { translate: 6px; } 75% { translate: -3px; } }
+
+@media (max-width: 640px) {
+    .pr-hq .pr-flow.pr-flow-3 { grid-template-columns: 1fr; }
+    .pr-hq .pr-flow.pr-flow-3 > li + li::before { display: none; }
+    .pr-hq .pr-bin { padding: 1.2rem; }
+    .pr-hq .pr-bin-icon { width: 48px; height: 48px; }
+}

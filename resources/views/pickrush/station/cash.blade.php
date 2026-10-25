@@ -11,8 +11,8 @@
 </div>
 
 @if($disputed->isNotEmpty())
-    <section class="pr-section">
-        <h2>Open variances: these riders cannot be dispatched</h2>
+    <section class="pr-section pr-variances">
+        <h2><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg> Open variances: these riders cannot be dispatched</h2>
         <div class="pr-table-wrap">
             <table class="pr-table">
                 <thead><tr><th>Rider</th><th>Date</th><th class="pr-num">Expected</th><th class="pr-num">Received</th><th class="pr-num">Variance</th><th>Resolve</th></tr></thead>

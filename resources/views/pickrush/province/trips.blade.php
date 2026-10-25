@@ -19,11 +19,13 @@
 </div>
 
 @if($drafts->isNotEmpty())
-    <div class="pr-alert pr-alert-warn">
+    <div class="pr-alert pr-alert-warn pr-loading">
         <strong>Being loaded:</strong>
+        <div class="pr-loading-list">
         @foreach($drafts as $draft)
-            <a href="{{ route('pickrush.province.trips.show', $draft) }}">{{ $draft->manifest_no }} → {{ $draft->toHub->name }}</a> ({{ $draft->parcel_count }})@if(! $loop->last), @endif
+            <a class="pr-loading-trip" href="{{ route('pickrush.province.trips.show', $draft) }}"><span>{{ $draft->manifest_no }} → {{ $draft->toHub->name }}</span> <b>({{ $draft->parcel_count }})</b></a>
         @endforeach
+        </div>
     </div>
 @endif
 
@@ -37,8 +39,9 @@
                 <tr>
                     <td><strong>{{ $row->bin }}</strong></td>
                     <td>{{ $row->hub->name }}@if($row->hub->isProvince()) <span class="pr-badge pr-badge-brand">Inter-province</span>@endif</td>
+                    @php($sortedPct = $row->ready > 0 ? min(100, round($row->sorted / $row->ready * 100)) : 0)
                     <td class="pr-num">{{ $row->ready }}</td>
-                    <td class="pr-num">{{ $row->sorted }}</td>
+                    <td class="pr-num">{{ $row->sorted }}<span class="pr-meter" aria-hidden="true"><span style="width: {{ $sortedPct }}%"></span></span></td>
                     <td>
                         <form method="POST" action="{{ route('pickrush.province.trips.store') }}">@csrf
                             <input type="hidden" name="to_hub_id" value="{{ $row->hub->id }}">

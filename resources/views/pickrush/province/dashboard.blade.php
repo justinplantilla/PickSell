@@ -18,20 +18,38 @@
     <div class="pr-alert pr-alert-warn" role="status"><strong>Not fully set up:</strong> {{ implode(', ', $gaps) }}</div>
 @endif
 
-<div class="pr-grid">
-    <a class="pr-card" href="{{ route('pickrush.province.inbound') }}" style="text-decoration:none;color:inherit"><div class="pr-stat-num">{{ $inboundTrips }}</div><div class="pr-stat-label">Trips on the road to here ({{ $onTheWay }} parcels)</div></a>
-    <a class="pr-card" href="{{ route('pickrush.province.inventory') }}" style="text-decoration:none;color:inherit"><div class="pr-stat-num">{{ number_format($onHand) }}</div><div class="pr-stat-label">On hand</div></a>
-    <a class="pr-card" href="{{ route('pickrush.province.sorting') }}" style="text-decoration:none;color:inherit"><div class="pr-stat-num">{{ number_format($unsorted) }}</div><div class="pr-stat-label">Not sorted yet</div></a>
-    <a class="pr-card" href="{{ route('pickrush.province.inventory', ['aging' => 1]) }}" style="text-decoration:none;color:inherit"><div class="pr-stat-num">{{ number_format($aging) }}</div><div class="pr-stat-label">Aging (over {{ \App\Pickrush\Services\Province\Inventory::agingHours() }}h)</div></a>
-    <a class="pr-card" href="{{ route('pickrush.exceptions.index') }}" style="text-decoration:none;color:inherit"><div class="pr-stat-num">{{ $openExceptions }}</div><div class="pr-stat-label">Open exceptions ({{ $onHold }} on hold)</div></a>
-</div>
+{{-- Parcels in the order they move through the center, then what needs a person, then volume. --}}
+<section class="pr-card pr-flow-card">
+    <div class="pr-card-head"><h2>Parcel flow</h2></div>
+    <ol class="pr-flow pr-flow-3">
+        <li><a class="pr-flow-step" href="{{ route('pickrush.province.inbound') }}"><span class="pr-stat-num">{{ $inboundTrips }}</span><span class="pr-stat-label">Trips on the road to here ({{ $onTheWay }} parcels)</span></a></li>
+        <li><a class="pr-flow-step" href="{{ route('pickrush.province.inventory') }}"><span class="pr-stat-num">{{ number_format($onHand) }}</span><span class="pr-stat-label">On hand</span></a></li>
+        <li><a class="pr-flow-step" href="{{ route('pickrush.province.sorting') }}"><span class="pr-stat-num">{{ number_format($unsorted) }}</span><span class="pr-stat-label">Not sorted yet</span></a></li>
+    </ol>
+    <div class="pr-flow-side">
+        <a @class(['pr-flow-step', 'is-warn' => $aging > 0]) href="{{ route('pickrush.province.inventory', ['aging' => 1]) }}"><span class="pr-stat-num">{{ number_format($aging) }}</span><span class="pr-stat-label">Aging (over {{ \App\Pickrush\Services\Province\Inventory::agingHours() }}h)</span></a>
+        <a @class(['pr-flow-step', 'is-warn' => $openExceptions > 0]) href="{{ route('pickrush.exceptions.index') }}"><span class="pr-stat-num">{{ $openExceptions }}</span><span class="pr-stat-label">Open exceptions ({{ $onHold }} on hold)</span></a>
+    </div>
+</section>
 
-<section class="pr-card">
+<section class="pr-section">
     <h2>Volume</h2>
-    <dl class="pr-dl">
-        <dt>Today</dt><dd>{{ number_format($inToday) }} in · {{ number_format($outToday) }} out · {{ $tripsToday }} trips dispatched</dd>
-        <dt>Last 7 days</dt><dd>{{ number_format($in7d) }} in · {{ number_format($out7d) }} out</dd>
-        <dt>Average dwell time</dt><dd>{{ $avgDwell !== null ? $avgDwell.' hours' : 'Not enough data yet' }}</dd>
-    </dl>
+    <div class="pr-grid pr-kpis pr-money">
+        <div class="pr-card">
+            <span class="pr-kpi-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+            <div class="pr-stat-label">Today</div>
+            <div class="pr-volume"><span><b>{{ number_format($inToday) }}</b> in</span><span><b>{{ number_format($outToday) }}</b> out</span><span><b>{{ $tripsToday }}</b> trips dispatched</span></div>
+        </div>
+        <div class="pr-card">
+            <span class="pr-kpi-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18M7 15l4-4 3 3 5-6"/></svg></span>
+            <div class="pr-stat-label">Last 7 days</div>
+            <div class="pr-volume"><span><b>{{ number_format($in7d) }}</b> in</span><span><b>{{ number_format($out7d) }}</b> out</span></div>
+        </div>
+        <div class="pr-card">
+            <span class="pr-kpi-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12M6 22h12M7 2v4l5 6-5 6v4M17 2v4l-5 6 5 6v4"/></svg></span>
+            <div class="pr-stat-label">Average dwell time</div>
+            <div class="pr-stat-num">{{ $avgDwell !== null ? $avgDwell.' hours' : 'Not enough data yet' }}</div>
+        </div>
+    </div>
 </section>
 @endsection

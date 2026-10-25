@@ -1,13 +1,25 @@
 {{--
-    HQ sidebar: the same links Navigation::for() returns, grouped and given icons. Any link not listed in $groups
-    lands in "More", so a new menu item can never disappear from the sidebar.
+    Console sidebar (HQ, province and station portals): the same links Navigation::for() returns, grouped and given icons. Any link
+    not listed in $groups lands in "More", so a new menu item can never disappear from the sidebar.
 --}}
 @php
-    $groups = [
+    $isStation = (bool) $staff->hub?->isStation();
+    $isProvince = (bool) $staff->hub?->isProvince();
+    $groups = $isProvince ? [
+        'Overview' => ['pickrush.province.dashboard'],
+        'Floor' => ['pickrush.province.inbound', 'pickrush.province.sorting', 'pickrush.province.trips.index', 'pickrush.province.inventory'],
+        'Issues & records' => ['pickrush.exceptions.index', 'pickrush.parcels.index'],
+        'Fleet' => ['pickrush.fleet.index'],
+    ] : ($isStation ? [
+        'Overview' => ['pickrush.station.dashboard'],
+        'Parcels' => ['pickrush.station.receiving', 'pickrush.station.dispatch', 'pickrush.station.failed', 'pickrush.station.trips.index', 'pickrush.exceptions.index', 'pickrush.parcels.index'],
+        'Riders & area' => ['pickrush.station.riders.index', 'pickrush.station.zones.index', 'pickrush.station.location'],
+        'Money' => ['pickrush.station.cash'],
+    ] : [
         'Overview' => ['pickrush.hq.dashboard', 'pickrush.hq.alerts', 'pickrush.hq.reports'],
         'Operations' => ['pickrush.parcels.index', 'pickrush.hq.address-fix', 'pickrush.exceptions.index', 'pickrush.hubs.index'],
         'Money & admin' => ['pickrush.hq.finance', 'pickrush.hq.staff.index', 'pickrush.hq.settings', 'pickrush.hq.audit'],
-    ];
+    ]);
     $icons = [
         'pickrush.hq.dashboard' => 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z',
         'pickrush.hq.alerts' => 'M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0',
@@ -20,6 +32,21 @@
         'pickrush.hq.staff.index' => 'M9 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM2 21a7 7 0 0 1 14 0M17 11l2 2 4-4',
         'pickrush.hq.settings' => 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
         'pickrush.hq.audit' => 'M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 13h6M9 17h4',
+        'pickrush.station.dashboard' => 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z',
+        'pickrush.station.receiving' => 'M12 3v12M7 10l5 5 5-5M4 17v3h16v-3',
+        'pickrush.station.dispatch' => 'M3 6h11v10H3zM14 10h4l3 3v3h-7M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
+        'pickrush.station.failed' => 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 8v4M12 16h.01',
+        'pickrush.station.trips.index' => 'M5 17a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM15 17a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM9 17h6M2 5h12v12M14 9h4l4 4v4h-3',
+        'pickrush.station.riders.index' => 'M9 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM2 21a7 7 0 0 1 14 0M17 4a4 4 0 0 1 0 8M19 14a6 6 0 0 1 3 7',
+        'pickrush.station.zones.index' => 'M9 3L3 6v15l6-3 6 3 6-3V3l-6 3zM9 3v15M15 6v15',
+        'pickrush.station.location' => 'M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11zM12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
+        'pickrush.province.dashboard' => 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z',
+        'pickrush.province.inbound' => 'M12 3v12M7 10l5 5 5-5M4 17v3h16v-3',
+        'pickrush.province.sorting' => 'M3 4h7v7H3zM14 4h7v7h-7zM3 15h7v5H3zM14 15h7v5h-7z',
+        'pickrush.province.trips.index' => 'M5 17a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM15 17a2 2 0 1 0 4 0 2 2 0 0 0-4 0zM9 17h6M2 5h12v12M14 9h4l4 4v4h-3',
+        'pickrush.province.inventory' => 'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10',
+        'pickrush.fleet.index' => 'M3 6h11v10H3zM14 10h4l3 3v3h-7M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
+        'pickrush.station.cash' => 'M2 6h20v13H2zM12 10a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM6 10v.01M18 15v.01',
     ];
     $items = collect(\App\Pickrush\Support\Navigation::for($staff))->keyBy('route');
     $grouped = collect($groups)->map(fn ($routes) => $items->only($routes)->sortBy(fn ($item, $route) => array_search($route, $routes)))->filter->isNotEmpty();
@@ -32,7 +59,7 @@
 <aside class="pr-sidebar">
     <a href="{{ route('pickrush.dashboard') }}" class="pr-brand">
         @include('pickrush.partials.logo-mark', ['class' => 'pr-brand-logo', 'size' => 34])
-        <span class="pr-brand-text">Pickrush<small>HQ console</small></span>
+        <span class="pr-brand-text">Pickrush<small>{{ $isProvince ? 'Province console' : ($isStation ? 'Station console' : 'HQ console') }}</small></span>
     </a>
     <nav class="pr-nav" aria-label="Main">
         @foreach($grouped as $title => $links)
