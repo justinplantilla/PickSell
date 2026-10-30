@@ -45,6 +45,10 @@ class StationReceiving
                 Assignment::where('parcel_id', $parcel->id)->where('type', 'pickup')->where('status', 'assigned')
                     ->update(['status' => 'cancelled', 'fail_note' => 'Seller dropped the parcel off']);
 
+                // The rider's pickup batch may now be finished (everything collected and received).
+                Assignment::with('batch')->where('parcel_id', $parcel->id)->where('type', 'pickup')->whereNotNull('batch_id')->get()
+                    ->each(fn (Assignment $task) => $task->batch && $this->batches->sync($task->batch));
+
                 // No destination station: it must not leave until the address is fixed.
                 if (! $parcel->dest_hub_id) {
                     $this->ledger->record($parcel, ParcelStatus::OnHold, $station, ['note' => 'Delivery address did not match a station']);

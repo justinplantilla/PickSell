@@ -95,7 +95,11 @@ class Order extends Model
 
     private function recordStatusChange(?string $from): void
     {
+        // Only a marketplace account can be "changed_by". On the Pickrush portal the signed-in
+        // user is a Pickrush staff member (another table), and the order follows the scan with
+        // source "pickrush" and no person attached.
         $actor = auth()->user();
+        $actor = $actor instanceof User ? $actor : null;
         OrderStatusHistory::create([
             'order_id' => $this->id,
             'changed_by' => $this->statusChangedBy ?? $actor?->id,

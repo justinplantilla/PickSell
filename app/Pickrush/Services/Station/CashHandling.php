@@ -7,8 +7,10 @@ use App\Pickrush\Models\CodRemittance;
 use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\HubRemittance;
 use App\Pickrush\Models\Rider;
+use App\Pickrush\Models\RiderBatch;
 use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\OperationRefused;
+use App\Pickrush\Services\Rider\RiderBatches;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -18,7 +20,7 @@ use Illuminate\Support\Facades\DB;
  */
 class CashHandling
 {
-    public function __construct(private RiderAvailability $availability) {}
+    public function __construct(private RiderAvailability $availability, private RiderBatches $batches) {}
 
     public function expectedFrom(Rider $rider): float
     {
@@ -57,6 +59,10 @@ class CashHandling
                 'note' => $note,
             ]);
             Assignment::whereIn('id', $tasks->pluck('id'))->update(['cod_remittance_id' => $remittance->id]);
+
+            // The rider's delivery batches may now be finished (cash in, parcels handed back).
+            RiderBatch::where('rider_id', $rider->id)->where('type', 'delivery')->whereIn('status', RiderBatch::OPEN)->get()
+                ->each(fn (RiderBatch $batch) => $this->batches->sync($batch));
 
             return $remittance;
         });
