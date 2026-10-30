@@ -34,6 +34,11 @@
             <h1>{{ $product->name }}</h1>
             <div class="product-seller-line">Sold by <a href="{{ route('buyer.seller', $product->seller) }}"><strong>{{ $product->seller->business_name ?? $product->seller->full_name }}</strong></a><span class="seller-verified">Verified seller</span></div>
             <a href="#reviews" class="product-rating-link"><span aria-hidden="true">★★★★★</span> {{ $reviewAverage ?: 'New' }} · {{ $reviewCount }} {{ $reviewCount === 1 ? 'review' : 'reviews' }}</a>
+            <form method="POST" action="{{ $wishlisted ? route('buyer.wishlist.destroy', $product) : route('buyer.wishlist.store', $product) }}" class="wishlist-toggle-form">
+                @csrf
+                @if($wishlisted) @method('DELETE') @endif
+                <button type="submit" class="wishlist-toggle {{ $wishlisted ? 'is-saved' : '' }}" aria-pressed="{{ $wishlisted ? 'true' : 'false' }}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.1A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 2.8c0 5.5-7.5 10.1-7.5 10.1Z" fill="{{ $wishlisted ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ $wishlisted ? 'Saved to wishlist' : 'Add to wishlist' }}</button>
+            </form>
         </div>
 
         <div class="product-price-block"><span class="detail-price">₱{{ number_format($product->effective_price, 2) }}</span>@if($product->discount > 0)<span class="detail-original">₱{{ number_format($product->price, 2) }}</span><span class="detail-discount">-{{ $product->discount }}%</span>@endif</div>

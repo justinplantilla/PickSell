@@ -10,9 +10,11 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductReview;
 use App\Models\User;
+use App\Models\WishlistItem;
 use App\Notifications\NewSellerOrder;
 use App\Pickrush\Bridge\PicksellBridge;
 use App\Services\CommissionService;
+use App\Services\RecentlyViewed;
 use App\Services\LogisticsRoutingService;
 use App\Services\Orders\OrderCancellationService;
 use Illuminate\Http\Request;
@@ -109,8 +111,9 @@ class BuyerController extends Controller
             ->sort()
             ->values();
         $cartCount = CartItem::whereHas('cart', fn ($q) => $q->where('buyer_id', $this->buyer()->id))->count();
+        $recentlyViewed = (!$search && !$category && !$deals) ? app(RecentlyViewed::class)->products($this->buyer(), 10) : collect();
 
-        return view('buyer.home', compact('products', 'dealProducts', 'recommendedProducts', 'topCategoryProducts', 'categories', 'search', 'category', 'deals', 'cartCount'));
+        return view('buyer.home', compact('products', 'dealProducts', 'recommendedProducts', 'topCategoryProducts', 'categories', 'search', 'category', 'deals', 'cartCount', 'recentlyViewed'));
     }
 
     public function recommended(Request $request)
@@ -227,15 +230,17 @@ class BuyerController extends Controller
     }
 
     // Product Detail
-    public function productDetail(Product $product)
+    public function productDetail(Product $product, RecentlyViewed $recentlyViewed)
     {
         abort_if($product->status !== 'active', 404);
         $product->load('seller', 'variations', 'reviews.buyer');
         $cartCount = CartItem::whereHas('cart', fn ($q) => $q->where('buyer_id', $this->buyer()->id))->count();
         $reviewCount = $product->reviews->count();
         $reviewAverage = $reviewCount ? round($product->reviews->avg('rating'), 1) : 0;
+        $wishlisted = WishlistItem::where('user_id', $this->buyer()->id)->where('product_id', $product->id)->exists();
+        $recentlyViewed->record($this->buyer(), $product);
 
-        return view('buyer.product-detail', compact('product', 'cartCount', 'reviewCount', 'reviewAverage'));
+        return view('buyer.product-detail', compact('product', 'cartCount', 'reviewCount', 'reviewAverage', 'wishlisted'));
     }
 
     public function sellerStorefront(User $seller)

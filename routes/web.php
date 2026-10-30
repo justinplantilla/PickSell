@@ -25,6 +25,7 @@ use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BuyerController;
 use App\Http\Controllers\BuyerReturnRequestController;
+use App\Http\Controllers\BuyerWishlistController;
 use App\Http\Controllers\SellerController;
 use App\Http\Controllers\SellerProductImageController;
 use App\Http\Controllers\RegistrationResubmissionController;
@@ -146,6 +147,11 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
     Route::post('/cart/{product}', [BuyerController::class, 'addToCart'])->name('buyer.cart.add');
     Route::patch('/cart/item/{item}', [BuyerController::class, 'updateCart'])->name('buyer.cart.update');
     Route::delete('/cart/item/{item}', [BuyerController::class, 'removeFromCart'])->name('buyer.cart.remove');
+
+    // Wishlist (shared with the buyer mobile app)
+    Route::get('/wishlist', [BuyerWishlistController::class, 'index'])->name('buyer.wishlist');
+    Route::post('/wishlist/{product}', [BuyerWishlistController::class, 'store'])->name('buyer.wishlist.store');
+    Route::delete('/wishlist/{product}', [BuyerWishlistController::class, 'destroy'])->name('buyer.wishlist.destroy');
 
     // Orders
     Route::get('/orders', [BuyerController::class, 'orders'])->name('buyer.orders');

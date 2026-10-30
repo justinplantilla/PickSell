@@ -247,6 +247,17 @@
         @endif
     </section>
 
+    @if(($recentlyViewed ?? collect())->isNotEmpty())
+    <section class="buyer-section" id="recently-viewed">
+        <div class="buyer-section-head">
+            <h2 class="buyer-section-title">Recently Viewed</h2>
+        </div>
+        <div class="product-grid">
+            @include('buyer.partials.product-cards', ['products' => $recentlyViewed])
+        </div>
+    </section>
+    @endif
+
     @if(!$search && !$category && !$deals)
     <section class="buyer-section">
         <div class="buyer-section-head">

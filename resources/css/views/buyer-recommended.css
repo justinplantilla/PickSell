@@ -53,3 +53,31 @@
     font-size: 0.88rem;
     color: var(--muted, #888);
 }
+
+.wishlist-empty {
+    font-size: 0.9rem;
+    color: var(--muted, #888);
+    margin: 0 0 1rem;
+}
+
+.wishlist-entry {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.wishlist-remove-btn {
+    width: 100%;
+    padding: 0.4rem;
+    border: 1px solid var(--line, #e7e1d8);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--coral);
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.wishlist-remove-btn:hover {
+    background: var(--coral-soft, #fff3f0);
+}

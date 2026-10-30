@@ -111,3 +111,7 @@
 .related-card span { color:var(--coral); font-size:.78rem; font-weight:800; }
 @media(max-width:900px) { .product-detail { grid-template-columns:1fr 1fr; gap:1.5rem; } .product-information-grid { padding-inline:0; } .related-grid { grid-template-columns:repeat(3,1fr); } }
 @media(max-width:700px) { .product-breadcrumb { margin-inline:.75rem; } .product-detail { display:flex; flex-direction:column; gap:1.5rem; } .product-detail-info { width:100%; } .product-information-grid { grid-template-columns:1fr; margin-top:2rem; } .product-actions { grid-template-columns:1fr 1fr; } .product-actions .btn:last-child { grid-column:1 / -1; } .related-grid { grid-template-columns:repeat(2,1fr); } }
+.wishlist-toggle-form { margin-top:.6rem; }
+.wishlist-toggle { display:inline-flex; align-items:center; gap:.4rem; padding:.4rem .8rem; border:1px solid var(--line); border-radius:999px; background:transparent; color:var(--coral); font-size:.78rem; font-weight:700; cursor:pointer; }
+.wishlist-toggle svg { width:16px; height:16px; }
+.wishlist-toggle:hover, .wishlist-toggle.is-saved { border-color:var(--coral); background:var(--coral-soft); }

@@ -179,4 +179,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(Product::class, 'seller_id');
     }
+
+    public function wishlistItems()
+    {
+        return $this->hasMany(WishlistItem::class);
+    }
+
+    public function recentlyViewedProducts()
+    {
+        return $this->hasMany(RecentlyViewedProduct::class);
+    }
 }
