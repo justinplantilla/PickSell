@@ -90,10 +90,12 @@ class OrderLifecycleTest extends TestCase
             'province' => 'Metro Manila', 'municipality' => 'Quezon City', 'barangay' => 'Bahay',
         ]);
 
+        $this->actingAs($seller)->post('/seller/orders/' . $order->id . '/waybill')->assertRedirect();
+        $this->assertSame('preparing', $order->fresh()->status, 'printing the waybill does not call a rider');
+        $this->assertSame(0, $buyer->notifications()->count());
+
         $this->actingAs($seller)
-            ->patch('/seller/orders/' . $order->id . '/handover', [
-                'waybill_number' => 'WB-LIFECYCLE-1',
-            ])
+            ->patch('/seller/orders/' . $order->id . '/handover')
             ->assertRedirect();
 
         $order->refresh();

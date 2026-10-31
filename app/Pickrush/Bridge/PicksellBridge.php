@@ -27,7 +27,10 @@ class PicksellBridge
         private AddressResolver $addresses,
     ) {}
 
-    /** Book the parcel for an order that is ready for pickup. Idempotent: one parcel per order. */
+    /**
+     * Generate the waybill: books the parcel as "label created", so the seller can print it and
+     * keep packing. Riders are not alerted until requestPickup(). Idempotent: one parcel per order.
+     */
     public function book(Order $order): Parcel
     {
         if ($existing = self::parcelFor($order)) {
@@ -56,7 +59,20 @@ class PicksellBridge
             'delivery_municipality_code' => $delivery['municipality_code'],
             'item_description' => "{$order->product_name} × {$order->quantity}",
             'cod_amount' => $order->amount,
-        ], Actor::picksell());
+        ], Actor::picksell(), ParcelStatus::LabelCreated);
+    }
+
+    /** The seller handed the packed parcel over: it joins the station's pickup queue. Idempotent. */
+    public function requestPickup(Order $order): Parcel
+    {
+        $parcel = self::parcelFor($order);
+        abort_unless($parcel, 409, 'Generate the waybill before handing the order over.');
+
+        if ($parcel->current_status === ParcelStatus::LabelCreated) {
+            $this->ledger->record($parcel, ParcelStatus::WaitingPickup, null, ['actor' => Actor::picksell()]);
+        }
+
+        return $parcel;
     }
 
     /**
@@ -69,7 +85,7 @@ class PicksellBridge
         if (! $parcel || $parcel->current_status === ParcelStatus::Cancelled) {
             return;
         }
-        abort_unless($parcel->current_status === ParcelStatus::WaitingPickup, 409,
+        abort_unless(in_array($parcel->current_status, [ParcelStatus::LabelCreated, ParcelStatus::WaitingPickup], true), 409,
             "Pickrush already has parcel {$parcel->tracking_no} ({$parcel->current_status->label()}); it cannot be cancelled, only returned.");
 
         $this->ledger->record($parcel, ParcelStatus::Cancelled, null, ['note' => $reason, 'actor' => Actor::picksell()]);
@@ -84,7 +100,7 @@ class PicksellBridge
         $orderIds = Order::where('seller_id', $seller->id)->pluck('id')->map(fn ($id) => (string) $id);
 
         return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->whereIn('external_ref', $orderIds)
-            ->where('current_status', ParcelStatus::WaitingPickup)
+            ->whereIn('current_status', [ParcelStatus::LabelCreated, ParcelStatus::WaitingPickup])
             ->update(['pickup_lat' => $seller->pickup_lat, 'pickup_lng' => $seller->pickup_lng]);
     }
 

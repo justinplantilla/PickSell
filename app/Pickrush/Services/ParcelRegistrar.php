@@ -20,10 +20,13 @@ class ParcelRegistrar
         private ParcelLedger $ledger,
     ) {}
 
-    /** @param  array<string, mixed>  $data  pr_parcels columns (shipper, consignee, addresses, codes, payment) */
-    public function register(array $data, ?Actor $actor = null): Parcel
+    /**
+     * @param  array<string, mixed>  $data  pr_parcels columns (shipper, consignee, addresses, codes, payment)
+     * @param  ParcelStatus  $opening  waiting for pickup, or label created when the shipper hands over later
+     */
+    public function register(array $data, ?Actor $actor = null, ParcelStatus $opening = ParcelStatus::WaitingPickup): Parcel
     {
-        return DB::transaction(function () use ($data, $actor) {
+        return DB::transaction(function () use ($data, $actor, $opening) {
             $origin = $this->router->stationFor($data['pickup_municipality_code'] ?? null);
             $dest = $this->router->stationFor($data['delivery_municipality_code'] ?? null);
 
@@ -36,7 +39,7 @@ class ParcelRegistrar
                 'needs_address_fix' => ! $origin || ! $dest,
             ]);
 
-            $this->ledger->record($parcel, ParcelStatus::WaitingPickup, null, ['actor' => $actor]);
+            $this->ledger->record($parcel, $opening, null, ['actor' => $actor]);
 
             return $parcel->refresh();
         });

@@ -45,6 +45,9 @@ Route::get('/products', function (Request $request) {
 // Pickrush rider app.
 require __DIR__.'/pickrush-api.php';
 
+// PickSell buyer app.
+require __DIR__.'/buyer-api.php';
+
 Route::get('/ping', function (Request $request) {
     return response()->json(['ok' => true]);
 });

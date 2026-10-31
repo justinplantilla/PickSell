@@ -17,6 +17,15 @@ class ReturnRequest extends Model
         'rejected',
     ];
 
+    /** Return reasons a buyer may choose (codes as BuyerReturnRequestController validates them). */
+    public const REASONS = [
+        'damaged' => 'Damaged item',
+        'wrong_item' => 'Wrong item received',
+        'wrong_size' => 'Wrong size',
+        'not_as_described' => 'Not as described',
+        'other' => 'Other',
+    ];
+
     protected $fillable = [
         'order_id', 'buyer_id', 'seller_id', 'reason', 'details', 'status',
         'seller_note', 'dispute_status', 'admin_notes', 'admin_decision',

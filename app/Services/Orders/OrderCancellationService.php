@@ -4,6 +4,7 @@ namespace App\Services\Orders;
 
 use App\Models\Order;
 use App\Models\User;
+use App\Pickrush\Bridge\PicksellBridge;
 use Illuminate\Support\Facades\DB;
 
 class OrderCancellationService
@@ -17,6 +18,9 @@ class OrderCancellationService
             $ownerColumn = $role === 'buyer' ? 'buyer_id' : 'seller_id';
             abort_unless($locked->{$ownerColumn} === $actor->id, 403);
             abort_unless(in_array($locked->status, self::CANCELLABLE_STATUSES, true), 409, 'This order can no longer be cancelled.');
+
+            // The seller may already have printed the waybill; void it so it can never be picked up.
+            app(PicksellBridge::class)->cancel($locked, $reason ?: 'Order cancelled before handover');
 
             app(OrderLifecycleService::class)->transition(
                 $locked,

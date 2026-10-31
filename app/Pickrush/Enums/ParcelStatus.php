@@ -8,6 +8,7 @@ namespace App\Pickrush\Enums;
  */
 enum ParcelStatus: string
 {
+    case LabelCreated = 'label_created';
     case WaitingPickup = 'waiting_pickup';
     case PickedUp = 'picked_up';
     case AtOriginHub = 'at_origin_hub';
@@ -27,6 +28,8 @@ enum ParcelStatus: string
 
     /** status => statuses it may move to */
     private const TRANSITIONS = [
+        // The seller printed the waybill but is still packing; riders only see it once handed over.
+        'label_created' => ['waiting_pickup', 'cancelled'],
         'waiting_pickup' => ['picked_up', 'at_origin_hub', 'cancelled'],
         'picked_up' => ['at_origin_hub', 'on_hold'],
         'at_origin_hub' => ['in_transit_to_province', 'assigned_to_rider', 'on_hold', 'returned_to_sender'],
@@ -65,6 +68,7 @@ enum ParcelStatus: string
     public function label(): string
     {
         return match ($this) {
+            self::LabelCreated => 'Label created',
             self::WaitingPickup => 'Waiting for pickup',
             self::PickedUp => 'Picked up',
             self::AtOriginHub => 'At origin hub',

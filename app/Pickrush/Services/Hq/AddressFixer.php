@@ -31,11 +31,12 @@ class AddressFixer
         if (in_array($parcel->current_status, [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost], true)) {
             throw new OperationRefused('This parcel has finished its journey.');
         }
-        if ($side === 'pickup' && $parcel->current_status !== ParcelStatus::WaitingPickup) {
+        $notCollected = in_array($parcel->current_status, [ParcelStatus::LabelCreated, ParcelStatus::WaitingPickup], true);
+        if ($side === 'pickup' && ! $notCollected) {
             throw new OperationRefused('The pickup address can only change before the parcel is collected.');
         }
 
-        DB::transaction(function () use ($parcel, $side, $barangay, $station, $addressLine, $staff) {
+        DB::transaction(function () use ($parcel, $side, $barangay, $station, $addressLine, $staff, $notCollected) {
             $line = $addressLine ?: "{$barangay->name}, {$barangay->municipality->name}, {$barangay->municipality->province->name}";
             $parcel->forceFill($side === 'pickup'
                 ? ['pickup_barangay_code' => $barangay->code, 'pickup_municipality_code' => $barangay->municipality_code, 'pickup_address' => $line, 'origin_hub_id' => $station->id]
@@ -44,7 +45,7 @@ class AddressFixer
             $parcel->shipping_fee = RateCard::quote($parcel->originHub()->first(), $parcel->destHub()->first(), $parcel->weight_kg ? (float) $parcel->weight_kg : null, (float) $parcel->cod_amount);
 
             // Re-route a parcel sitting in a hub (not on hold); waiting parcels start at their origin.
-            if ($parcel->current_status === ParcelStatus::WaitingPickup) {
+            if ($notCollected) {
                 $parcel->next_hub_id = $parcel->origin_hub_id;
             } elseif ($parcel->current_hub_id && $parcel->current_status !== ParcelStatus::OnHold && $parcel->current_status->isAtHub()) {
                 $target = $parcel->is_return ? $parcel->originHub()->first() : $parcel->destHub()->first();

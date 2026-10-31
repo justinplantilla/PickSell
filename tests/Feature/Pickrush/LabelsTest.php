@@ -94,7 +94,7 @@ class LabelsTest extends TestCase
         $order = Order::create(['order_number' => 'ORD-LABEL', 'product_id' => $product->id, 'buyer_id' => $buyer->id, 'seller_id' => $seller->id,
             'product_name' => 'Tote', 'quantity' => 1, 'amount' => 500, 'commission' => 50, 'status' => 'preparing']);
 
-        $this->actingAs($seller)->patch(config('app.url')."/seller/orders/{$order->id}/handover")->assertRedirect();
+        $this->actingAs($seller)->post(config('app.url')."/seller/orders/{$order->id}/waybill")->assertRedirect();
         $this->actingAs($seller)->get(config('app.url')."/seller/orders/{$order->id}/waybill")
             ->assertOk()->assertHeader('content-type', 'application/pdf')
             ->assertHeader('content-disposition', 'inline; filename=pickrush-label-'.$order->fresh()->waybill_number.'.pdf');

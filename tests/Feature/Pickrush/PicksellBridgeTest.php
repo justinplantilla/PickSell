@@ -50,17 +50,59 @@ class PicksellBridgeTest extends TestCase
         ], $extra));
     }
 
-    /** An order the seller has prepared and handed over, so Pickrush has booked its parcel. */
-    private function handedOver(?User $buyer = null): array
+    private function preparing(?User $buyer = null): Order
     {
         $product = Product::create(['seller_id' => $this->seller->id, 'name' => 'Canvas Tote', 'category' => 'Fashion', 'price' => 600, 'stock' => 5, 'status' => 'active']);
-        $order = Order::create([
+
+        return Order::create([
             'order_number' => 'ORD-BR-'.uniqid(), 'product_id' => $product->id, 'buyer_id' => ($buyer ?? $this->buyer)->id,
             'seller_id' => $this->seller->id, 'product_name' => 'Canvas Tote', 'quantity' => 2, 'amount' => 1200, 'commission' => 120, 'status' => 'preparing',
         ]);
+    }
+
+    /** An order the seller has prepared, labelled and handed over, so Pickrush is waiting to pick it up. */
+    private function handedOver(?User $buyer = null): array
+    {
+        $order = $this->preparing($buyer);
+        $this->actingAs($this->seller)->post(config('app.url')."/seller/orders/{$order->id}/waybill")->assertRedirect();
         $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$order->id}/handover")->assertRedirect();
 
         return [$order->fresh(), PicksellBridge::parcelFor($order)];
+    }
+
+    public function test_generating_the_waybill_does_not_call_a_rider_until_the_seller_hands_over(): void
+    {
+        Notification::fake();
+        $order = $this->preparing();
+        $tanauan = $this->station('041029000');
+
+        $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$order->id}/handover")->assertStatus(422);
+        $this->assertNull(PicksellBridge::parcelFor($order), 'no waybill, no handover');
+
+        $this->actingAs($this->seller)->post(config('app.url')."/seller/orders/{$order->id}/waybill")->assertSessionHasNoErrors();
+        $this->actingAs($this->seller)->post(config('app.url')."/seller/orders/{$order->id}/waybill")->assertRedirect();
+        $parcel = PicksellBridge::parcelFor($order);
+        $this->assertSame(1, Parcel::withoutGlobalScopes()->count(), 'generating twice reuses the waybill');
+        $this->assertSame(ParcelStatus::LabelCreated, $parcel->current_status);
+        $this->assertSame(['preparing', $parcel->tracking_no], [$order->fresh()->status, $order->fresh()->waybill_number]);
+        $this->assertSame(0, Parcel::where('origin_hub_id', $tanauan->id)->where('current_status', ParcelStatus::WaitingPickup)->count(), 'not in the station pickup queue');
+        $this->assertSame(0, $this->buyer->notifications()->count());
+        $this->actingAs($this->seller)->get(config('app.url')."/seller/orders/{$order->id}/waybill")->assertOk();
+        $this->actingAs($this->seller)->get(config('app.url')."/seller/orders/{$order->id}")->assertOk()->assertSee('Hand Over to Pickrush');
+
+        $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$order->id}/handover")->assertSessionHasNoErrors();
+        $this->assertSame(ParcelStatus::WaitingPickup, $parcel->fresh()->current_status);
+        $this->assertSame('ready_for_pickup', $order->fresh()->status);
+        $this->assertSame(1, $this->buyer->notifications()->count(), 'the buyer hears about the handover only');
+    }
+
+    public function test_a_labelled_order_can_still_be_cancelled_before_handover(): void
+    {
+        $order = $this->preparing();
+        $this->actingAs($this->seller)->post(config('app.url')."/seller/orders/{$order->id}/waybill");
+
+        $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$order->id}/cancel", ['reason' => 'Out of stock'])->assertSessionHasNoErrors();
+        $this->assertSame(['cancelled', ParcelStatus::Cancelled], [$order->fresh()->status, PicksellBridge::parcelFor($order)->current_status]);
     }
 
     private function scan(Parcel $parcel, ParcelStatus $status, string $municipalityCode, ?string $toCode = null, string $type = 'station'): void

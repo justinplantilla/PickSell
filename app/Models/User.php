@@ -6,10 +6,12 @@ use App\Auth\Permission;
 use App\Services\Geo\AddressResolver;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use Notifiable;
+    // HasApiTokens: buyer mobile app logins (routes/buyer-api.php).
+    use HasApiTokens, Notifiable;
 
     protected $fillable = [
         'role', 'status',

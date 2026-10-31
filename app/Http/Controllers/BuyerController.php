@@ -11,14 +11,12 @@ use App\Models\Product;
 use App\Models\ProductReview;
 use App\Models\User;
 use App\Models\WishlistItem;
-use App\Notifications\NewSellerOrder;
 use App\Pickrush\Bridge\PicksellBridge;
-use App\Services\CommissionService;
+use App\Services\OrderPlacement;
 use App\Services\RecentlyViewed;
 use App\Services\LogisticsRoutingService;
 use App\Services\Orders\OrderCancellationService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -314,7 +312,7 @@ class BuyerController extends Controller
 
         $unavailable = $items->reject(fn ($item) => $item->product?->isPurchasable());
         if ($unavailable->isNotEmpty()) {
-            return redirect()->route('buyer.cart')->withErrors(['item_ids' => $this->unavailableMessage($unavailable)]);
+            return redirect()->route('buyer.cart')->withErrors(['item_ids' => OrderPlacement::unavailableMessage($unavailable)]);
         }
 
         $total = $items->sum(fn ($i) => $i->product->effective_price * $i->quantity);
@@ -343,8 +341,8 @@ class BuyerController extends Controller
             : back()->with('success', 'Item removed from cart.');
     }
 
-    // Place Order
-    public function placeOrder(Request $request)
+    // Place Order: the same OrderPlacement the buyer app's checkout uses (routes/buyer-api.php).
+    public function placeOrder(Request $request, OrderPlacement $placement)
     {
         $data = $request->validate([
             'item_ids' => 'required|array',
@@ -352,89 +350,17 @@ class BuyerController extends Controller
             'voucher_code' => 'nullable|string',
         ]);
 
-        $cart  = $this->getCart();
-        $items = CartItem::whereIn('id', $data['item_ids'])
-            ->where('cart_id', $cart->id)
-            ->with('product')
-            ->get();
-
-        if ($items->isEmpty()) {
+        if ($placement->items($this->buyer(), $data['item_ids'])->isEmpty()) {
             return back()->withErrors(['item_ids' => 'No items selected.']);
         }
 
         try {
-            $placed = DB::transaction(function () use ($items, $data) {
-                // Lock the products so moderation, other buyers and stock changes cannot interleave.
-                $products = Product::whereIn('id', $items->pluck('product_id'))->with('seller')->lockForUpdate()->get()->keyBy('id');
-                $unavailable = $items->filter(fn ($item) => ! $products->get($item->product_id)?->isPurchasable());
-                if ($unavailable->isNotEmpty()) {
-                    throw ValidationException::withMessages(['item_ids' => $this->unavailableMessage($unavailable)]);
-                }
-                // Several cart lines (e.g. variations) can draw on the same product's stock.
-                $shortStock = $items->groupBy('product_id')
-                    ->filter(fn ($lines, $productId) => $products[$productId]->stock < $lines->sum('quantity'));
-                if ($shortStock->isNotEmpty()) {
-                    throw ValidationException::withMessages(['item_ids' => 'Not enough stock for: '.$shortStock->keys()->map(fn ($productId) => $products[$productId]->name)->join(', ').'.']);
-                }
-
-                $placed = [];
-                foreach ($items as $item) {
-                    $item->setRelation('product', $products[$item->product_id]);
-                    $placed[] = $this->createOrderFromCartItem($item, $data);
-                }
-
-                return $placed;
-            });
+            $placement->place($this->buyer(), $data['item_ids'], $data['voucher_code'] ?? null);
         } catch (ValidationException $exception) {
             return redirect()->route('buyer.cart')->withErrors($exception->errors());
         }
 
-        foreach ($placed as $order) {
-            $order->seller?->notify(new NewSellerOrder($order));
-        }
-
         return redirect()->route('buyer.orders')->with('success', 'Order placed successfully!');
-    }
-
-    /** Builds one order from a cart line inside placeOrder's transaction. */
-    private function createOrderFromCartItem(CartItem $item, array $data): Order
-    {
-        $product = $item->product;
-        $price = $product->effective_price;
-
-        // Apply voucher if valid
-        if (! empty($data['voucher_code']) && $product->voucher_code === $data['voucher_code']) {
-            $price = $price * (1 - $product->voucher_discount / 100);
-        }
-
-        $amount = $price * $item->quantity;
-        $commissionCalculation = app(CommissionService::class)->calculate((string) round($amount, 2));
-
-        $order = Order::create([
-            'order_number'   => 'ORD-' . strtoupper(Str::random(8)),
-            'product_id'     => $product->id,
-            'buyer_id'       => $this->buyer()->id,
-            'seller_id'      => $product->seller_id,
-            'product_name'   => $product->name,
-            'quantity'       => $item->quantity,
-            'amount'         => $amount,
-            'commission'     => $commissionCalculation['commission'],
-            'commission_rate' => $commissionCalculation['rate'],
-            'status' => 'placed',
-            'tracking_status' => 'Order placed and awaiting seller preparation',
-        ]);
-
-        // Deduct stock
-        $product->decrement('stock', $item->quantity);
-        $item->delete();
-
-        return $order;
-    }
-
-    private function unavailableMessage($items): string
-    {
-        return 'No longer available: '.$items->map(fn ($item) => $item->product?->name ?? 'a removed product')->join(', ')
-            .'. Remove '.($items->count() === 1 ? 'it' : 'them').' from your cart to continue.';
     }
 
     // Orders

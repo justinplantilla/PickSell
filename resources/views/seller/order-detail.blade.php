@@ -71,17 +71,27 @@
                         @csrf @method('PATCH')
                         <button type="submit" class="btn btn-coral">Mark as Prepared</button>
                     </form>
+                    @elseif(in_array($order->status, ['preparing', 'processing'], true) && ! $order->waybill_number)
+                    <form method="POST" action="{{ route('seller.orders.waybill.generate', $order) }}" class="blade-inline-21">
+                        @csrf
+                        <div class="waybill-generation-note">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+                            <span>Pickrush's tracking number becomes your waybill. No rider is called yet, so take your time packing.</span>
+                        </div>
+                        <button type="submit" class="btn btn-coral">Generate Waybill</button>
+                    </form>
                     @elseif(in_array($order->status, ['preparing', 'processing'], true))
-                    <form method="POST" action="/seller/orders/{{ $order->id }}/handover" class="blade-inline-21">
+                    <form method="POST" action="{{ route('seller.orders.handover', $order) }}" class="blade-inline-21" onsubmit="return confirm('Is the parcel packed with the waybill attached? Pickrush will send a rider to pick it up.')">
                         @csrf @method('PATCH')
                         <div class="waybill-generation-note">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-                            <span>Pickrush books the pickup when you hand over; its tracking number becomes your waybill.</span>
+                            <span>Waybill <strong>{{ $order->waybill_number }}</strong> is ready. Print it, attach it to the packed parcel, then hand over to request a Pickrush pickup.</span>
                         </div>
-                        <button type="submit" class="btn btn-success">Generate Waybill &amp; Hand Over</button>
+                        <a href="{{ route('seller.orders.waybill', $order) }}" target="_blank" class="btn btn-outline">Print Waybill</a>
+                        <button type="submit" class="btn btn-success">Hand Over to Pickrush</button>
                     </form>
                     @elseif(in_array($order->status, ['shipped', 'ready_for_pickup'], true))
-                    <div class="alert alert-info blade-inline-23">Waybill generated: <strong>{{ $order->waybill_number }}</strong>. Waiting for Pickrush to pick it up.</div>
+                    <div class="alert alert-info blade-inline-23">Handed over: <strong>{{ $order->waybill_number }}</strong>. Waiting for Pickrush to pick it up.</div>
                     @elseif($order->status === 'delivered')
                     <div class="alert alert-success blade-inline-24">Order delivered. Please confirm buyer receipt.</div>
                     @if(!$order->confirmed_by_seller_at)

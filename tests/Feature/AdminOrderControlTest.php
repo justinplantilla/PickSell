@@ -97,6 +97,7 @@ class AdminOrderControlTest extends TestCase
     {
         $order = $this->order('placed');
         $this->actingAs($this->seller)->patch(route('seller.orders.pack', $order))->assertRedirect();
+        $this->actingAs($this->seller)->post(route('seller.orders.waybill.generate', $order))->assertRedirect();
         $this->actingAs($this->seller)->patch(route('seller.orders.handover', $order))->assertRedirect();
 
         $order->refresh();

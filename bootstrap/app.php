@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin'  => \App\Http\Middleware\AdminMiddleware::class,
             'seller' => \App\Http\Middleware\SellerMiddleware::class,
             'buyer'  => \App\Http\Middleware\BuyerMiddleware::class,
+            'buyer.api' => \App\Http\Middleware\EnsureActiveBuyer::class,
             'pickrush.role' => \App\Pickrush\Http\Middleware\StaffRole::class,
             'pickrush.station' => \App\Pickrush\Http\Middleware\StationStaff::class,
             'pickrush.province' => \App\Pickrush\Http\Middleware\ProvinceStaff::class,

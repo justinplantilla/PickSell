@@ -193,7 +193,8 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     Route::get('/orders/{order}/waybill', [SellerController::class, 'showWaybill'])->name('seller.orders.waybill');
     Route::patch('/orders/{order}/cancel', [SellerController::class, 'cancelOrder'])->name('seller.orders.cancel');
     Route::patch('/orders/{order}/pack', [SellerController::class, 'packOrder'])->name('seller.orders.pack');
-    Route::patch('/orders/{order}/handover', [SellerController::class, 'handoverOrder'])->name('seller.orders.handover');
+    Route::post('/orders/{order}/waybill', [SellerController::class, 'generateWaybill'])->name('seller.orders.waybill.generate');
+    Route::patch('/orders/{order}/handover',[SellerController::class, 'handoverOrder'])->name('seller.orders.handover');
     Route::patch('/orders/{order}/confirm-delivery', [SellerController::class, 'confirmDelivery'])->name('seller.orders.confirm-delivery');
 
     // Returns and refunds

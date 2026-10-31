@@ -49,6 +49,11 @@
                             @csrf @method('PATCH')
                             <button type="submit" class="btn btn-coral btn-sm">Prepare</button>
                         </form>
+                        @elseif(in_array($order->status, ['preparing', 'processing'], true) && ! $order->waybill_number)
+                        <form method="POST" action="{{ route('seller.orders.waybill.generate', $order) }}">
+                            @csrf
+                            <button type="submit" class="btn btn-coral btn-sm">Generate Waybill</button>
+                        </form>
                         @elseif(in_array($order->status, ['preparing', 'processing'], true))
                         <button class="btn btn-success btn-sm" onclick="openHandover({{ $order->id }})">Hand Over</button>
                         @endif
@@ -74,11 +79,11 @@
             @csrf @method('PATCH')
             <div class="waybill-generation-note">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-                <span>Pickrush books the pickup and its tracking number becomes your waybill. The buyer and admin are notified.</span>
+                <span>Is the parcel packed with its waybill attached? Pickrush will send a rider to pick it up, and the buyer and admin are notified.</span>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="document.getElementById('handoverModal').classList.remove('open')">Cancel</button>
-                <button type="submit" class="btn btn-coral">Generate Waybill &amp; Confirm</button>
+                <button type="submit" class="btn btn-coral">Hand Over to Pickrush</button>
             </div>
         </form>
     </div>
