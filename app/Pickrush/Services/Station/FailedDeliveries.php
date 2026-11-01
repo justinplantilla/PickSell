@@ -22,6 +22,9 @@ class FailedDeliveries
         if ($parcel->current_hub_id !== $staff->hub_id || ! in_array($parcel->current_status, $returnable, true) || $parcel->is_return) {
             throw new OperationRefused("{$parcel->tracking_no} cannot be sent back from here ({$parcel->current_status->label()}).");
         }
+        if ($parcel->assignments()->where(fn ($q) => DispatchService::stillWithRider($q))->exists()) {
+            throw new OperationRefused("{$parcel->tracking_no} is still with the rider who tried to deliver it. Scan it in at Receiving first.");
+        }
 
         $this->ledger->record($parcel, ParcelStatus::ReturningToSender, $staff->hub, ['note' => $reason]);
     }

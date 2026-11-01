@@ -176,6 +176,98 @@ class DeliveryBatchTest extends TestCase
         // The failed parcel is back in the queue for another attempt.
         $this->actingAs($this->dispatcher, 'pickrush')->get($this->pickrushUrl('/station/dispatch'))->assertSee($ben->tracking_no);
         $api->getJson('/api/rider/dashboard')->assertOk()->assertJsonPath('today.delivered', 1);
+
+        // Activity: deliveries only on the delivery tab, newest first; nothing on the pickup tab.
+        $api->getJson('/api/rider/activity?kind=delivery')->assertOk()
+            ->assertJsonPath('activity.0.type', 'failed')
+            ->assertJsonPath('activity.1.type', 'delivered')
+            ->assertJsonPath('next', null);
+        $api->getJson('/api/rider/activity?kind=pickup')->assertOk()->assertJsonCount(0, 'activity');
+        $api->getJson('/api/rider/activity?kind=everything')->assertStatus(422);
+        $api->getJson('/api/rider/dashboard')->assertOk()->assertJsonPath('activity.0.type', 'failed');
+
+        // Earnings page: only the delivered parcel earns; the cash was remitted.
+        $rate = (float) config('pickrush.rider_pay.delivery_per_parcel');
+        $api->getJson('/api/rider/earnings')->assertOk()
+            ->assertJsonPath('today.deliveries', 1)
+            ->assertJsonPath('today.pickups', 0)
+            ->assertJsonPath('today.earnings', fn ($v) => (float) $v === $rate)
+            ->assertJsonPath('month.deliveries', 1)
+            ->assertJsonCount(7, 'days')
+            ->assertJsonPath('days.6.date', today()->toDateString())
+            ->assertJsonPath('days.6.deliveries', 1)
+            ->assertJsonPath('batches.0.batch_no', $batch->batch_no)
+            ->assertJsonPath('batches.0.parcels', 1)
+            ->assertJsonPath('cod.in_hand', fn ($v) => (float) $v === 0.0)
+            ->assertJsonPath('cod.remitted_this_month', fn ($v) => (float) $v === 500.0)
+            ->assertJsonPath('cod.last_remittance.amount', fn ($v) => (float) $v === 500.0);
+    }
+
+    public function test_a_failed_parcel_cannot_be_returned_to_the_seller_until_the_rider_hands_it_back(): void
+    {
+        $rider = $this->rider();
+        $parcel = $this->readyParcel('Ben Cruz', 0);
+        $batch = $this->dispatchTo([$parcel], $rider);
+        $api = $this->api($rider);
+        $api->postJson("/api/rider/batches/{$batch->id}/accept")->assertOk();
+        $api->postJson("/api/rider/batches/{$batch->id}/load", ['tracking_no' => $parcel->tracking_no])->assertOk();
+        $api->postJson("/api/rider/batches/{$batch->id}/start")->assertOk();
+        $task = Assignment::where('parcel_id', $parcel->id)->sole();
+        $api->post("/api/rider/batches/{$batch->id}/deliveries/{$task->id}/fail", ['reason' => 'buyer_unavailable', 'photo' => $this->photo()])->assertOk();
+
+        // Still on the rider's vehicle: no return yet.
+        $this->actingAs($this->dispatcher, 'pickrush')->post($this->pickrushUrl("/station/failed/{$parcel->tracking_no}/return"), ['reason' => 'Buyer refused'])
+            ->assertSessionHas('errors', fn ($bag) => str_contains($bag->first('operation'), 'still with the rider'));
+        $this->assertSame(ParcelStatus::DeliveryFailed, $parcel->fresh()->current_status);
+
+        // Handed back at Receiving: the batch completes, and now the return can start.
+        $this->actingAs($this->dispatcher, 'pickrush')->post($this->pickrushUrl('/station/receiving'), ['tracking_no' => $parcel->tracking_no])
+            ->assertSessionHas('success', fn ($m) => str_contains($m, 'handed back by'));
+        $this->assertSame('completed', $batch->fresh()->status);
+        $this->actingAs($this->dispatcher, 'pickrush')->post($this->pickrushUrl("/station/failed/{$parcel->tracking_no}/return"), ['reason' => 'Buyer refused'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(ParcelStatus::ReturningToSender, $parcel->fresh()->current_status);
+    }
+
+    public function test_a_parcel_already_returning_to_the_seller_can_still_be_handed_back_by_the_rider(): void
+    {
+        $rider = $this->rider();
+        $parcel = $this->readyParcel('Ben Cruz', 0);
+        $batch = $this->dispatchTo([$parcel], $rider);
+        $api = $this->api($rider);
+        $api->postJson("/api/rider/batches/{$batch->id}/accept")->assertOk();
+        $api->postJson("/api/rider/batches/{$batch->id}/load", ['tracking_no' => $parcel->tracking_no])->assertOk();
+        $api->postJson("/api/rider/batches/{$batch->id}/start")->assertOk();
+        $task = Assignment::where('parcel_id', $parcel->id)->sole();
+        $api->post("/api/rider/batches/{$batch->id}/deliveries/{$task->id}/fail", ['reason' => 'buyer_unavailable', 'photo' => $this->photo()])->assertOk();
+        // Data from before the fix: the return was started while the rider still had it.
+        app(\App\Pickrush\Services\ParcelLedger::class)->record($parcel, ParcelStatus::ReturningToSender, $this->tanauan, ['note' => 'Buyer refused']);
+
+        $this->actingAs($this->dispatcher, 'pickrush')->post($this->pickrushUrl('/station/receiving'), ['tracking_no' => $parcel->tracking_no])
+            ->assertSessionHas('success', fn ($m) => str_contains($m, 'handed back by'));
+        $this->assertNotNull($task->fresh()->returned_at);
+        $this->assertSame('completed', $batch->fresh()->status);
+    }
+
+    public function test_the_activity_history_pages_back_with_a_cursor(): void
+    {
+        $rider = $this->rider();
+        $parcels = collect(range(1, 33))->map(fn (int $i) => $this->readyParcel("Buyer {$i}", 0));
+        $ledger = app(\App\Pickrush\Services\ParcelLedger::class);
+        foreach ($parcels as $i => $parcel) {
+            $ledger->record($parcel, ParcelStatus::AssignedToRider, $this->tanauan, ['rider_id' => $rider->id]);
+            $ledger->record($parcel, ParcelStatus::OutForDelivery, $this->tanauan, ['rider_id' => $rider->id, 'occurred_at' => now()->subMinutes(100 - $i)]);
+        }
+        $api = $this->api($rider);
+
+        $first = $api->getJson('/api/rider/activity?kind=delivery')->assertOk()->assertJsonCount(30, 'activity');
+        $this->assertNotNull($next = $first->json('next'));
+        $second = $api->getJson('/api/rider/activity?kind=delivery&before='.urlencode($next))->assertOk()
+            ->assertJsonCount(3, 'activity')
+            ->assertJsonPath('next', null);
+
+        $titles = collect([...$first->json('activity'), ...$second->json('activity')])->pluck('title');
+        $this->assertCount(33, $titles->unique());   // nothing shown twice, nothing skipped
     }
 
     public function test_declining_a_delivery_batch_puts_the_parcels_back_in_the_station_queue(): void

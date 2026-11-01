@@ -62,19 +62,24 @@ class StationReceiving
                 : "{$parcel->tracking_no} received. Put it on the next trip to {$parcel->nextHub?->name}.";
         }
 
-        // A delivery rider back from their route with a parcel they could not deliver.
-        if ($parcel->current_status === ParcelStatus::DeliveryFailed && $parcel->current_hub_id === $station->id) {
-            $task = Assignment::with('rider', 'batch')->where('parcel_id', $parcel->id)
-                ->where(fn ($q) => DispatchService::stillWithRider($q))->latest('id')->first();
-            if (! $task) {
-                throw new OperationRefused("{$parcel->tracking_no} is already here after a failed delivery. Retry or return it under Failed deliveries.");
-            }
+        // A delivery rider back from their route with a parcel they could not deliver. "Returning to
+        // sender" too: older data could start the return before the rider handed the parcel back.
+        $failedHere = in_array($parcel->current_status, [ParcelStatus::DeliveryFailed, ParcelStatus::ReturningToSender], true)
+            && $parcel->current_hub_id === $station->id;
+        $task = $failedHere ? Assignment::with('rider', 'batch')->where('parcel_id', $parcel->id)
+            ->where(fn ($q) => DispatchService::stillWithRider($q))->latest('id')->first() : null;
+        if ($task) {
             $task->update(['returned_at' => now()]);
             if ($task->batch) {
                 $this->batches->sync($task->batch);
             }
 
-            return "{$parcel->tracking_no} handed back by {$task->rider->full_name} after a failed delivery. Retry or return it under Failed deliveries.";
+            return $parcel->current_status === ParcelStatus::ReturningToSender
+                ? "{$parcel->tracking_no} handed back by {$task->rider->full_name}. It is going back to the seller."
+                : "{$parcel->tracking_no} handed back by {$task->rider->full_name} after a failed delivery. Retry or return it under Failed deliveries.";
+        }
+        if ($failedHere && $parcel->current_status === ParcelStatus::DeliveryFailed) {
+            throw new OperationRefused("{$parcel->tracking_no} is already here after a failed delivery. Retry or return it under Failed deliveries.");
         }
 
         // Last mile: arriving from the province hub, with or without the trip list at hand.

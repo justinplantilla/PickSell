@@ -9,6 +9,7 @@ use App\Pickrush\Models\ManifestParcel;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\ParcelException;
 use App\Pickrush\Models\Staff;
+use App\Pickrush\Services\Station\DispatchService;
 use App\Pickrush\Support\Actor;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -48,6 +49,7 @@ class ManifestService
                 ParcelStatus::ReturningToSender, ParcelStatus::DeliveryFailed,
             ]))
             ->whereDoesntHave('assignments', fn ($q) => $q->whereIn('status', ['assigned', 'out_for_delivery']))
+            ->whereDoesntHave('assignments', fn ($q) => DispatchService::stillWithRider($q))   // still on the rider's vehicle
             ->whereNotIn('id', ManifestParcel::whereHas('manifest', fn ($q) => $q->whereIn('status', ['draft', 'dispatched']))->select('parcel_id'));
     }
 

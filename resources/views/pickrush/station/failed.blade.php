@@ -29,11 +29,15 @@
                     @if($parcel->attempt_count >= $maxAttempts)<div><span class="pr-badge pr-badge-bad">Limit reached</span></div>@endif
                 </td>
                 <td>
+                    @if($withRider)
+                        <span class="pr-muted">After it is scanned in</span>
+                    @else
                     <form method="POST" action="{{ route('pickrush.station.failed.return', $parcel) }}" class="pr-inline">
                         @csrf
                         <input name="reason" class="pr-input" placeholder="Why" required aria-label="Reason" style="width:160px">
                         <button type="submit" class="pr-btn pr-btn-outline pr-btn-sm">Return</button>
                     </form>
+                    @endif
                 </td>
             </tr>
         @empty

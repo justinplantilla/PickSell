@@ -3,6 +3,7 @@
 use App\Pickrush\Http\Controllers\Api\RiderApplicationController;
 use App\Pickrush\Http\Controllers\Api\RiderAuthController;
 use App\Pickrush\Http\Controllers\Api\RiderBatchController;
+use App\Pickrush\Http\Controllers\Api\RiderEarningsController;
 use App\Pickrush\Http\Controllers\Api\RiderHomeController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,6 +36,8 @@ Route::prefix('rider')->name('pickrush.api.rider.')->group(function () {
         Route::get('/options', [RiderHomeController::class, 'options'])->name('options');
         Route::get('/notifications', [RiderHomeController::class, 'notifications'])->name('notifications');
         Route::post('/notifications/read', [RiderHomeController::class, 'readNotifications'])->name('notifications.read');
+        Route::get('/activity', [RiderHomeController::class, 'activityPage'])->name('activity');
+        Route::get('/earnings',RiderEarningsController::class)->name('earnings');
 
         Route::get('/batches', [RiderBatchController::class, 'index'])->name('batches.index');
         Route::get('/batches/{batch}', [RiderBatchController::class, 'show'])->whereNumber('batch')->name('batches.show');

@@ -13,6 +13,7 @@ use App\Pickrush\Services\Rider\RiderBatches;
 use App\Pickrush\Support\Actor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /** The rider app's home: today's numbers, open batches, notifications, and going on or off shift. */
@@ -113,22 +114,66 @@ class RiderHomeController extends Controller
     }
 
     /**
-     * Recent activity from the rider's scans (and the station receiving what they picked up).
-     * Scans of the same kind in a row at the same place collapse into one line.
+     * The full activity history for the "View All" page: pickups (collected, dropped off at the
+     * station) or deliveries (out for delivery, delivered, failed, returned to the seller), newest
+     * first, a page at a time. Pass back `next` as `before` for the next page.
      */
+    public function activityPage(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'kind' => 'required|in:pickup,delivery',
+            'before' => ['nullable', 'string', 'regex:/^\d+\|\d+$/'],
+        ]);
+        $before = isset($data['before']) ? array_map('intval', explode('|', $data['before'])) : null;
+        [$lines, $next] = $this->activityLines(Actor::rider(), $data['kind'], 30, $before);
+
+        return response()->json(['activity' => $lines, 'next' => $next]);
+    }
+
+    private const PICKUP_STATUSES = [ParcelStatus::PickedUp];
+
+    private const DELIVERY_STATUSES = [ParcelStatus::OutForDelivery, ParcelStatus::Delivered, ParcelStatus::DeliveryFailed, ParcelStatus::ReturnedToSender];
+
+    /** The dashboard's short list: the newest lines of any kind. */
     private function activity(Rider $rider): array
     {
-        $pickedUp = Assignment::where('rider_id', $rider->id)->where('type', 'pickup')->where('status', 'completed')
-            ->latest('completed_at')->limit(100)->pluck('parcel_id');
-        $shown = [ParcelStatus::PickedUp, ParcelStatus::OutForDelivery, ParcelStatus::Delivered, ParcelStatus::DeliveryFailed, ParcelStatus::ReturnedToSender];
+        return $this->activityLines($rider, null, 5)[0];
+    }
 
-        $events = ParcelEvent::with(['parcel' => fn ($q) => $q->withoutGlobalScopes(), 'hub'])
-            ->where(fn ($q) => $q->where(fn ($r) => $r->where('rider_id', $rider->id)->whereIn('status', $shown))
-                ->orWhere(fn ($r) => $r->whereIn('parcel_id', $pickedUp)->where('status', ParcelStatus::AtOriginHub)))
-            ->latest('occurred_at')->latest('id')->limit(60)->get();
+    /**
+     * Activity lines from the rider's scans (and the station receiving what they picked up).
+     * Scans of the same kind in a row at the same place on the same day collapse into one line.
+     *
+     * @param  'pickup'|'delivery'|null  $kind  null: both
+     * @param  array{0: int, 1: int}|null  $before  [unix time, event id] of the last event already shown
+     * @return array{0: list<array>, 1: ?string} the lines, and the cursor for the next page (null: no more)
+     */
+    private function activityLines(Rider $rider, ?string $kind, int $limit, ?array $before = null): array
+    {
+        $riderStatuses = match ($kind) {
+            'pickup' => self::PICKUP_STATUSES,
+            'delivery' => self::DELIVERY_STATUSES,
+            default => [...self::PICKUP_STATUSES, ...self::DELIVERY_STATUSES],
+        };
+        $pickedUp = Assignment::select('parcel_id')->where('rider_id', $rider->id)->where('type', 'pickup')->where('status', 'completed');
+
+        $query = ParcelEvent::with(['parcel' => fn ($q) => $q->withoutGlobalScopes(), 'hub'])
+            ->where(function ($q) use ($rider, $riderStatuses, $kind, $pickedUp) {
+                $q->where(fn ($r) => $r->where('rider_id', $rider->id)->whereIn('status', $riderStatuses));
+                if ($kind !== 'delivery') {
+                    $q->orWhere(fn ($r) => $r->whereIn('parcel_id', $pickedUp)->where('status', ParcelStatus::AtOriginHub));
+                }
+            })
+            ->when($before, function ($q) use ($before) {
+                $at = Carbon::createFromTimestamp($before[0], config('app.timezone'));   // stored in app time, not UTC
+                $q->where(fn ($r) => $r->where('occurred_at', '<', $at)->orWhere(fn ($s) => $s->where('occurred_at', $at)->where('id', '<', $before[1])));
+            })
+            ->latest('occurred_at')->latest('id');
 
         $lines = new Collection;
-        foreach ($events as $event) {
+        $lastShown = null;
+        $more = false;
+        foreach ($query->limit($limit * 8)->get() as $event) {
             $parcel = $event->parcel;
             [$type, $title, $place] = match ($event->status) {
                 ParcelStatus::PickedUp => ['pickup', "Picked up at {$parcel->shipper_name}", $parcel->pickup_address],
@@ -139,18 +184,26 @@ class RiderHomeController extends Controller
                 ParcelStatus::ReturnedToSender => ['returned', "Returned to {$parcel->shipper_name}", $parcel->pickup_address],
             };
             $last = $lines->last();
-            if ($last && $last['type'] === $type && $last['title'] === $title && in_array($type, ['pickup', 'dropped_off'], true)) {
+            if ($last && $last['type'] === $type && $last['title'] === $title && in_array($type, ['pickup', 'dropped_off'], true)
+                && $last['day'] === $event->occurred_at->toDateString()) {
                 $last['count']++;
                 $lines->put($lines->keys()->last(), $last);
+                $lastShown = $event;
 
                 continue;
             }
-            if ($lines->count() === 10) {
+            if ($lines->count() === $limit) {
+                $more = true;
                 break;
             }
-            $lines->push(['type' => $type, 'title' => $title, 'place' => $place, 'count' => 1, 'at' => $event->occurred_at->toIso8601String()]);
+            $lines->push(['type' => $type, 'title' => $title, 'place' => $place, 'count' => 1,
+                'at' => $event->occurred_at->toIso8601String(), 'day' => $event->occurred_at->toDateString()]);
+            $lastShown = $event;
         }
+        // Ran out of fetched events with a full page: there may be older ones.
+        $more = $more || ($lines->count() === $limit && $lastShown !== null);
+        $next = $more ? $lastShown->occurred_at->getTimestamp().'|'.$lastShown->id : null;
 
-        return $lines->values()->all();
+        return [$lines->map(fn (array $line) => array_diff_key($line, ['day' => true]))->values()->all(), $next];
     }
 }
