@@ -52,12 +52,15 @@
         <h2>Today</h2>
         <dl class="pr-dl">
             <dt>Shift</dt><dd>{{ $rider->shift_status === 'on_shift' ? 'On shift' : 'Off duty' }}</dd>
+            <dt>Rider app</dt><dd>{{ $rider->isSignedIn() ? 'Logged in' : 'Logged out' }}</dd>
             <dt>Open tasks</dt><dd>{{ $openCount }} / {{ $rider->max_parcels }}</dd>
             <dt>Cash to remit</dt><dd>₱{{ number_format($cashExpected, 2) }} <a href="{{ route('pickrush.station.cash') }}">Cash</a></dd>
             <dt>COD limit</dt><dd>₱{{ number_format((float) $rider->cod_limit, 2) }}@if($rider->on_probation) (probation)@endif</dd>
             <dt>Zone</dt><dd>{{ $rider->zone?->name ?? '—' }}</dd>
         </dl>
-        @if($rider->isActive())
+        @if($rider->isActive() && ! $rider->isOnShift() && ! $rider->isSignedIn())
+            <p class="pr-muted">Logged out of the rider app. No tasks can be assigned until they log in and start their shift.</p>
+        @elseif($rider->isActive())
             <form method="POST" action="{{ route('pickrush.station.riders.shift', $rider) }}" class="pr-actions">
                 @csrf @method('PATCH')
                 <input type="hidden" name="shift_status" value="{{ $rider->isOnShift() ? 'off_duty' : 'on_shift' }}">

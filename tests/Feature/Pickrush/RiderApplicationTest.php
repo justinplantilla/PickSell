@@ -3,6 +3,7 @@
 namespace Tests\Feature\Pickrush;
 
 use App\Pickrush\Enums\StaffRole;
+use App\Pickrush\Mail\RiderApplicationDecidedMail;
 use App\Pickrush\Mail\RiderEmailCodeMail;
 use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\Rider;
@@ -143,6 +144,35 @@ class RiderApplicationTest extends TestCase
 
         // The station sees the application; only the manager's approval makes the rider active.
         $this->actingAs($this->manager, 'pickrush')->get($this->pickrushUrl('/station/riders?status=pending'))->assertOk()->assertSee('Juan Dela Cruz');
+        app(RiderOnboarding::class)->approve($rider, $this->manager);
+        $this->assertSame('active', $rider->fresh()->status);
+    }
+
+    public function test_the_applicant_is_emailed_when_the_station_decides(): void
+    {
+        $this->apply()->assertCreated();
+        $rider = Rider::withoutGlobalScopes()->sole();
+        app(RiderOnboarding::class)->reject($rider, $this->manager, 'OR/CR plate does not match');
+
+        Mail::assertSent(RiderApplicationDecidedMail::class, fn (RiderApplicationDecidedMail $mail) => $mail->hasTo('juan@example.com')
+            && $mail->envelope()->subject === 'Update on your Pickrush rider application'
+            && str_contains($mail->render(), 'OR/CR plate does not match'));
+
+        $rider->update(['status' => 'pending', 'status_reason' => null]);   // resubmitted
+        app(RiderOnboarding::class)->approve($rider, $this->manager);
+
+        Mail::assertSent(RiderApplicationDecidedMail::class, fn (RiderApplicationDecidedMail $mail) => $mail->hasTo('juan@example.com')
+            && $mail->envelope()->subject === 'Your Pickrush rider account is approved'
+            && str_contains($mail->render(), 'Tanauan City Station'));
+        Mail::assertSent(RiderApplicationDecidedMail::class, 2);
+    }
+
+    public function test_a_mail_outage_does_not_undo_the_approval(): void
+    {
+        $this->apply()->assertCreated();
+        $rider = Rider::withoutGlobalScopes()->sole();
+        Mail::shouldReceive('to')->andThrow(new \RuntimeException('SMTP down'));
+
         app(RiderOnboarding::class)->approve($rider, $this->manager);
         $this->assertSame('active', $rider->fresh()->status);
     }

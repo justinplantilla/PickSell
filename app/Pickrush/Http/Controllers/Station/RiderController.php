@@ -26,7 +26,7 @@ class RiderController extends StationController
         $statuses = $status === 'pending' ? ['pending', 'under_review'] : [$status];
 
         return view('pickrush.station.riders', [
-            'riders' => Rider::with('zone')->when($status, fn ($q) => $q->whereIn('status', $statuses))
+            'riders' => Rider::with('zone')->withExists('tokens')->when($status, fn ($q) => $q->whereIn('status', $statuses))
                 ->orderByRaw("case when status in ('pending', 'under_review') then 0 else 1 end")
                 ->orderBy('applied_at')->orderBy('full_name')->get(),
             'status' => $status,
@@ -110,6 +110,9 @@ class RiderController extends StationController
         $data = $request->validate(['shift_status' => 'required|in:on_shift,off_duty']);
         if ($data['shift_status'] === 'on_shift' && ! $rider->isActive()) {
             return back()->withErrors(['operation' => 'Only an active rider can start a shift.']);
+        }
+        if ($data['shift_status'] === 'on_shift' && ! $rider->isSignedIn()) {
+            return back()->withErrors(['operation' => "{$rider->full_name} is logged out of the rider app. They must log in before starting a shift."]);
         }
 
         return $this->attempt(fn () => $rider->update($data), $data['shift_status'] === 'on_shift' ? "{$rider->full_name} is on shift." : "{$rider->full_name} is off duty.");

@@ -61,11 +61,14 @@ class StationOperationsTest extends TestCase
         static $n = 0;
         $n++;
 
-        return Rider::withoutGlobalScopes()->create(array_merge([
+        $rider = Rider::withoutGlobalScopes()->create(array_merge([
             'station_hub_id' => $station->id, 'full_name' => "Rider {$n}", 'mobile_no' => '0918'.str_pad((string) $n, 7, '0', STR_PAD_LEFT),
             'vehicle_type' => 'motorcycle', 'status' => 'active', 'shift_status' => 'on_shift',
             'cod_limit' => 10000, 'max_parcels' => 30, 'created_by' => $this->manager->id,
         ], $overrides));
+        \App\Pickrush\Models\RiderToken::issue($rider);   // logged in to the rider app
+
+        return $rider;
     }
 
     /** Booked from Tanauan to San Jose (same province) unless overridden. */

@@ -40,11 +40,14 @@ class RiderBatchTest extends TestCase
         static $n = 0;
         $n++;
 
-        return Rider::withoutGlobalScopes()->create(array_merge([
+        $rider = Rider::withoutGlobalScopes()->create(array_merge([
             'station_hub_id' => $this->tanauan->id, 'full_name' => "Rider {$n}", 'mobile_no' => '0918'.str_pad((string) $n, 7, '0', STR_PAD_LEFT),
             'vehicle_type' => 'motorcycle', 'status' => 'active', 'shift_status' => 'on_shift',
             'cod_limit' => 10000, 'max_parcels' => 30, 'created_by' => $this->dispatcher->id,
         ], $overrides));
+        RiderToken::issue($rider);   // logged in to the rider app
+
+        return $rider;
     }
 
     private function parcel(string $seller, string $address = 'Altura Bata, Tanauan', array $overrides = []): Parcel
@@ -339,5 +342,36 @@ class RiderBatchTest extends TestCase
 
         $api->patchJson('/api/rider/shift', ['shift_status' => 'off_duty'])->assertOk()->assertJsonPath('shift_status', 'off_duty');
         $this->assertFalse($rider->fresh()->isOnShift());
+    }
+
+    public function test_a_logged_out_rider_cannot_be_given_tasks(): void
+    {
+        $rider = $this->rider();
+        $rider->tokens()->delete();
+        $phone = $this->api($rider);
+        $tablet = RiderToken::issue($rider);
+
+        // Logging out on one device leaves them online on the other.
+        $phone->postJson('/api/rider/logout')->assertOk();
+        $this->assertTrue($rider->fresh()->isOnShift());
+
+        $this->withHeaders(['Authorization' => 'Bearer '.$tablet])->postJson('/api/rider/logout')->assertOk();
+        $this->assertFalse($rider->fresh()->isOnShift(), 'logged out everywhere: offline');
+
+        $parcel = $this->parcel('Tote House');
+        $station = $this->actingAs($this->dispatcher, 'pickrush');
+        $station->patch($this->pickrushUrl("/station/riders/{$rider->id}/shift"), ['shift_status' => 'on_shift'])
+            ->assertSessionHasErrors('operation');
+        $this->assertFalse($rider->fresh()->isOnShift(), 'the station cannot put a logged-out rider on shift');
+
+        $rider->refresh()->update(['shift_status' => 'on_shift']);   // left on shift from before this rule
+        $station->post($this->pickrushUrl('/station/dispatch'), ['parcel_ids' => [$parcel->id], 'rider_id' => $rider->id])
+            ->assertSessionHasErrors();
+        $this->assertSame(0, Assignment::where('rider_id', $rider->id)->count());
+        $station->get($this->pickrushUrl("/station/riders/{$rider->id}"))->assertOk()->assertSee('Logged out');
+
+        $this->api($rider)->patchJson('/api/rider/shift', ['shift_status' => 'on_shift'])->assertOk();   // logs back in and goes online
+        $this->assignPickups([$parcel], $rider);
+        $this->assertSame(1, Assignment::where('rider_id', $rider->id)->count());
     }
 }

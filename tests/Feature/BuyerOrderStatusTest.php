@@ -68,11 +68,12 @@ class BuyerOrderStatusTest extends TestCase
             ->assertOk()
             ->assertSee($preparing->order_number)
             ->assertSee($legacyProcessing->order_number)
-            ->assertSee($sorted->order_number)
+            ->assertDontSee($sorted->order_number)
             ->assertDontSee($outForDelivery->order_number);
 
         $this->get(route('buyer.orders', ['status' => 'shipped']))
             ->assertOk()
+            ->assertSee($sorted->order_number)
             ->assertSee($outForDelivery->order_number)
             ->assertSee($legacyShipped->order_number)
             ->assertSee($failed->order_number)

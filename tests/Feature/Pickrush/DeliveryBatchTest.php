@@ -48,11 +48,14 @@ class DeliveryBatchTest extends TestCase
         static $n = 0;
         $n++;
 
-        return Rider::withoutGlobalScopes()->create([
+        $rider = Rider::withoutGlobalScopes()->create([
             'station_hub_id' => $this->tanauan->id, 'full_name' => "Driver {$n}", 'mobile_no' => '0919'.str_pad((string) $n, 7, '0', STR_PAD_LEFT),
             'vehicle_type' => 'motorcycle', 'status' => 'active', 'shift_status' => 'on_shift',
             'cod_limit' => 10000, 'max_parcels' => 30, 'created_by' => $this->manager->id,
         ]);
+        RiderToken::issue($rider);   // logged in to the rider app
+
+        return $rider;
     }
 
     /** A same-city parcel dropped off at the station: ready for a delivery rider. */

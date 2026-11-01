@@ -66,7 +66,14 @@ class RiderAuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $request->attributes->get('rider_token')->delete();
+        $token = $request->attributes->get('rider_token');
+        $token->delete();
+
+        // Signed out everywhere: go offline so the station stops assigning new tasks.
+        $rider = $token->rider;
+        if ($rider->isOnShift() && ! $rider->tokens()->exists()) {
+            $rider->update(['shift_status' => 'off_duty']);
+        }
 
         return response()->json(['message' => 'Logged out.']);
     }

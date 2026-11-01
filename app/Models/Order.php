@@ -95,7 +95,9 @@ class Order extends Model
 
     private function recordStatusChange(?string $from): void
     {
+        // Pickrush staff and riders sign in on their own guards; changed_by only references marketplace users.
         $actor = auth()->user();
+        $actor = $actor instanceof User ? $actor : null;
         OrderStatusHistory::create([
             'order_id' => $this->id,
             'changed_by' => $this->statusChangedBy ?? $actor?->id,

@@ -370,8 +370,8 @@ class BuyerController extends Controller
         $query = Order::where('buyer_id', $this->buyer()->id)->with('product', 'seller', 'returnRequest');
         $statusGroups = [
             'pending' => ['pending', 'placed', 'confirmed'],
-            'processing' => ['processing', 'preparing', 'ready_for_pickup', 'picked_up', 'at_sorting_center', 'sorted'],
-            'shipped' => ['shipped', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed'],
+            'processing' => ['processing', 'preparing', 'ready_for_pickup'],
+            'shipped' => ['shipped', 'picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider', 'out_for_delivery', 'delivery_failed'],
             'completed' => ['delivered', 'completed'],
             'returned' => ['returned'],
             'cancelled' => ['cancelled'],

@@ -114,6 +114,12 @@ class Rider extends Model
         return $this->shift_status === 'on_shift';
     }
 
+    /** Signed in to the rider app on at least one device, so new tasks actually reach them. */
+    public function isSignedIn(): bool
+    {
+        return $this->tokens_exists ?? $this->tokens()->exists();
+    }
+
     /** Open tasks: assigned or out for delivery. */
     public function openAssignments()
     {

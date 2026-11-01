@@ -3,10 +3,13 @@
 namespace App\Pickrush\Services\Station;
 
 use App\Pickrush\Enums\StaffRole;
+use App\Pickrush\Mail\RiderApplicationDecidedMail;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\OperationRefused;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 /**
  * Riders apply in the rider app (RiderApplication) and land in their chosen station as pending. The
@@ -42,6 +45,7 @@ class RiderOnboarding
             'verified_by' => $manager->id, 'verified_at' => now(),
             'approved_by' => $manager->id, 'approved_at' => now(),
         ]);
+        $this->tellApplicant($rider);
     }
 
     public function reject(Rider $rider, Staff $manager, string $reason): void
@@ -51,6 +55,22 @@ class RiderOnboarding
             throw new OperationRefused('Only an application can be rejected.');
         }
         $rider->update(['status' => 'rejected', 'status_reason' => $reason]);
+        $this->tellApplicant($rider);
+    }
+
+    /** Emails the decision. A mail outage must not undo the decision, so failures are only reported. */
+    private function tellApplicant(Rider $rider): void
+    {
+        if (! $rider->email) {
+            return;     // added by station staff before riders applied in the app
+        }
+        DB::afterCommit(function () use ($rider) {
+            try {
+                Mail::to($rider->email)->send(new RiderApplicationDecidedMail($rider));
+            } catch (Throwable $e) {
+                report($e);
+            }
+        });
     }
 
     public function suspend(Rider $rider, Staff $manager, string $reason): void

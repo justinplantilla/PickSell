@@ -15,6 +15,9 @@ class RiderAvailability
         if (! $rider->isActive()) {
             return "{$rider->full_name} is not active ({$rider->status}).";
         }
+        if (! $rider->isSignedIn()) {
+            return "{$rider->full_name} is logged out of the rider app.";
+        }
         if (! $rider->isOnShift()) {
             return "{$rider->full_name} is off duty.";
         }

@@ -57,7 +57,7 @@ class DispatchController extends StationController
             default => $queue->where('task', '!=', 'pickup'),
         };
 
-        $riders = Rider::where('station_hub_id', $station->id)->where('status', 'active')->with('zone')->orderBy('full_name')->get()
+        $riders = Rider::where('station_hub_id', $station->id)->where('status', 'active')->with('zone')->withExists('tokens')->orderBy('full_name')->get()
             ->map(fn (Rider $rider) => (object) [
                 'rider' => $rider,
                 'open' => $availability->openCount($rider),

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Notifications\BuyerOrderUpdate;
 use App\Pickrush\Bridge\PicksellBridge;
 use App\Pickrush\Enums\ParcelStatus;
+use App\Pickrush\Enums\StaffRole;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Services\ParcelLedger;
 use App\Services\Orders\OrderAdministrationService;
@@ -185,6 +186,21 @@ class PicksellBridgeTest extends TestCase
         // The seller still confirms receipt in the marketplace.
         $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$order->id}/confirm-delivery")->assertRedirect();
         $this->assertSame('completed', $order->fresh()->status);
+    }
+
+    public function test_scans_by_signed_in_pickrush_staff_still_move_the_order(): void
+    {
+        [$order, $parcel] = $this->handedOver();
+        // Staff ids are not marketplace user ids; one with no matching user used to break the history FK.
+        $staff = $this->staff(StaffRole::HubManager, $this->station('041029000'));
+        $staff->forceFill(['id' => 9999])->save();
+        $this->actingAs($staff->fresh(), 'pickrush');
+
+        $this->scan($parcel, ParcelStatus::PickedUp, '041029000');
+        $this->scan($parcel, ParcelStatus::AtOriginHub, '041029000');
+
+        $this->assertSame('at_sorting_center', $order->fresh()->status);
+        $this->assertNull($order->statusHistories()->where('source', 'pickrush')->latest('id')->value('changed_by'));
     }
 
     public function test_walk_in_and_same_city_parcels_skip_steps_they_never_had(): void
