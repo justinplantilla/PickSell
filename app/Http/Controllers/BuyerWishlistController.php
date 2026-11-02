@@ -14,7 +14,7 @@ class BuyerWishlistController extends Controller
     {
         $buyer = auth()->user();
         $products = Product::query()
-            ->purchasable()
+            ->showcased()
             ->whereIn('id', WishlistItem::where('user_id', $buyer->id)->select('product_id'))
             ->with('seller', 'images')
             ->latest()
@@ -26,7 +26,7 @@ class BuyerWishlistController extends Controller
 
     public function store(Request $request, Product $product)
     {
-        abort_unless($product->isPurchasable(), 404);
+        abort_unless($product->isShowcased(), 404);
         WishlistItem::firstOrCreate(['user_id' => auth()->id(), 'product_id' => $product->id]);
 
         return $request->expectsJson()

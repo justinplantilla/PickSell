@@ -26,7 +26,7 @@ class WishlistController extends Controller
 
     public function store(Request $request, Product $product)
     {
-        abort_unless($product->isPurchasable(), 404, 'This product is no longer available.');
+        abort_unless($product->isShowcased(), 404, 'This product is no longer available.');
         WishlistItem::firstOrCreate(['user_id' => $request->user()->id, 'product_id' => $product->id]);
 
         return response()->json(['message' => 'Saved to My Picks.', 'wishlisted' => true], 201);

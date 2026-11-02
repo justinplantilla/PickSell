@@ -163,6 +163,26 @@ body.prp { margin: 0; background: var(--prp-ground); color: var(--prp-bone); fon
 .prp-footer nav { display: flex; flex-wrap: wrap; gap: 20px; }
 .prp-footer nav a { color: #d6d1c8; text-decoration: none; }
 
+/* Public tracking page: the landing's hero search, then a summary card and a scan timeline. */
+.prt { display: flex; flex-direction: column; gap: 32px; min-height: calc(100vh - 170px); padding-block: 56px 80px; }
+.prt-head { display: flex; flex-direction: column; gap: 18px; animation: prp-rise .8s var(--prp-ease-out) both; }
+.prt-head h1 { margin: 0; font-size: clamp(2.2rem, 4.5vw, 3.4rem); line-height: 1.05; }
+.prt-alert { max-width: 720px; padding: 14px 18px; border: 1px solid rgba(255, 138, 110, .45); border-radius: 12px; background: rgba(232, 71, 42, .12); color: var(--prp-coral-text); font-weight: 600; }
+.prt-result { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); align-items: start; gap: 24px; max-width: 980px; animation: prp-rise .7s .1s var(--prp-ease-out) both; }
+.prt-summary { display: flex; flex-direction: column; gap: 18px; padding: 24px; border-radius: 18px; background: var(--prp-coral); color: var(--prp-ground); }
+.prt-summary > div { display: flex; flex-direction: column; gap: 4px; }
+.prt-label { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .75; }
+.prt-number { font-family: 'Manrope', sans-serif; font-size: 22px; letter-spacing: -0.01em; word-break: break-all; }
+.prt-status { align-self: flex-start; padding: 6px 12px; border-radius: 999px; background: var(--prp-ground); color: var(--prp-bone); font-size: 14px; font-weight: 700; }
+.prt-timeline { margin: 0; padding: 24px 24px 24px 28px; border: 1px solid var(--prp-line); border-radius: 18px; background: var(--prp-surface); list-style: none; }
+.prt-timeline li { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 0 0 22px 26px; border-left: 2px solid rgba(246, 243, 238, .14); }
+.prt-timeline li:last-child { padding-bottom: 0; border-left-color: transparent; }
+.prt-timeline li::before { content: ''; position: absolute; top: 3px; left: -7px; width: 12px; height: 12px; border: 2px solid var(--prp-surface); border-radius: 50%; background: #6f6a63; }
+.prt-timeline li.is-current::before { background: var(--prp-coral); box-shadow: 0 0 0 4px rgba(232, 71, 42, .25); }
+.prt-timeline strong { font-size: 15px; }
+.prt-timeline li:not(.is-current) strong { color: var(--prp-text-soft); font-weight: 600; }
+.prt-timeline time { color: var(--prp-muted); font-size: 13px; }
+
 /* Staff sign-in: coral panel sweeps in from the left, then the form rises. */
 .prl { display: flex; min-height: 100vh; min-height: 100dvh; }
 .prl-panel { position: relative; width: 50%; overflow: hidden; background: var(--prp-coral); color: var(--prp-ground); animation: prl-sweep 1s var(--prp-ease) both; }
@@ -178,9 +198,13 @@ body.prp { margin: 0; background: var(--prp-ground); color: var(--prp-bone); fon
 .prl-values { display: flex; flex-direction: column; gap: 12px; margin: 10px 0 0; padding: 0; list-style: none; font-size: 15px; font-weight: 600; text-align: left; }
 .prl-values li { display: flex; align-items: center; gap: 12px; }
 .prl-values li > span { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 1.5px solid rgba(31, 35, 40, .45); border-radius: 50%; }
-.prl-road { position: absolute; left: 0; bottom: 0; width: 100%; height: 120px; display: block; }
-.prl-ride { animation: prl-ride 6s linear infinite; }
-@keyframes prl-ride { from { transform: translateX(-140px); } to { transform: translateX(720px); } }
+/* The road is CSS so it spans any panel width; the rider is its own SVG so it is never cropped. */
+.prl-road { --road: 34px; --rider: 90px; position: absolute; left: 0; right: 0; bottom: 0; height: 120px; pointer-events: none; }
+.prl-road::before { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: var(--road); background: linear-gradient(90deg, rgba(246, 243, 238, .5) 20px, transparent 0) 0 calc(var(--road) / 2 - 1.5px) / 34px 3px repeat-x, #1f2328; }
+/* The ride spans the panel, so translateX(100%) carries the rider fully across whatever its width. */
+.prl-ride { position: absolute; left: 0; bottom: calc(var(--road) - var(--rider) * 4 / 90); width: 100%; animation: prl-ride 7s linear infinite; }
+.prl-rider { position: absolute; left: calc(var(--rider) * -1); bottom: 0; display: block; width: var(--rider); height: calc(var(--rider) * 86 / 90); overflow: visible; }
+@keyframes prl-ride { from { transform: translateX(-40px); } to { transform: translateX(calc(100% + var(--rider) + 40px)); } }
 
 .prl-main { display: flex; flex: 1; align-items: center; justify-content: center; padding: 48px clamp(24px, 6vw, 72px); }
 .prl-form { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 400px; animation: prp-rise .8s .75s var(--prp-ease-out) both; }
@@ -294,23 +318,25 @@ body.prp { margin: 0; background: var(--prp-ground); color: var(--prp-bone); fon
     .prl-name { font-size: 26px; }
     .prl-tagline { flex-basis: 100%; max-width: none; font-size: 15px; }
     .prl-values { display: none; }
-    .prl-road { height: 80px; }
+    .prl-road { --road: 23px; --rider: 60px; height: 80px; }
     .prl-main { align-items: flex-start; padding: 28px 20px 40px; }
     .prl-form { max-width: none; animation-delay: .55s; }
     .prl-head h1 { font-size: 26px; }
+    .prt { padding-block: 36px 56px; }
+    .prt-result { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .prp-bob, .prp-wheel, .prl-ride, .prp-hero-copy, .prp-hero-art, .prl-panel, .prl-panel-body, .prl-form,
     .prp-scene, .prl-mark, .prl-values li, .prp-pill span::after, .prp-track-card::before,
     .prs-ride, .prs-bob, .prs-wheel, .prs-rack, .prs-hop, .prs-drop, .prs-door, .prs-light, .prs-check, .prs-puff,
-    .prs-far, .prs-mid, .prs-route, .prs-cloud, .prs-chip { animation: none; }
+    .prs-far, .prs-mid, .prs-route, .prs-cloud, .prs-chip, .prt-head, .prt-result { animation: none; }
     .prp-scene, .prp-step:hover, .prp-perks li:hover, .prs [data-depth] { transform: none; }
     /* Hold the delivered moment. */
     .prs-ride { transform: translateX(290px); }
     .prs-check, .prs-light, .prs-c4 { opacity: 1; }
     .prs-door { transform: scaleX(.25); }
-    .prl-ride { transform: translateX(260px); }
+    .prl-ride { transform: translateX(calc(var(--rider) + 160px)); }
 }
 
 @media (max-width: 600px) {
@@ -341,7 +367,7 @@ body.prp { margin: 0; background: var(--prp-ground); color: var(--prp-bone); fon
     .prl-panel { min-height: 230px; }
     .prl-panel-body { gap: 8px 10px; padding: 58px 16px 86px; }
     .prl-tagline { font-size: 14px; }
-    .prl-road { height: 68px; }
+    .prl-road { --road: 20px; --rider: 52px; height: 68px; }
     .prl-main { padding: 24px 16px 32px; }
     .prl-form { gap: 16px; }
 }
@@ -350,5 +376,5 @@ body.prp { margin: 0; background: var(--prp-ground); color: var(--prp-bone); fon
     .prl-panel-body { gap: 10px; padding-bottom: 92px; }
     .prl-mark { width: 88px; height: 88px; }
     .prl-values { gap: 6px; margin-top: 4px; }
-    .prl-road { height: 80px; }
+    .prl-road { --road: 28px; --rider: 70px; height: 80px; }
 }

@@ -134,7 +134,7 @@
                             <span class="oversight-meta">{{ $user->role === 'seller' ? (\App\Support\SellerTypes::label($user->seller_type) ?? 'Seller') : 'Personal' }}</span>
                         </td>
                         <td class="list-status list-cell-wide" data-label="Status">
-                            <span class="badge badge-{{ $user->status }}">{{ $statusLabel($user->status) }}</span>
+                            <span class="badge badge-{{ $user->status }}">{{ $statusLabel($user->status) }}</span>@if($user->isOnVacation()) <span class="badge badge-pending">On vacation</span>@endif
                             @if($user->status === 'pending')
                                 @if($canReviewRegistrations)
                                     <a href="{{ route('admin.registrations.show', $user) }}" class="oversight-meta user-status-link">Review in queue →</a>

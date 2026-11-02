@@ -24,11 +24,29 @@ class User extends Authenticatable
         // Seller
         'business_name', 'line_of_business', 'business_permit',
         'seller_type', 'tin', 'dti_certificate', 'sec_certificate', 'bir_certificate',
+        'vacation_mode', 'vacation_started_at', 'vacation_ends_at', 'vacation_message',
     ];
 
     protected $hidden = ['password', 'remember_token'];
 
-    protected $casts = ['birthday' => 'date', 'email_verified_at' => 'datetime'];
+    protected $casts = [
+        'birthday' => 'date', 'email_verified_at' => 'datetime',
+        'vacation_mode' => 'boolean', 'vacation_started_at' => 'datetime', 'vacation_ends_at' => 'datetime',
+    ];
+
+    /** Vacation days a seller may use per calendar month, across all vacations (see SellerVacations). */
+    public const MAX_VACATION_DAYS_PER_MONTH = 7;
+
+    /** Sent once per buyer per vacation when the seller left vacation_message blank; %s is the return date. */
+    public const DEFAULT_VACATION_MESSAGE = "Thank you for your message! I'm on vacation until %s and not taking new orders. I'll get back to you as soon as I'm back.";
+
+    /** Sent to a buyer who messages a seller, at most once per AUTO_REPLY_QUIET_HOURS. */
+    public const DEFAULT_THANK_YOU_MESSAGE = "Thank you for your message! I'll get back to you as soon as I can.";
+
+    public const AUTO_REPLY_QUIET_HOURS = 24;
+
+    /** Order statuses still waiting on the seller (before rider pickup): vacation mode stays off while any exist. */
+    public const SELLER_UNSHIPPED_STATUSES = ['pending', 'placed', 'confirmed', 'preparing', 'processing', 'ready_for_pickup'];
 
     /**
      * Context for the next status change (not persisted on users). Services set these before
@@ -100,6 +118,25 @@ class User extends Authenticatable
     public function isDeactivated(): bool
     {
         return $this->status === 'deactivated';
+    }
+
+    /** Away until vacation_ends_at; past it the seller is back even if vacation_mode is not cleared yet. */
+    public function isOnVacation(): bool
+    {
+        return $this->role === 'seller' && $this->vacation_mode
+            && ($this->vacation_ends_at === null || $this->vacation_ends_at->isFuture());
+    }
+
+    /** Sellers (in a whereHas on the seller) who are taking orders: not on vacation, or past its end. */
+    public function scopeTakingOrders($query)
+    {
+        return $query->where(fn ($seller) => $seller->where('vacation_mode', false)
+            ->orWhere(fn ($ended) => $ended->whereNotNull('vacation_ends_at')->where('vacation_ends_at', '<=', now())));
+    }
+
+    public function vacationAutoReply(): string
+    {
+        return $this->vacation_message ?: sprintf(self::DEFAULT_VACATION_MESSAGE, $this->vacation_ends_at?->format('M j') ?? 'further notice');
     }
 
     /** The single Super Admin role; holds every admin permission (see config/permissions.php). */

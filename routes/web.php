@@ -47,13 +47,13 @@ Route::get('/', function () {
         });
     }
 
-    $featuredProducts = Product::where('status', 'active')->where('stock', '>', 0)
+    $featuredProducts = Product::showcased()->where('stock', '>', 0)
         ->with('seller')->latest()->take(8)->get();
 
     return view('welcome', compact('featuredProducts'));
 });
 Route::get('/shop', function (Request $request) {
-    $query = Product::where('status', 'active')->where('stock', '>', 0)->whereHas('images')->with('seller');
+    $query = Product::showcased()->where('stock', '>', 0)->whereHas('images')->with('seller');
     $search = trim((string) $request->get('q', ''));
     if ($search) {
         $query->where(function ($builder) use ($search) {
@@ -79,7 +79,7 @@ Route::get('/shop', function (Request $request) {
         default => $query->latest(),
     };
     $products = $query->paginate(30)->withQueryString();
-    $categoryCounts = Product::where('status', 'active')
+    $categoryCounts = Product::showcased()
         ->selectRaw('LOWER(category) as category, COUNT(*) as product_count')
         ->whereNotNull('category')
         ->groupByRaw('LOWER(category)')
@@ -220,6 +220,7 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     Route::patch('/account', [SellerController::class, 'updateAccount'])->name('seller.account.update');
     Route::patch('/account/password', [SellerController::class, 'updatePassword'])->name('seller.account.password');
     Route::patch('/account/pickup-location', [SellerController::class, 'updatePickupLocation'])->name('seller.account.pickup-location');
+    Route::patch('/account/vacation', [SellerController::class, 'updateVacation'])->name('seller.account.vacation');
 });
 
 // Admin Routes: the single Super Admin holds every permission (config/permissions.php).

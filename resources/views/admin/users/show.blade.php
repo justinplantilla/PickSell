@@ -39,7 +39,7 @@
     <section class="card" aria-labelledby="status-heading">
         <div class="card-header">
             <span class="card-title" id="status-heading">Account status</span>
-            <span class="badge badge-{{ $user->status }}">{{ $statusLabel($user->status) }}</span>
+            <span class="badge badge-{{ $user->status }}">{{ $statusLabel($user->status) }}</span>@if($user->isOnVacation()) <span class="badge badge-pending">On vacation</span>@endif
         </div>
         <div class="account-actions">
             @if(in_array($user->status, ['pending', 'disapproved'], true))

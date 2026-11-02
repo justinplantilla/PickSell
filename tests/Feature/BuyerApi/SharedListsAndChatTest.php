@@ -78,9 +78,11 @@ class SharedListsAndChatTest extends TestCase
         $this->assertSame(1, Message::where('receiver_id', $seller->id)->count());
         $this->assertStringContainsString('new message', $seller->notifications()->sole()->data);
 
+        // The seller's thank-you auto-reply went out with the first message, then the seller answers.
+        $this->assertStringStartsWith('[Auto-reply]', Message::where('sender_id', $seller->id)->sole()->body);
         Message::create(['sender_id' => $seller->id, 'receiver_id' => $buyer->id, 'body' => 'Yes it is.', 'read' => false]);
-        $this->getJson('/api/mobile/chat/contacts')->assertOk()->assertJsonPath('contacts.0.unread', 1);
-        $this->getJson("/api/mobile/chat/messages/{$seller->id}")->assertOk()->assertJsonCount(2, 'messages');
+        $this->getJson('/api/mobile/chat/contacts')->assertOk()->assertJsonPath('contacts.0.unread', 2);
+        $this->getJson("/api/mobile/chat/messages/{$seller->id}")->assertOk()->assertJsonCount(3, 'messages');
         $this->assertSame(0, Message::where('receiver_id', $buyer->id)->where('read', false)->count());
 
         // Support (admin) appears once the buyer has written to it.

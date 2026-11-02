@@ -91,11 +91,11 @@ Route::prefix('mobile')->name('buyer-api.')->group(function () {
         $query = trim((string) $request->get('q', ''));
         if (mb_strlen($query) < 2) return response()->json(['products' => [], 'categories' => []]);
 
-        $products = Product::without('images')->purchasable()->where('stock', '>', 0)
+        $products = Product::without('images')->showcased()->where('stock', '>', 0)
             ->where(fn ($builder) => $builder->where('name', 'like', "%{$query}%")->orWhere('category', 'like', "%{$query}%"))
             ->latest()->take(6)->get(['name', 'category']);
 
-        $categories = Product::without('images')->purchasable()->where('stock', '>', 0)
+        $categories = Product::without('images')->showcased()->where('stock', '>', 0)
             ->where('category', 'like', "%{$query}%")->whereNotNull('category')
             ->distinct()->orderBy('category')->limit(3)->pluck('category');
 

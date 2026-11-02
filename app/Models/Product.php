@@ -44,15 +44,32 @@ class Product extends Model
             && $this->latestStatusModeration?->action === ProductModerationLog::ARCHIVED;
     }
 
-    /** Products that may enter new orders: active, and sold by an approved seller. */
-    public function scopePurchasable($query)
+    /** Products buyers can see and wishlist: active, and sold by an approved seller (even one on vacation). */
+    public function scopeShowcased($query)
     {
         return $query->where('status', 'active')->whereHas('seller', fn ($seller) => $seller->where('status', 'approved'));
     }
 
-    public function isPurchasable(): bool
+    /** Products that may enter new orders: showcased, and the seller is not on vacation. */
+    public function scopePurchasable($query)
+    {
+        return $query->where('status', 'active')
+            ->whereHas('seller', fn ($seller) => $seller->where('status', 'approved')->takingOrders());
+    }
+
+    public function isShowcased(): bool
     {
         return $this->status === 'active' && $this->seller?->status === 'approved';
+    }
+
+    public function isPurchasable(): bool
+    {
+        return $this->status === 'active' && $this->seller?->status === 'approved' && ! $this->seller->isOnVacation();
+    }
+
+    public function sellerOnVacation(): bool
+    {
+        return (bool) $this->seller?->isOnVacation();
     }
 
     public function getEffectivePriceAttribute(): float

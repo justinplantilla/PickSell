@@ -27,6 +27,10 @@
         </a>
     </div>
 
+    @if(auth()->user()->isOnVacation())
+        <div class="alert alert-warning">Vacation mode is on until {{ auth()->user()->vacation_ends_at?->format('M j, Y') }}. Buyers can visit your store but can't order. <a href="{{ route('seller.account') }}#vacation-mode">End vacation</a></div>
+    @endif
+
     <div class="action-panel">
         <div class="section-heading">
             <span class="panel-title">Needs your attention</span>

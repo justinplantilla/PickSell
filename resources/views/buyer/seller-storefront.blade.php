@@ -16,6 +16,7 @@
             <h1>{{ $seller->business_name ?? $seller->full_name }}</h1>
             <p>Browse this seller's available products and find something made for you.</p>
             <span class="seller-storefront-status"><i></i> Verified seller</span>
+            @if($seller->isOnVacation())<div class="alert alert-warning" role="note">On vacation until {{ $seller->vacation_ends_at?->format('M j') }}: browse freely, but orders are paused until the seller is back.</div>@endif
         </div>
         <div class="seller-storefront-count"><strong>{{ $products->total() }}</strong><span>products</span></div>
     </section>
@@ -35,7 +36,7 @@
                         </div>
                         <div class="product-info"><div class="product-name">{{ $product->name }}</div><span class="product-price">₱{{ number_format($product->effective_price, 2) }}</span><div class="product-seller">{{ $seller->business_name ?? $seller->full_name }}</div></div>
                     </a>
-                    <div class="product-card-actions"><button type="button" class="card-add-btn" data-card-cart-action="/buyer/cart/{{ $product->id }}">Add to Cart</button><button type="button" class="card-buy-btn" data-card-cart-action="/buyer/cart/{{ $product->id }}" data-card-buy-now="/buyer/checkout">Buy Now</button></div>
+                    <div class="product-card-actions">@if($seller->isOnVacation())<span class="card-vacation-note">Seller on vacation</span>@else<button type="button" class="card-add-btn" data-card-cart-action="/buyer/cart/{{ $product->id }}">Add to Cart</button><button type="button" class="card-buy-btn" data-card-cart-action="/buyer/cart/{{ $product->id }}" data-card-buy-now="/buyer/checkout">Buy Now</button>@endif</div>
                 </article>
                 @endforeach
             </div>

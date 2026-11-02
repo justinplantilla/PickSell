@@ -12,7 +12,7 @@ Route::middleware('auth')->group(function () {
 
 Route::get('/products', function (Request $request) {
     $products = Product::with('images', 'seller')
-        ->purchasable()
+        ->showcased()
         ->when($request->get('category'), fn ($q, $cat) => $q->where('category', $cat))
         ->when($request->get('search'), fn ($q, $s) => $q->where('name', 'like', "%{$s}%"))
         ->latest()

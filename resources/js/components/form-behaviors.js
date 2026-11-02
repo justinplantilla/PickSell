@@ -68,7 +68,9 @@ document.addEventListener('submit', event => {
             form.dataset.confirmed = 'true';
             form.removeAttribute('data-confirm');
             if (typeof form.requestSubmit === 'function') {
-                form.requestSubmit();
+                // Resubmit with the same button, so its name/value (e.g. vacation_mode=1) is still sent.
+                const submitter = event.submitter?.form === form ? event.submitter : undefined;
+                form.requestSubmit(submitter);
             } else {
                 HTMLFormElement.prototype.submit.call(form);
             }

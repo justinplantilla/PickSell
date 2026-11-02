@@ -42,7 +42,7 @@
                                 @endif
                                 <div>
                                     <div class="cart-title">{{ $item->product->name }}</div>
-                                    @unless($item->product->isPurchasable())<div class="cart-unavailable" role="note">No longer available — remove it to check out</div>@endunless
+                                    @unless($item->product->isPurchasable())<div class="cart-unavailable" role="note">{{ $item->product->sellerOnVacation() ? "Seller is on vacation — remove it to check out" : "No longer available — remove it to check out" }}</div>@endunless
                                     <div class="cart-muted-text">{{ $item->product->seller->business_name ?? $item->product->seller->full_name }}</div>
                                 </div>
                             </div>
@@ -152,8 +152,12 @@
                 </div>
             </a>
             <div class="product-card-actions">
+                @if($product->sellerOnVacation())
+                <span class="card-vacation-note">Seller on vacation</span>
+                @else
                 <button type="button" class="card-add-btn" data-card-cart-action="/buyer/cart/{{ $product->id }}">Add to Cart</button>
                 <button type="button" class="card-buy-btn" data-card-cart-action="/buyer/cart/{{ $product->id }}" data-card-buy-now="/buyer/checkout">Buy Now</button>
+                @endif
             </div>
         </article>
         @endforeach

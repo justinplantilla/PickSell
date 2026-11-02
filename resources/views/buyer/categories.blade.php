@@ -63,8 +63,12 @@
                         </div>
                     </a>
                     <div class="product-card-actions">
+                        @if($product->sellerOnVacation())
+                        <span class="card-vacation-note">Seller on vacation</span>
+                        @else
                         <button type="button" class="card-add-btn" data-card-cart-action="{{ route('buyer.cart.add', $product) }}">Add to Cart</button>
                         <button type="button" class="card-buy-btn" data-card-cart-action="{{ route('buyer.cart.add', $product) }}" data-card-buy-now="{{ route('buyer.checkout.page') }}">Buy Now</button>
+                        @endif
                     </div>
                 </article>
                 @endforeach

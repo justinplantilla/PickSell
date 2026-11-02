@@ -74,6 +74,7 @@ final class BuyerPresenter
             'name'     => $s->business_name ?: $s->full_name,
             'location' => self::location($s),
             'verified' => $s->status === 'approved',
+            'on_vacation' => $s->isOnVacation(), // products show on the store page but cannot be ordered
         ];
     }
 

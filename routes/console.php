@@ -17,3 +17,29 @@ Schedule::command('notifications:prune-admin')
     ->daily()
     ->name('prune-admin-notifications')
     ->withoutOverlapping();
+
+// Sellers count as back once vacation_ends_at passes (User::isOnVacation); this clears the flag and tells them.
+Artisan::command('sellers:end-vacations', function () {
+    $ended = 0;
+    \App\Models\User::where('role', 'seller')->where('vacation_mode', true)
+        ->whereNotNull('vacation_ends_at')->where('vacation_ends_at', '<=', now())
+        ->each(function (\App\Models\User $seller) use (&$ended): void {
+            app(\App\Services\SellerVacations::class)->end($seller);
+            $seller->notifications()->create([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'type' => 'App\\Notifications\\SellerVacationEnded',
+                'data' => json_encode([
+                    'type' => 'vacation',
+                    'title' => 'Vacation mode ended',
+                    'message' => 'Welcome back! Your vacation ended, and buyers can order your products again.',
+                ]),
+            ]);
+            $ended++;
+        });
+    $this->info("Ended {$ended} seller vacations.");
+})->purpose('Turn off vacation mode for sellers whose return date has passed');
+
+Schedule::command('sellers:end-vacations')
+    ->hourly()
+    ->name('end-seller-vacations')
+    ->withoutOverlapping();

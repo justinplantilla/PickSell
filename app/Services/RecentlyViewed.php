@@ -35,7 +35,7 @@ class RecentlyViewed
     {
         return RecentlyViewedProduct::where('user_id', $buyer->id)
             ->when($exceptProductId, fn ($query) => $query->where('product_id', '!=', $exceptProductId))
-            ->whereHas('product', fn ($product) => $product->purchasable()->where('stock', '>', 0))
+            ->whereHas('product', fn ($product) => $product->showcased()->where('stock', '>', 0))
             ->with('product.seller', 'product.images')
             ->orderByDesc('viewed_at')->orderByDesc('id')
             ->take($limit)

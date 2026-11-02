@@ -44,6 +44,8 @@
         <div class="product-price-block"><span class="detail-price">₱{{ number_format($product->effective_price, 2) }}</span>@if($product->discount > 0)<span class="detail-original">₱{{ number_format($product->price, 2) }}</span><span class="detail-discount">-{{ $product->discount }}%</span>@endif</div>
         @if($product->description)<p class="product-description">{{ $product->description }}</p>@endif
 
+        @php $sellerAway = $product->sellerOnVacation(); @endphp
+        @if($sellerAway)<div class="alert alert-warning" role="note">This seller is on vacation until {{ $product->seller->vacation_ends_at?->format('M j') }} and isn't taking orders. Save it to your wishlist or message the seller.</div>@endif
         <form method="POST" action="/buyer/cart/{{ $product->id }}" id="addCartForm">
             @csrf
             @php $grouped = $product->variations->groupBy('type'); @endphp
@@ -56,7 +58,7 @@
             <input type="hidden" name="variation_id" id="variation_id">
             <div class="purchase-row"><div><div class="variation-label">Quantity</div><div class="qty-control"><button type="button" class="qty-btn" data-qty-step="-1" aria-label="Decrease quantity">-</button><input type="number" name="quantity" id="qtyInput" class="qty-input" value="1" min="1" max="{{ $product->stock }}" aria-label="Quantity"><button type="button" class="qty-btn" data-qty-step="1" aria-label="Increase quantity">+</button></div><small>{{ $product->stock }} available</small></div></div>
             @if($product->voucher_code)<div class="product-voucher">Use voucher <strong>{{ $product->voucher_code }}</strong> at checkout for {{ $product->voucher_discount }}% off</div>@endif
-            <div class="product-actions"><button type="button" id="addToCartBtn" class="btn btn-outline"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h16l-2 9H7Zm0 0L4 3H2m6 17a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm9 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Add to Cart</button><button type="button" id="buyNowBtn" class="btn btn-coral">Buy Now</button><a href="/buyer/chat?user={{ $product->seller_id }}&product={{ $product->id }}" class="btn btn-outline">Chat Seller</a></div>
+            <div class="product-actions"><button type="button" id="addToCartBtn" class="btn btn-outline" @disabled($sellerAway)><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h16l-2 9H7Zm0 0L4 3H2m6 17a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm9 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Add to Cart</button><button type="button" id="buyNowBtn" class="btn btn-coral" @disabled($sellerAway)>Buy Now</button><a href="/buyer/chat?user={{ $product->seller_id }}&product={{ $product->id }}" class="btn btn-outline">Chat Seller</a></div>
         </form>
         <div class="seller-panel"><div class="seller-avatar">{{ strtoupper(substr($product->seller->first_name, 0, 1)) }}</div><div><strong>{{ $product->seller->business_name ?? $product->seller->full_name }}</strong><span>Trusted PickSell seller</span></div><a href="{{ route('buyer.seller', $product->seller) }}">Visit store</a><a href="/buyer/chat?user={{ $product->seller_id }}&product={{ $product->id }}">Message</a></div>
     </section>

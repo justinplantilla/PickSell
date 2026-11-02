@@ -15,6 +15,7 @@ use App\Pickrush\Bridge\PicksellBridge;
 use App\Services\OrderPlacement;
 use App\Services\RecentlyViewed;
 use App\Services\LogisticsRoutingService;
+use App\Services\MessagingService;
 use App\Services\Orders\OrderCancellationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -57,7 +58,7 @@ class BuyerController extends Controller
         $category = $request->get('category');
         $deals = $request->boolean('deals') || $request->routeIs('buyer.deals');
 
-        $query = Product::where('status', 'active')->where('stock', '>', 0)->with('seller');
+        $query = Product::showcased()->where('stock', '>', 0)->with('seller');
 
         if ($search) {
             $query->whereLike('name', "%$search%");
@@ -74,7 +75,7 @@ class BuyerController extends Controller
         // 14 deal products shown on home (no pagination) — only when not filtering
         $dealProducts = null;
         if (!$search && !$category && !$deals) {
-            $dealProducts = Product::where('status', 'active')
+            $dealProducts = Product::showcased()
                 ->where('stock', '>', 0)
                 ->where('discount', '>', 0)
                 ->with('seller')
@@ -83,13 +84,13 @@ class BuyerController extends Controller
                 ->get();
         }
 
-        $recommendedProducts = Product::where('status', 'active')
+        $recommendedProducts = Product::showcased()
             ->where('stock', '>', 0)
             ->with('seller')
             ->latest()
             ->take(8)
             ->get();
-        $topCategoryProducts = Product::where('status', 'active')
+        $topCategoryProducts = Product::showcased()
             ->where('stock', '>', 0)
             ->with('seller')
             ->withSum([
@@ -103,7 +104,7 @@ class BuyerController extends Controller
             ->values();
         $categoryNames = ['Beauty', 'Books', 'Clothing', 'Electronics', 'Fashion', 'Food & Grocery', 'Home & Living', 'Pet Supplies', 'Sports', 'Toys'];
         $categories = collect($categoryNames)
-            ->merge(Product::where('status', 'active')->whereNotNull('category')->distinct()->pluck('category'))
+            ->merge(Product::showcased()->whereNotNull('category')->distinct()->pluck('category'))
             ->filter()
             ->unique()
             ->sort()
@@ -117,7 +118,7 @@ class BuyerController extends Controller
     public function recommended(Request $request)
     {
         $page = max(1, (int) $request->get('page', 1));
-        $products = Product::where('status', 'active')
+        $products = Product::showcased()
             ->where('stock', '>', 0)
             ->with('seller')
             ->latest()
@@ -142,7 +143,7 @@ class BuyerController extends Controller
         $sort = $request->get('sort', 'latest');
         $dealsOnly = $request->boolean('deals');
 
-        $query = Product::where('status', 'active')->where('stock', '>', 0)->with('seller');
+        $query = Product::showcased()->where('stock', '>', 0)->with('seller');
 
         if ($search) {
             $query->where(function ($b) use ($search) {
@@ -170,7 +171,7 @@ class BuyerController extends Controller
         $products = $query->paginate(30)->withQueryString();
         $categoryNames = ['Beauty', 'Books', 'Clothing', 'Electronics', 'Fashion', 'Food & Grocery', 'Home & Living', 'Pet Supplies', 'Sports', 'Toys'];
         $categories = collect($categoryNames)
-            ->merge(Product::where('status', 'active')->whereNotNull('category')->distinct()->pluck('category'))
+            ->merge(Product::showcased()->whereNotNull('category')->distinct()->pluck('category'))
             ->filter()->unique()->sort()->values();
         $cartCount = CartItem::whereHas('cart', fn ($q) => $q->where('buyer_id', $this->buyer()->id))->count();
 
@@ -180,19 +181,19 @@ class BuyerController extends Controller
     public function categories(Request $request)
     {
         $category = $request->query('category');
-        $categories = Product::where('status', 'active')
+        $categories = Product::showcased()
             ->where('stock', '>', 0)
             ->whereNotNull('category')
             ->distinct()
             ->orderBy('category')
             ->pluck('category');
-        $categoryCounts = Product::where('status', 'active')
+        $categoryCounts = Product::showcased()
             ->where('stock', '>', 0)
             ->selectRaw('category, COUNT(*) as product_count')
             ->whereNotNull('category')
             ->groupBy('category')
             ->pluck('product_count', 'category');
-        $products = Product::where('status', 'active')
+        $products = Product::showcased()
             ->where('stock', '>', 0)
             ->with('seller')
             ->when($category, fn ($query) => $query->where('category', $category))
@@ -210,7 +211,7 @@ class BuyerController extends Controller
         $query = trim($request->get('search', ''));
         $category = $request->get('category');
 
-        $products = Product::where('status', 'active')
+        $products = Product::showcased()
             ->where('stock', '>', 0)
             ->with('seller')
             ->when($query, fn ($q) => $q->where(function ($b) use ($query) {
@@ -287,8 +288,8 @@ class BuyerController extends Controller
         $cart = $this->getCart();
         $items = CartItem::where('cart_id', $cart->id)->with('product.seller', 'variation')->latest()->paginate(20)->withQueryString();
         $cartCount = CartItem::where('cart_id', $cart->id)->count();
-        $recommendations = Product::where('status', 'active')->where('stock', '>', 0)->with('seller')->latest()->take(4)->get();
-        $recommendedProducts = Product::where('status', 'active')->where('stock', '>', 0)->with('seller')->latest()->take(8)->get();
+        $recommendations = Product::purchasable()->where('stock', '>', 0)->with('seller')->latest()->take(4)->get();
+        $recommendedProducts = Product::purchasable()->where('stock', '>', 0)->with('seller')->latest()->take(8)->get();
 
         return view('buyer.cart', compact('items', 'cartCount', 'recommendations', 'recommendedProducts'));
     }
@@ -519,7 +520,7 @@ class BuyerController extends Controller
         return view('buyer.chat', compact('contacts', 'activeUser', 'messages', 'cartCount', 'product'));
     }
 
-    public function sendMessage(Request $request)
+    public function sendMessage(Request $request, MessagingService $messaging)
     {
         $data = $request->validate([
             'receiver_id' => 'required|exists:users,id',
@@ -550,6 +551,7 @@ class BuyerController extends Controller
         } catch (Throwable $exception) {
             Log::warning('Chat message email notification failed.', ['message_id' => $msg->id, 'error' => $exception->getMessage()]);
         }
+        $messaging->sellerAutoReply(auth()->user(), $receiver);
         $redirect = '/buyer/chat?user='.$receiver->id;
         if (! empty($data['product_id'])) {
             $redirect .= '&product='.$data['product_id'];

@@ -8,7 +8,7 @@
     <p class="list-preview-kicker">{{ ucfirst($user->role) }} account</p>
     <h2 id="list-drawer-title">{{ $user->full_name }}</h2>
     <div class="list-preview-status">
-        <span class="badge badge-{{ $user->status }}">{{ $statusLabel($user->status) }}</span>
+        <span class="badge badge-{{ $user->status }}">{{ $statusLabel($user->status) }}</span>@if($user->isOnVacation()) <span class="badge badge-pending">On vacation</span>@endif
         <span class="badge badge-{{ $user->role }}">{{ ucfirst($user->role) }}</span>
         <span class="oversight-meta">Joined {{ $user->created_at->format('M d, Y') }}</span>
     </div>

@@ -103,7 +103,9 @@ class OrderPlacement
 
     public static function unavailableMessage(Collection $items): string
     {
-        return 'No longer available: '.$items->map(fn ($item) => $item->product?->name ?? 'a removed product')->join(', ')
+        return 'No longer available: '.$items->map(fn ($item) => $item->product
+            ? $item->product->name.($item->product->sellerOnVacation() ? ' (seller on vacation)' : '')
+            : 'a removed product')->join(', ')
             .'. Remove '.($items->count() === 1 ? 'it' : 'them').' from your cart to continue.';
     }
 }

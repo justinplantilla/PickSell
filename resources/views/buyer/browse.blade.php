@@ -80,8 +80,12 @@
             </div>
             </a>
             <div class="product-card-actions">
+                @if($product->sellerOnVacation())
+                <span class="card-vacation-note">Seller on vacation</span>
+                @else
                 <button type="button" class="card-add-btn" data-card-cart-action="/buyer/cart/{{ $product->id }}">Add to Cart</button>
                 <button type="button" class="card-buy-btn" data-card-cart-action="/buyer/cart/{{ $product->id }}" data-card-buy-now="/buyer/checkout">Buy Now</button>
+                @endif
             </div>
         </article>
         @endforeach

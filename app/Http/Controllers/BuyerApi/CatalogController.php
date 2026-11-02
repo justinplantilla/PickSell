@@ -21,7 +21,8 @@ class CatalogController extends Controller
     /** Listable products with the numbers product cards show. */
     public static function listable()
     {
-        return Product::purchasable()->where('stock', '>', 0)->with('seller')
+        // Includes sellers on vacation: their products stay visible, and is_available tells the app they can't be ordered.
+        return Product::showcased()->where('stock', '>', 0)->with('seller')
             ->withAvg('reviews', 'rating')->withCount('reviews')
             ->withSum(['orders as sold_count' => fn ($orders) => $orders->whereIn('status', ['delivered', 'completed'])], 'quantity');
     }
@@ -80,7 +81,7 @@ class CatalogController extends Controller
     /** The website's fixed category list plus any category in use, with how many products each has. */
     private function categoryList()
     {
-        $counts = Product::purchasable()->where('stock', '>', 0)->whereNotNull('category')->where('category', '!=', '')
+        $counts = Product::showcased()->where('stock', '>', 0)->whereNotNull('category')->where('category', '!=', '')
             ->selectRaw('category, COUNT(*) as product_count')->groupBy('category')->pluck('product_count', 'category');
 
         return collect(config('buyer-api.home_categories'))->merge($counts->keys())->unique()->sort()->values()
@@ -219,7 +220,7 @@ class CatalogController extends Controller
             'rating'        => ($avg = (clone $rated)->avg('rating')) ? round((float) $avg, 1) : null,
             'review_count'  => $count,
             'positive_rate' => $count ? (int) round((clone $rated)->where('rating', '>=', 4)->count() * 100 / $count) : null,
-            'product_count' => Product::purchasable()->where('stock', '>', 0)->where('seller_id', $seller->id)->count(),
+            'product_count' => Product::showcased()->where('stock', '>', 0)->where('seller_id', $seller->id)->count(),
             'joined_at'     => BuyerPresenter::date($seller->created_at),
         ];
     }

@@ -7,6 +7,7 @@ use App\Mail\NewMessageMail;
 use App\Models\Message;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\MessagingService;
 use App\Support\BuyerApi\BuyerPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -75,7 +76,7 @@ class ChatController extends Controller
         return response()->json(['messages' => $messages->map(fn (Message $m) => $this->messagePayload($m, $buyer))->values()]);
     }
 
-    public function send(Request $request)
+    public function send(Request $request, MessagingService $messaging)
     {
         $data = $request->validate([
             'receiver_id' => 'required|integer',
@@ -110,6 +111,7 @@ class ChatController extends Controller
         } catch (Throwable $exception) {
             Log::warning('Chat message email notification failed.', ['message_id' => $message->id, 'error' => $exception->getMessage()]);
         }
+        $messaging->sellerAutoReply($buyer, $receiver);
 
         return response()->json($this->messagePayload($message, $buyer), 201);
     }

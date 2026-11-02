@@ -17,6 +17,7 @@ use App\Services\Orders\OrderLifecycleService;
 use App\Services\Orders\OrderCancellationService;
 use App\Services\ProductGallery;
 use App\Services\Reports\FinancialReportService;
+use App\Services\SellerVacations;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -121,9 +122,9 @@ class SellerController extends Controller
             ->get();
 
         $storeStatus = match ($seller->status) {
-            'approved' => $actionRequiredOrders > 0 || $actionRequiredReturns > 0 || $lowStockCount > 0
+            'approved' => $seller->isOnVacation() ? ['label' => 'On Vacation', 'tone' => 'attention'] : ($actionRequiredOrders > 0 || $actionRequiredReturns > 0 || $lowStockCount > 0
                 ? ['label' => 'Needs Attention', 'tone' => 'attention']
-                : ['label' => 'Active', 'tone' => 'active'],
+                : ['label' => 'Active', 'tone' => 'active']),
             'suspended' => ['label' => 'Suspended', 'tone' => 'suspended'],
             default => null,
         };
@@ -891,9 +892,15 @@ class SellerController extends Controller
     }
 
     // Account
-    public function account()
+    public function account(SellerVacations $vacations)
     {
-        return view('seller.account');
+        $seller = $this->seller();
+        $current = $vacations->current($seller);
+
+        return view('seller.account', [
+            'vacationDaysLeft' => $vacations->daysLeft($seller, now()),
+            'latestReturn' => $vacations->latestReturn($seller, $current?->starts_at ?? now(), $current),
+        ]);
     }
 
     public function updateAccount(Request $request)
@@ -934,6 +941,55 @@ class SellerController extends Controller
         \App\Pickrush\Bridge\PicksellBridge::sellerPinned($seller);
 
         return back()->with('success', 'Shop pin saved. Pickrush riders will come to this spot.');
+    }
+
+    /**
+     * Vacation mode: products stay visible but cannot be ordered until the return date. Sellers get
+     * User::MAX_VACATION_DAYS_PER_MONTH vacation days per calendar month (see SellerVacations).
+     */
+    public function updateVacation(Request $request, SellerVacations $vacations)
+    {
+        $seller = $this->seller();
+        $current = $vacations->current($seller);
+
+        if (! $request->boolean('vacation_mode')) {
+            $request->validate(['vacation_mode' => 'required|boolean']);
+            $vacations->end($seller);
+
+            return back()->with('success', 'Welcome back! Your products are open for orders again.');
+        }
+
+        // Changing the date mid-vacation is measured from its original start, without counting it twice.
+        $latest = $vacations->latestReturn($seller, $current?->starts_at ?? now(), $current);
+        if (! $latest) {
+            return back()->withErrors(['vacation_mode' => 'You have used all '.User::MAX_VACATION_DAYS_PER_MONTH.' vacation days for this month.']);
+        }
+        $data = $request->validate([
+            'vacation_mode' => 'required|boolean',
+            'vacation_until' => ['required', 'date', 'after:today', 'before_or_equal:'.$latest->toDateString()],
+            'vacation_message' => 'nullable|string|max:255',
+        ], [
+            'vacation_until.required' => 'Pick the day you will be back.',
+            'vacation_until.after' => 'Your return date must be after today.',
+            'vacation_until.before_or_equal' => 'You get '.User::MAX_VACATION_DAYS_PER_MONTH.' vacation days a month. Pick a return date on or before '.$latest->format('M j, Y').'.',
+        ]);
+        $message = trim($data['vacation_message'] ?? '') ?: null;
+        $endsAt = Carbon::parse($data['vacation_until'])->startOfDay();
+
+        if ($current) {
+            $vacations->change($seller, $current, $endsAt, $message);
+
+            return back()->with('success', "Vacation updated: you're away until {$endsAt->format('M j, Y')}.");
+        }
+
+        $unshipped = Order::where('seller_id', $seller->id)->whereIn('status', User::SELLER_UNSHIPPED_STATUSES)->count();
+        if ($unshipped > 0) {
+            return back()->withErrors(['vacation_mode' => "Hand over or cancel your {$unshipped} unshipped ".Str::plural('order', $unshipped).' before going on vacation.']);
+        }
+
+        $vacations->start($seller, $endsAt, $message);
+
+        return back()->with('success', "Vacation mode is on until {$endsAt->format('M j, Y')}. Buyers can still see your products but can't order until then.");
     }
 
     public function updatePassword(Request $request)
