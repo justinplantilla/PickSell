@@ -21,10 +21,17 @@
     <div class="top-bar"></div>
     <div class="card">
         <div class="brand">Pickrush</div>
-        <h1>Verify your email</h1>
-        <p>Enter this code in the Pickrush rider app to continue your rider application.</p>
+        @if(($purpose ?? 'verify') === 'reset')
+            <h1>Reset your password</h1>
+            <p>Enter this code in the Pickrush rider app to set a new password.</p>
+        @else
+            <h1>Verify your email</h1>
+            <p>Enter this code in the Pickrush rider app to continue your rider application.</p>
+        @endif
         <div class="code">{{ $code }}</div>
-        <p>The code expires in {{ $minutes }} minutes. If you did not apply as a rider, you can ignore this email.</p>
+        <p>The code expires in {{ $minutes }} minutes. {{ ($purpose ?? 'verify') === 'reset'
+            ? 'If you did not ask to reset your password, ignore this email; your password stays the same.'
+            : 'If you did not apply as a rider, you can ignore this email.' }}</p>
     </div>
     <div class="footer">Pickrush Logistics · a PickSell company</div>
 </div>

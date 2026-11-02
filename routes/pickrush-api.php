@@ -17,6 +17,8 @@ Route::prefix('rider')->name('pickrush.api.rider.')->group(function () {
         Route::post('/email-code/send', [RiderAuthController::class, 'sendCode'])->name('email-code.send');
         Route::post('/email-code/verify', [RiderAuthController::class, 'verifyCode'])->name('email-code.verify');
         Route::post('/login', [RiderAuthController::class, 'login'])->name('login');
+        Route::post('/password/forgot', [RiderAuthController::class, 'forgotPassword'])->name('password.forgot');
+        Route::post('/password/reset', [RiderAuthController::class, 'resetPassword'])->name('password.reset');
     });
 
     Route::get('/stations', [RiderApplicationController::class, 'stations'])->middleware('throttle:pickrush-rider-read')->name('stations');
@@ -25,6 +27,7 @@ Route::prefix('rider')->name('pickrush.api.rider.')->group(function () {
     Route::middleware('pickrush.rider')->group(function () {
         Route::get('/me', [RiderAuthController::class, 'me'])->name('me');
         Route::post('/logout', [RiderAuthController::class, 'logout'])->name('logout');
+        Route::post('/password', [RiderAuthController::class, 'changePassword'])->middleware('throttle:pickrush-rider-auth')->name('password');
         Route::post('/application', [RiderApplicationController::class, 'resubmit'])->middleware('throttle:pickrush-rider-apply')->name('resubmit');
     });
 
@@ -34,10 +37,10 @@ Route::prefix('rider')->name('pickrush.api.rider.')->group(function () {
         Route::get('/pulse', [RiderHomeController::class, 'pulse'])->name('pulse');
         Route::patch('/shift', [RiderHomeController::class, 'shift'])->name('shift');
         Route::get('/options', [RiderHomeController::class, 'options'])->name('options');
+        Route::get('/earnings', [RiderEarningsController::class, 'index'])->name('earnings');
         Route::get('/notifications', [RiderHomeController::class, 'notifications'])->name('notifications');
         Route::post('/notifications/read', [RiderHomeController::class, 'readNotifications'])->name('notifications.read');
         Route::get('/activity', [RiderHomeController::class, 'activityPage'])->name('activity');
-        Route::get('/earnings',RiderEarningsController::class)->name('earnings');
 
         Route::get('/batches', [RiderBatchController::class, 'index'])->name('batches.index');
         Route::get('/batches/{batch}', [RiderBatchController::class, 'show'])->whereNumber('batch')->name('batches.show');
