@@ -50,11 +50,11 @@
             @foreach($grouped as $type => $options)
             <div class="variation-group">
                 <div class="variation-label">{{ ucfirst($type) }} <span id="selected_{{ Str::slug($type) }}">—</span></div>
-                <div class="variation-options">@foreach($options as $opt)<button type="button" class="var-btn" data-type="{{ $type }}" data-id="{{ $opt->id }}" data-value="{{ $opt->value }}" onclick="selectVariation(this, '{{ Str::slug($type) }}')">{{ $opt->value }}</button>@endforeach</div>
+                <div class="variation-options">@foreach($options as $opt)<button type="button" class="var-btn" data-type="{{ $type }}" data-id="{{ $opt->id }}" data-value="{{ $opt->value }}" data-type-slug="{{ Str::slug($type) }}">{{ $opt->value }}</button>@endforeach</div>
             </div>
             @endforeach
             <input type="hidden" name="variation_id" id="variation_id">
-            <div class="purchase-row"><div><div class="variation-label">Quantity</div><div class="qty-control"><button type="button" class="qty-btn" onclick="changeQty(-1)" aria-label="Decrease quantity">-</button><input type="number" name="quantity" id="qtyInput" class="qty-input" value="1" min="1" max="{{ $product->stock }}" aria-label="Quantity"><button type="button" class="qty-btn" onclick="changeQty(1)" aria-label="Increase quantity">+</button></div><small>{{ $product->stock }} available</small></div></div>
+            <div class="purchase-row"><div><div class="variation-label">Quantity</div><div class="qty-control"><button type="button" class="qty-btn" data-qty-step="-1" aria-label="Decrease quantity">-</button><input type="number" name="quantity" id="qtyInput" class="qty-input" value="1" min="1" max="{{ $product->stock }}" aria-label="Quantity"><button type="button" class="qty-btn" data-qty-step="1" aria-label="Increase quantity">+</button></div><small>{{ $product->stock }} available</small></div></div>
             @if($product->voucher_code)<div class="product-voucher">Use voucher <strong>{{ $product->voucher_code }}</strong> at checkout for {{ $product->voucher_discount }}% off</div>@endif
             <div class="product-actions"><button type="button" id="addToCartBtn" class="btn btn-outline"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h16l-2 9H7Zm0 0L4 3H2m6 17a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm9 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Add to Cart</button><button type="button" id="buyNowBtn" class="btn btn-coral">Buy Now</button><a href="/buyer/chat?user={{ $product->seller_id }}&product={{ $product->id }}" class="btn btn-outline">Chat Seller</a></div>
         </form>

@@ -14,11 +14,20 @@ window.togglePw = button => {
     button.style.color = isText ? '' : 'var(--coral)';
 };
 
+// While the login posts, the button spins and the fields dim; Back from the next page (bfcache) puts it back.
 const loginForm = document.getElementById('loginForm');
+const loginButton = loginForm?.querySelector('.btn-submit');
+const loginLabel = loginButton?.textContent;
 loginForm?.addEventListener('submit', () => {
-    const submitButton = loginForm.querySelector('.btn-submit');
-    submitButton?.classList.add('is-submitting');
-    if (submitButton) submitButton.textContent = 'Logging in...';
+    loginForm.classList.add('is-busy');
+    loginButton?.classList.add('is-submitting');
+    if (loginButton) loginButton.innerHTML = '<span class="btn-spinner" aria-hidden="true"></span> Logging in...';
+});
+window.addEventListener('pageshow', event => {
+    if (!event.persisted || !loginForm) return;
+    loginForm.classList.remove('is-busy');
+    loginButton?.classList.remove('is-submitting');
+    if (loginButton) loginButton.textContent = loginLabel;
 });
 
 // Switching between /login and /register slides the brand panel instead of loading a new page; the URL and title follow,
@@ -109,21 +118,7 @@ if (split) {
         try { routeDot?.beginElementAt(0.15); } catch { /* SMIL unsupported: the line still draws */ }
         routeTimer = setTimeout(() => split.classList.remove('is-routing'), 1900);
     };
-
-    // Floating objects lean toward the pointer (desktop, fine pointer only).
-    const brand = split.querySelector('.auth-brand');
-    const finePointer = window.matchMedia('(hover: hover) and (pointer: fine) and (min-width: 901px)');
-    let tiltFrame = 0;
-    split.addEventListener('pointermove', event => {
-        if (reducedMotion.matches || !finePointer.matches || tiltFrame) return;
-        tiltFrame = requestAnimationFrame(() => {
-            tiltFrame = 0;
-            const rect = split.getBoundingClientRect();
-            brand.style.setProperty('--px', (((event.clientX - rect.left) / rect.width) * 2 - 1).toFixed(3));
-            brand.style.setProperty('--py', (((event.clientY - rect.top) / rect.height) * 2 - 1).toFixed(3));
-        });
-    });
-    split.addEventListener('pointerleave', () => { brand.style.setProperty('--px', 0); brand.style.setProperty('--py', 0); });
+    loginForm?.addEventListener('submit', playRoute);
 
     // A field that fails validation (browser check or server error) shakes once.
     const shake = element => {

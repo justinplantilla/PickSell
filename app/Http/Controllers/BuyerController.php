@@ -408,6 +408,10 @@ class BuyerController extends Controller
         return back()->with('success', 'Order cancelled before pickup.');
     }
 
+    /**
+     * Buyers rate once the parcel is delivered, as in the buyer app (the seller still completes the order), and may
+     * leave feedback on a cancelled order from its tracking page.
+     */
     public function submitFeedback(Request $request, Order $order)
     {
         abort_if($order->buyer_id !== $this->buyer()->id, 403);
@@ -415,6 +419,8 @@ class BuyerController extends Controller
             'rating' => 'required|integer|min:1|max:5',
             'feedback' => 'nullable|string|max:1000',
         ]);
+        abort_unless(in_array($order->status, ['delivered', 'completed', 'cancelled'], true), 422, 'You can rate an order once it has been delivered.');
+
         $order->update(['rating' => $request->rating, 'feedback' => $request->feedback]);
 
         return back()->with('success', 'Feedback submitted. Thank you!');
@@ -494,11 +500,12 @@ class BuyerController extends Controller
             }
         }
 
-        // Product context: from URL param first, fallback to last message with product
+        // Product context: from the URL first, else the latest message if it was about a product. Once the buyer
+        // clears "Asking about" and sends a plain message, the context stays cleared.
         if ($request->get('product')) {
             $product = Product::find($request->get('product'));
         } elseif ($messages->isNotEmpty()) {
-            $product = $messages->whereNotNull('product_id')->last()?->product;
+            $product = $messages->last()->product;
         }
 
         $contacts = $contacts->map(function ($u) use ($buyer) {
@@ -630,6 +637,20 @@ class BuyerController extends Controller
         }
 
         return back()->with('success', 'Account updated successfully.');
+    }
+
+    /** The door Pickrush riders navigate to for this buyer's deliveries. */
+    public function updateDeliveryLocation(Request $request)
+    {
+        $data = $request->validate([
+            'lat' => 'required|numeric|between:4,22',      // the Philippines
+            'lng' => 'required|numeric|between:116,127',
+        ], ['lat.required' => 'Drop a pin on the map first.', 'lat.between' => 'Pin a spot inside the Philippines.', 'lng.between' => 'Pin a spot inside the Philippines.']);
+        $buyer = $this->buyer();
+        $buyer->update(['delivery_lat' => $data['lat'], 'delivery_lng' => $data['lng']]);
+        PicksellBridge::buyerPinned($buyer);
+
+        return back()->with('success', 'Delivery pin saved. Pickrush riders will bring your orders to this spot.');
     }
 
     public function updatePassword(Request $request)

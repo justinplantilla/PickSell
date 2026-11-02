@@ -22,6 +22,18 @@ function openEditModal(id, p) {
     openModal('editModal');
 }
 
+document.addEventListener('click', event => {
+    const open = event.target.closest('[data-open-modal]');
+    if (open) return openModal(open.dataset.openModal);
+    const close = event.target.closest('[data-close-modal]');
+    if (close) return closeModal(close.dataset.closeModal);
+    const edit = event.target.closest('[data-edit-product]');
+    if (edit) {
+        const product = JSON.parse(edit.dataset.editProduct);
+        openEditModal(product.id, product);
+    }
+});
+
 window.openModal = openModal;
 window.closeModal = closeModal;
 window.openEditModal = openEditModal;

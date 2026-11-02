@@ -14,6 +14,9 @@
     @vite($hqTheme ? ['resources/css/pickrush/app.css', 'resources/css/pickrush/hq.css', 'resources/js/pickrush/portal.js'] : ['resources/css/pickrush/app.css', 'resources/js/pickrush/portal.js'])
 </head>
 <body @class(['pr-hq' => $hqTheme, 'pr-station' => $isStation, 'pr-province' => $isProvince])>
+@if(session()->pull('pickrush_welcome'))
+    @include('partials.welcome-splash', ['brand' => 'pickrush', 'name' => \Illuminate\Support\Str::before($staff->full_name, ' '), 'role' => $staff->role->label().($staff->hub ? ' · '.$staff->hub->name : '')])
+@endif
 <div class="pr-shell">
     @if($hqTheme)
         @include('pickrush.partials.hq-sidebar')

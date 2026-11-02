@@ -76,6 +76,7 @@
 
     <section class="pr-card">
         <h2>Documents</h2>
+        <div class="pr-table-scroll">
         <table class="pr-table">
             <tbody>
             @foreach(config('pickrush.rider_documents') as $type => $label)
@@ -94,6 +95,7 @@
             @endforeach
             </tbody>
         </table>
+        </div>
         <p class="pr-muted">Uploaded by the rider in the app. Files are private: links work for 10 minutes and every view is logged.</p>
     </section>
 </div>

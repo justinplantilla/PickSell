@@ -31,8 +31,8 @@
     <h2 style="margin-top:1.25rem">Barangays</h2>
     <div class="pr-filters">
         <input type="search" class="pr-input" placeholder="Filter barangays" aria-label="Filter barangays"
-               oninput="const q=this.value.toLowerCase();document.querySelectorAll('[data-brgy]').forEach(l=>l.style.display=l.dataset.brgy.includes(q)?'':'none')">
-        <button type="button" class="pr-btn pr-btn-outline" onclick="document.querySelectorAll('[data-brgy]:not([style*=none]) input:not(:checked)').forEach(b=>{ if(!b.dataset.taken) b.checked=true })">Tick all unzoned shown</button>
+               data-filter-list="[data-brgy]">
+        <button type="button" class="pr-btn pr-btn-outline" data-check-visible="[data-brgy]">Tick all unzoned shown</button>
     </div>
     <div class="pr-checklist">
         @forelse($barangays as $b)

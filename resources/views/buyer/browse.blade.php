@@ -31,7 +31,7 @@
             @if($search) <input type="hidden" name="search" value="{{ $search }}"> @endif
             @if($category) <input type="hidden" name="category" value="{{ $category }}"> @endif
             @if($dealsOnly) <input type="hidden" name="deals" value="1"> @endif
-            <select name="sort" class="browse-sort-select" onchange="this.form.submit()">
+            <select name="sort" class="browse-sort-select" data-submit-on-change>
                 <option value="latest" {{ $sort === 'latest' ? 'selected' : '' }}>Latest</option>
                 <option value="popular" {{ $sort === 'popular' ? 'selected' : '' }}>Most Popular</option>
                 <option value="price_asc" {{ $sort === 'price_asc' ? 'selected' : '' }}>Price: Low to High</option>

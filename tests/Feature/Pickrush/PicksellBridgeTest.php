@@ -147,6 +147,26 @@ class PicksellBridgeTest extends TestCase
         $this->actingAs($this->seller)->get(config('app.url').'/seller/account')->assertOk()->assertSee('Shop Pin for Pickups');
     }
 
+    public function test_the_buyer_delivery_pin_follows_parcels_not_yet_delivered(): void
+    {
+        $this->buyer->update(['delivery_lat' => 14.6500, 'delivery_lng' => 121.0300]);
+        [, $onTheWay] = $this->handedOver();
+        $this->assertEqualsWithDelta(14.65, (float) $onTheWay->delivery_lat, 1e-6, 'booking copies the delivery pin');
+
+        [, $delivered] = $this->handedOver();
+        $delivered->forceFill(['current_status' => ParcelStatus::Delivered])->save();
+
+        $this->actingAs($this->buyer)->patch(config('app.url').'/buyer/account/delivery-location', ['lat' => 14.6600, 'lng' => 121.0400])
+            ->assertSessionHasNoErrors();
+        $this->assertEqualsWithDelta(14.66, (float) $this->buyer->fresh()->delivery_lat, 1e-6);
+        $this->assertEqualsWithDelta(14.66, (float) $onTheWay->fresh()->delivery_lat, 1e-6);
+        $this->assertEqualsWithDelta(14.65, (float) $delivered->fresh()->delivery_lat, 1e-6, 'a delivered parcel keeps where it was delivered');
+
+        $this->actingAs($this->buyer)->patch(config('app.url').'/buyer/account/delivery-location', ['lat' => 40.7, 'lng' => -74.0])
+            ->assertSessionHasErrors('lat');
+        $this->actingAs($this->buyer)->get(config('app.url').'/buyer/account')->assertOk()->assertSee('Delivery Pin')->assertSee('data-map-pin="buyer-pin"', false);
+    }
+
     public function test_every_hub_scan_reaches_the_order_and_the_buyer(): void
     {
         Notification::fake();

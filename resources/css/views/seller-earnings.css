@@ -1,4 +1,4 @@
-.earnings-shell { display:grid; gap:1rem; }
+.earnings-shell { display:grid; grid-template-columns:minmax(0, 1fr); gap:1rem; }
 .earnings-intro,.earnings-panel,.earnings-summary-card { background:#fff; border:1px solid #e8e2d8; border-radius:12px; box-shadow:0 1px 3px rgba(31,35,40,.05); }
 .earnings-intro { padding:1.2rem 1.35rem; border-left:3px solid var(--coral); }
 .earnings-eyebrow { color:#777; font-size:.68rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
@@ -20,7 +20,7 @@
 .earnings-filter-form .form-control { width:auto; min-width:145px; }
 .earnings-export-actions .btn { white-space:nowrap; }
 .earnings-period { padding:.75rem 1.15rem; color:#777; font-size:.74rem; }
-.earnings-table-wrap { padding:0 1rem 1rem; }
+.earnings-table-wrap { position:relative; padding:0 1rem 1rem; overflow-x:auto; -webkit-overflow-scrolling:touch; }   /* the wide table scrolls inside its panel on phones; relative keeps the screen-reader labels inside it */
 .earnings-table { width:100%; min-width:970px; border-collapse:collapse; font-size:.76rem; }
 .earnings-table th { padding:.7rem .65rem; background:#fafaf8; color:#777; font-size:.64rem; font-weight:700; letter-spacing:.05em; text-align:left; text-transform:uppercase; }
 .earnings-table td { padding:.75rem .65rem; border-bottom:1px solid #f0ebe0; vertical-align:middle; }

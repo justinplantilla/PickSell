@@ -9,11 +9,11 @@
     <div class="card-header">
         <span class="card-title">Financial & Performance Report</span>
         <div class="report-actions">
-        <form method="GET" class="blade-inline-1">
-            <label class="blade-inline-2">From</label>
-            <input type="date" name="from" value="{{ $from }}" class="form-control blade-inline-3">
-            <label class="blade-inline-4">To</label>
-            <input type="date" name="to" value="{{ $to }}" class="form-control blade-inline-5">
+        <form method="GET" class="seller-report-row">
+            <label class="seller-report-title">From</label>
+            <input type="date" name="from" value="{{ $from }}" class="form-control seller-report-fit">
+            <label class="seller-report-title">To</label>
+            <input type="date" name="to" value="{{ $to }}" class="form-control seller-report-fit">
             <button type="submit" class="btn btn-coral btn-sm">Generate</button>
         </form>
         <a href="{{ route('seller.reports.pdf', ['from' => $from, 'to' => $to]) }}" class="btn btn-outline btn-sm" target="_blank">
@@ -66,7 +66,7 @@
 <div class="card earnings-report-breakdown">
     <div class="card-header"><span class="card-title">Sales and Net Earnings by Order</span></div>
     @if($financialOrders->isEmpty())
-        <div class="blade-inline-7">No completed order data for this period.</div>
+        <div class="seller-report-empty">No completed order data for this period.</div>
     @else
         <div class="earnings-table-wrap">
             <table class="earnings-table">
@@ -98,16 +98,16 @@
     </div>
     <div class="card">
         <div class="card-header"><span class="card-title">Top Products</span></div>
-        <div class="card-body blade-inline-6">
+        <div class="card-body seller-report-block">
             @if($topProducts->isEmpty())
-                <div class="blade-inline-7">No data for this period.</div>
+                <div class="seller-report-empty">No data for this period.</div>
             @else
             <table>
                 <thead><tr><th>#</th><th>Product</th><th>Orders</th><th>Sales</th></tr></thead>
                 <tbody>
                 @foreach($topProducts as $i => $p)
                 <tr>
-                    <td class="blade-inline-8">{{ $i+1 }}</td>
+                    <td class="seller-report-muted">{{ $i+1 }}</td>
                     <td>{{ $p['name'] }}</td>
                     <td>{{ $p['count'] }}</td>
                     <td>₱{{ number_format($p['sales'], 2) }}</td>

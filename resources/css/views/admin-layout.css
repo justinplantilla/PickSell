@@ -281,10 +281,10 @@
             .card-body { padding: 1.5rem; }
         }
 
-/* Extracted inline declarations */
-.blade-inline-1 { text-decoration:none !important; color:inherit !important;  }
-.blade-inline-2 { position:relative !important;  }
-.blade-inline-3 { color:var(--coral) !important;  }
+/* Page helpers (formerly inline styles); !important keeps them above the theme layers, as inline styles were. */
+.admin-shell-ink-text { text-decoration:none !important; color:inherit !important; }
+.admin-shell-anchor { position:relative !important; }
+.admin-shell-accent { color:var(--coral) !important; }
 .admin-logout-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:999; align-items:center; justify-content:center; }
 .admin-logout-dialog { background:#fff; border-radius:14px; padding:2rem; width:100%; max-width:360px; margin:1rem; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.15); }
 .admin-logout-icon { width:52px; height:52px; background:#fff3f0; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1rem; }

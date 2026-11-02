@@ -61,6 +61,7 @@
     .product-badge.new { background: var(--charcoal); }
     .product-img { width: 100%; aspect-ratio: 1.05; background: linear-gradient(135deg, #eeeae3, #f8f6f2); display: grid; place-items: center; position: relative; overflow: hidden; }
     .product-img img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .45s ease, filter .45s ease; }
+    .product-img-placeholder { color: #E8472A; font-size: 3rem; font-weight: 800; opacity: .55; }   /* no photo: the product's initial */
     .product-card:hover .product-img img { transform: scale(1.05); filter: saturate(1.08); }
     .product-placeholder { width: 42%; height: 42%; border: 1px solid rgba(23,25,29,.12); border-radius: 8px; background: rgba(255,255,255,.65); box-shadow: 0 10px 20px rgba(23,25,29,.06); transition: transform .55s cubic-bezier(.22,1,.36,1), box-shadow .55s ease; }
     .product-image-details { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: .85rem; color: #fff; background: linear-gradient(transparent 20%, rgba(23,25,29,.9)); opacity: 0; transform: translateY(10px); transition: opacity .25s, transform .25s; }
@@ -100,5 +101,5 @@
         .product-price { font-size: 1.2rem; }
     }
 
-/* Extracted inline declarations */
-.blade-inline-1 { border:none !important; padding:0 !important; margin-top:1rem !important;  }
+/* Page helpers (formerly inline styles); !important keeps them above the theme layers, as inline styles were. */
+.shop-box { border:none !important; padding:0 !important; margin-top:1rem !important; }

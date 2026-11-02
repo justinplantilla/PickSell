@@ -204,7 +204,8 @@ class RiderBatches
         }
         $task = $tasks->first();
         $parcel = $task->parcel;
-        // Collecting from a seller, or bringing a return back to them: the shop pin. Buyers: no pin yet.
+        // Collecting from a seller, or bringing a return back to them: the shop pin. A buyer's pin only guides the
+        // rider there (buyers place it themselves, so it is not strict enough to refuse "Arrived" on).
         $toSeller = $task->type !== 'delivery';
         $distance = $toSeller
             ? $this->checkDistance($parcel->pickup_lat, $parcel->pickup_lng, $lat, $lng, $accuracy, $parcel->shipper_name)

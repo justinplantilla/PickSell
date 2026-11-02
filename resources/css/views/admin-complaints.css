@@ -1,7 +1,7 @@
 
-/* Extracted inline declarations */
-.blade-inline-1 { font-size:0.75rem !important; color:#aaa !important;  }
-.blade-inline-2 { text-align:center !important; color:#888 !important; padding:2rem !important;  }
+/* Page helpers (formerly inline styles); !important keeps them above the theme layers, as inline styles were. */
+.complaints-muted-text { font-size:0.75rem !important; color:#aaa !important; }
+.complaints-empty { text-align:center !important; color:#888 !important; padding:2rem !important; }
 
 .return-page-description,
 .return-help { margin-top:0.3rem; color:#777; font-size:0.78rem; line-height:1.45; }

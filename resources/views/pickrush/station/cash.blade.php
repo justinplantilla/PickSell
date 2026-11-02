@@ -93,6 +93,7 @@
             </form>
         @endif
         @if($hubRemittances->isNotEmpty())
+            <div class="pr-table-scroll">
             <table class="pr-table" style="margin-top:1rem">
                 <thead><tr><th>Submitted</th><th class="pr-num">Amount</th><th>Reference</th><th>Status</th></tr></thead>
                 <tbody>
@@ -101,10 +102,12 @@
                 @endforeach
                 </tbody>
             </table>
+            </div>
         @endif
     </section>
     <section class="pr-card">
         <h2>Recent rider remittances</h2>
+        <div class="pr-table-scroll">
         <table class="pr-table">
             <thead><tr><th>Rider</th><th>Date</th><th class="pr-num">Received</th><th>Status</th></tr></thead>
             <tbody>
@@ -116,6 +119,7 @@
             @endforelse
             </tbody>
         </table>
+        </div>
     </section>
 </div>
 @endsection

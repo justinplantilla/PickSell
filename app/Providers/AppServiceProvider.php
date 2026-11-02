@@ -76,11 +76,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('suspendSeller', [SellerCompliancePolicy::class, 'suspend']);
         Gate::define('reinstateSeller', [SellerCompliancePolicy::class, 'reinstate']);
 
-        if (Schema::hasTable('platform_settings')) {
-            $commissionRate = PlatformSetting::where('key', 'commission_rate')->value('value');
-            if ($commissionRate !== null) {
-                config(['app.platform_commission_rate' => (float) $commissionRate]);
-            }
+        // One query, no schema lookup per request; rescue() keeps artisan working on a database not yet migrated.
+        $commissionRate = rescue(fn () => PlatformSetting::where('key', 'commission_rate')->value('value'), null, false);
+        if ($commissionRate !== null) {
+            config(['app.platform_commission_rate' => (float) $commissionRate]);
         }
 
         if (str_starts_with((string) config('app.url'), 'https://')) {
@@ -96,7 +95,7 @@ class AppServiceProvider extends ServiceProvider
 
         View::composer('seller.layout', function ($view): void {
             $seller = auth()->user();
-            $pendingSellerReturnCount = $seller && $seller->role === 'seller' && Schema::hasTable('return_requests')
+            $pendingSellerReturnCount = $seller && $seller->role === 'seller' && once(fn () => Schema::hasTable('return_requests'))
                 ? ReturnRequest::where('seller_id', $seller->id)->where('status', 'requested')->count()
                 : 0;
 

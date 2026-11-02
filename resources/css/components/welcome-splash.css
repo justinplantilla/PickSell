@@ -1,0 +1,57 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&display=swap');
+
+/* Post-login welcome. Self-contained colors so it looks the same over every layout (admin, seller, buyer, Pickrush).
+   Timeline: logo pops in, the route draws with a parcel dot riding it, greeting rises, then the panel lifts away at 1.9s. */
+.welcome-splash {
+    --ws-ground: #1f2328; --ws-bone: #f6f3ee; --ws-coral: #E8472A; --ws-coral-deep: #d63d21; --ws-soft: #c9c3b9;
+    --ws-ease: cubic-bezier(.76, 0, .24, 1); --ws-ease-out: cubic-bezier(.22, 1, .36, 1);
+    position: fixed; inset: 0; z-index: 2147483000; overflow: hidden; display: flex; align-items: center; justify-content: center;
+    background: var(--ws-ground); color: var(--ws-bone); font-family: 'Manrope', ui-sans-serif, system-ui, sans-serif; cursor: pointer;
+    animation: ws-leave .75s 1.9s var(--ws-ease) forwards;
+}
+.welcome-splash *, .welcome-splash *::before, .welcome-splash *::after { box-sizing: border-box; }
+.welcome-splash.is-skipping { animation: ws-leave .5s var(--ws-ease) forwards; }
+html:has(.welcome-splash) { overflow: hidden; }
+
+/* Pickrush uses its coral panel, like the staff sign-in page. */
+.welcome-splash--pickrush { background: var(--ws-coral); }
+
+.ws-orb { position: absolute; top: -260px; right: -240px; width: 560px; height: 560px; border-radius: 50%; background: var(--ws-coral); animation: ws-orb 1.2s var(--ws-ease-out) both; }
+.welcome-splash--pickrush .ws-orb { background: var(--ws-coral-deep); }
+
+.ws-route { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.ws-route-path { fill: none; stroke: rgba(246, 243, 238, .5); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: ws-draw 1.3s .35s var(--ws-ease) forwards; }
+.ws-route-dot { fill: var(--ws-coral); stroke: var(--ws-bone); stroke-width: 3.5; opacity: 0; animation: ws-fade-in .2s .35s forwards; }
+.welcome-splash--pickrush .ws-route-dot { fill: var(--ws-ground); }
+
+.ws-body { position: relative; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 0 24px; text-align: center; }
+.ws-logo { display: block; width: clamp(76px, 12vh, 104px); height: clamp(76px, 12vh, 104px); object-fit: contain; filter: drop-shadow(0 18px 30px rgba(0, 0, 0, .35)); animation: ws-logo .9s .1s cubic-bezier(.34, 1.56, .64, 1) both; }
+.ws-brand { font-size: clamp(32px, 5vw, 44px); font-weight: 800; letter-spacing: -0.04em; line-height: 1; animation: ws-rise .7s .3s var(--ws-ease-out) both; }
+.ws-brand span { color: var(--ws-coral); }
+.welcome-splash--pickrush .ws-brand span { color: var(--ws-ground); }
+.ws-greeting { margin: 6px 0 0; font-size: clamp(17px, 2.2vw, 21px); font-weight: 700; color: var(--ws-bone); animation: ws-rise .7s .55s var(--ws-ease-out) both; }
+.ws-role { padding: 5px 14px; border: 1.5px solid rgba(246, 243, 238, .35); border-radius: 999px; color: var(--ws-soft); font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; animation: ws-rise .7s .7s var(--ws-ease-out) both; }
+.welcome-splash--pickrush .ws-role { color: var(--ws-bone); border-color: rgba(246, 243, 238, .55); }
+
+.ws-hint { position: absolute; bottom: 28px; left: 0; right: 0; text-align: center; color: rgba(246, 243, 238, .55); font-size: 12px; font-weight: 600; animation: ws-fade-in .5s 1s both; }
+
+@keyframes ws-leave { to { transform: translate3d(0, -100%, 0); visibility: hidden; pointer-events: none; } }
+@keyframes ws-orb { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes ws-draw { to { stroke-dashoffset: 0; } }
+@keyframes ws-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ws-logo { from { opacity: 0; transform: scale(.5) rotate(-14deg); } to { opacity: 1; transform: none; } }
+@keyframes ws-rise { from { opacity: 0; transform: translate3d(0, 14px, 0); } to { opacity: 1; transform: none; } }
+@keyframes ws-fade-out { to { opacity: 0; visibility: hidden; pointer-events: none; } }
+
+@media (max-width: 600px) {
+    .ws-orb { width: 300px; height: 300px; top: -150px; right: -120px; }
+    .ws-hint { bottom: 20px; }
+}
+
+/* Reduced motion: no movement, the greeting shows briefly and fades out. */
+@media (prefers-reduced-motion: reduce) {
+    .welcome-splash { animation: ws-fade-out .4s 1.2s ease forwards; }
+    .welcome-splash.is-skipping { animation: ws-fade-out .2s ease forwards; }
+    .ws-orb, .ws-logo, .ws-brand, .ws-greeting, .ws-role, .ws-hint { animation: none; }
+    .ws-route { display: none; }
+}

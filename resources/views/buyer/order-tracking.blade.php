@@ -39,7 +39,7 @@
     <section class="order-card" aria-labelledby="tracking-heading">
         <div class="order-card-header">
             <div>
-                <span class="blade-inline-2">Delivery tracking</span>
+                <span class="orders-muted-text">Delivery tracking</span>
                 <h1 id="tracking-heading" class="tracking-title">{{ $order->order_number }}</h1>
             </div>
             <span class="badge badge-{{ $currentStatus }}">{{ ucfirst(str_replace('_', ' ', $currentStatus)) }}</span>
@@ -128,7 +128,7 @@
                     @csrf
                     <div class="star-rating" id="cancelStarRating">
                         @for($i=1;$i<=5;$i++)
-                        <span class="star" data-val="{{ $i }}" onclick="setCancelRating({{ $i }})">★</span>
+                        <button type="button" class="star" data-val="{{ $i }}" aria-label="{{ $i }} {{ $i === 1 ? 'star' : 'stars' }}">★</button>
                         @endfor
                     </div>
                     <input type="hidden" name="rating" id="cancelRatingInput" required>
@@ -151,6 +151,6 @@ function setCancelRating(val) {
     });
     document.getElementById('cancelRatingSubmit').disabled = false;
 }
-window.setCancelRating = setCancelRating;
+document.querySelectorAll('#cancelStarRating .star').forEach(star => star.addEventListener('click', () => setCancelRating(Number(star.dataset.val))));
 </script>
 @endsection

@@ -1,12 +1,10 @@
 
-/* Extracted inline declarations */
-.blade-inline-1 { margin-bottom:1.5rem !important;  }
-.blade-inline-2 { display:flex !important; gap:1rem !important; align-items:flex-end !important; flex-wrap:wrap !important;  }
-.blade-inline-3 { margin:0 !important;  }
-.blade-inline-4 { width:160px !important;  }
-.blade-inline-5 { margin:0 !important;  }
-.blade-inline-6 { width:160px !important;  }
-.blade-inline-7 { color:var(--coral) !important; font-weight:700 !important;  }
+/* Page helpers (formerly inline styles); !important keeps them above the theme layers, as inline styles were. */
+.admin-report-spaced { margin-bottom:1.5rem !important; }
+.admin-report-row { display:flex !important; gap:1rem !important; align-items:flex-end !important; flex-wrap:wrap !important; }
+.admin-report-flush { margin:0 !important; }
+.admin-report-col { width:160px !important; }
+.admin-report-accent-text { color:var(--coral) !important; font-weight:700 !important; }
 .filters .btn-outline { display: inline-flex; align-items: center; gap: 0.35rem; }
 .stat-card-icon svg { display: block; }
 .report-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border, #e8e2d8); }

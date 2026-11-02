@@ -179,6 +179,6 @@
         .nav-auth .btn-outline { display: none; }
     }
 
-/* Extracted inline declarations */
-.blade-inline-1 { font-size:0.82rem !important; color:#ccc !important;  }
-.blade-inline-2 { position:relative !important;  }
+/* Page helpers (formerly inline styles); !important keeps them above the theme layers, as inline styles were. */
+.site-nav-ink-text { font-size:0.82rem !important; color:#ccc !important; }
+.site-nav-anchor { position:relative !important; }

@@ -5,7 +5,7 @@
 @section('title', 'Review Complaint #'.$complaint->id)
 
 @section('content')
-<div class="blade-inline-1">
+<div class="complaint-spaced">
     <a href="{{ route('admin.complaints') }}" class="btn btn-outline btn-sm">← Back to Complaints</a>
 </div>
 
@@ -13,12 +13,12 @@
     <div class="card">
         <div class="card-header"><span class="card-title">Complaint Details</span></div>
         <div class="card-body">
-            <table class="blade-inline-2">
-                <tr><td class="blade-inline-3">Filed By</td><td>{{ $complaint->filer->full_name ?? '—' }} ({{ ucfirst($complaint->filer->role ?? '') }})</td></tr>
-                <tr><td class="blade-inline-4">Against</td><td>{{ $complaint->against->full_name ?? 'N/A' }} @if($complaint->against) ({{ ucfirst($complaint->against->role) }}) @endif</td></tr>
+            <table class="complaint-title">
+                <tr><td class="complaint-muted-text">Filed By</td><td>{{ $complaint->filer->full_name ?? '—' }} ({{ ucfirst($complaint->filer->role ?? '') }})</td></tr>
+                <tr><td class="complaint-muted-text-2">Against</td><td>{{ $complaint->against->full_name ?? 'N/A' }} @if($complaint->against) ({{ ucfirst($complaint->against->role) }}) @endif</td></tr>
                 @if($complaint->order)
                     <tr>
-                        <td class="blade-inline-5">Order</td>
+                        <td class="complaint-muted-text-2">Order</td>
                         <td>
                             @can(\App\Auth\Permission::ORDERS_VIEW)
                                 <a href="{{ route('admin.orders.show', $complaint->order) }}">{{ $complaint->order->order_number }}</a>
@@ -29,27 +29,27 @@
                             · {{ ucfirst(str_replace('_', ' ', $complaint->order->status)) }}
                         </td>
                     </tr>
-                    <tr><td class="blade-inline-5">Buyer</td><td>{{ $complaint->order->buyer->full_name ?? '—' }}</td></tr>
-                    <tr><td class="blade-inline-5">Seller</td><td>{{ $complaint->order->seller->full_name ?? '—' }}</td></tr>
+                    <tr><td class="complaint-muted-text-2">Buyer</td><td>{{ $complaint->order->buyer->full_name ?? '—' }}</td></tr>
+                    <tr><td class="complaint-muted-text-2">Seller</td><td>{{ $complaint->order->seller->full_name ?? '—' }}</td></tr>
                 @else
-                    <tr><td class="blade-inline-5">Order</td><td>No order linked</td></tr>
+                    <tr><td class="complaint-muted-text-2">Order</td><td>No order linked</td></tr>
                 @endif
-                <tr><td class="blade-inline-6">Subject</td><td>{{ $complaint->subject }}</td></tr>
-                <tr><td class="blade-inline-7">Filed On</td><td>{{ $complaint->created_at->format('M d, Y h:i A') }}</td></tr>
-                <tr><td class="blade-inline-7">Status</td>
+                <tr><td class="complaint-muted-text-2">Subject</td><td>{{ $complaint->subject }}</td></tr>
+                <tr><td class="complaint-muted-text-2">Filed On</td><td>{{ $complaint->created_at->format('M d, Y h:i A') }}</td></tr>
+                <tr><td class="complaint-muted-text-2">Status</td>
                     <td>
                         @php $badgeMap = ['open'=>'badge-pending','under_review'=>'badge-pending','resolved'=>'badge-approved','dismissed'=>'badge-deactivated']; @endphp
                         <span class="badge {{ $badgeMap[$complaint->status] ?? 'badge-pending' }}">{{ ucfirst(str_replace('_',' ',$complaint->status)) }}</span>
                     </td>
                 </tr>
             </table>
-            <div class="blade-inline-8">
-                <div class="blade-inline-9">Details</div>
-                <div class="blade-inline-10">{{ $complaint->details }}</div>
+            <div class="complaint-spaced-2">
+                <div class="complaint-heading">Details</div>
+                <div class="complaint-title-2">{{ $complaint->details }}</div>
             </div>
             @if($complaint->evidence_path)
-                <div class="blade-inline-11">
-                    <div class="blade-inline-12">Evidence</div>
+                <div class="complaint-spaced-2">
+                    <div class="complaint-heading">Evidence</div>
                     <a href="{{ asset('storage/'.$complaint->evidence_path) }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">📎 View Evidence</a>
                 </div>
             @endif
@@ -122,7 +122,7 @@
                 <div class="card-body">
                     <p><strong>Outcome:</strong> {{ ucfirst(str_replace('_', ' ', $complaint->resolution_type ?? 'no financial action')) }}</p>
                     <p><strong>Resolved:</strong> {{ $complaint->resolved_at?->format('M d, Y h:i A') ?? 'Not recorded' }}</p>
-                    <div class="blade-inline-10">{{ $complaint->resolution_notes ?? $complaint->admin_notes ?? 'No resolution notes provided.' }}</div>
+                    <div class="complaint-title-2">{{ $complaint->resolution_notes ?? $complaint->admin_notes ?? 'No resolution notes provided.' }}</div>
                 </div>
             </div>
         @endif

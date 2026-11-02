@@ -75,7 +75,7 @@
     <div class="pr-who">
         <span class="pr-avatar" aria-hidden="true">{{ $initials }}</span>
         <span class="pr-who-text">
-            <strong>{{ $staff->full_name }}</strong>
+            <strong title="{{ $staff->full_name }}">{{ $staff->full_name }}</strong>
             <span>{{ $staff->role->label() }}@if($staff->hub) · {{ $staff->hub->name }}@else · HQ @endif</span>
             <a href="{{ route('pickrush.account') }}">My account</a>
         </span>

@@ -19,6 +19,7 @@ class User extends Authenticatable
         'email', 'password', 'contact_no', 'birthday', 'age',
         'province', 'municipality', 'barangay', 'street', 'house_no', 'postal_code',
         'pickup_lat', 'pickup_lng',     // seller's shop pin for Pickrush riders
+        'delivery_lat', 'delivery_lng', // buyer's delivery pin for Pickrush riders
         'id_upload',
         // Seller
         'business_name', 'line_of_business', 'business_permit',

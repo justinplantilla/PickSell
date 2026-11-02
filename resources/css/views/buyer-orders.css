@@ -3,6 +3,21 @@
     .status-tab:hover { color: var(--coral); }
     .status-tab.active { color: var(--coral); border-bottom-color: var(--coral); }
     .order-card { background: #fff; border: 1px solid #e8e2d8; border-radius: 12px; margin-bottom: 1rem; overflow: hidden; }
+    .order-card[data-order-card] > .order-card-header, .order-card[data-order-card] > .order-card-body { cursor: pointer; }
+    .order-card[data-order-card]:hover { border-color: #e0d3c2; }
+    .order-card.is-open { border-color: var(--coral); }
+    .order-toggle { display: inline-flex; align-items: center; gap: .3rem; padding: .3rem .6rem; border: 1px solid #e8e2d8; border-radius: 999px; background: #fff; color: #555; font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }
+    .order-toggle svg { transition: transform .2s; }
+    .order-toggle:hover { border-color: var(--coral); color: var(--coral); }
+    .order-card.is-open .order-toggle svg { transform: rotate(180deg); }
+    .order-details { border-top: 1px solid #f0ebe0; padding-top: .4rem; }
+    .order-details .pickrush-tracking { margin: 0 1.2rem 1rem; }
+    .order-breakdown { margin: 0 1.2rem 1rem; padding: .85rem 1rem; border: 1px solid #e8e2d8; border-radius: 10px; background: #fafaf8; font-size: .84rem; }
+    .order-breakdown div { display: flex; justify-content: space-between; gap: 1rem; padding: .2rem 0; }
+    .order-breakdown dt { color: #777; }
+    .order-breakdown dd { margin: 0; font-weight: 600; color: #333; }
+    .order-breakdown .order-breakdown-total { margin-top: .35rem; padding-top: .5rem; border-top: 1px dashed #e0d8ca; }
+    .order-breakdown .order-breakdown-total dt, .order-breakdown .order-breakdown-total dd { color: var(--coral); font-weight: 800; }
     .order-card-header { padding: 0.8rem 1.2rem; background: #fafaf8; border-bottom: 1px solid #f0ebe0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
     .order-card-body { padding: 1rem 1.2rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
     .order-track { display: flex; align-items: center; gap: 0; margin-top: 0.8rem; }
@@ -26,6 +41,8 @@
     .star-rating { display: flex; gap: 0.3rem; font-size: 1.8rem; cursor: pointer; }
     .star { color: #ddd; transition: color 0.15s; }
     .star.active { color: #f59e0b; }
+    button.star { padding: 0; border: 0; background: none; font: inherit; line-height: 1; cursor: pointer; }
+    button.star:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; border-radius: 4px; }
 
     .return-request-panel,
     .return-request-summary { margin: 0 1.2rem 1rem; padding: 0.85rem 1rem; border: 1px solid #e8e2d8; border-radius: 10px; background: #fff; }
@@ -101,23 +118,26 @@
     .return-attachment-lightbox img, .return-attachment-lightbox video { display: block; max-width: 86vw; max-height: 78vh; margin: auto; object-fit: contain; }
     .return-lightbox-close { position: absolute; top: .5rem; right: .7rem; width: 34px; height: 34px; border: 0; border-radius: 50%; background: #f4f4f5; color: #27272a; font-size: 1.4rem; cursor: pointer; }
 
-/* Extracted inline declarations */
-.blade-inline-1 { font-size:1.2rem !important; font-weight:800 !important; margin-bottom:1rem !important;  }
-.blade-inline-2 { font-size:0.8rem !important; color:#888 !important;  }
-.blade-inline-3 { margin-left:0.5rem !important; font-size:0.8rem !important; color:#aaa !important;  }
-.blade-inline-4 { display:flex !important; align-items:center !important; gap:0.8rem !important;  }
-.blade-inline-5 { font-size:0.8rem !important; color:#888 !important;  }
-.blade-inline-6 { width:60px !important; height:60px !important; object-fit:cover !important; border-radius:8px !important;  }
-.blade-inline-7 { width:60px !important; height:60px !important; background:var(--bone) !important; border-radius:8px !important;  }
-.blade-inline-8 { flex:1 !important;  }
-.blade-inline-9 { font-weight:600 !important;  }
-.blade-inline-10 { font-size:0.8rem !important; color:#888 !important;  }
-.blade-inline-11 { font-size:0.95rem !important; font-weight:800 !important; color:var(--coral) !important;  }
-.blade-inline-12 { display:flex !important; flex-direction:column !important; gap:0.4rem !important; align-items:flex-end !important;  }
-.blade-inline-13 { font-size:0.78rem !important; color:#888 !important;  }
-.blade-inline-14 { font-size:0.82rem !important; color:#888 !important;  }
-.blade-inline-15 { padding:0 1.2rem 1rem !important;  }
-.blade-inline-16 { text-align:center !important; padding:3rem !important; color:#aaa !important;  }
-.blade-inline-17 { margin-top:1rem !important;  }
-.blade-inline-18 { font-size:1rem !important; font-weight:700 !important; margin-bottom:1rem !important;  }
-.blade-inline-19 { display:flex !important; gap:0.8rem !important; justify-content:flex-end !important; margin-top:1rem !important;  }
+/* Page helpers (formerly inline styles); !important keeps them above the theme layers, as inline styles were. */
+.orders-heading { font-size:1.2rem !important; font-weight:800 !important; margin-bottom:1rem !important; }
+.orders-muted-text { font-size:0.8rem !important; color:#888 !important; }
+.orders-muted-text-2 { margin-left:0.5rem !important; font-size:0.8rem !important; color:#aaa !important; }
+.orders-row { display:flex !important; align-items:center !important; gap:0.8rem !important; }
+.orders-thumb { width:60px !important; height:60px !important; object-fit:cover !important; border-radius:8px !important; }
+.orders-thumb-placeholder { width:60px !important; height:60px !important; background:var(--bone) !important; border-radius:8px !important; }
+.orders-grow { flex:1 !important; }
+.orders-strong { font-weight:600 !important; }
+.orders-accent-text { font-size:0.95rem !important; font-weight:800 !important; color:var(--coral) !important; }
+.orders-stack { display:flex !important; flex-direction:column !important; gap:0.4rem !important; align-items:flex-end !important; }
+.orders-stack > form, .orders-stack > .btn { margin:0; }
+@media (max-width: 600px) {
+    /* Phones: the order actions sit in one even row under the item. */
+    .order-card-body > .orders-stack { flex:1 1 100%; flex-direction:row !important; flex-wrap:wrap; align-items:center !important; }
+}
+.orders-muted-text-3 { font-size:0.78rem !important; color:#888 !important; }
+.orders-muted-text-4 { font-size:0.82rem !important; color:#888 !important; }
+.orders-block { padding:0 1.2rem 1rem !important; }
+.orders-empty { text-align:center !important; padding:3rem !important; color:#aaa !important; }
+.orders-spaced { margin-top:1rem !important; }
+.orders-heading-2 { font-size:1rem !important; font-weight:700 !important; margin-bottom:1rem !important; }
+.orders-row-2 { display:flex !important; gap:0.8rem !important; justify-content:flex-end !important; margin-top:1rem !important; }

@@ -5,28 +5,28 @@
 @section('title', 'My Cart')
 
 @section('content')
-<h2 class="blade-inline-1">My Cart ({{ $items->total() }} item{{ $items->total() !== 1 ? 's' : '' }})</h2>
+<h2 class="cart-heading">My Cart ({{ $items->total() }} item{{ $items->total() !== 1 ? 's' : '' }})</h2>
 
 @if($items->isEmpty())
-<div class="blade-inline-2">
-    <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" viewBox="0 0 24 24" class="blade-inline-3"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM5.2 5H2V3H0v2h2l3.6 7.59L4.25 15A2 2 0 0 0 6 18h14v-2H6.42a.25.25 0 0 1-.25-.25l.03-.12L7.1 14h9.45c.75 0 1.41-.41 1.75-1.03L21.7 6.5A1 1 0 0 0 20.83 5H5.2z"/></svg>
-    <div class="blade-inline-4">Your cart is empty</div>
+<div class="cart-empty">
+    <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="currentColor" viewBox="0 0 24 24" class="cart-spaced"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM5.2 5H2V3H0v2h2l3.6 7.59L4.25 15A2 2 0 0 0 6 18h14v-2H6.42a.25.25 0 0 1-.25-.25l.03-.12L7.1 14h9.45c.75 0 1.41-.41 1.75-1.03L21.7 6.5A1 1 0 0 0 20.83 5H5.2z"/></svg>
+    <div class="cart-heading-2">Your cart is empty</div>
     <div style="display:flex;gap:0.75rem;flex-wrap:wrap;justify-content:center;">
-        <a href="/buyer/shop" class="btn btn-coral blade-inline-5">Start Shopping</a>
+        <a href="/buyer/shop" class="btn btn-coral cart-spaced-2">Start Shopping</a>
         <a href="{{ route('buyer.browse', ['deals' => 1]) }}" class="btn btn-outline">Browse Deals</a>
     </div>
 </div>
 @else
-<div class="blade-inline-6">
+<div class="cart-layout">
     {{-- LEFT: cart table --}}
     <div>
         <div class="card">
             <div class="card-header">
-                <label class="blade-inline-7">
+                <label class="cart-row">
                     <input type="checkbox" id="selectAll" data-cart-select-all> Select All
                 </label>
             </div>
-            <div class="blade-inline-8">
+            <div class="cart-scroll">
                 <table>
                     <thead><tr><th></th><th>Product</th><th>Variation</th><th>Price</th><th>Qty</th><th>Subtotal</th><th></th></tr></thead>
                     <tbody>
@@ -34,21 +34,21 @@
                     <tr>
                         <td><input type="checkbox" name="item_ids[]" value="{{ $item->id }}" class="item-check"></td>
                         <td>
-                            <div class="blade-inline-9">
+                            <div class="cart-row-2">
                                 @if($item->product->primary_image)
-                                    <img src="{{ Storage::url($item->product->primary_image) }}" class="blade-inline-10">
+                                    <img src="{{ Storage::url($item->product->primary_image) }}" class="cart-thumb">
                                 @else
-                                    <div class="blade-inline-11"></div>
+                                    <div class="cart-thumb-placeholder"></div>
                                 @endif
                                 <div>
-                                    <div class="blade-inline-12">{{ $item->product->name }}</div>
+                                    <div class="cart-title">{{ $item->product->name }}</div>
                                     @unless($item->product->isPurchasable())<div class="cart-unavailable" role="note">No longer available — remove it to check out</div>@endunless
-                                    <div class="blade-inline-13">{{ $item->product->seller->business_name ?? $item->product->seller->full_name }}</div>
+                                    <div class="cart-muted-text">{{ $item->product->seller->business_name ?? $item->product->seller->full_name }}</div>
                                 </div>
                             </div>
                         </td>
-                        <td class="blade-inline-14">{{ $item->variation ? $item->variation->type.': '.$item->variation->value : '—' }}</td>
-                        <td class="blade-inline-15">₱{{ number_format($item->product->effective_price, 2) }}</td>
+                        <td class="cart-muted-text-2">{{ $item->variation ? $item->variation->type.': '.$item->variation->value : '—' }}</td>
+                        <td class="cart-accent-text">₱{{ number_format($item->product->effective_price, 2) }}</td>
                         <td>
                             <div class="qty-stepper">
                                 <button type="button" class="qty-btn qty-dec" data-item-id="{{ $item->id }}" aria-label="Decrease">−</button>
@@ -61,7 +61,7 @@
                                 <button type="button" class="qty-btn qty-inc" data-item-id="{{ $item->id }}" aria-label="Increase">+</button>
                             </div>
                         </td>
-                        <td class="blade-inline-18" data-subtotal="{{ $item->product->effective_price * $item->quantity }}">₱{{ number_format($item->product->effective_price * $item->quantity, 2) }}</td>
+                        <td class="cart-strong" data-subtotal="{{ $item->product->effective_price * $item->quantity }}">₱{{ number_format($item->product->effective_price * $item->quantity, 2) }}</td>
                         <td>
                             <button type="button" class="cart-remove-btn remove-item-btn" data-item-id="{{ $item->id }}" title="Remove">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
@@ -83,17 +83,17 @@
         <div class="card cart-summary-card" id="cartSummaryCard">
             <div class="card-header"><span class="card-title">Order Summary</span></div>
             <div class="card-body">
-                <div class="blade-inline-22">
-                    <span class="blade-inline-23">Selected Items</span>
+                <div class="cart-row-4">
+                    <span class="cart-muted">Selected Items</span>
                     <span id="selectedCount">0</span>
                 </div>
-                <div class="blade-inline-24">
+                <div class="cart-row-5">
                     <span>Total</span>
-                    <span class="blade-inline-25" id="totalAmount">₱0.00</span>
+                    <span class="cart-accent" id="totalAmount">₱0.00</span>
                 </div>
                 <form method="GET" action="/buyer/checkout" id="checkoutForm">
                     <div id="selectedItemsInputs"></div>
-                    <button type="submit" class="btn btn-coral blade-inline-26" id="placeOrderBtn" disabled>
+                    <button type="submit" class="btn btn-coral cart-block" id="placeOrderBtn" disabled>
                         Proceed to Checkout
                     </button>
                 </form>

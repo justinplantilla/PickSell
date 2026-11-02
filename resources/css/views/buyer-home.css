@@ -269,11 +269,11 @@
     box-shadow: 0 0 8px rgba(255,255,255,.5);
 }
 
-/* Extracted inline declarations */
-.blade-inline-1 { margin-bottom:1rem !important; font-size:0.88rem !important; color:#888 !important;  }
-.blade-inline-2 { color:var(--coral) !important; margin-left:0.5rem !important;  }
-.blade-inline-3 { text-align:center !important; padding:4rem 1rem !important; color:#aaa !important;  }
-.blade-inline-4 { margin-bottom:1rem !important; opacity:0.3 !important;  }
+/* Page helpers (formerly inline styles); !important keeps them above the theme layers, as inline styles were. */
+.home-muted-text { margin-bottom:1rem !important; font-size:0.88rem !important; color:#888 !important; }
+.home-accent-text { color:var(--coral) !important; margin-left:0.5rem !important; }
+.home-empty { text-align:center !important; padding:4rem 1rem !important; color:#aaa !important; }
+.home-spaced { margin-bottom:1rem !important; opacity:0.3 !important; }
 
 .promo-slide--valentines { background: linear-gradient(120deg, #701c43, #c43d72 52%, #f17c9e); animation: promo-grad-fire 6s ease-in-out infinite; }
 .promo-slide--summer { background: linear-gradient(120deg, #075b62, #128d91 52%, #f2aa46); animation: promo-grad-fresh 6s ease-in-out infinite; }

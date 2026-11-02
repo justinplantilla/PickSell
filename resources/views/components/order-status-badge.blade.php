@@ -2,7 +2,7 @@
 
 @php
     $label = match ($status) {
-        'at_sorting_center' => 'At sorting center',
+        'at_sorting_center', 'sorted' => 'At sorting center',
         'in_transit' => 'In transit to province hub',
         'assigned_to_rider' => 'Assigned to rider',
         'delivery_failed' => 'Delivery failed',
@@ -21,4 +21,5 @@
     };
 @endphp
 
-<span {{ $attributes->class(['badge', 'seller-order-status', 'seller-order-status--' . $tone]) }}>{{ $label }}</span>
+{{-- badge-{tone} lets the buyer pages (which style badge-processing/shipped/completed/cancelled) reuse it. --}}
+<span {{ $attributes->class(['badge', 'badge-' . $tone, 'seller-order-status', 'seller-order-status--' . $tone]) }}>{{ $label }}</span>

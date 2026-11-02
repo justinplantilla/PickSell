@@ -28,7 +28,7 @@
     .msg-time { font-size: 0.72rem; color: #aaa; margin-top: 0.2rem; }
     .msg.sent .msg-time { text-align: right; }
     .chat-input-area { padding: 1rem; border-top: 1px solid #f0ebe0; display: flex; gap: 0.6rem; }
-    .chat-input { flex: 1; padding: 0.65rem 1rem; border: 1.5px solid #ddd6c8; border-radius: 8px; font-size: 0.9rem; outline: none; font-family: inherit; }
+    .chat-input { flex: 1; min-width: 0; padding: 0.65rem 1rem; border: 1.5px solid #ddd6c8; border-radius: 8px; font-size: 0.9rem; outline: none; font-family: inherit; }
     .chat-input:focus { border-color: var(--coral); }
     .chat-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 0.9rem; background: #fafaf8; }
     .chat-no-messages { text-align: center; color: #aaa; font-size: 0.85rem; margin-top: 2rem; }

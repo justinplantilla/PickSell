@@ -10,7 +10,7 @@
 <div class="chat-layout">
     <div class="chat-sidebar">
         <div class="chat-sidebar-header">
-            <input type="text" class="chat-search" placeholder="Search..." oninput="filterUsers(this.value)">
+            <input type="text" class="chat-search" placeholder="Search..." data-filter-users>
         </div>
         <div class="chat-list" id="userList">
             @forelse($users as $user)
@@ -25,7 +25,7 @@
                 @endif
             </a>
             @empty
-            <div class="blade-inline-1">No contacts yet.</div>
+            <div class="seller-chat-empty">No contacts yet.</div>
             @endforelse
         </div>
     </div>
@@ -35,20 +35,20 @@
         <div class="chat-header">
             <div class="chat-avatar {{ $activeUser->role }}">{{ strtoupper(substr($activeUser->first_name, 0, 1)) }}</div>
             <div>
-                <div class="blade-inline-2">{{ $activeUser->role === 'admin' ? 'PickSell Support' : $activeUser->full_name }}</div>
-                <div class="blade-inline-3">{{ $activeUser->role === 'admin' ? 'Customer support' : ucfirst($activeUser->role).' · '.$activeUser->email }}</div>
+                <div class="seller-chat-title">{{ $activeUser->role === 'admin' ? 'PickSell Support' : $activeUser->full_name }}</div>
+                <div class="seller-chat-muted-text">{{ $activeUser->role === 'admin' ? 'Customer support' : ucfirst($activeUser->role).' · '.$activeUser->email }}</div>
             </div>
         </div>
         <div class="chat-messages" id="chatMessages">
             @if(isset($product) && $product)
-            <div class="blade-inline-4">
+            <div class="seller-chat-row">
                 @if($product->primary_image)
-                <img src="{{ Storage::url($product->primary_image) }}" class="blade-inline-5">
+                <img src="{{ Storage::url($product->primary_image) }}" class="seller-chat-thumb">
                 @endif
-                <div class="blade-inline-6">
-                    <div class="blade-inline-7">Inquiring about</div>
-                    <div class="blade-inline-8">{{ $product->name }}</div>
-                    <div class="blade-inline-9">₱{{ number_format($product->effective_price, 2) }}</div>
+                <div class="seller-chat-grow">
+                    <div class="seller-chat-warning-text">Inquiring about</div>
+                    <div class="seller-chat-warning-text-2">{{ $product->name }}</div>
+                    <div class="seller-chat-accent-text">₱{{ number_format($product->effective_price, 2) }}</div>
                 </div>
             </div>
             @endif
@@ -58,11 +58,11 @@
                 <div class="msg-time">{{ $msg->created_at->format('M d, h:i A') }}</div>
             </div>
             @empty
-            <div class="blade-inline-10">No messages yet. Start the conversation!</div>
+            <div class="seller-chat-empty-2">No messages yet. Start the conversation!</div>
             @endforelse
         </div>
         <div class="chat-input-area">
-            <form method="POST" action="/seller/chat/send" class="blade-inline-11">
+            <form method="POST" action="/seller/chat/send" class="seller-chat-row-2">
                 @csrf
                 <input type="hidden" name="receiver_id" value="{{ $activeUser->id }}">
                 <input type="text" name="body" class="chat-input" placeholder="Type a message..." required autocomplete="off">

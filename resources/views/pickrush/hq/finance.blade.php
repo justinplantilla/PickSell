@@ -55,6 +55,7 @@
     <section class="pr-card">
         <h2>Delivered COD and fees</h2>
         @include('pickrush.hq.partials.period-tabs')
+        <div class="pr-table-scroll">
         <table class="pr-table">
             <thead><tr><th>Shipper</th><th class="pr-num">Parcels</th><th class="pr-num">COD collected</th><th class="pr-num">Pickrush fees</th><th class="pr-num">Owed to shipper</th></tr></thead>
             <tbody>
@@ -69,6 +70,7 @@
             @endforeach
             </tbody>
         </table>
+        </div>
         <p class="pr-muted">Seller payouts release {{ config('pickrush.policies.payout_release_days') }} days after delivery (the dispute window).</p>
     </section>
 </div>

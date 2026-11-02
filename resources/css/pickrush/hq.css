@@ -41,7 +41,13 @@ body.pr-hq {
 .pr-hq .pr-brand:hover .pr-brand-logo { transform: rotate(-8deg) scale(1.06); }
 .pr-hq .pr-brand-text { display: flex; flex-direction: column; font-family: 'Manrope', sans-serif; font-size: 1.05rem; font-weight: 800; line-height: 1.15; letter-spacing: -0.01em; }
 .pr-hq .pr-brand-text small { color: var(--pr-muted); font-family: 'Instrument Sans', sans-serif; font-size: .75rem; font-weight: 500; letter-spacing: 0; }
-.pr-hq .pr-nav { gap: 2px; }
+.pr-hq .pr-brand, .pr-hq .pr-who { flex-shrink: 0; }
+/* Only the links scroll; the brand stays on top and the profile card with Sign out stays at the bottom. The side
+   padding (cancelled by the negative margin) keeps the active marker, which sits left of the link, inside the scroller. */
+.pr-hq .pr-nav { flex: 1 1 auto; min-height: 0; margin: 0 -.75rem; padding: 0 .75rem .5rem; overflow-y: auto; overscroll-behavior: contain; gap: 2px; scrollbar-width: thin; scrollbar-color: #3a4048 transparent; }
+.pr-hq .pr-nav > * { flex-shrink: 0; }   /* links keep their height and the list scrolls, instead of squeezing */
+.pr-hq .pr-nav::-webkit-scrollbar { width: 6px; }
+.pr-hq .pr-nav::-webkit-scrollbar-thumb { border-radius: 3px; background: #3a4048; }
 .pr-hq .pr-nav-group { margin: 1.1rem .75rem .35rem; color: #8f8a82; font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .pr-hq .pr-nav a { position: relative; display: flex; align-items: center; gap: .75rem; height: 42px; padding: 0 .75rem; border-radius: 10px; color: #c9c3b9; font-size: .9rem; font-weight: 500; transition: background .2s, color .2s, transform .2s var(--pr-ease); }
 .pr-hq .pr-nav a svg { flex-shrink: 0; color: #8f8a82; transition: color .2s, transform .3s var(--pr-ease); }
@@ -220,9 +226,9 @@ body.pr-hq {
 
 @media (max-width: 860px) {
     .pr-hq .pr-shell { grid-template-columns: 1fr; }
-    .pr-hq .pr-sidebar { position: static; height: auto; flex-direction: column; align-items: stretch; gap: .5rem; padding: .9rem; }
+    .pr-hq .pr-sidebar { position: static; height: auto; overflow: visible; flex-direction: column; align-items: stretch; gap: .5rem; padding: .9rem; }
     .pr-hq .pr-brand { padding-bottom: .25rem; }
-    .pr-hq .pr-nav { flex-direction: row; gap: 4px; overflow-x: auto; padding-bottom: .25rem; }
+    .pr-hq .pr-nav { flex: 0 0 auto; flex-direction: row; gap: 4px; margin: 0; padding: 0 0 .25rem; overflow-x: auto; overflow-y: visible; }
     .pr-hq .pr-nav-group { display: none; }
     .pr-hq .pr-nav a { flex-shrink: 0; height: 38px; }
     .pr-hq .pr-nav a.is-active::before { display: none; }
@@ -361,4 +367,14 @@ body.pr-hq {
     .pr-hq .pr-flow.pr-flow-3 > li + li::before { display: none; }
     .pr-hq .pr-bin { padding: 1.2rem; }
     .pr-hq .pr-bin-icon { width: 48px; height: 48px; }
+}
+
+@media (max-width: 480px) {
+    .pr-hq .pr-main { padding: .85rem .75rem 2rem; }
+    .pr-hq .pr-card { min-width: 0; padding: 1rem; }
+    .pr-hq h1 { font-size: 1.55rem; }
+    .pr-hq .pr-flow-side { grid-template-columns: 1fr; }
+    .pr-hq .pr-attention-cta { margin-left: 0; }
+    .pr-hq .pr-search { min-width: 0; flex-basis: 100%; }
+    .pr-hq .pr-pagination nav { justify-content: center; }
 }

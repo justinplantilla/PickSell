@@ -92,11 +92,16 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
 .alert-success { border: 1px solid #bbf7d0; background: #f0fdf4; color: #166534; }
 .alert-warning { border: 1px solid #fde68a; background: #fffbeb; color: #92400e; }
 
+/* Edge draws its own reveal button inside password fields; the eye toggle already does that job. */
+input[type="password"]::-ms-reveal, input[type="password"]::-ms-clear { display: none; }
+
 /* Buttons */
 .btn-submit { width: 100%; height: 50px; border: 0; border-radius: 10px; background: var(--coral); color: #fff; font-family: 'Manrope', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer; box-shadow: 0 8px 18px rgba(232, 71, 42, .22); transition: background .2s, transform .15s, box-shadow .2s; }
 .btn-submit:hover { background: var(--coral-dark); transform: translateY(-1px); box-shadow: 0 12px 24px rgba(232, 71, 42, .28); }
 .btn-submit:active { transform: translateY(1px); }
-.btn-submit.is-submitting { opacity: .75; pointer-events: none; }
+.btn-submit.is-submitting { display: flex; align-items: center; justify-content: center; gap: 10px; opacity: .85; pointer-events: none; }
+.btn-spinner { width: 18px; height: 18px; border: 2.5px solid rgba(255, 255, 255, .35); border-top-color: #fff; border-radius: 50%; animation: wizard-spin .7s linear infinite; }
+#loginForm.is-busy .form-group, #loginForm.is-busy .check-row { opacity: .55; pointer-events: none; transition: opacity .3s; }
 
 /* Register: role cards */
 .role-selector { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
@@ -176,28 +181,7 @@ body.dark .wizard-progress-item::before, body.dark .password-meter { background:
 body.dark .wizard-progress-item.active::before, body.dark .wizard-progress-item.complete::before { background: var(--coral); }
 
 /* ---------- Motion layer ---------- */
-/* Floating objects. Three nested layers so each motion owns its transform: .auth-float is a panel-sized layer whose
-   percentage translate trades places on switch, .auth-float-par holds the object and follows the pointer (--px/--py,
-   set by auth.js), .auth-float-obj bobs on its own. */
-.auth-floats { position: absolute; inset: 0; pointer-events: none; }
-.auth-float { position: absolute; inset: 0; transform: translate3d(0, 0, 0); }
-.auth-float--bag { --x: 11%; --y: 15%; --size: clamp(52px, 5.4vw, 86px); --dx: 69%; --dy: 2%; --spin: 10deg; }
-.auth-float--tag { --x: 79%; --y: 19%; --size: clamp(46px, 4.6vw, 72px); --dx: -67%; --dy: -3%; --spin: -16deg; }
-.auth-float--pin { --x: 10%; --y: 61%; --size: clamp(42px, 4.2vw, 64px); --dx: 73%; --dy: 8%; --spin: 8deg; }
-.auth-float--box { --x: 77%; --y: 66%; --size: clamp(56px, 5.6vw, 88px); --dx: -64%; --dy: 3%; --spin: -12deg; }
-.auth-split[data-mode="register"] .auth-float { transform: translate3d(var(--dx), var(--dy), 0); }
-.auth-split[data-mode="register"] .auth-float-par { rotate: var(--spin); }
-.auth-split.is-ready .auth-float { transition: transform 1.15s var(--auth-ease); }
-.auth-float-par { position: absolute; left: var(--x); top: var(--y); width: var(--size); display: block; transform: translate3d(calc(var(--px, 0) * var(--depth) * 1px), calc(var(--py, 0) * var(--depth) * 1px), 0); transition: transform .7s var(--auth-ease-out), rotate 1.15s var(--auth-ease); }
-.auth-float-obj { display: block; filter: drop-shadow(0 18px 22px rgba(0, 0, 0, .35)); animation: auth-float-in .9s var(--auth-ease-out) backwards, auth-bob 6s ease-in-out infinite; }
-.auth-float-obj svg { display: block; width: 100%; height: auto; }
-.auth-float--bag .auth-float-obj { animation-delay: .35s, 1.2s; }
-.auth-float--tag .auth-float-obj { animation-delay: .5s, 0s; animation-duration: .9s, 7s; }
-.auth-float--pin .auth-float-obj { animation-delay: .65s, .6s; animation-duration: .9s, 5.2s; }
-.auth-float--box .auth-float-obj { animation-delay: .8s, 1.8s; animation-duration: .9s, 6.6s; }
-
-/* Delivery route: draws from pin to parcel while the panel switches, then fades. Mirrored in register mode,
-   where the objects have traded sides. */
+/* Delivery route: a line draws across the panel while it switches, then fades. Mirrored in register mode. */
 .auth-route { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; }
 .auth-split[data-mode="register"] .auth-route { transform: scaleX(-1); }
 .auth-route-path { fill: none; stroke: rgba(255, 255, 255, .55); stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; }
@@ -261,8 +245,6 @@ body.dark .wizard-progress-item.active::before, body.dark .wizard-progress-item.
 .wizard-progress-item:not(.complete) .wizard-check { display: none; }
 .wizard-progress-item.complete .wizard-check path { stroke-dashoffset: 0; }
 
-@keyframes auth-float-in { from { opacity: 0; transform: translate3d(0, 24px, 0) scale(.6); } to { opacity: 1; transform: none; } }
-@keyframes auth-bob { 0%, 100% { translate: 0 0; rotate: 0deg; } 50% { translate: 0 -12px; rotate: 4deg; } }
 @keyframes auth-route-show { 0% { opacity: 0; } 10%, 70% { opacity: 1; } 100% { opacity: 0; } }
 @keyframes auth-route-draw { to { stroke-dashoffset: 0; } }
 @keyframes auth-logo-in { from { opacity: 0; transform: scale(.5) rotate(-14deg); } to { opacity: 1; transform: none; } }
@@ -316,7 +298,7 @@ body.dark .wizard-progress-item.active::before, body.dark .wizard-progress-item.
     .auth-orb--coral { width: 260px; height: 260px; top: -160px; right: -100px; }
     .auth-orb--slate { display: none; }
     .auth-split[data-mode] .auth-orb { transform: none; }
-    .auth-floats, .auth-route { display: none; }
+    .auth-route { display: none; }
     .auth-tabs { position: relative; display: flex; margin-top: 16px; padding: 4px; border-radius: 999px; background: var(--charcoal-light); }
     .auth-tabs::before { content: ''; position: absolute; top: 4px; left: 4px; width: calc(50% - 4px); height: 44px; border-radius: 999px; background: #fff; }
     .auth-split[data-mode="register"] .auth-tabs::before { transform: translateX(100%); }
@@ -342,7 +324,6 @@ body.dark .wizard-progress-item.active::before, body.dark .wizard-progress-item.
     .auth-split.is-ready .auth-pane, .auth-split.is-ready .auth-pane.is-active { transform: none; transition: opacity .25s ease; }
     .auth-split.is-ready .auth-brand, .auth-split.is-ready .auth-orb, .auth-split.is-ready .auth-tabs::before { transition: none; }
     .auth-panes, .auth-brand-body, .wizard-panel.active { animation: none; }
-    .auth-float-obj, .auth-brand-logo, .auth-word, .auth-values li, .auth-pane.is-staggering [data-stagger], .wizard-panel.active > *, .is-shaking, .field-error, .role-btn.active .role-icon { animation: none; }
+    .auth-brand-logo, .auth-word, .auth-values li, .auth-pane.is-staggering [data-stagger], .wizard-panel.active > *, .is-shaking, .field-error, .role-btn.active .role-icon { animation: none; }
     .auth-route { display: none; }
-    .auth-split.is-ready .auth-float, .auth-float-par { transition: none; }
 }

@@ -83,6 +83,8 @@ class AuthController extends Controller
 
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
+        // The first page the dashboard layout renders plays the welcome splash, then clears this.
+        $request->session()->put('picksell_welcome', true);
 
         return redirect($this->redirectByRole($user->role));
     }
@@ -338,6 +340,8 @@ class AuthController extends Controller
             ->flatMap(fn (string $field) => [
                 "{$field}.mimes" => 'Only JPG, PNG and PDF files are accepted.',
                 "{$field}.max" => 'Each file must be 5 MB or smaller.',
+                // PHP refused the upload before Laravel saw it (over the server's upload limit).
+                "{$field}.uploaded" => 'This file could not be uploaded. Please choose a file of 5 MB or smaller.',
             ])->all();
     }
 

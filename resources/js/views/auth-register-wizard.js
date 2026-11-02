@@ -218,11 +218,43 @@ if (registerForm && registerConfig) {
 
     document.getElementById('birthday').addEventListener('change', function () { const dob = new Date(this.value); const today = new Date(); let age = today.getFullYear() - dob.getFullYear(); const month = today.getMonth() - dob.getMonth(); if (month < 0 || (month === 0 && today.getDate() < dob.getDate())) age--; document.getElementById('age').value = age >= 0 ? age : ''; });
     // Documents must be JPG, PNG or PDF files of at most 5 MB; anything else is cleared with a message.
+    // Phone photos are shrunk in the browser first, so they upload even where the server's limit is small.
     const ACCEPTED_FILE = /\.(jpe?g|png|pdf)$/i;
     const MAX_FILE_BYTES = 5 * 1024 * 1024;
-    ['id_upload', 'dti_certificate', 'sec_certificate', 'bir_certificate'].forEach(inputId => document.getElementById(inputId).addEventListener('change', function () {
+    const PHOTO = /\.(jpe?g|png)$/i;
+    const shrinkPhoto = file => new Promise(resolve => {
+        if (!PHOTO.test(file.name) || file.size <= 900 * 1024 || typeof DataTransfer === 'undefined') { resolve(file); return; }
+        const url = URL.createObjectURL(file);
+        const image = new Image();
+        image.onload = () => {
+            const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(image.naturalWidth * scale);
+            canvas.height = Math.round(image.naturalHeight * scale);
+            const context = canvas.getContext('2d');
+            context.fillStyle = '#fff';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            URL.revokeObjectURL(url);
+            canvas.toBlob(blob => resolve(blob && blob.size < file.size
+                ? new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg', lastModified: Date.now() })
+                : file), 'image/jpeg', 0.85);
+        };
+        image.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+        image.src = url;
+    });
+    ['id_upload', 'dti_certificate', 'sec_certificate', 'bir_certificate'].forEach(inputId => document.getElementById(inputId).addEventListener('change', async function () {
         const group = this.closest('.form-group');
-        const file = this.files[0];
+        let file = this.files[0];
+        if (file && ACCEPTED_FILE.test(file.name)) {
+            const shrunk = await shrinkPhoto(file);
+            if (shrunk !== file) {
+                const transfer = new DataTransfer();
+                transfer.items.add(shrunk);
+                this.files = transfer.files;
+                file = shrunk;
+            }
+        }
         const problem = !file ? '' : !ACCEPTED_FILE.test(file.name) ? `${file.name} was not accepted. Only JPG, PNG and PDF files are accepted.` : file.size > MAX_FILE_BYTES ? `${file.name} was not accepted. Each file must be 5 MB or smaller.` : '';
         let error = group.querySelector('.field-error[data-file-error]');
         if (!error) { error = document.createElement('div'); error.className = 'field-error'; error.dataset.fileError = ''; group.appendChild(error); }

@@ -11,19 +11,15 @@
         <div class="filters">
             <form method="GET">
                 <select name="status" class="filter-select" data-submit-on-change>
-                    <option value="all" {{ $status==='all'?'selected':'' }}>All Orders</option>
-                    <option value="action_required" {{ $status==='action_required'?'selected':'' }}>Needs Processing</option>
-                    <option value="pending" {{ $status==='pending'?'selected':'' }}>Pending</option>
-                    <option value="processing" {{ $status==='processing'?'selected':'' }}>Processing</option>
-                    <option value="shipped" {{ $status==='shipped'?'selected':'' }}>Shipped</option>
-                    <option value="delivered" {{ $status==='delivered'?'selected':'' }}>Delivered</option>
-                    <option value="completed" {{ $status==='completed'?'selected':'' }}>Completed</option>
-                    <option value="cancelled" {{ $status==='cancelled'?'selected':'' }}>Cancelled / returned</option>
+                    <option value="all" @selected($status === 'all')>All Orders</option>
+                    @foreach($filters as $value => $label)
+                    <option value="{{ $value }}" @selected($status === $value)>{{ $label }}</option>
+                    @endforeach
                 </select>
             </form>
         </div>
     </div>
-    <div class="blade-inline-1">
+    <div class="seller-orders-scroll">
         <table>
             <thead>
                 <tr><th>Order #</th><th>Buyer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr>
@@ -31,15 +27,15 @@
             <tbody>
             @forelse($orders as $order)
             <tr>
-                <td><a href="/seller/orders/{{ $order->id }}" class="blade-inline-2">{{ $order->order_number }}</a></td>
+                <td><a href="/seller/orders/{{ $order->id }}" class="seller-orders-accent-text">{{ $order->order_number }}</a></td>
                 <td>{{ $order->buyer->full_name ?? '—' }}</td>
                 <td>{{ $order->product_name }}</td>
                 <td>{{ $order->quantity }}</td>
                 <td>₱{{ number_format($order->amount, 2) }}</td>
                 <td><x-order-status-badge :status="$order->status" /></td>
-                <td class="blade-inline-3">{{ $order->created_at->format('M d, Y') }}</td>
+                <td class="seller-orders-muted-text">{{ $order->created_at->format('M d, Y') }}</td>
                 <td>
-                    <div class="blade-inline-4">
+                    <div class="seller-orders-row">
                         <a href="/seller/orders/{{ $order->id }}" class="btn btn-outline btn-sm">View</a>
                         @if($order->waybill_number)
                         <a href="/seller/orders/{{ $order->id }}/waybill" target="_blank" class="btn btn-outline btn-sm">Waybill</a>
@@ -55,13 +51,13 @@
                             <button type="submit" class="btn btn-coral btn-sm">Generate Waybill</button>
                         </form>
                         @elseif(in_array($order->status, ['preparing', 'processing'], true))
-                        <button class="btn btn-success btn-sm" onclick="openHandover({{ $order->id }})">Hand Over</button>
+                        <button class="btn btn-success btn-sm" type="button" data-open-handover="{{ $order->id }}">Hand Over</button>
                         @endif
                     </div>
                 </td>
             </tr>
             @empty
-            <tr><td colspan="8" class="blade-inline-5">No orders found.</td></tr>
+            <tr><td colspan="8" class="seller-orders-empty">No orders found.</td></tr>
             @endforelse
             </tbody>
         </table>
@@ -75,14 +71,14 @@
 <div class="modal-overlay" id="handoverModal">
     <div class="modal">
         <div class="modal-title">Hand Over to Pickrush</div>
-        <form method="POST" id="handoverForm">
+        <form method="POST" id="handoverForm" data-no-confirm>
             @csrf @method('PATCH')
             <div class="waybill-generation-note">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
                 <span>Is the parcel packed with its waybill attached? Pickrush will send a rider to pick it up, and the buyer and admin are notified.</span>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline" onclick="document.getElementById('handoverModal').classList.remove('open')">Cancel</button>
+                <button type="button" class="btn btn-outline" data-close-handover>Cancel</button>
                 <button type="submit" class="btn btn-coral">Hand Over to Pickrush</button>
             </div>
         </form>

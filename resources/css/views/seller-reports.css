@@ -1,13 +1,11 @@
 
-/* Extracted inline declarations */
-.blade-inline-1 { display:flex !important; gap:0.5rem !important; align-items:center !important; flex-wrap:wrap !important;  }
-.blade-inline-2 { font-size:0.82rem !important; font-weight:600 !important;  }
-.blade-inline-3 { width:auto !important;  }
-.blade-inline-4 { font-size:0.82rem !important; font-weight:600 !important;  }
-.blade-inline-5 { width:auto !important;  }
-.blade-inline-6 { padding:0 !important;  }
-.blade-inline-7 { padding:1.5rem !important; text-align:center !important; color:#aaa !important; font-size:0.85rem !important;  }
-.blade-inline-8 { color:#888 !important;  }
+/* Page helpers (formerly inline styles); !important keeps them above the theme layers, as inline styles were. */
+.seller-report-row { display:flex !important; gap:0.5rem !important; align-items:center !important; flex-wrap:wrap !important; }
+.seller-report-title { font-size:0.82rem !important; font-weight:600 !important; }
+.seller-report-fit { width:auto !important; }
+.seller-report-block { padding:0 !important; }
+.seller-report-empty { padding:1.5rem !important; text-align:center !important; color:#aaa !important; font-size:0.85rem !important; }
+.seller-report-muted { color:#888 !important; }
 
 .report-actions { display:flex; align-items:center; justify-content:flex-end; gap:.6rem; flex-wrap:wrap; }
 .report-actions form { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }

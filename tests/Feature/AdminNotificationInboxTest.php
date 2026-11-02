@@ -115,6 +115,7 @@ class AdminNotificationInboxTest extends TestCase
     public function test_identical_repeats_merge_and_same_title_alerts_collapse_into_a_group(): void
     {
         $first = $this->notify(['event' => 'complaint.opened', 'title' => 'Complaint opened', 'message' => 'Same complaint.']);
+        $first->forceFill(['created_at' => now()->subSeconds(5)])->save();   // seconds apart, so their order is fixed
         $second = $this->notify(['event' => 'complaint.opened', 'title' => 'Complaint opened', 'message' => 'Same complaint.']);
         foreach (['A', 'B', 'C'] as $name) {
             $this->notify(['event' => 'refund.requested', 'title' => 'Refund requested', 'message' => "Refund {$name}."]);

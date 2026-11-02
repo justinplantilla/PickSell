@@ -1,18 +1,18 @@
 
-/* Extracted inline declarations */
-.blade-inline-1 { display:flex !important; gap:0.5rem !important; flex-wrap:wrap !important;  }
+/* Page helpers (formerly inline styles); !important keeps them above the theme layers, as inline styles were. */
+.inventory-row { display:flex !important; gap:0.5rem !important; flex-wrap:wrap !important; }
 .inventory-filters { align-items: center; }
 .inventory-search-group { display: inline-flex; align-items: stretch; gap: 0.35rem; }
 .inventory-search-group .search-input { min-width: 180px; }
 .inventory-filters select { flex: 0 0 auto; }
 .inventory-table-wrap { overflow-x:auto; }
-.blade-inline-3 { display:flex !important; align-items:center !important; gap:0.6rem !important;  }
-.blade-inline-4 { width:36px !important; height:36px !important; object-fit:cover !important; border-radius:6px !important;  }
-.blade-inline-5 { width:36px !important; height:36px !important; background:#f0ebe0 !important; border-radius:6px !important; display:flex !important; align-items:center !important; justify-content:center !important; font-size:1.2rem !important;  }
-.blade-inline-6 { font-weight:600 !important;  }
-.blade-inline-7 { font-size:0.75rem !important; color:#888 !important;  }
-.blade-inline-10 { display:flex !important; gap:0.4rem !important;  }
-.blade-inline-11 { text-align:center !important; color:#aaa !important; padding:2rem !important;  }
+.inventory-row-2 { display:flex !important; align-items:center !important; gap:0.6rem !important; }
+.inventory-thumb { width:36px !important; height:36px !important; object-fit:cover !important; border-radius:6px !important; }
+.inventory-thumb-placeholder { width:36px !important; height:36px !important; background:#f0ebe0 !important; border-radius:6px !important; display:flex !important; align-items:center !important; justify-content:center !important; font-size:1.2rem !important; }
+.inventory-strong { font-weight:600 !important; }
+.inventory-muted-text { font-size:0.75rem !important; color:#888 !important; }
+.inventory-row-3 { display:flex !important; gap:0.4rem !important; }
+.inventory-empty { text-align:center !important; color:#aaa !important; padding:2rem !important; }
 
 /* Product image gallery control (resources/js/components/product-gallery.js) */
 .product-images-hint { display:block; margin-top:0.45rem; font-size:0.72rem; color:#6b6b6b; }

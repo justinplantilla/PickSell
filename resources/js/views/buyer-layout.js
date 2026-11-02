@@ -1,5 +1,6 @@
 function toggleUserMenu() {
-    document.getElementById('userDropdown').classList.toggle('open');
+    const open = document.getElementById('userDropdown').classList.toggle('open');
+    document.querySelector('[data-user-menu]')?.setAttribute('aria-expanded', String(open));
 }
 let buyerNotifications = [];
 const buyerNotificationIcon = '<svg class="notification-item-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>';
@@ -177,6 +178,17 @@ fetch('/buyer/notifications').then(response => {
     const unread = Number(response.headers.get('X-Unread-Count') || 0);
     document.getElementById('buyerNotifDot').style.display = unread ? 'block' : 'none';
 });
+const userMenu = document.querySelector('[data-user-menu]');
+userMenu?.addEventListener('click', event => {
+    if (!event.target.closest('#userDropdown a, #userDropdown button, #userDropdown form')) toggleUserMenu();
+});
+userMenu?.addEventListener('keydown', event => {
+    if (event.target !== userMenu) return;
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleUserMenu(); }
+    if (event.key === 'Escape') { document.getElementById('userDropdown').classList.remove('open'); userMenu.setAttribute('aria-expanded', 'false'); }
+});
+document.getElementById('buyerNotifBtn')?.addEventListener('click', toggleBuyerNotif);
+document.querySelectorAll('[data-dismiss-announcement]').forEach(button => button.addEventListener('click', () => dismissAnnouncement(Number(button.dataset.dismissAnnouncement), button)));
 window.toggleUserMenu = toggleUserMenu;
 window.toggleBuyerNotif = toggleBuyerNotif;
 window.loadBuyerNotifs = loadBuyerNotifs;

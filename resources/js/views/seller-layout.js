@@ -36,6 +36,29 @@ function toggleDark() {
     localStorage.setItem('sellerDark', document.body.classList.contains('dark'));
 }
 if (localStorage.getItem('sellerDark') === 'true') document.body.classList.add('dark');
+// form-behaviors.js relays clicks on [data-theme-toggle] as this event.
+window.addEventListener('picksell:theme-toggle', toggleDark);
+
+// Same flow as Admin and the Pickrush portal: a native <dialog> asks first; without <dialog> support the form submits.
+function confirmLogout() {
+    const dialog = document.getElementById('logoutModal');
+    if (typeof dialog?.showModal !== 'function') {
+        document.getElementById('logoutForm').submit();
+        return;
+    }
+    dialog.showModal();
+    dialog.querySelector('[data-dialog-cancel]')?.focus();
+}
+document.getElementById('logoutModal')?.addEventListener('close', event => {
+    const dialog = event.currentTarget;
+    if (dialog.returnValue === 'confirm') document.getElementById('logoutForm').submit();
+    dialog.returnValue = '';
+});
+// A click on the backdrop (outside the panel) cancels; Escape is handled by <dialog> itself.
+document.getElementById('logoutModal')?.addEventListener('click', event => {
+    if (event.target === event.currentTarget) event.currentTarget.close('cancel');
+});
+window.confirmLogout = confirmLogout;
 
 function toggleSellerNotif() {
     const dd = document.getElementById('sellerNotifDropdown');
@@ -160,6 +183,10 @@ document.querySelectorAll('.seller-announcement').forEach(banner => {
     const dismissed = JSON.parse(localStorage.getItem('dismissedSellerAnnouncements') || '[]');
     if (dismissed.includes(Number(banner.dataset.announcementId))) banner.remove();
 });
+document.querySelector('[data-sidebar-toggle]')?.addEventListener('click', toggleSidebar);
+document.querySelector('[data-logout]')?.addEventListener('click', confirmLogout);
+document.getElementById('notifBtn')?.addEventListener('click', toggleSellerNotif);
+document.querySelectorAll('[data-dismiss-announcement]').forEach(button => button.addEventListener('click', () => dismissSellerAnnouncement(button)));
 window.toggleSidebar = toggleSidebar;
 window.toggleDark = toggleDark;
 window.toggleSellerNotif = toggleSellerNotif;

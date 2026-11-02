@@ -78,14 +78,14 @@
         @csrf
         <div class="pr-table-wrap">
             <table class="pr-table">
-                <thead><tr><th><input type="checkbox" aria-label="Select all" onclick="document.querySelectorAll('[data-pick]').forEach(b => b.checked = this.checked)"></th>
+                <thead><tr><th><input type="checkbox" aria-label="Select all" data-check-all="[data-pick]"></th>
                     <th>Tracking no.</th><th>{{ $view === 'pickups' ? 'Item' : 'Deliver to' }}</th><th class="pr-num">COD</th><th>Zone</th><th>Suggested rider</th></tr></thead>
                 <tbody>
                 @if($view === 'pickups')
                     @forelse($stops as $i => $stop)
                         @php $first = $stop->first()->parcel; @endphp
                         <tr class="pr-stop-row">
-                            <td><input type="checkbox" aria-label="Select all from {{ $first->shipper_name }}" onclick="document.querySelectorAll('[data-stop=&quot;{{ $i }}&quot;]').forEach(b => b.checked = this.checked)"></td>
+                            <td><input type="checkbox" aria-label="Select all from {{ $first->shipper_name }}" data-check-all='[data-stop="{{ $i }}"]'></td>
                             <td colspan="5">
                                 <strong>{{ $first->shipper_name }}</strong> · {{ $stop->count() }} {{ Str::plural('parcel', $stop->count()) }}
                                 @if($first->shipper_mobile)<span class="pr-muted"> · {{ $first->shipper_mobile }}</span>@endif

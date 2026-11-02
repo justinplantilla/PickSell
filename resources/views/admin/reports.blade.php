@@ -6,16 +6,16 @@
 
 @section('content')
 <!-- Date Filter -->
-<div class="card blade-inline-1">
+<div class="card admin-report-spaced">
     <div class="card-body">
-        <form method="GET" class="blade-inline-2">
-            <div class="form-group blade-inline-3">
+        <form method="GET" class="admin-report-row">
+            <div class="form-group admin-report-flush">
                 <label class="form-label">From</label>
-                <input type="date" name="from" class="form-control" value="{{ $from }}" class="blade-inline-4">
+                <input type="date" name="from" class="form-control" value="{{ $from }}" class="admin-report-col">
             </div>
-            <div class="form-group blade-inline-5">
+            <div class="form-group admin-report-flush">
                 <label class="form-label">To</label>
-                <input type="date" name="to" class="form-control" value="{{ $to }}" class="blade-inline-6">
+                <input type="date" name="to" class="form-control" value="{{ $to }}" class="admin-report-col">
             </div>
             <button type="submit" class="btn btn-coral">Generate</button>
             @can(\App\Auth\Permission::REPORTS_EXPORT)
@@ -73,7 +73,7 @@
                 <td>{{ $s['name'] }}</td>
                 <td>₱{{ number_format($s['sales']) }}</td>
                 <td>{{ $s['orders'] }}</td>
-                <td class="blade-inline-7">₱{{ number_format($s['commission']) }}</td>
+                <td class="admin-report-accent-text">₱{{ number_format($s['commission']) }}</td>
                 <td>₱{{ number_format($s['net']) }}</td>
             </tr>
             @endforeach

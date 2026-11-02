@@ -1,15 +1,10 @@
 
-/* Extracted inline declarations */
-.blade-inline-1 { margin-bottom:1rem !important;  }
-.blade-inline-2 { font-size:0.88rem !important;  }
-.blade-inline-3 { font-weight:600 !important; color:#888 !important; padding:0.4rem 0.8rem 0.4rem 0 !important; width:140px !important;  }
-.blade-inline-4 { font-weight:600 !important; color:#888 !important; padding:0.4rem 0.8rem 0.4rem 0 !important;  }
-.blade-inline-5 { font-weight:600 !important; color:#888 !important; padding:0.4rem 0.8rem 0.4rem 0 !important;  }
-.blade-inline-6 { font-weight:600 !important; color:#888 !important; padding:0.4rem 0.8rem 0.4rem 0 !important;  }
-.blade-inline-7 { font-weight:600 !important; color:#888 !important; padding:0.4rem 0.8rem 0.4rem 0 !important;  }
-.blade-inline-8 { margin-top:1rem !important;  }
-.blade-inline-9 { font-size:0.82rem !important; font-weight:600 !important; margin-bottom:0.4rem !important;  }
-.blade-inline-10 { background:#fafaf8 !important; border:1px solid #f0ebe0 !important; border-radius:8px !important; padding:0.8rem !important; font-size:0.88rem !important; line-height:1.6 !important;  }
-.blade-inline-11 { margin-top:1rem !important;  }
-.blade-inline-12 { font-size:0.82rem !important; font-weight:600 !important; margin-bottom:0.4rem !important;  }
-.blade-inline-13 { display:flex !important; gap:0.6rem !important;  }
+/* Page helpers (formerly inline styles); !important keeps them above the theme layers, as inline styles were. */
+.complaint-spaced { margin-bottom:1rem !important; }
+.complaint-title { font-size:0.88rem !important; }
+.complaint-muted-text { font-weight:600 !important; color:#888 !important; padding:0.4rem 0.8rem 0.4rem 0 !important; width:140px !important; }
+.complaint-muted-text-2 { font-weight:600 !important; color:#888 !important; padding:0.4rem 0.8rem 0.4rem 0 !important; }
+.complaint-spaced-2 { margin-top:1rem !important; }
+.complaint-heading { font-size:0.82rem !important; font-weight:600 !important; margin-bottom:0.4rem !important; }
+.complaint-title-2 { background:#fafaf8 !important; border:1px solid #f0ebe0 !important; border-radius:8px !important; padding:0.8rem !important; font-size:0.88rem !important; line-height:1.6 !important; }
+.complaint-row { display:flex !important; gap:0.6rem !important; }

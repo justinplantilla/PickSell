@@ -6,6 +6,7 @@ use App\Mail\NewMessageMail;
 use App\Models\Message;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductReview;
 use App\Models\ReturnRequest;
 use App\Models\User;
 use App\Notifications\SellerDeliveryReceived;
@@ -58,7 +59,7 @@ class SellerController extends Controller
             'description' => 'Picked up, transferred between province hubs, and out for delivery',
             'statuses' => ['picked_up', 'at_sorting_center', 'sorted', 'in_transit', 'assigned_to_rider', 'out_for_delivery', 'shipped'],
         ],
-        'delivered' => [
+        'delivered_or_completed' => [
             'label' => 'Delivered',
             'tone' => 'delivered',
             'description' => 'Delivered or completed',
@@ -70,6 +71,19 @@ class SellerController extends Controller
             'description' => 'Cancelled, delivery failed, or returned',
             'statuses' => ['cancelled', 'delivery_failed', 'returned'],
         ],
+    ];
+
+    /** Status filter on the orders page. "Sorted" is a sorting-center step to the seller, so it files under it. */
+    public const ORDER_FILTERS = [
+        'placed' => ['label' => 'Placed', 'statuses' => ['pending', 'placed', 'confirmed']],
+        'preparing' => ['label' => 'Preparing', 'statuses' => ['preparing', 'processing']],
+        'ready_for_pickup' => ['label' => 'Ready for pickup', 'statuses' => ['ready_for_pickup']],
+        'picked_up' => ['label' => 'Picked up', 'statuses' => ['picked_up']],
+        'at_sorting_center' => ['label' => 'At sorting center', 'statuses' => ['at_sorting_center', 'sorted', 'in_transit', 'shipped']],
+        'out_for_delivery' => ['label' => 'Out for delivery', 'statuses' => ['assigned_to_rider', 'out_for_delivery']],
+        'delivered' => ['label' => 'Delivered', 'statuses' => ['delivered']],
+        'completed' => ['label' => 'Completed', 'statuses' => ['completed']],
+        'cancelled' => ['label' => 'Cancelled / returned', 'statuses' => ['cancelled', 'delivery_failed', 'returned']],
     ];
 
     private function seller()
@@ -397,7 +411,10 @@ class SellerController extends Controller
     {
         $status = $request->get('status', 'all');
         $query = Order::where('seller_id', $this->seller()->id)->with('buyer');
-        if ($status === 'pending') {
+        // pending, action_required and the dashboard's status groups still come in from dashboard links.
+        if (array_key_exists($status, self::ORDER_FILTERS)) {
+            $query->whereIn('status', self::ORDER_FILTERS[$status]['statuses']);
+        } elseif ($status === 'pending') {
             $query->whereIn('status', self::PENDING_ORDER_STATUSES);
         } elseif ($status === 'action_required') {
             $query->whereIn('status', ['placed', 'confirmed', 'preparing', 'ready_for_pickup']);
@@ -408,7 +425,13 @@ class SellerController extends Controller
         }
         $orders = $query->latest()->paginate(15);
 
-        return view('seller.orders', compact('orders', 'status'));
+        $filters = array_map(fn (array $filter) => $filter['label'], self::ORDER_FILTERS);
+        $legacyFilters = ['pending' => 'Pending', 'action_required' => 'Needs processing', 'processing' => 'Processing', 'shipped' => 'Shipped', 'delivered_or_completed' => 'Delivered or completed'];
+        if (isset($legacyFilters[$status])) {
+            $filters = [$status => $legacyFilters[$status]] + $filters;
+        }
+
+        return view('seller.orders', compact('orders', 'status', 'filters'));
     }
 
     public function showOrder(Order $order)
@@ -547,6 +570,13 @@ class SellerController extends Controller
                 ]);
             }
             $ledger->postCompletedOrder($locked, $this->seller());
+            // A rating the buyer left while the order was delivered becomes the product review now, as in the buyer app.
+            if ($locked->rating && $locked->product_id) {
+                ProductReview::firstOrCreate(
+                    ['product_id' => $locked->product_id, 'buyer_id' => $locked->buyer_id, 'order_id' => $locked->id],
+                    ['rating' => $locked->rating, 'body' => $locked->feedback],
+                );
+            }
             $order->setRawAttributes($locked->getAttributes(), true);
         });
 

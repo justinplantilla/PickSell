@@ -25,7 +25,7 @@
     <div class="nav-actions">
         @auth
             <a href="/dashboard" class="nav-icon-btn" title="Account">
-                <span class="blade-inline-1">{{ Auth::user()->first_name }}</span>
+                <span class="site-nav-ink-text">{{ Auth::user()->first_name }}</span>
             </a>
         @else
             <div class="nav-auth">

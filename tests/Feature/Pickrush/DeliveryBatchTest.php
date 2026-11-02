@@ -93,6 +93,21 @@ class DeliveryBatchTest extends TestCase
         return UploadedFile::fake()->create('proof.jpg', 120, 'image/jpeg');
     }
 
+    public function test_delivery_stops_carry_the_buyer_pin_for_navigation(): void
+    {
+        $rider = $this->rider();
+        $ana = $this->readyParcel('Ana Reyes', 500);
+        $ana->forceFill(['delivery_lat' => 14.0870, 'delivery_lng' => 121.1490])->save();
+        $ben = $this->readyParcel('Ben Cruz', 700);
+        $this->dispatchTo([$ana, $ben], $rider);
+
+        $this->api($rider)->getJson('/api/rider/dashboard')->assertOk()
+            ->assertJsonPath('batches.0.stops.0.name', 'Ana Reyes')
+            ->assertJsonPath('batches.0.stops.0.lat', 14.087)
+            ->assertJsonPath('batches.0.stops.0.lng', 121.149)
+            ->assertJsonPath('batches.0.stops.1.lat', null);
+    }
+
     public function test_a_delivery_batch_goes_from_loading_to_delivered_and_ends_with_cash_and_returns_at_the_station(): void
     {
         $rider = $this->rider();

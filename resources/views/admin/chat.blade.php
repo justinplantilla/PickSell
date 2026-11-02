@@ -10,7 +10,7 @@
     <!-- User List -->
     <div class="chat-sidebar">
         <div class="chat-sidebar-header">
-            <input type="text" class="chat-search" placeholder="Search users..." oninput="filterUsers(this.value)">
+            <input type="text" class="chat-search" placeholder="Search users..." data-filter-users>
         </div>
         <div class="chat-list" id="userList">
             @forelse($users as $user)

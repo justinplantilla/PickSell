@@ -97,6 +97,25 @@
         </section>
     </form>
 
+    <section class="buyer-account-section buyer-account-pin" id="delivery-location">
+        <div class="buyer-account-section-heading compact-heading">
+            <div>
+                <h2>Delivery Pin</h2>
+                <p>Pin your door so the Pickrush rider can find you. Your typed address is still printed on the label.</p>
+            </div>
+        </div>
+        @if(auth()->user()->delivery_lat === null)
+            <div class="alert alert-warning buyer-account-pin-note">No pin yet. Riders will rely on your typed address until you set one.</div>
+        @endif
+        <form method="POST" action="{{ route('buyer.account.delivery-location') }}" data-no-confirm>
+            @csrf @method('PATCH')
+            @include('partials.map-pin', ['id' => 'buyer-pin', 'lat' => auth()->user()->delivery_lat, 'lng' => auth()->user()->delivery_lng])
+            @error('lat')<div class="field-error">{{ $message }}</div>@enderror
+            @error('lng')<div class="field-error">{{ $message }}</div>@enderror
+            <button type="submit" class="btn btn-coral buyer-account-pin-save">Save Pin</button>
+        </form>
+    </section>
+
     <div class="buyer-account-bottom-grid">
         <section class="buyer-account-section buyer-account-security">
             <div class="buyer-account-section-heading compact-heading">

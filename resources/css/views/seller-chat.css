@@ -1,13 +1,16 @@
 .seller-chat-screen { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
 .seller-chat-screen .main { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
-.seller-chat-screen .content { display: flex; flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 1rem; }
+.seller-chat-screen .content { display: flex; flex-direction: column; gap: .75rem; flex: 1 1 auto; min-height: 0; overflow: hidden; padding: 1rem; }
+/* The intro line and any announcement stack above the chat, which takes the rest of the height and the full width. */
+.seller-chat-screen .content > :not(.chat-layout) { flex: 0 0 auto; margin-bottom: 0; }
+.seller-chat-screen .content > .chat-layout { flex: 1 1 auto; width: 100%; }
 .seller-chat-screen .content > .alert-success { position: fixed; top: 72px; right: 24px; z-index: 100; width: fit-content; max-width: min(320px, calc(100vw - 32px)); margin: 0; padding: 0.45rem 0.75rem; border-radius: 7px; font-size: 0.78rem; box-shadow: 0 4px 14px rgba(22, 101, 52, 0.12); }
 .chat-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 0; flex: 1 1 auto; min-height: 0; height: 100%; background: #fff; border-radius: 12px; border: 1px solid #e8e2d8; overflow: hidden; }
     .chat-sidebar { border-right: 1px solid #f0ebe0; display: flex; flex-direction: column; }
     .chat-sidebar-header { padding: 1rem; border-bottom: 1px solid #f0ebe0; }
     .chat-search { width: 100%; padding: 0.5rem 0.8rem; border: 1.5px solid #ddd6c8; border-radius: 8px; font-size: 0.85rem; background: var(--bone); outline: none; }
     .chat-search:focus { border-color: var(--coral); }
-    .chat-list { flex: 1; overflow-y: auto; }
+    .chat-list { flex: 1; min-height: 0; overflow-y: auto; }
     .chat-item { display: flex; align-items: center; gap: 0.7rem; padding: 0.8rem 1rem; cursor: pointer; border-bottom: 1px solid #fafaf8; transition: background 0.15s; text-decoration: none; color: inherit; }
     .chat-item:hover, .chat-item.active { background: #fff3f0; }
     .chat-avatar { width: 38px; height: 38px; border-radius: 50%; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; }
@@ -29,7 +32,7 @@
     .msg.sent .msg-time { text-align: right; }
     .chat-input-area { flex: 0 0 auto; padding: 1rem; border-top: 1px solid #f0ebe0; display: flex; gap: 0.6rem; }
     .chat-input-area form { min-width: 0; }
-    .chat-input { flex: 1; padding: 0.65rem 1rem; border: 1.5px solid #ddd6c8; border-radius: 8px; font-size: 0.9rem; outline: none; font-family: inherit; }
+    .chat-input { flex: 1; min-width: 0; padding: 0.65rem 1rem; border: 1.5px solid #ddd6c8; border-radius: 8px; font-size: 0.9rem; outline: none; font-family: inherit; }
     .chat-input:focus { border-color: var(--coral); }
     .chat-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 0.9rem; background: #fafaf8; }
     .chat-empty { flex-direction: column; gap: 0.65rem; padding: 2rem; text-align: center; }
@@ -38,18 +41,18 @@
     .seller-chat-empty-icon { width: 76px; height: 76px; color: #e8472a; margin-bottom: 0.35rem; }
     .unread-badge { background: var(--coral); color: #fff; font-size: 0.65rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px; margin-left: auto; }
 
-/* Extracted inline declarations */
-.blade-inline-1 { padding:1.5rem !important; text-align:center !important; color:#aaa !important; font-size:0.85rem !important;  }
-.blade-inline-2 { font-weight:700 !important; font-size:0.95rem !important;  }
-.blade-inline-3 { font-size:0.78rem !important; color:#aaa !important;  }
-.blade-inline-4 { display:flex !important; align-items:center !important; gap:0.8rem !important; background:#fff8f0 !important; border:1px solid #fde8cc !important; border-radius:10px !important; padding:0.8rem 1rem !important; margin-bottom:0.5rem !important;  }
-.blade-inline-5 { width:56px !important; height:56px !important; object-fit:cover !important; border-radius:8px !important; flex-shrink:0 !important;  }
-.blade-inline-6 { flex:1 !important; min-width:0 !important;  }
-.blade-inline-7 { font-size:0.75rem !important; color:#b45309 !important; font-weight:600 !important; margin-bottom:0.2rem !important;  }
-.blade-inline-8 { font-size:0.88rem !important; font-weight:700 !important; color:#92400e !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important;  }
-.blade-inline-9 { font-size:0.85rem !important; color:var(--coral) !important; font-weight:700 !important;  }
-.blade-inline-10 { text-align:center !important; color:#aaa !important; font-size:0.85rem !important; margin-top:2rem !important;  }
-.blade-inline-11 { display:flex !important; gap:0.6rem !important; flex:1 !important;  }
+/* Page helpers (formerly inline styles); !important keeps them above the theme layers, as inline styles were. */
+.seller-chat-empty { padding:1.5rem !important; text-align:center !important; color:#aaa !important; font-size:0.85rem !important; }
+.seller-chat-title { font-weight:700 !important; font-size:0.95rem !important; }
+.seller-chat-muted-text { font-size:0.78rem !important; color:#aaa !important; }
+.seller-chat-row { display:flex !important; align-items:center !important; gap:0.8rem !important; background:#fff8f0 !important; border:1px solid #fde8cc !important; border-radius:10px !important; padding:0.8rem 1rem !important; margin-bottom:0.5rem !important; }
+.seller-chat-thumb { width:56px !important; height:56px !important; object-fit:cover !important; border-radius:8px !important; flex-shrink:0 !important; }
+.seller-chat-grow { flex:1 !important; min-width:0 !important; }
+.seller-chat-warning-text { font-size:0.75rem !important; color:#b45309 !important; font-weight:600 !important; margin-bottom:0.2rem !important; }
+.seller-chat-warning-text-2 { font-size:0.88rem !important; font-weight:700 !important; color:#92400e !important; white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; }
+.seller-chat-accent-text { font-size:0.85rem !important; color:var(--coral) !important; font-weight:700 !important; }
+.seller-chat-empty-2 { text-align:center !important; color:#aaa !important; font-size:0.85rem !important; margin-top:2rem !important; }
+.seller-chat-row-2 { display:flex !important; gap:0.6rem !important; flex:1 !important; }
 
 body.dark .chat-layout { background: #1b1b1b; border-color: #333; }
 body.dark .chat-sidebar, body.dark .chat-header, body.dark .chat-input-area { border-color: #333; }
@@ -63,7 +66,7 @@ body.dark .chat-search, body.dark .chat-input { background: #2a2a2a; border-colo
     .seller-chat-screen .content { padding: 0.5rem; }
     .seller-chat-screen .content > .alert-success { top: 66px; right: 10px; max-width: calc(100vw - 84px); }
     .chat-layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(130px, 28%) minmax(0, 1fr); height: 100%; min-height: 0; }
-    .chat-sidebar { min-height: 0; border-right: 0; border-bottom: 1px solid #f0ebe0; }
+    .chat-sidebar { min-height: 0; overflow: hidden; border-right: 0; border-bottom: 1px solid #f0ebe0; }   /* the contact list scrolls inside its row */
     .chat-main { min-height: 0; }
     .msg { max-width: 84%; }
     .chat-header { padding: 0.65rem 0.85rem; }

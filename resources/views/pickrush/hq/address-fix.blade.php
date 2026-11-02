@@ -38,12 +38,12 @@
         <form method="GET" action="{{ route('pickrush.hq.address-fix') }}#fix" class="pr-form-grid">
             <input type="hidden" name="parcel" value="{{ $selected }}">
             <div class="pr-field"><label for="province">Province / district</label>
-                <select id="province" name="province" class="pr-select" onchange="this.form.submit()">
+                <select id="province" name="province" class="pr-select" data-submit-on-change>
                     <option value="">Choose…</option>
                     @foreach($provinces as $p)<option value="{{ $p->code }}" @selected($province === $p->code)>{{ $p->isDistrict() ? 'Metro Manila – '.$p->name : $p->name }}</option>@endforeach
                 </select></div>
             <div class="pr-field"><label for="municipality">City / municipality</label>
-                <select id="municipality" name="municipality" class="pr-select" onchange="this.form.submit()" @disabled($municipalities->isEmpty())>
+                <select id="municipality" name="municipality" class="pr-select" data-submit-on-change @disabled($municipalities->isEmpty())>
                     <option value="">Choose…</option>
                     @foreach($municipalities as $m)<option value="{{ $m->code }}" @selected($municipality === $m->code)>{{ $m->name }}</option>@endforeach
                 </select></div>

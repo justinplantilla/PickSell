@@ -12,18 +12,21 @@
     @include('partials.pagination-styles')
 </head>
 <body data-confirm-mutations>
+    @if(session()->pull('picksell_welcome'))
+        @include('partials.welcome-splash', ['brand' => 'picksell', 'name' => auth()->user()->first_name, 'role' => 'Buyer'])
+    @endif
     <nav class="navbar">
         <a href="/buyer/shop" class="navbar-brand"><img src="{{ asset('images/transparent logo.png') }}" alt="PickSell logo"><span>Pick<span>Sell</span></span></a>
         <form class="navbar-search" method="GET" action="/buyer/search">
             <input type="text" name="search" data-product-search value="{{ request('search') }}" placeholder="Search products...">
-            <button type="submit">
+            <button type="submit" aria-label="Search products">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
             </button>
         </form>
         <div class="navbar-right">
             @include('partials.dashboard-clock')
             <div class="nav-notification-wrap">
-                <button class="nav-icon-btn notif-btn" id="buyerNotifBtn" type="button" onclick="toggleBuyerNotif()" aria-label="Buyer notifications">
+                <button class="nav-icon-btn notif-btn" id="buyerNotifBtn" type="button" aria-label="Buyer notifications">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4a2 2 0 0 0 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
                     <span class="notif-dot" id="buyerNotifDot"></span>
                 </button>
@@ -32,11 +35,11 @@
                     <div id="buyerNotifList"><div class="notif-empty">Loading...</div></div>
                 </div>
             </div>
-            <a href="/buyer/chat" class="nav-icon-btn">
+            <a href="/buyer/chat" class="nav-icon-btn" aria-label="Messages">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
                 <span>Messages</span>
             </a>
-            <a href="/buyer/cart" class="nav-icon-btn">
+            <a href="/buyer/cart" class="nav-icon-btn" aria-label="Cart{{ isset($cartCount) && $cartCount > 0 ? ', '.$cartCount.' '.\Illuminate\Support\Str::plural('item', $cartCount) : '' }}">
                 <div class="cart-badge-wrap">
                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM5.2 5H2V3H0v2h2l3.6 7.59L4.25 15A2 2 0 0 0 6 18h14v-2H6.42a.25.25 0 0 1-.25-.25l.03-.12L7.1 14h9.45c.75 0 1.41-.41 1.75-1.03L21.7 6.5A1 1 0 0 0 20.83 5H5.2z"/></svg>
                     @if(isset($cartCount) && $cartCount > 0)
@@ -45,7 +48,7 @@
                 </div>
                 <span>Cart</span>
             </a>
-            <div class="nav-user" onclick="toggleUserMenu()">
+            <div class="nav-user" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu" data-user-menu>
                 <div class="nav-user-avatar">{{ strtoupper(substr(auth()->user()->first_name, 0, 1)) }}</div>
                 <span>{{ auth()->user()->first_name }}</span>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
@@ -99,7 +102,7 @@
                     @endif
                 </span>
                 <div class="announcement-copy"><span class="announcement-label">{{ $announcementLabel }}</span><strong>{{ $ann->title }}</strong>{{ $ann->message }}</div>
-                <button class="announcement-dismiss" type="button" aria-label="Dismiss announcement" title="Dismiss" onclick="dismissAnnouncement({{ $ann->id }}, this)">×</button>
+                <button class="announcement-dismiss" type="button" aria-label="Dismiss announcement" title="Dismiss" data-dismiss-announcement="{{ $ann->id }}">×</button>
             </div>
         @endforeach
         </div>

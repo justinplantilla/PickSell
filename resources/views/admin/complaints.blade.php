@@ -29,7 +29,7 @@
             <td>{{ $c->id }}</td>
             <td>
                 <strong>{{ $c->filer->full_name ?? '—' }}</strong>
-                <div class="blade-inline-1">{{ ucfirst($c->filer->role ?? '') }}</div>
+                <div class="complaints-muted-text">{{ ucfirst($c->filer->role ?? '') }}</div>
             </td>
             <td>{{ $c->against->full_name ?? '—' }}</td>
             <td>
@@ -54,7 +54,7 @@
             <td><a href="/admin/complaints/{{ $c->id }}" class="btn btn-coral btn-sm">Review</a></td>
         </tr>
         @empty
-        <tr><td colspan="8" class="blade-inline-2">No complaints found.</td></tr>
+        <tr><td colspan="8" class="complaints-empty">No complaints found.</td></tr>
         @endforelse
         </tbody>
     </table>

@@ -9,16 +9,16 @@
 <div class="alert alert-warning" role="status">{{ $migrationWarning }}</div>
 @endif
 <!-- Date Filter -->
-<div class="card blade-inline-1">
+<div class="card commission-spaced">
     <div class="card-body">
-        <form method="GET" class="blade-inline-2">
-            <div class="form-group blade-inline-3">
+        <form method="GET" class="commission-row">
+            <div class="form-group commission-flush">
                 <label class="form-label">From</label>
-                <input type="date" name="from" class="form-control" value="{{ $from }}" class="blade-inline-4">
+                <input type="date" name="from" class="form-control" value="{{ $from }}" class="commission-col">
             </div>
-            <div class="form-group blade-inline-5">
+            <div class="form-group commission-flush">
                 <label class="form-label">To</label>
-                <input type="date" name="to" class="form-control" value="{{ $to }}" class="blade-inline-6">
+                <input type="date" name="to" class="form-control" value="{{ $to }}" class="commission-col">
             </div>
             <button type="submit" class="btn btn-coral">Filter</button>
         </form>
@@ -78,9 +78,9 @@
     <div class="card">
         <div class="card-header"><span class="card-title">Commission Rate</span></div>
         <div class="card-body">
-            <p class="blade-inline-7">Current rate applies to new orders. Existing orders retain their recorded rate.</p>
-            <div class="blade-inline-8">{{ $rate }}%</div>
-            <p class="blade-inline-9">Per completed transaction</p>
+            <p class="commission-muted-text">Current rate applies to new orders. Existing orders retain their recorded rate.</p>
+            <div class="commission-empty">{{ $rate }}%</div>
+            <p class="commission-muted-text-2">Per completed transaction</p>
         </div>
     </div>
 </div>
@@ -88,7 +88,7 @@
 <div class="card">
     <div class="card-header"><span class="card-title">Order Commission Breakdown</span></div>
     @if($orders->isEmpty())
-    <div class="card-body blade-inline-10">No completed orders in this period.</div>
+    <div class="card-body commission-muted-text-3">No completed orders in this period.</div>
     @else
     <table>
         <thead>
@@ -102,7 +102,7 @@
             <td>{{ $order->product_name }}</td>
             <td>₱{{ number_format($order->amount, 2) }}</td>
             <td>{{ number_format($order->effective_commission_rate, 2) }}%</td>
-            <td class="blade-inline-11">₱{{ number_format($order->calculated_commission, 2) }}</td>
+            <td class="commission-accent-text">₱{{ number_format($order->calculated_commission, 2) }}</td>
             <td>{{ $order->created_at->format('M d, Y') }}</td>
         </tr>
         @endforeach

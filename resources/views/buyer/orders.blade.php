@@ -6,7 +6,7 @@
 @endsection
 
 @section('content')
-<h2 class="blade-inline-1">My Orders</h2>
+<h2 class="orders-heading">My Orders</h2>
 
 <div class="status-tabs">
     @foreach(['all'=>'All','pending'=>'To Ship','processing'=>'Preparing','shipped'=>'In Transit','completed'=>'Delivered','returned'=>'Returned','cancelled'=>'Cancelled'] as $val => $label)
@@ -15,44 +15,49 @@
 </div>
 
 @forelse($orders as $order)
-<div class="order-card">
+{{-- The whole summary opens the order's details: delivery progress, Pickrush stops and the price breakdown. --}}
+<div class="order-card" data-order-card>
     <div class="order-card-header">
         <div>
-            <span class="blade-inline-2">Order #</span>
+            <span class="orders-muted-text">Order #</span>
             <strong>{{ $order->order_number }}</strong>
-            <span class="blade-inline-3">{{ $order->created_at->format('M d, Y') }}</span>
+            <span class="orders-muted-text-2">{{ $order->created_at->format('M d, Y') }}</span>
         </div>
-        <div class="blade-inline-4">
-            <span class="blade-inline-5">{{ $order->seller->business_name ?? $order->seller->full_name }}</span>
-            <span class="badge badge-{{ $order->status }}">{{ $order->status }}</span>
+        <div class="orders-row">
+            <span class="orders-muted-text">{{ $order->seller->business_name ?? $order->seller->full_name }}</span>
+            <x-order-status-badge :status="$order->status" />
+            <button type="button" class="order-toggle" data-order-toggle aria-expanded="false" aria-controls="order-details-{{ $order->id }}">
+                <span>Details</span>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
         </div>
     </div>
     <div class="order-card-body">
         @if($order->product && $order->product->primary_image)
-            <img src="{{ Storage::url($order->product->primary_image) }}" class="blade-inline-6">
+            <img src="{{ Storage::url($order->product->primary_image) }}" class="orders-thumb">
         @else
-            <div class="blade-inline-7"></div>
+            <div class="orders-thumb-placeholder"></div>
         @endif
-        <div class="blade-inline-8">
-            <div class="blade-inline-9">{{ $order->product_name }}</div>
-            <div class="blade-inline-10">Qty: {{ $order->quantity }}</div>
-            <div class="blade-inline-11">₱{{ number_format($order->amount, 2) }}</div>
+        <div class="orders-grow">
+            <div class="orders-strong">{{ $order->product_name }}</div>
+            <div class="orders-muted-text">Qty: {{ $order->quantity }}</div>
+            <div class="orders-accent-text">₱{{ number_format($order->amount, 2) }}</div>
         </div>
-        <div class="blade-inline-12">
+        <div class="orders-stack">
             @if($tracking[$order->id] ?? null)
             <a class="btn btn-outline btn-sm" href="{{ route('buyer.orders.tracking', $order) }}">View delivery tracking</a>
             @endif
             @if(in_array($order->status, ['placed', 'confirmed', 'preparing'], true))
             <form method="POST" action="{{ route('buyer.orders.cancel', $order) }}" class="cancel-order-form">
                 @csrf @method('PATCH')
-                <button type="button" class="btn btn-outline btn-sm" onclick="confirmCancel(this)">Cancel Order</button>
+                <button type="button" class="btn btn-outline btn-sm" data-cancel-order>Cancel Order</button>
             </form>
             @endif
-            @if($order->status === 'completed' && !$order->rating)
-            <button class="btn btn-coral btn-sm" onclick="openFeedback({{ $order->id }})">Rate & Review</button>
+            @if(in_array($order->status, ['delivered', 'completed'], true) && !$order->rating)
+            <button class="btn btn-coral btn-sm" type="button" data-open-feedback="{{ $order->id }}">Rate & Review</button>
             @endif
-            @if($order->status === 'completed' && $order->rating)
-            <div class="blade-inline-14">
+            @if(in_array($order->status, ['delivered', 'completed'], true) && $order->rating)
+            <div class="orders-muted-text-4">
                 @for($i=1;$i<=5;$i++)<span style="color:{{ $i<=$order->rating ? '#f59e0b' : '#ddd' }};">★</span>@endfor
             </div>
             @endif
@@ -78,8 +83,9 @@
             if (in_array($order->status, $statuses, true)) { $currentIdx = $idx; break; }
         }
     @endphp
+    <div class="order-details" id="order-details-{{ $order->id }}" hidden>
     @if($order->status !== 'cancelled')
-    <div class="blade-inline-15">
+    <div class="orders-block">
         <div class="order-track">
             @foreach($steps as $idx => $step)
             @php $done = $currentIdx !== false && $idx <= $currentIdx; $active = $idx === $currentIdx; @endphp
@@ -93,7 +99,19 @@
     </div>
     @endif
 
-    @include('partials.pickrush-tracking', ['tracking' => $tracking[$order->id] ?? null])
+    @include('partials.pickrush-tracking', ['tracking' => $tracking[$order->id] ?? null, 'open' => true])
+
+    @php
+        $unitPrice = $order->quantity > 0 ? $order->amount / $order->quantity : $order->amount;
+    @endphp
+    <dl class="order-breakdown">
+        <div><dt>Item price</dt><dd>₱{{ number_format($unitPrice, 2) }}</dd></div>
+        <div><dt>Quantity</dt><dd>× {{ $order->quantity }}</dd></div>
+        <div><dt>Subtotal</dt><dd>₱{{ number_format($order->amount, 2) }}</dd></div>
+        <div><dt>Shipping fee</dt><dd>₱0.00</dd></div>
+        <div class="order-breakdown-total"><dt>Total</dt><dd>₱{{ number_format($order->amount, 2) }}</dd></div>
+    </dl>
+    </div>
 
     @if($order->returnRequest)
         @php
@@ -146,24 +164,24 @@
     @endif
 </div>
 @empty
-<div class="blade-inline-16">No orders found.</div>
+<div class="orders-empty">No orders found.</div>
 @endforelse
 
 @if($orders->hasPages())
-<div class="dashboard-pagination blade-inline-17">{{ $orders->withQueryString()->links() }}</div>
+<div class="dashboard-pagination orders-spaced">{{ $orders->withQueryString()->links() }}</div>
 @endif
 
 <!-- Feedback Modal -->
 <div class="modal-overlay" id="feedbackModal">
     <div class="modal">
-        <div class="blade-inline-18">Rate Your Order</div>
+        <div class="orders-heading-2">Rate Your Order</div>
         <form method="POST" id="feedbackForm">
             @csrf
             <div class="form-group">
                 <label class="form-label">Rating</label>
                 <div class="star-rating" id="starRating">
                     @for($i=1;$i<=5;$i++)
-                    <span class="star" data-val="{{ $i }}" onclick="setRating({{ $i }})">★</span>
+                    <button type="button" class="star" data-val="{{ $i }}" data-set-rating="{{ $i }}" aria-label="{{ $i }} {{ $i === 1 ? 'star' : 'stars' }}">★</button>
                     @endfor
                 </div>
                 <input type="hidden" name="rating" id="ratingInput" required>
@@ -172,8 +190,8 @@
                 <label class="form-label">Review (optional)</label>
                 <textarea name="feedback" class="form-control" rows="3" placeholder="Share your experience..."></textarea>
             </div>
-            <div class="blade-inline-19">
-                <button type="button" class="btn btn-outline" onclick="document.getElementById('feedbackModal').classList.remove('open')">Cancel</button>
+            <div class="orders-row-2">
+                <button type="button" class="btn btn-outline" data-close-feedback>Cancel</button>
                 <button type="submit" class="btn btn-coral">Submit</button>
             </div>
         </form>

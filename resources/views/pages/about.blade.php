@@ -88,18 +88,18 @@
     @endphp
 
     @if($tos)
-    <div class="blade-inline-1">
+    <div class="about-spaced">
         <div class="section-label">Legal</div>
         <h2 class="section-title">Terms of <em>Service</em></h2>
-        <div class="blade-inline-2">{{ $tos }}</div>
+        <div class="about-muted-text">{{ $tos }}</div>
     </div>
     @endif
 
     @if($privacy)
-    <div class="blade-inline-3">
+    <div class="about-spaced">
         <div class="section-label">Legal</div>
         <h2 class="section-title">Privacy <em>Policy</em></h2>
-        <div class="blade-inline-4">{{ $privacy }}</div>
+        <div class="about-muted-text">{{ $privacy }}</div>
     </div>
     @endif
 </div>

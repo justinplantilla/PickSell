@@ -52,6 +52,19 @@ class PortalAccessTest extends TestCase
         $this->assertSame(['Staff.signed_in', 'Staff.signed_out'], AuditLog::where('action', 'like', 'Staff.signed_%')->pluck('action')->all());
     }
 
+    public function test_the_welcome_splash_plays_once_after_sign_in(): void
+    {
+        $this->buildNetwork();
+        $manager = $this->staff(StaffRole::HubManager, $this->station('041029000'));
+
+        $this->post($this->pickrushUrl('/login'), ['email' => $manager->email, 'password' => 'secret-password']);
+
+        // The splash survives the "/" hop and shows on the first portal page only.
+        $this->get($this->pickrushUrl('/'))->assertRedirect(route('pickrush.station.dashboard'));
+        $this->get(route('pickrush.station.dashboard'))->assertSee('data-welcome-splash', false)->assertSee('Hub manager · Tanauan City Station');
+        $this->get(route('pickrush.station.dashboard'))->assertDontSee('data-welcome-splash', false);
+    }
+
     public function test_inactive_and_marketplace_accounts_cannot_sign_in(): void
     {
         $this->buildNetwork();

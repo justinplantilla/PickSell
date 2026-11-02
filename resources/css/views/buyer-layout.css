@@ -408,6 +408,9 @@
             .navbar-right { gap: 0.7rem; }
             .navbar-right .nav-icon-btn span { display: none; }
             .navbar-brand { font-size: 1.2rem; }
+            /* Phones: the clock and the first name would push the cart and the account menu off screen. */
+            .navbar-right { min-width: 0; }
+            .navbar-right .dashboard-datetime, .nav-user > span { display: none; }
             .page-content { padding: 1rem; }
             .card-body { padding: 1rem; }
             table { display: block; overflow-x: auto; white-space: nowrap; }
@@ -506,5 +509,3 @@
     .deals-grid .product-img-wrap::before { animation: none; }
 }
 
-/* Extracted inline declarations */
-.blade-inline-1 { position:relative !important;  }

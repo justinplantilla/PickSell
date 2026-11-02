@@ -28,7 +28,7 @@
             </div>
             @endforeach
 
-        <div class="filter-box blade-inline-1">
+        <div class="filter-box shop-box">
             <h3>Price Range</h3>
             <div class="price-range">
                 <input type="number" name="min" placeholder="Min" value="{{ request('min') }}">
@@ -48,7 +48,7 @@
                 @foreach(request()->except('sort') as $key => $value)
                     <input type="hidden" name="{{ $key }}" value="{{ $value }}">
                 @endforeach
-            <select class="sort-select" name="sort" onchange="this.form.submit()">
+            <select class="sort-select" name="sort" data-submit-on-change>
                 <option value="featured" {{ $sort === 'featured' ? 'selected' : '' }}>Sort: Featured</option>
                 <option value="price_asc" {{ $sort === 'price_asc' ? 'selected' : '' }}>Price: Low to High</option>
                 <option value="price_desc" {{ $sort === 'price_desc' ? 'selected' : '' }}>Price: High to Low</option>
@@ -62,7 +62,11 @@
             <a href="{{ $productLink }}" class="product-card">
                 @if($p->discount > 0)<div class="product-badge">-{{ $p->discount }}%</div>@endif
                 <div class="product-img">
+                    @if($p->primary_image)
                     <img src="{{ Storage::url($p->primary_image) }}" alt="{{ $p->name }}" loading="lazy">
+                    @else
+                    <span class="product-img-placeholder" aria-hidden="true">{{ strtoupper(mb_substr($p->name, 0, 1)) }}</span>
+                    @endif
                     <div class="product-image-details">
                         <small>{{ $p->category }}</small>
                         <strong>{{ $p->name }}</strong>

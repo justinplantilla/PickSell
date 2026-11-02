@@ -269,7 +269,7 @@ class SellerWorkflowTest extends TestCase
             ->assertSee('Cancelled / returned')
             ->assertSee(route('seller.orders', ['status' => 'processing']))
             ->assertSee(route('seller.orders', ['status' => 'shipped']))
-            ->assertSee(route('seller.orders', ['status' => 'delivered']))
+            ->assertSee(route('seller.orders', ['status' => 'delivered_or_completed']))
             ->assertSee(route('seller.orders', ['status' => 'cancelled']))
             ->assertSee('Cancelled, delivery failed, or returned')
             ->assertSee('50.0%', false)
@@ -305,10 +305,18 @@ class SellerWorkflowTest extends TestCase
             ->assertSee('ORD-SELLER-DIST-0')
             ->assertDontSee('ORD-SELLER-DIST-1');
 
-        $this->get(route('seller.orders', ['status' => 'delivered']))
+        $this->get(route('seller.orders', ['status' => 'delivered_or_completed']))
             ->assertOk()
             ->assertSee('ORD-SELLER-5')
             ->assertDontSee('ORD-SELLER-DIST-0');
+
+        // The filter menu splits delivered from completed.
+        $this->get(route('seller.orders', ['status' => 'delivered']))
+            ->assertOk()
+            ->assertDontSee('ORD-SELLER-5');
+        $this->get(route('seller.orders', ['status' => 'completed']))
+            ->assertOk()
+            ->assertSee('ORD-SELLER-5');
 
         $this->get(route('seller.orders', ['status' => 'cancelled']))
             ->assertOk()

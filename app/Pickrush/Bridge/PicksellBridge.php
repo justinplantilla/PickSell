@@ -57,6 +57,8 @@ class PicksellBridge
             'delivery_address' => self::address($buyer),
             'delivery_barangay_code' => $delivery['barangay_code'],
             'delivery_municipality_code' => $delivery['municipality_code'],
+            'delivery_lat' => $buyer?->delivery_lat,
+            'delivery_lng' => $buyer?->delivery_lng,
             'item_description' => "{$order->product_name} × {$order->quantity}",
             'cod_amount' => $order->amount,
         ], Actor::picksell(), ParcelStatus::LabelCreated);
@@ -102,6 +104,17 @@ class PicksellBridge
         return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->whereIn('external_ref', $orderIds)
             ->whereIn('current_status', [ParcelStatus::LabelCreated, ParcelStatus::WaitingPickup])
             ->update(['pickup_lat' => $seller->pickup_lat, 'pickup_lng' => $seller->pickup_lng]);
+    }
+
+    /** The buyer moved their delivery pin: parcels not yet delivered follow it, so the rider navigates to the new spot. */
+    public static function buyerPinned(User $buyer): int
+    {
+        $orderIds = Order::where('buyer_id', $buyer->id)->pluck('id')->map(fn ($id) => (string) $id);
+
+        return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->whereIn('external_ref', $orderIds)
+            ->where('is_return', false)
+            ->whereNotIn('current_status', [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled])
+            ->update(['delivery_lat' => $buyer->delivery_lat, 'delivery_lng' => $buyer->delivery_lng]);
     }
 
     /**

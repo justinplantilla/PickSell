@@ -65,14 +65,14 @@
         @csrf
         <strong>Dispatch</strong>
         @if(! empty($vehicles) && $vehicles->isNotEmpty())
-            <select class="pr-select" aria-label="Fleet vehicle" onchange="const o=this.selectedOptions[0];this.form.vehicle_plate.value=o.dataset.plate||'';this.form.driver_name.value=o.dataset.driver||''">
+            <select class="pr-select" aria-label="Fleet vehicle" data-fleet-picker>
                 <option value="">Pick from fleet…</option>
                 @foreach($vehicles as $vehicle)<option data-plate="{{ $vehicle->plate_no }}" data-driver="{{ $vehicle->driver_name }}">{{ $vehicle->plate_no }} · {{ $vehicle->vehicle_type }}{{ $vehicle->driver_name ? ' · '.$vehicle->driver_name : '' }}</option>@endforeach
             </select>
         @endif
         <input name="vehicle_plate" class="pr-input" placeholder="Vehicle plate" value="{{ old('vehicle_plate') }}" required aria-label="Vehicle plate">
         <input name="driver_name" class="pr-input" placeholder="Driver name" value="{{ old('driver_name') }}" required aria-label="Driver name">
-        <button type="submit" class="pr-btn pr-btn-primary" onclick="return confirm('Dispatch this trip with {{ $manifest->items->count() }} parcels?')">Dispatch trip</button>
+        <button type="submit" class="pr-btn pr-btn-primary" data-confirm="Dispatch this trip with {{ $manifest->items->count() }} parcels?">Dispatch trip</button>
     </form>
 @elseif($manifest->status !== 'draft')
     <section class="pr-card" style="margin-top:1rem">
@@ -85,7 +85,7 @@
         @if(! $outbound && in_array($manifest->status, ['dispatched', 'received'], true))
             <form method="POST" action="{{ route($prefix.'.close', $manifest) }}" class="pr-actions">
                 @csrf
-                <button type="submit" class="pr-btn pr-btn-outline" onclick="return confirm('Close the check? Unscanned parcels will be marked missing.')">Close check</button>
+                <button type="submit" class="pr-btn pr-btn-outline" data-confirm="Close the check? Unscanned parcels will be marked missing.">Close check</button>
             </form>
         @endif
     </section>

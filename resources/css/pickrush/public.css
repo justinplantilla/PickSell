@@ -196,6 +196,11 @@ body.prp { margin: 0; background: var(--prp-ground); color: var(--prp-bone); fon
 .prl-check { display: flex; align-items: center; gap: 10px; color: #d6d1c8; font-size: 14px; cursor: pointer; }
 .prl-check input { width: 18px; height: 18px; margin: 0; accent-color: var(--prp-coral); }
 .prl-submit { width: 100%; height: 50px; }
+/* Edge's own reveal button would sit next to the eye toggle. */
+.prl-pw input::-ms-reveal, .prl-pw input::-ms-clear { display: none; }
+.prl-spinner { width: 18px; height: 18px; border: 2.5px solid rgba(31, 35, 40, .25); border-top-color: var(--prp-ground); border-radius: 50%; animation: prp-spin .7s linear infinite; }
+.is-signing-in .prl-submit { pointer-events: none; opacity: .9; }
+.is-signing-in .prl-field, .is-signing-in .prl-check { opacity: .55; pointer-events: none; transition: opacity .3s; }
 .prl-foot { margin: 0; color: var(--prp-muted); font-size: 14px; text-align: center; }
 .prl-foot a { font-weight: 600; }
 
@@ -306,4 +311,44 @@ body.prp { margin: 0; background: var(--prp-ground); color: var(--prp-bone); fon
     .prs-check, .prs-light, .prs-c4 { opacity: 1; }
     .prs-door { transform: scaleX(.25); }
     .prl-ride { transform: translateX(260px); }
+}
+
+@media (max-width: 600px) {
+    .prp-wrap { padding-inline: 16px; }
+    .prp-header-inner { align-items: flex-start; gap: 8px 16px; padding-block: 12px; }
+    .prp-brand { font-size: 17px; }
+    .prp-nav { gap: 2px 12px; }
+    .prp-nav a:not(.prp-btn) { padding: 8px 2px; font-size: 14px; }
+    .prp-hero { gap: 28px; padding-block: 40px 48px; }
+    .prp-hero h1 { font-size: clamp(2rem, 10vw, 3rem); }
+    .prp-lead, .prp-section-head p, .prp-riders-copy p { font-size: 16px; }
+    .prp-scene { padding: 12px; border-radius: 18px; }
+    .prp-section { gap: 24px; padding-block: 48px; }
+    .prp-steps { grid-template-columns: minmax(0, 1fr); }
+    .prp-step { padding: 20px; }
+    .prp-track-card { gap: 20px; padding: 24px 18px; border-radius: 18px; }
+    .prp-track-row { align-items: stretch; }
+    .prp-track-row .prp-input { flex-basis: 100%; }
+    .prp-track-row .prp-btn { width: 100%; }
+    .prp-riders { gap: 24px; padding-bottom: 48px; }
+    .prp-perks { flex-basis: 100%; }
+    .prp-perks li { padding: 15px; font-size: 15px; }
+    .prp-footer-inner { align-items: flex-start; flex-direction: column; padding-block: 22px; }
+    .prp-footer nav { gap: 8px 16px; }
+}
+
+@media (max-width: 480px) {
+    .prl-panel { min-height: 230px; }
+    .prl-panel-body { gap: 8px 10px; padding: 58px 16px 86px; }
+    .prl-tagline { font-size: 14px; }
+    .prl-road { height: 68px; }
+    .prl-main { padding: 24px 16px 32px; }
+    .prl-form { gap: 16px; }
+}
+
+@media (max-height: 700px) and (min-width: 901px) {
+    .prl-panel-body { gap: 10px; padding-bottom: 92px; }
+    .prl-mark { width: 88px; height: 88px; }
+    .prl-values { gap: 6px; margin-top: 4px; }
+    .prl-road { height: 80px; }
 }

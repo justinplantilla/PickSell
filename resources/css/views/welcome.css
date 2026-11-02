@@ -79,6 +79,8 @@
     .landing-product:hover,.landing-product:focus-within { transform:translateY(-6px); box-shadow:0 14px 28px rgba(23,25,29,.12); }
     .landing-product-image { aspect-ratio:1.05; display:grid; place-items:center; background:linear-gradient(135deg,#eeeae3,#f8f6f2); position:relative; overflow:hidden; }
     .landing-product-image img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .45s ease,filter .45s ease; }
+    /* A product without a photo shows its initial instead of a broken image. */
+    .landing-product-placeholder { color:#E8472A; font-size:clamp(2.5rem,6vw,4rem); font-weight:800; opacity:.55; }
     .landing-product:hover .landing-product-image img,.landing-product:focus-within .landing-product-image img { transform:scale(1.05); filter:saturate(1.08); }
     .landing-product-placeholder { width:42%; height:42%; border:1px solid rgba(23,25,29,.12); border-radius:8px; background:rgba(255,255,255,.65); box-shadow:0 10px 20px rgba(23,25,29,.06); }
     .landing-product-image::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,.4),transparent 45%); opacity:0; transition:opacity .3s; }
@@ -482,6 +484,6 @@
         .cta-form input,.cta-form button{min-height:44px;border-radius:5px}
     }
 
-/* Extracted inline declarations */
-.blade-inline-1 { color:var(--coral) !important }
-.blade-inline-2 { color:#fff !important }
+/* Page helpers (formerly inline styles); !important keeps them above the theme layers, as inline styles were. */
+.landing-accent { color:var(--coral) !important }
+.landing-ink { color:#fff !important }

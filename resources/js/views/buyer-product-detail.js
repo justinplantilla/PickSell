@@ -122,3 +122,6 @@ document.querySelectorAll('[data-gallery-thumb]').forEach(thumb => {
         document.querySelectorAll('[data-gallery-thumb]').forEach(t => t.classList.toggle('is-active', t === thumb));
     });
 });
+
+document.querySelectorAll('.var-btn[data-type-slug]').forEach(button => button.addEventListener('click', () => selectVariation(button, button.dataset.typeSlug)));
+document.querySelectorAll('[data-qty-step]').forEach(button => button.addEventListener('click', () => changeQty(Number(button.dataset.qtyStep))));

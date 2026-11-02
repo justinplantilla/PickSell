@@ -36,11 +36,15 @@ use App\Http\Middleware\SellerMiddleware;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Schema;
 
 Route::get('/', function () {
-    if (! Schema::hasTable('products')) {
-        return view('welcome', ['featuredProducts' => collect()]);
+    // A signed-in user reopening the site lands back in their own account, not on the marketing page.
+    if ($user = auth()->user()) {
+        return redirect(match ($user->role) {
+            'admin' => '/admin/dashboard',
+            'seller' => '/seller/dashboard',
+            default => '/buyer/dashboard',
+        });
     }
 
     $featuredProducts = Product::where('status', 'active')->where('stock', '>', 0)
@@ -49,14 +53,6 @@ Route::get('/', function () {
     return view('welcome', compact('featuredProducts'));
 });
 Route::get('/shop', function (Request $request) {
-    if (! Schema::hasTable('products')) {
-        return view('pages.shop', [
-            'products' => collect(),
-            'categories' => collect(),
-            'sort' => $request->get('sort', 'featured'),
-        ]);
-    }
-
     $query = Product::where('status', 'active')->where('stock', '>', 0)->whereHas('images')->with('seller');
     $search = trim((string) $request->get('q', ''));
     if ($search) {
@@ -118,7 +114,6 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::delete('/account', [AuthController::class, 'deleteAccount'])->name('account.delete');
-    Route::get('/buyer/dashboard', fn () => view('dashboard'))->name('buyer.dashboard');
     Route::get('/dashboard', fn () => redirect(match (auth()->user()->role) {
         'seller' => '/seller/dashboard',
         'admin' => '/admin/dashboard',
@@ -170,6 +165,7 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
     Route::get('/account', [BuyerController::class, 'account'])->name('buyer.account');
     Route::patch('/account', [BuyerController::class, 'updateAccount'])->name('buyer.account.update');
     Route::patch('/account/password', [BuyerController::class, 'updatePassword'])->name('buyer.account.password');
+    Route::patch('/account/delivery-location', [BuyerController::class, 'updateDeliveryLocation'])->name('buyer.account.delivery-location');
 });
 
 // Seller Routes

@@ -217,6 +217,9 @@ window.addEventListener('picksell:theme-toggle', toggleDark);
 document.getElementById('logoutModal')?.addEventListener('click', event => {
     if (event.target === event.currentTarget) event.currentTarget.close('cancel');
 });
+document.querySelector('[data-sidebar-toggle]')?.addEventListener('click', toggleSidebar);
+document.querySelector('[data-logout]')?.addEventListener('click', confirmLogout);
+document.getElementById('notifBtn')?.addEventListener('click', toggleNotif);
 window.confirmLogout = confirmLogout;
 window.toggleSidebar = toggleSidebar;
 window.toggleNotif = toggleNotif;

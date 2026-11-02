@@ -222,7 +222,8 @@ class AdminNotificationInbox
         $merged = $items
             ->groupBy(fn (array $item) => $item['title']."\0".$item['message']."\0".($item['url'] ?? ''))
             ->map(fn (Collection $repeats) => array_merge($repeats->first(), [
-                'ids' => $repeats->pluck('ids')->flatten()->all(),
+                // Oldest first, so the ids do not depend on how the query broke ties between equal timestamps.
+                'ids' => $repeats->sortBy(fn (array $item) => $item['created_at']->getTimestamp())->pluck('ids')->flatten()->all(),
                 'count' => $repeats->count(),
                 'unread' => $repeats->contains('unread', true),
             ]))

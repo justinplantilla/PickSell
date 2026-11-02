@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withCommands([__DIR__.'/../app/Pickrush/Console/Commands'])
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(\App\Pickrush\Http\Middleware\PickrushSession::class);
+        $middleware->prepend(\App\Http\Middleware\LocalSessionCookie::class);
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
         $middleware->web(append: [\App\Pickrush\Http\Middleware\IsolatePickrushHost::class]);
         // Isolation must answer 404 before auth redirects a marketplace page to a login screen.

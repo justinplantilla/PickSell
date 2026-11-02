@@ -85,6 +85,7 @@ body.ad-theme .nav-item.active::before { content: ''; position: absolute; left: 
 body.ad-theme .nav-item:focus-visible { outline: 2px solid var(--ad-brand); outline-offset: -2px; }
 body.ad-theme .nav-badge { min-width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; padding: 0 .4rem; font-size: .68rem; font-weight: 800; animation: ad-badge-pop .5s var(--ad-ease) both; }
 body.ad-theme .sidebar.mini .nav-item { padding: 0; justify-content: center; }
+body.ad-theme .sidebar.mini .nav-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; opacity: 1; }
 body.ad-theme .sidebar.mini .nav-item.active { border-left: 0; }
 body.ad-theme .sidebar.mini .nav-item.active::before { left: -.5rem; }
 body.ad-theme .sidebar-footer { padding: .75rem; background: var(--ad-side); border-top: 1px solid rgba(255, 255, 255, .06); }
@@ -129,8 +130,10 @@ body.ad-theme .dashboard-datetime { padding-left: .35rem; color: var(--ad-muted)
 body.ad-theme .dashboard-time { color: var(--ad-brand-dark); }
 
 /* ---------- Content ---------- */
-/* Opacity only: a transform here would become the containing block for the fixed drawers and bulk bar inside. */
-body.ad-theme .content { padding: 1.6rem clamp(1rem, 3vw, 2rem) 3rem; animation: ad-fade .4s ease both; }
+/* Opacity only, and "backwards" so nothing is held once it ends: a transform would become the containing block for
+   the fixed drawers and bulk bar inside, and a held opacity would make .content a stacking context that traps them
+   (and the modals) under the sticky topbar. */
+body.ad-theme .content { padding: 1.6rem clamp(1rem, 3vw, 2rem) 3rem; animation: ad-fade .4s ease backwards; }
 body.ad-theme .page-intro { margin-bottom: 1.1rem; color: var(--ad-muted); font-size: .9rem; }
 body.ad-theme .alert { display: flex; align-items: center; gap: .55rem; padding: .8rem 1rem; border-radius: 12px; font-size: .88rem; font-weight: 500; animation: ad-rise .35s var(--ad-ease) both; }
 body.ad-theme .alert::before { flex-shrink: 0; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-size: .72rem; font-weight: 800; color: #fff; }
@@ -304,6 +307,11 @@ body.ad-theme #confirmCancel { border: 1px solid var(--ad-field) !important; col
     body.ad-theme .nav-item:hover { transform: none; }
     body.ad-theme .nav-item.active::before { left: -.5rem; }
     body.ad-theme .hamburger { display: none; }
+    /* Icon-only links keep their label for screen readers (the title attribute gives sighted users a tooltip), and the
+       log out button stays reachable under the avatar. */
+    body.ad-theme .sidebar .nav-label { display: block; position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    body.ad-theme .sidebar .admin-info { flex-direction: column; gap: .45rem; }
+    body.ad-theme .sidebar .btn-logout { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; }
     body.ad-theme .main, body.ad-theme .main.mini { min-width: 0; max-width: calc(100vw - var(--sidebar-mini)); margin-left: var(--sidebar-mini); }
     body.ad-theme .topbar { height: 64px; padding: 0 .75rem; gap: .5rem; }
     body.ad-theme .topbar-title { flex-shrink: 1; font-size: 1rem; }

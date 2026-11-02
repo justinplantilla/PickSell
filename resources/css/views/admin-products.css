@@ -43,7 +43,7 @@ span.product-star { cursor: default; }
 .product-fields dd { margin: 0; overflow-wrap: anywhere; }
 .product-fields dd.is-text { white-space: pre-line; }
 
-.product-actions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.8rem; margin-top: 0.8rem; }
+.product-actions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 0.8rem; margin-top: 0.8rem; }
 .product-action-form { display: grid; gap: 0.45rem; border: 1px solid #ece6db; border-radius: 10px; padding: 0.8rem 0.9rem; align-content: start; }
 .product-action-form h3 { margin: 0; font-size: 0.86rem; }
 .product-action-form .btn { justify-self: start; }

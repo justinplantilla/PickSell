@@ -9,3 +9,4 @@ function filterUsers(val) {
     });
 }
 window.filterUsers = filterUsers;
+document.querySelector('[data-filter-users]')?.addEventListener('input', event => filterUsers(event.target.value));

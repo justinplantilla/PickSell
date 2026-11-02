@@ -5,7 +5,7 @@
 @section('title', 'Order #' . $order->order_number)
 
 @section('content')
-<div class="blade-inline-1">
+<div class="order-detail-spaced">
     <a href="/seller/orders" class="btn btn-outline btn-sm">← Back to Orders</a>
 </div>
 
@@ -14,17 +14,17 @@
         <div class="card">
             <div class="card-header">
                 <span class="card-title">Order Details</span>
-                <span class="badge badge-{{ $order->status }}">{{ $order->status }}</span>
+                <x-order-status-badge :status="$order->status" />
             </div>
             <div class="card-body">
                 <table>
-                    <tr><td class="blade-inline-2">Order #</td><td><strong>{{ $order->order_number }}</strong></td></tr>
-                    <tr><td class="blade-inline-3">Product</td><td>{{ $order->product_name }}</td></tr>
-                    <tr><td class="blade-inline-4">Quantity</td><td>{{ $order->quantity }}</td></tr>
-                    <tr><td class="blade-inline-5">Amount</td><td><strong>₱{{ number_format($order->amount, 2) }}</strong></td></tr>
-                    <tr><td class="blade-inline-6">Commission ({{ number_format($commissionRate, 2) }}%)</td><td>-₱{{ number_format($commission, 2) }}</td></tr>
-                    <tr><td class="blade-inline-7">Net Earnings</td><td><strong class="blade-inline-8">₱{{ number_format($netEarnings, 2) }}</strong></td></tr>
-                    <tr><td class="blade-inline-9">Order Date</td><td>{{ $order->created_at->format('M d, Y h:i A') }}</td></tr>
+                    <tr><td class="order-detail-muted-label">Order #</td><td><strong>{{ $order->order_number }}</strong></td></tr>
+                    <tr><td class="order-detail-muted">Product</td><td>{{ $order->product_name }}</td></tr>
+                    <tr><td class="order-detail-muted">Quantity</td><td>{{ $order->quantity }}</td></tr>
+                    <tr><td class="order-detail-muted">Amount</td><td><strong>₱{{ number_format($order->amount, 2) }}</strong></td></tr>
+                    <tr><td class="order-detail-muted">Commission ({{ number_format($commissionRate, 2) }}%)</td><td>-₱{{ number_format($commission, 2) }}</td></tr>
+                    <tr><td class="order-detail-muted">Net Earnings</td><td><strong class="order-detail-positive">₱{{ number_format($netEarnings, 2) }}</strong></td></tr>
+                    <tr><td class="order-detail-muted">Order Date</td><td>{{ $order->created_at->format('M d, Y h:i A') }}</td></tr>
                 </table>
             </div>
         </div>
@@ -34,13 +34,13 @@
             <div class="card-body">
                 @if($order->buyer)
                 <table>
-                    <tr><td class="blade-inline-10">Name</td><td>{{ $order->buyer->full_name }}</td></tr>
-                    <tr><td class="blade-inline-11">Email</td><td>{{ $order->buyer->email }}</td></tr>
-                    <tr><td class="blade-inline-12">Contact</td><td>{{ $order->buyer->contact_no }}</td></tr>
-                    <tr><td class="blade-inline-13">Address</td><td>{{ implode(', ', array_filter([$order->buyer->house_no, $order->buyer->street, $order->buyer->barangay, $order->buyer->municipality, $order->buyer->province])) }}</td></tr>
+                    <tr><td class="order-detail-muted-label">Name</td><td>{{ $order->buyer->full_name }}</td></tr>
+                    <tr><td class="order-detail-muted">Email</td><td>{{ $order->buyer->email }}</td></tr>
+                    <tr><td class="order-detail-muted">Contact</td><td>{{ $order->buyer->contact_no }}</td></tr>
+                    <tr><td class="order-detail-muted">Address</td><td>{{ implode(', ', array_filter([$order->buyer->house_no, $order->buyer->street, $order->buyer->barangay, $order->buyer->municipality, $order->buyer->province])) }}</td></tr>
                 </table>
                 @else
-                <p class="blade-inline-14">Buyer info unavailable.</p>
+                <p class="order-detail-muted-2">Buyer info unavailable.</p>
                 @endif
             </div>
         </div>
@@ -51,19 +51,19 @@
             <div class="card-header"><span class="card-title">Shipment & Tracking</span></div>
             <div class="card-body">
                 <table>
-                    <tr><td class="blade-inline-15">Waybill #</td><td>{{ $order->waybill_number ?? '—' }}</td></tr>
-                    <tr><td class="blade-inline-16">Tracking Status</td><td>{{ $order->tracking_status ?? '—' }}</td></tr>
-                    <tr><td class="blade-inline-17">Packed At</td><td>{{ $order->packed_at ? $order->packed_at->format('M d, Y h:i A') : '—' }}</td></tr>
-                    <tr><td class="blade-inline-18">Handed Over</td><td>{{ $order->handed_over_at ? $order->handed_over_at->format('M d, Y h:i A') : '—' }}</td></tr>
-                    <tr><td class="blade-inline-19">Delivered At</td><td>{{ $order->delivered_at ? $order->delivered_at->format('M d, Y h:i A') : '—' }}</td></tr>
+                    <tr><td class="order-detail-muted-label">Waybill #</td><td>{{ $order->waybill_number ?? '—' }}</td></tr>
+                    <tr><td class="order-detail-muted">Tracking Status</td><td>{{ $order->tracking_status ?? '—' }}</td></tr>
+                    <tr><td class="order-detail-muted">Packed At</td><td>{{ $order->packed_at ? $order->packed_at->format('M d, Y h:i A') : '—' }}</td></tr>
+                    <tr><td class="order-detail-muted">Handed Over</td><td>{{ $order->handed_over_at ? $order->handed_over_at->format('M d, Y h:i A') : '—' }}</td></tr>
+                    <tr><td class="order-detail-muted">Delivered At</td><td>{{ $order->delivered_at ? $order->delivered_at->format('M d, Y h:i A') : '—' }}</td></tr>
                 </table>
                 @include('partials.pickrush-tracking', ['tracking' => \App\Pickrush\Bridge\PicksellBridge::tracking($order)])
 
-                <div class="blade-inline-20">
+                <div class="order-detail-spaced-2">
                     @if(in_array($order->status, ['placed', 'confirmed', 'preparing'], true))
-                    <form method="POST" action="{{ route('seller.orders.cancel', $order) }}" class="blade-inline-21" onsubmit="return confirm('Cancel this order before pickup?')">
+                    <form method="POST" action="{{ route('seller.orders.cancel', $order) }}" class="order-detail-row">
                         @csrf @method('PATCH')
-                        <button type="submit" class="btn btn-outline">Cancel Order</button>
+                        <button type="submit" class="btn btn-outline" data-confirm="Cancel this order before pickup?">Cancel Order</button>
                     </form>
                     @endif
                     @if(in_array($order->status, ['placed', 'confirmed', 'pending'], true))
@@ -72,7 +72,7 @@
                         <button type="submit" class="btn btn-coral">Mark as Prepared</button>
                     </form>
                     @elseif(in_array($order->status, ['preparing', 'processing'], true) && ! $order->waybill_number)
-                    <form method="POST" action="{{ route('seller.orders.waybill.generate', $order) }}" class="blade-inline-21">
+                    <form method="POST" action="{{ route('seller.orders.waybill.generate', $order) }}" class="order-detail-row">
                         @csrf
                         <div class="waybill-generation-note">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
@@ -81,26 +81,26 @@
                         <button type="submit" class="btn btn-coral">Generate Waybill</button>
                     </form>
                     @elseif(in_array($order->status, ['preparing', 'processing'], true))
-                    <form method="POST" action="{{ route('seller.orders.handover', $order) }}" class="blade-inline-21" onsubmit="return confirm('Is the parcel packed with the waybill attached? Pickrush will send a rider to pick it up.')">
+                    <form method="POST" action="{{ route('seller.orders.handover', $order) }}" class="order-detail-row">
                         @csrf @method('PATCH')
                         <div class="waybill-generation-note">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
                             <span>Waybill <strong>{{ $order->waybill_number }}</strong> is ready. Print it, attach it to the packed parcel, then hand over to request a Pickrush pickup.</span>
                         </div>
                         <a href="{{ route('seller.orders.waybill', $order) }}" target="_blank" class="btn btn-outline">Print Waybill</a>
-                        <button type="submit" class="btn btn-success">Hand Over to Pickrush</button>
+                        <button type="submit" class="btn btn-success" data-confirm="Is the parcel packed with the waybill attached? Pickrush will send a rider to pick it up.">Hand Over to Pickrush</button>
                     </form>
                     @elseif(in_array($order->status, ['shipped', 'ready_for_pickup'], true))
-                    <div class="alert alert-info blade-inline-23">Handed over: <strong>{{ $order->waybill_number }}</strong>. Waiting for Pickrush to pick it up.</div>
+                    <div class="alert alert-info order-detail-flush">Handed over: <strong>{{ $order->waybill_number }}</strong>. Waiting for Pickrush to pick it up.</div>
                     @elseif($order->status === 'delivered')
-                    <div class="alert alert-success blade-inline-24">Order delivered. Please confirm buyer receipt.</div>
+                    <div class="alert alert-success order-detail-flush">Pickrush delivered this order. Confirm the delivery to complete the order and release your earnings.</div>
                     @if(!$order->confirmed_by_seller_at)
-                    <form method="POST" action="/seller/orders/{{ $order->id }}/confirm-delivery" class="blade-inline-21">
+                    <form method="POST" action="/seller/orders/{{ $order->id }}/confirm-delivery" class="order-detail-row">
                         @csrf @method('PATCH')
                         <button type="submit" class="btn btn-success">Confirm Delivery</button>
                     </form>
                     @else
-                    <div class="alert alert-info blade-inline-23">Delivery confirmed by seller on {{ $order->confirmed_by_seller_at->format('M d, Y h:i A') }}.</div>
+                    <div class="alert alert-info order-detail-flush">Delivery confirmed by seller on {{ $order->confirmed_by_seller_at->format('M d, Y h:i A') }}.</div>
                     @endif
                     @endif
                 </div>
@@ -121,10 +121,10 @@
             <div class="card-header"><span class="card-title">Customer Feedback</span></div>
             <div class="card-body">
                 @if($order->rating)
-                <div class="blade-inline-25">Customer rating: {{ $order->rating }}/5</div>
+                <div class="order-detail-muted-text">Customer rating: {{ $order->rating }}/5</div>
                 @endif
                 @if($order->feedback)
-                <p class="blade-inline-26">{{ $order->feedback }}</p>
+                <p class="order-detail-muted-text-2">{{ $order->feedback }}</p>
                 @endif
             </div>
         </div>

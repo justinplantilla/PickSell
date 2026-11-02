@@ -37,6 +37,8 @@ class AuthController extends Controller
         $staff = Actor::staff();
         $staff->forceFill(['last_login_at' => now()])->save();
         AuditLog::record($staff, 'signed_in');
+        // The portal layout plays the welcome splash on the first page it renders, then clears this.
+        $request->session()->put('pickrush_welcome', true);
 
         return redirect()->intended(route('pickrush.dashboard'));
     }

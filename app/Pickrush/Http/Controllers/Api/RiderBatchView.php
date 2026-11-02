@@ -190,8 +190,8 @@ final class RiderBatchView
             'name' => $toSeller ? $p->shipper_name : $p->consignee_name,
             'mobile' => $toSeller ? $p->shipper_mobile : $p->consignee_mobile,
             'address' => $toSeller ? $p->pickup_address : $p->delivery_address,
-            'lat' => $toSeller && $p->pickup_lat !== null ? (float) $p->pickup_lat : null,
-            'lng' => $toSeller && $p->pickup_lng !== null ? (float) $p->pickup_lng : null,
+            'lat' => ($pin = $toSeller ? $p->pickup_lat : $p->delivery_lat) !== null ? (float) $pin : null,
+            'lng' => ($pin = $toSeller ? $p->pickup_lng : $p->delivery_lng) !== null ? (float) $pin : null,
         ];
     }
 
