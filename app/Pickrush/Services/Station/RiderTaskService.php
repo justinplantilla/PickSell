@@ -7,6 +7,7 @@ use App\Pickrush\Models\Assignment;
 use App\Pickrush\Models\ParcelEvent;
 use App\Pickrush\Services\OperationRefused;
 use App\Pickrush\Services\ParcelLedger;
+use App\Pickrush\Services\Rider\RiderEarnings;
 use App\Pickrush\Support\Actor;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,7 @@ use Illuminate\Support\Facades\DB;
  */
 class RiderTaskService
 {
-    public function __construct(private ParcelLedger $ledger, private RiderAvailability $availability) {}
+    public function __construct(private ParcelLedger $ledger, private RiderAvailability $availability, private RiderEarnings $earnings) {}
 
     /** Seller hand-over to the rider (first mile). The parcel reaches the hub with the next station scan. */
     public function pickUp(Assignment $task, array $scan = []): void
@@ -30,6 +31,7 @@ class RiderTaskService
         DB::transaction(function () use ($task, $scan) {
             $this->ledger->record($task->parcel, ParcelStatus::PickedUp, $task->rider->station, $this->options($task, $scan));
             $task->update(['status' => 'completed', 'completed_at' => $scan['occurred_at'] ?? now()]);
+            $this->earnings->credit($task, $task->completed_at);
         });
     }
 
@@ -76,10 +78,11 @@ class RiderTaskService
                 'cod_collected' => $cod,
                 'completed_at' => $scan['occurred_at'] ?? now(),
             ]);
+            $this->earnings->credit($task, $task->completed_at);
         });
     }
 
-    /** A failed attempt: a reason from the closed list, a note for "other", and a photo. */
+    /** A failed attempt: a reason from the closed list, a note for "other", and a photo. Earns the rider nothing. */
     public function fail(Assignment $task, string $reason, ?string $note, string $photoPath, array $scan = []): void
     {
         if ($this->replayed($scan)) {

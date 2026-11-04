@@ -30,8 +30,9 @@ class ParcelRegistrar
             $origin = $this->router->stationFor($data['pickup_municipality_code'] ?? null);
             $dest = $this->router->stationFor($data['delivery_municipality_code'] ?? null);
 
+            // The fee comes with the booking (priced by PickSell at checkout); orders from before had none.
             $parcel = Parcel::create($data + [
-                'shipping_fee' => RateCard::quote($origin, $dest, $data['weight_kg'] ?? null, (float) ($data['cod_amount'] ?? 0)),
+                'shipping_fee' => 0,
                 'tracking_no' => $this->trackingNumbers->generate(),
                 'origin_hub_id' => $origin?->id,
                 'dest_hub_id' => $dest?->id,

@@ -5,9 +5,14 @@ namespace App\Services;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Order;
+use App\Models\OrderShipment;
 use App\Models\Product;
 use App\Models\User;
 use App\Notifications\NewSellerOrder;
+use App\Pickrush\Bridge\PicksellBridge;
+use App\Pickrush\Services\Shipping\QuoteFailure;
+use App\Pickrush\Services\Shipping\ShippingQuote;
+use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -18,10 +23,47 @@ use Illuminate\Validation\ValidationException;
  * (BuyerController::placeOrder): one order per cart line, price = product price minus its
  * discount and, if the code matches, the product's own voucher; Cash on Delivery to the buyer's
  * profile address. Keep the two in step.
+ *
+ * Each seller's lines ship together as one order shipment (one Pickrush parcel). Its delivery
+ * fee is priced here by Pickrush, never taken from the browser or app, and saved with its
+ * split so later rate or commission changes leave the order as it was.
  */
 class OrderPlacement
 {
-    public function __construct(private CommissionService $commission) {}
+    public function __construct(
+        private CommissionService $commission,
+        private PicksellBridge $pickrush,
+        private DeliveryFeeSplit $deliverySplit,
+        private AdminNotificationService $admins,
+    ) {}
+
+    /**
+     * Delivery fee per seller for these cart lines, priced as the order will be.
+     *
+     * @param  Collection<int, CartItem>  $items  lines with product.seller loaded
+     * @return Collection<int, ShippingQuote>  keyed by seller id
+     */
+    public function shippingQuotes(User $buyer, Collection $items): Collection
+    {
+        return $items->groupBy(fn (CartItem $item) => $item->product->seller_id)
+            ->map(fn (Collection $lines) => $this->pickrush->quote($buyer, $lines->first()->product->seller,
+                $lines->map(fn (CartItem $item) => ['product' => $item->product, 'quantity' => (int) $item->quantity])));
+    }
+
+    /** What the buyer is told when a seller's items cannot be priced. */
+    public static function shippingProblem(ShippingQuote $quote, Collection $lines): string
+    {
+        $seller = $lines->first()?->product?->seller;
+        $shop = $seller?->business_name ?: $seller?->full_name ?: 'this seller';
+
+        return match ($quote->failure) {
+            QuoteFailure::InvalidWeight => 'Can’t be shipped yet (the seller has not set its weight): '
+                .$lines->reject(fn ($item) => $item->product?->hasShippingWeight())->map(fn ($item) => $item->product?->name)->filter()->unique()->join(', ')
+                .'. Remove it from your cart or ask the seller.',
+            QuoteFailure::RequiresQuote => "Items from {$shop}: ".$quote->failure->message(),
+            default => $quote->failure->message(),
+        };
+    }
 
     /** The buyer's own cart lines among [$ids]. */
     public function items(User $buyer, array $ids): Collection
@@ -54,7 +96,14 @@ class OrderPlacement
             throw ValidationException::withMessages(['item_ids' => 'No items selected.']);
         }
 
-        $placed = DB::transaction(function () use ($buyer, $items, $voucherCode) {
+        // Checked again under lock below; here so pricing never runs on a removed product.
+        $unavailable = $items->reject(fn ($item) => $item->product?->isPurchasable());
+        if ($unavailable->isNotEmpty()) {
+            throw ValidationException::withMessages(['item_ids' => self::unavailableMessage($unavailable)]);
+        }
+        $shipping = $this->priceShipping($buyer, $items);
+
+        $placed = DB::transaction(function () use ($buyer, $items, $voucherCode, $shipping) {
             // Lock the products so moderation, other buyers and stock changes cannot interleave.
             $products = Product::whereIn('id', $items->pluck('product_id'))->with('seller')->lockForUpdate()->get()->keyBy('id');
             $unavailable = $items->filter(fn ($item) => ! $products->get($item->product_id)?->isPurchasable());
@@ -68,7 +117,25 @@ class OrderPlacement
                 throw ValidationException::withMessages(['item_ids' => 'Not enough stock for: '.$shortStock->keys()->map(fn ($productId) => $products[$productId]->name)->join(', ').'.']);
             }
 
-            return $items->map(function (CartItem $item) use ($buyer, $products, $voucherCode) {
+            $shipments = $shipping->map(fn (array $priced, $sellerId) => OrderShipment::create([
+                'reference' => 'SHP-'.strtoupper(Str::random(10)),
+                'buyer_id' => $buyer->id,
+                'seller_id' => $sellerId,
+                'origin_province' => $priced['seller']?->province,
+                'origin_region' => $priced['quote']->originRegion,
+                'destination_region' => $priced['quote']->destinationRegion,
+                'price_source' => $priced['quote']->priceSource,
+                'parcel_class' => $priced['quote']->parcelClass,
+                'chargeable_weight_kg' => $priced['quote']->chargeableWeightKg,
+                'delivery_fee' => $priced['split']['delivery_fee'],
+                'rider_pay' => $priced['split']['rider_pay'],
+                'platform_commission' => $priced['split']['platform_commission'],
+                'logistics_share' => $priced['split']['logistics_share'],
+                'delivery_commission_rate' => $priced['split']['rate'],
+                'rates_version' => $priced['quote']->ratesVersion,
+            ]));
+
+            return $items->map(function (CartItem $item) use ($buyer, $products, $voucherCode, $shipments) {
                 $product = $products[$item->product_id];
                 $amount = self::unitPrice($product, $voucherCode) * $item->quantity;
                 $commission = $this->commission->calculate((string) round($amount, 2));
@@ -78,6 +145,7 @@ class OrderPlacement
                     'product_id' => $product->id,
                     'buyer_id' => $buyer->id,
                     'seller_id' => $product->seller_id,
+                    'order_shipment_id' => $shipments[$product->seller_id]->id,
                     'product_name' => $product->name,
                     'quantity' => $item->quantity,
                     'amount' => $amount,
@@ -99,6 +167,34 @@ class OrderPlacement
         }
 
         return $placed;
+    }
+
+    /**
+     * Price every seller's parcel and split its fee, or refuse the whole checkout.
+     *
+     * @return Collection<int, array{quote: ShippingQuote, split: array, seller: ?User}>  keyed by seller id
+     */
+    private function priceShipping(User $buyer, Collection $items): Collection
+    {
+        $groups = $items->groupBy(fn (CartItem $item) => $item->product->seller_id);
+
+        return $this->shippingQuotes($buyer, $items)->map(function (ShippingQuote $quote, $sellerId) use ($groups) {
+            $lines = $groups[$sellerId];
+            if (! $quote->ok()) {
+                throw ValidationException::withMessages(['item_ids' => self::shippingProblem($quote, $lines)]);
+            }
+            try {
+                $split = $this->deliverySplit->split($quote->deliveryFee, $quote->riderPay);
+            } catch (DomainException $e) {
+                // A rate or parcel class is set up wrong (the fee does not cover the rider): fix the setup, never ship at a loss.
+                $this->admins->notifyAdmins('shipping.split_refused', 'Order refused: delivery fee too low',
+                    "{$e->getMessage()} ({$quote->destinationRegion}, {$quote->parcelClass}, {$quote->ratesVersion}). Check the Pickrush rates and parcel classes.",
+                    route('admin.orders', [], false), priority: 'critical');
+                throw ValidationException::withMessages(['item_ids' => 'We could not calculate shipping for these items. Our team has been alerted; please try again later.']);
+            }
+
+            return ['quote' => $quote, 'split' => $split, 'seller' => $lines->first()->product->seller];
+        });
     }
 
     public static function unavailableMessage(Collection $items): string

@@ -52,7 +52,7 @@ class ProductModerationTest extends TestCase
     {
         return Product::create(array_merge([
             'seller_id' => $this->seller->id, 'name' => 'Canvas Tote', 'category' => 'Fashion',
-            'price' => 500, 'stock' => 10, 'status' => 'active',
+            'price' => 500, 'stock' => 10, 'status' => 'active', 'weight_kg' => 0.5,
         ], $overrides));
     }
 

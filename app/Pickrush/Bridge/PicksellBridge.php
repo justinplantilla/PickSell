@@ -3,19 +3,31 @@
 namespace App\Pickrush\Bridge;
 
 use App\Models\Order;
+use App\Models\OrderShipment;
 use App\Models\User;
 use App\Pickrush\Enums\ParcelStatus;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Services\ParcelLedger;
 use App\Pickrush\Services\ParcelRegistrar;
+use App\Pickrush\Services\Shipping\QuoteFailure;
+use App\Pickrush\Services\Shipping\RegionResolver;
+use App\Pickrush\Services\Shipping\ShippingCalculator;
+use App\Pickrush\Services\Shipping\ShippingQuote;
 use App\Pickrush\Support\Actor;
+use App\Services\CommissionService;
 use App\Services\Geo\AddressResolver;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
+use Throwable;
 
 /**
  * The single seam between the Picksell marketplace and Pickrush, shaped like a carrier API:
  * the marketplace books a parcel for an order and reads its tracking; Pickrush pushes status
  * back through SyncOrderWithParcel. Nothing else in the marketplace touches pr_* tables.
+ *
+ * A parcel's external_ref is its order shipment's reference (SHP-...), shared by one seller's
+ * orders from one checkout; orders placed before shipments existed use their own id.
+ * The contract is written up in docs/shipping-contract.md.
  */
 class PicksellBridge
 {
@@ -25,7 +37,29 @@ class PicksellBridge
         private ParcelRegistrar $registrar,
         private ParcelLedger $ledger,
         private AddressResolver $addresses,
+        private ShippingCalculator $shipping,
     ) {}
+
+    /**
+     * The delivery fee for one seller's items to the buyer's address, priced by Pickrush.
+     *
+     * @param  iterable<array{product: \App\Models\Product, quantity: int}>  $lines
+     */
+    public function quote(?User $buyer, ?User $seller, iterable $lines): ShippingQuote
+    {
+        $items = collect($lines)->map(fn (array $line) => [
+            'weight_kg' => $line['product']->weight_kg,
+            'quantity' => (int) $line['quantity'],
+        ])->values()->all();
+
+        try {
+            return $this->shipping->quote($items, $buyer?->province, $seller?->province, buyerCity: $buyer?->municipality);
+        } catch (Throwable $e) {
+            report($e);
+
+            return ShippingQuote::failed(QuoteFailure::Unavailable);
+        }
+    }
 
     /**
      * Generate the waybill: books the parcel as "label created", so the seller can print it and
@@ -41,10 +75,12 @@ class PicksellBridge
         $buyer = $order->buyer;
         $pickup = $this->codes($seller);
         $delivery = $this->codes($buyer);
+        $shipment = $order->shipment;
+        $orders = $shipment ? $shipment->activeOrders()->orderBy('id')->get() : collect([$order]);
 
         return $this->registrar->register([
             'source' => self::SOURCE,
-            'external_ref' => (string) $order->id,
+            'external_ref' => self::ref($order),
             'shipper_name' => $seller?->business_name ?: $seller?->full_name ?: 'Picksell seller',
             'shipper_mobile' => $seller?->contact_no,
             'pickup_address' => self::address($seller),
@@ -59,9 +95,20 @@ class PicksellBridge
             'delivery_municipality_code' => $delivery['municipality_code'],
             'delivery_lat' => $buyer?->delivery_lat,
             'delivery_lng' => $buyer?->delivery_lng,
-            'item_description' => "{$order->product_name} × {$order->quantity}",
-            'cod_amount' => $order->amount,
-        ], Actor::picksell(), ParcelStatus::LabelCreated);
+            'item_description' => self::contents($orders),
+            'cod_amount' => self::codAmount($orders, $shipment),
+        ] + ($shipment ? [
+            // The fee and its split as quoted at checkout; Pickrush's own rate card is not used.
+            'shipping_fee' => $shipment->delivery_fee,
+            'weight_kg' => $shipment->chargeable_weight_kg,
+            'parcel_class' => $shipment->parcel_class,
+            'destination_region' => $shipment->destination_region,
+            'origin_region' => $shipment->origin_region,
+            'price_source' => $shipment->price_source,
+            'rider_pay' => $shipment->rider_pay,
+            'platform_commission' => $shipment->platform_commission,
+            'logistics_share' => $shipment->logistics_share,
+        ] : []), Actor::picksell(), ParcelStatus::LabelCreated);
     }
 
     /** The seller handed the packed parcel over: it joins the station's pickup queue. Idempotent. */
@@ -84,13 +131,29 @@ class PicksellBridge
     public function cancel(Order $order, string $reason): void
     {
         $parcel = self::parcelFor($order);
-        if (! $parcel || $parcel->current_status === ParcelStatus::Cancelled) {
-            return;
+        $parcelOpen = $parcel && $parcel->current_status !== ParcelStatus::Cancelled;
+        if ($parcelOpen) {
+            abort_unless(in_array($parcel->current_status, [ParcelStatus::LabelCreated, ParcelStatus::WaitingPickup], true), 409,
+                "Pickrush already has parcel {$parcel->tracking_no} ({$parcel->current_status->label()}); it cannot be cancelled, only returned.");
         }
-        abort_unless(in_array($parcel->current_status, [ParcelStatus::LabelCreated, ParcelStatus::WaitingPickup], true), 409,
-            "Pickrush already has parcel {$parcel->tracking_no} ({$parcel->current_status->label()}); it cannot be cancelled, only returned.");
 
-        $this->ledger->record($parcel, ParcelStatus::Cancelled, null, ['note' => $reason, 'actor' => Actor::picksell()]);
+        // One item out of a shared parcel: the parcel still goes, carrying (and collecting for) the rest.
+        $shipment = $order->shipment;
+        if ($shipment) {
+            $remaining = $shipment->activeOrders()->whereKeyNot($order->id)->orderBy('id')->get();
+            if ($remaining->isNotEmpty()) {
+                if ($parcelOpen) {
+                    $parcel->update(['cod_amount' => self::codAmount($remaining, $shipment), 'item_description' => self::contents($remaining)]);
+                }
+
+                return;
+            }
+            $shipment->update(['status' => 'cancelled']);
+        }
+
+        if ($parcelOpen) {
+            $this->ledger->record($parcel, ParcelStatus::Cancelled, null, ['note' => $reason, 'actor' => Actor::picksell()]);
+        }
     }
 
     /**
@@ -99,9 +162,9 @@ class PicksellBridge
      */
     public static function sellerPinned(User $seller): int
     {
-        $orderIds = Order::where('seller_id', $seller->id)->pluck('id')->map(fn ($id) => (string) $id);
+        $refs = self::refsWhere('seller_id', $seller->id);
 
-        return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->whereIn('external_ref', $orderIds)
+        return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->whereIn('external_ref', $refs)
             ->whereIn('current_status', [ParcelStatus::LabelCreated, ParcelStatus::WaitingPickup])
             ->update(['pickup_lat' => $seller->pickup_lat, 'pickup_lng' => $seller->pickup_lng]);
     }
@@ -109,9 +172,9 @@ class PicksellBridge
     /** The buyer moved their delivery pin: parcels not yet delivered follow it, so the rider navigates to the new spot. */
     public static function buyerPinned(User $buyer): int
     {
-        $orderIds = Order::where('buyer_id', $buyer->id)->pluck('id')->map(fn ($id) => (string) $id);
+        $refs = self::refsWhere('buyer_id', $buyer->id);
 
-        return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->whereIn('external_ref', $orderIds)
+        return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->whereIn('external_ref', $refs)
             ->where('is_return', false)
             ->whereNotIn('current_status', [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled])
             ->update(['delivery_lat' => $buyer->delivery_lat, 'delivery_lng' => $buyer->delivery_lng]);
@@ -126,25 +189,80 @@ class PicksellBridge
     public static function orderNumbers(iterable $parcels): array
     {
         $parcels = collect($parcels)->where('source', self::SOURCE);
-        $numbers = Order::whereIn('id', $parcels->pluck('external_ref')->map(fn ($ref) => (int) $ref))->pluck('order_number', 'id');
+        $refs = $parcels->pluck('external_ref');
+        $byShipment = Order::query()->join('order_shipments', 'order_shipments.id', '=', 'orders.order_shipment_id')
+            ->whereIn('order_shipments.reference', $refs->filter(fn ($ref) => self::isShipmentRef($ref))->values())
+            ->orderBy('orders.id')->get(['orders.order_number', 'order_shipments.reference'])
+            ->groupBy('reference')->map(fn ($rows) => $rows->pluck('order_number')->join(', '));
+        $byOrder = Order::whereIn('id', $refs->reject(fn ($ref) => self::isShipmentRef($ref))->map(fn ($ref) => (int) $ref)->values())
+            ->pluck('order_number', 'id');
 
-        return $parcels->mapWithKeys(fn (Parcel $parcel) => [$parcel->id => $numbers[(int) $parcel->external_ref] ?? null])
+        return $parcels->mapWithKeys(fn (Parcel $parcel) => [$parcel->id => self::isShipmentRef($parcel->external_ref)
+            ? ($byShipment[$parcel->external_ref] ?? null)
+            : ($byOrder[(int) $parcel->external_ref] ?? null)])
             ->filter()->all();
     }
 
     public static function parcelFor(Order $order): ?Parcel
     {
-        return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->where('external_ref', (string) $order->id)->first();
+        return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->where('external_ref', self::ref($order))->first();
     }
 
     public static function hasParcel(Order $order): bool
     {
-        return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->where('external_ref', (string) $order->id)->exists();
+        return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->where('external_ref', self::ref($order))->exists();
     }
 
     public static function orderFor(Parcel $parcel): ?Order
     {
-        return $parcel->source === self::SOURCE ? Order::find((int) $parcel->external_ref) : null;
+        return self::ordersFor($parcel)->first();
+    }
+
+    /** @return Collection<int, Order> every order travelling in the parcel, cancelled ones included */
+    public static function ordersFor(Parcel $parcel): Collection
+    {
+        if ($parcel->source !== self::SOURCE) {
+            return collect();
+        }
+        if (self::isShipmentRef($parcel->external_ref)) {
+            return Order::whereIn('order_shipment_id', OrderShipment::where('reference', $parcel->external_ref)->select('id'))->orderBy('id')->get();
+        }
+
+        return Order::whereKey((int) $parcel->external_ref)->get();
+    }
+
+    /**
+     * Approved sellers whose province matches no shipping region: their parcels are priced
+     * with the generic (Metro Manila-origin) rates until they fix their address.
+     *
+     * @return Collection<int, User>
+     */
+    public static function sellersWithoutShippingRegion(): Collection
+    {
+        $regions = app(RegionResolver::class);
+
+        return User::where('role', 'seller')->where('status', 'approved')->orderBy('id')
+            ->get(['id', 'first_name', 'last_name', 'business_name', 'province', 'municipality'])
+            ->reject(fn (User $seller) => $regions->resolve($seller->province))->values();
+    }
+
+    /** Whether a seller's province matches a shipping region (route prices apply). */
+    public static function hasShippingRegion(?User $seller): bool
+    {
+        return app(RegionResolver::class)->resolve($seller?->province) !== null;
+    }
+
+    public static function shipmentFor(Parcel $parcel): ?OrderShipment
+    {
+        return $parcel->source === self::SOURCE && self::isShipmentRef($parcel->external_ref)
+            ? OrderShipment::where('reference', $parcel->external_ref)->first()
+            : null;
+    }
+
+    /** The parcel's external_ref for an order: its shipment's reference, or (older orders) its id. */
+    public static function ref(Order $order): string
+    {
+        return $order->order_shipment_id ? $order->shipment->reference : (string) $order->id;
     }
 
     /**
@@ -171,10 +289,40 @@ class PicksellBridge
     /** @return Collection<int, Parcel> parcels keyed by order id, for list pages */
     public static function parcelsFor(iterable $orders): Collection
     {
-        $ids = collect($orders)->map(fn (Order $order) => (string) $order->id)->all();
+        $orders = EloquentCollection::make($orders);
+        $orders->loadMissing('shipment');
+        $refs = $orders->mapWithKeys(fn (Order $order) => [$order->id => self::ref($order)]);
+        $parcels = Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->whereIn('external_ref', $refs->unique()->values())
+            ->get()->keyBy('external_ref');
 
-        return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->whereIn('external_ref', $ids)
-            ->get()->keyBy(fn (Parcel $parcel) => (int) $parcel->external_ref);
+        return $refs->map(fn (string $ref) => $parcels->get($ref))->filter();
+    }
+
+    /** External refs of every marketplace parcel for a buyer's or seller's orders. */
+    private static function refsWhere(string $column, int $userId): Collection
+    {
+        return Order::where($column, $userId)->whereNull('order_shipment_id')->pluck('id')->map(fn ($id) => (string) $id)
+            ->merge(OrderShipment::where($column, $userId)->pluck('reference'));
+    }
+
+    private static function isShipmentRef(?string $ref): bool
+    {
+        return str_starts_with((string) $ref, 'SHP-');
+    }
+
+    /** What is in the parcel, for the label and the rider. */
+    private static function contents(Collection $orders): string
+    {
+        return $orders->map(fn (Order $order) => "{$order->product_name} × {$order->quantity}")->join('; ');
+    }
+
+    /** Cash to collect: the items still in the parcel plus the delivery fee (orders before shipments had none). */
+    private static function codAmount(Collection $orders, ?OrderShipment $shipment): string
+    {
+        $money = app(CommissionService::class);
+        $cents = $orders->sum(fn (Order $order) => $money->toCents((string) $order->amount));
+
+        return $money->fromCents($cents + ($shipment ? $money->toCents((string) $shipment->delivery_fee) : 0));
     }
 
     /** Codes saved on the account, or resolved now for accounts created before codes were stored. */

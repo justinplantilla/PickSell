@@ -12,6 +12,7 @@ use App\Models\ProductReview;
 use App\Models\User;
 use App\Models\WishlistItem;
 use App\Pickrush\Bridge\PicksellBridge;
+use App\Services\CartQuote;
 use App\Services\OrderPlacement;
 use App\Services\RecentlyViewed;
 use App\Services\LogisticsRoutingService;
@@ -294,7 +295,7 @@ class BuyerController extends Controller
         return view('buyer.cart', compact('items', 'cartCount', 'recommendations', 'recommendedProducts'));
     }
 
-    public function checkout(Request $request)
+    public function checkout(Request $request, OrderPlacement $placement)
     {
         $itemIds = $request->input('item_ids', []);
         if (empty($itemIds)) {
@@ -318,7 +319,15 @@ class BuyerController extends Controller
 
         $total = $items->sum(fn ($i) => $i->product->effective_price * $i->quantity);
         $cartCount = CartItem::where('cart_id', $cart->id)->count();
-        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount'));
+
+        // One parcel and one delivery fee per seller, priced the way the order will be.
+        $shipping = $placement->shippingQuotes($this->buyer(), $items)->map(fn ($quote, $sellerId) => [
+            'seller' => $items->firstWhere('product.seller_id', $sellerId)->product->seller,
+        ] + CartQuote::shipping($quote, $items->filter(fn ($item) => $item->product->seller_id == $sellerId)));
+        $shippingTotal = $shipping->where('ok', true)->sum(fn ($parcel) => (float) $parcel['delivery_fee']);
+        $canPlace = $shipping->every(fn ($parcel) => $parcel['ok']);
+
+        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount', 'shipping', 'shippingTotal', 'canPlace'));
     }
 
     public function updateCart(Request $request, CartItem $item)

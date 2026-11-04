@@ -15,6 +15,7 @@ use App\Pickrush\Models\RiderToken;
 use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\ParcelRegistrar;
 use App\Pickrush\Services\Rider\PasswordReset;
+use App\Pickrush\Services\Rider\RiderEarnings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -60,13 +61,17 @@ class RiderAccountTest extends TestCase
     }
 
     /** A finished task of the rider, $daysAgo days back. */
+    /** A finished task, credited to the earnings ledger as RiderTaskService does. */
     private function done(string $type, int $daysAgo, ?int $batchId = null, float $cod = 0): Assignment
     {
-        return Assignment::create([
+        $task = Assignment::create([
             'parcel_id' => $this->parcel()->id, 'rider_id' => $this->rider->id, 'batch_id' => $batchId, 'type' => $type,
             'assigned_at' => now()->subDays($daysAgo), 'status' => 'completed', 'completed_at' => now()->subDays($daysAgo),
             'cod_collected' => $cod ?: null,
         ]);
+        app(RiderEarnings::class)->credit($task, $task->completed_at);
+
+        return $task;
     }
 
     public function test_earnings_add_up_finished_tasks_by_period_day_and_batch_with_cod_in_hand(): void
@@ -84,7 +89,7 @@ class RiderAccountTest extends TestCase
         Assignment::where('cod_collected', 300)->update(['cod_remittance_id' => CodRemittance::sole()->id]);
 
         $pickup = (float) config('pickrush.rider_pay.pickup_per_parcel');
-        $delivery = (float) config('pickrush.rider_pay.delivery_per_parcel');
+        $delivery = (float) config('pickrush.shipping.min_rider_pay');  // parcels without a class pay the minimum
 
         $this->api()->getJson('/api/rider/earnings')->assertOk()
             ->assertJsonPath('today.pickups', 2)

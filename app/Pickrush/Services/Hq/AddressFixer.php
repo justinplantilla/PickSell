@@ -10,7 +10,6 @@ use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\ExceptionDesk;
 use App\Pickrush\Services\HubRouter;
 use App\Pickrush\Services\OperationRefused;
-use App\Pickrush\Services\RateCard;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -42,7 +41,6 @@ class AddressFixer
                 ? ['pickup_barangay_code' => $barangay->code, 'pickup_municipality_code' => $barangay->municipality_code, 'pickup_address' => $line, 'origin_hub_id' => $station->id]
                 : ['delivery_barangay_code' => $barangay->code, 'delivery_municipality_code' => $barangay->municipality_code, 'delivery_address' => $line, 'dest_hub_id' => $station->id]);
             $parcel->needs_address_fix = ! $parcel->origin_hub_id || ! $parcel->dest_hub_id;
-            $parcel->shipping_fee = RateCard::quote($parcel->originHub()->first(), $parcel->destHub()->first(), $parcel->weight_kg ? (float) $parcel->weight_kg : null, (float) $parcel->cod_amount);
 
             // Re-route a parcel sitting in a hub (not on hold); waiting parcels start at their origin.
             if ($notCollected) {

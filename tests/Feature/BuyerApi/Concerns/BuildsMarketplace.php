@@ -55,7 +55,7 @@ trait BuildsMarketplace
     {
         $product = Product::create($extra + [
             'seller_id' => $seller->id, 'name' => 'Desk Lamp', 'category' => 'Home & Living',
-            'price' => 1000, 'discount' => 0, 'stock' => 5, 'status' => 'active',
+            'price' => 1000, 'discount' => 0, 'stock' => 5, 'status' => 'active', 'weight_kg' => 0.5,
         ]);
         ProductImage::create(['product_id' => $product->id, 'image_url' => "products/{$product->id}.jpg", 'is_primary' => true, 'display_order' => 0]);
 

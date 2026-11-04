@@ -149,13 +149,24 @@ final class BuyerPresenter
         $parcel = PicksellBridge::parcelFor($o);
         $cancellation = $status === 'cancelled' ? $o->statusHistories->last(fn ($h) => $h->to_status === 'cancelled') : null;
 
+        // The delivery fee belongs to the parcel, which may carry the seller's other items from the same checkout.
+        $shipment = $o->shipment;
+
         return self::orderCard($o) + [
             'subtotal'          => self::money($o->amount),
             'discount'          => 0.0,
-            'shipping_fee'      => 0.0,
+            'shipping_fee'      => $shipment ? self::money($shipment->delivery_fee) : 0.0,
             'service_fee'       => 0.0,
             'payment_method'    => 'Cash on Delivery',
-            'cod_amount'        => self::money($o->amount),
+            'cod_amount'        => $parcel ? self::money($parcel->cod_amount) : self::money($o->amount + ($shipment ? (float) $shipment->delivery_fee : 0)),
+            'shipment'          => $shipment ? [
+                'reference'      => $shipment->reference,
+                'parcel_class'   => $shipment->parcel_class,
+                'delivery_fee'   => (string) $shipment->delivery_fee,
+                'status'         => $shipment->status,
+                'failure_reason' => $shipment->failure_reason,
+                'order_numbers'  => $shipment->activeOrders()->pluck('order_number'),
+            ] : null,
             'ship_to'           => $o->buyer ? self::deliveryAddress($o->buyer) : null,
             'waybill_number'    => $parcel?->tracking_no ?? $o->waybill_number,
             'logistics'         => $parcel ? ['name' => 'Pickrush'] : null,

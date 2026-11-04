@@ -23,18 +23,15 @@ class RiderHomeController extends Controller
     {
         $rider = Actor::rider();
         $rider->loadMissing('station');
-        $today = Assignment::where('rider_id', $rider->id)->where('status', 'completed')->where('completed_at', '>=', today());
-        $pickups = (clone $today)->where('type', 'pickup')->count();
-        $delivered = (clone $today)->whereIn('type', ['delivery', 'return'])->count();
-        $pay = config('pickrush.rider_pay');
+        $today = RiderEarningsController::today($rider);
 
         return response()->json([
             'shift_status' => $rider->shift_status,
             'hub' => $rider->station ? RiderProfile::hub($rider->station) : null,
             'today' => [
-                'earnings' => round($pickups * (float) ($pay['pickup_per_parcel'] ?? 0) + $delivered * (float) ($pay['delivery_per_parcel'] ?? 0), 2),
-                'pickups' => $pickups,
-                'delivered' => $delivered,
+                'earnings' => $today['earnings'],
+                'pickups' => $today['pickups'],
+                'delivered' => $today['deliveries'],
             ],
             'batches' => $batches->openFor($rider)->map(fn ($batch) => RiderBatchView::of($batch))->values(),
             'unread_notifications' => RiderNotification::where('rider_id', $rider->id)->whereNull('read_at')->count(),

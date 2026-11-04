@@ -15,7 +15,6 @@ use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\Hq\PolicySettings;
 use App\Pickrush\Services\ParcelLedger;
 use App\Pickrush\Services\ParcelRegistrar;
-use App\Pickrush\Services\RateCard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -118,6 +117,8 @@ class HqPortalTest extends TestCase
     public function test_hq_fixes_an_unmatched_address_and_the_parcel_moves_on(): void
     {
         $parcel = $this->parcel('999999999');
+        $parcel->forceFill(['shipping_fee' => 95])->save();
+        $fee = (string) $parcel->fresh()->shipping_fee;
         $stationStaff = $this->staff(StaffRole::Dispatcher, $this->tanauan);
         $this->as($stationStaff)->post($this->pickrushUrl('/station/receiving'), ['tracking_no' => $parcel->tracking_no]);
         $this->assertSame(ParcelStatus::OnHold, $parcel->fresh()->current_status);
@@ -132,7 +133,7 @@ class HqPortalTest extends TestCase
         $this->assertFalse($parcel->needs_address_fix);
         $this->assertSame([$this->tanauan->id, ParcelStatus::AtOriginHub], [$parcel->dest_hub_id, $parcel->current_status], 'released from hold');
         $this->assertSame('resolved', ParcelException::withoutGlobalScopes()->sole()->status);
-        $this->assertSame(RateCard::quote($this->tanauan, $this->tanauan, null, 1000), (float) $parcel->shipping_fee, 'fee re-quoted for the real route');
+        $this->assertSame($fee, (string) $parcel->shipping_fee, 'the fee was set at checkout; fixing the address keeps it');
         $this->as($this->finance)->get($this->pickrushUrl('/hq/address-fix'))->assertForbidden();
     }
 
@@ -143,24 +144,13 @@ class HqPortalTest extends TestCase
         $this->as($this->finance)->put($this->pickrushUrl('/hq/settings'), $values)->assertForbidden();
 
         $values['policies__max_delivery_attempts'] = 2;
-        $values['rates__inter_province__base'] = 150;
+        $values['shipping__max_priced_weight_kg'] = 40;
         $this->as($this->admin)->put($this->pickrushUrl('/hq/settings'), $values)->assertSessionHas('success', '2 setting(s) changed.');
 
-        config(['pickrush.policies.max_delivery_attempts' => 3, 'pickrush.rates.inter_province.base' => 120]);   // a fresh request…
+        config(['pickrush.policies.max_delivery_attempts' => 3, 'pickrush.shipping.max_priced_weight_kg' => 50]);   // a fresh request…
         PolicySettings::load();                                                                                   // …loads the saved values
-        $this->assertSame([2, 150], [config('pickrush.policies.max_delivery_attempts'), config('pickrush.rates.inter_province.base')]);
-        $this->assertSame(150.0 + 15.0, RateCard::quote($this->tanauan, $this->station('137404000'), 0.5, 1000));
+        $this->assertSame([2, 40], [config('pickrush.policies.max_delivery_attempts'), config('pickrush.shipping.max_priced_weight_kg')]);
         $this->assertSame(2, AuditLog::where('action', 'settings.changed')->count());
-    }
-
-    public function test_rate_card_by_route_and_weight(): void
-    {
-        $qc = $this->station('137404000');
-        $this->assertSame('same_city', RateCard::serviceType($this->tanauan, $this->tanauan));
-        $this->assertSame('same_province', RateCard::serviceType($this->tanauan, $this->sanJose));
-        $this->assertSame('inter_province', RateCard::serviceType($this->tanauan, $qc));
-        // Same province: ₱85 base incl. 1 kg, +₱20 for each started kg above (2.3 kg → 2 extra), +1.5% of ₱1,000 COD.
-        $this->assertSame(85.0 + 40.0 + 15.0, RateCard::quote($this->tanauan, $this->sanJose, 2.3, 1000));
     }
 
     public function test_finance_confirms_or_disputes_station_remittances(): void

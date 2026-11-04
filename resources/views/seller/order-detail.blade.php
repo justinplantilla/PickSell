@@ -25,6 +25,14 @@
                     <tr><td class="order-detail-muted">Commission ({{ number_format($commissionRate, 2) }}%)</td><td>-₱{{ number_format($commission, 2) }}</td></tr>
                     <tr><td class="order-detail-muted">Net Earnings</td><td><strong class="order-detail-positive">₱{{ number_format($netEarnings, 2) }}</strong></td></tr>
                     <tr><td class="order-detail-muted">Order Date</td><td>{{ $order->created_at->format('M d, Y h:i A') }}</td></tr>
+                    @if($order->shipment)
+                        @php($parcelItems = $order->shipment->activeOrders()->pluck('order_number'))
+                        <tr><td class="order-detail-muted">Parcel</td><td>{{ ucfirst(strtolower($order->shipment->parcel_class)) }} · {{ $order->shipment->chargeable_weight_kg }} kg · {{ $parcelItems->count() > 1 ? 'shared with '.$parcelItems->reject(fn ($n) => $n === $order->order_number)->join(', ') : 'this order only' }}</td></tr>
+                        <tr><td class="order-detail-muted">Delivery fee</td><td>₱{{ number_format((float) $order->shipment->delivery_fee, 2) }} <small class="order-detail-muted">paid by the buyer; not part of your earnings</small></td></tr>
+                        @if($order->shipment->status === 'failed')
+                            <tr><td class="order-detail-muted">Delivery</td><td><strong>Attempt failed</strong>{{ $order->shipment->failure_reason ? ': '.$order->shipment->failure_reason : '' }}. Earnings stay unpaid until it is delivered.</td></tr>
+                        @endif
+                    @endif
                 </table>
             </div>
         </div>

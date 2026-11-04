@@ -50,7 +50,13 @@
         <label class="form-label">Stock *</label>
         <input type="number" name="stock" class="form-control" min="0" required>
     </div>
+    <div class="form-group">
+        <label class="form-label">Packed weight (kg) *</label>
+        <input type="number" name="weight_kg" class="form-control" step="0.01" min="0.01" max="1000" required placeholder="e.g. 0.75">
+        <small class="form-hint">One unit in its packaging. Shipping is priced on this.</small>
+    </div>
 </div>
+
 <div class="form-group product-gallery" data-product-gallery data-max="{{ \App\Models\Product::MAX_IMAGES }}" data-upload-url="{{ route('seller.inventory.images.store') }}" data-discard-url="{{ url('/seller/inventory/images') }}">
     <div class="product-gallery-head">
         <span class="form-label" id="gallery-label-{{ !empty($edit) ? 'edit' : 'add' }}">Product Images</span>

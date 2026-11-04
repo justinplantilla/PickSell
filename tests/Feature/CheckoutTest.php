@@ -70,6 +70,7 @@ class CheckoutTest extends TestCase
             'voucher_discount' => 0,
             'stock' => 10,
             'status' => 'active',
+            'weight_kg' => 1,
         ]);
 
         $cart = Cart::create(['buyer_id' => $buyer->id]);

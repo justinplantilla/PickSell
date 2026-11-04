@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\PlatformSetting;
 use App\Models\SettingChangeLog;
 use App\Models\User;
+use App\Services\DeliveryFeeSplit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -116,6 +117,19 @@ class AdminPlatformSettingsTest extends TestCase
         $this->assertSame('commission', $audit->module);
         $this->assertSame(Permission::COMMISSION_MANAGE, $audit->permission);
         $this->assertSame(['from' => '10.00', 'to' => '12.50'], $audit->changes['commission_rate']);
+    }
+
+    public function test_delivery_commission_changes_are_kept_in_the_setting_history_and_apply_to_new_splits(): void
+    {
+        $this->actingAs($this->admin)->post(route('admin.settings.save'), [
+            'section' => 'financial',
+            'delivery_commission_rate' => '25',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame('25.00', PlatformSetting::get('delivery_commission_rate'));
+        $this->assertSame('25.00', SettingChangeLog::where('setting_key', 'delivery_commission_rate')->sole()->new_value);
+        $this->assertSame('commission', AuditLog::where('action', 'commission.delivery_rate_changed')->sole()->module);
+        $this->assertSame('15.00', app(DeliveryFeeSplit::class)->split('75.00', '15.00')['platform_commission']);   // 60 × 25%
     }
 
     public function test_upload_setting_rejects_invalid_values_without_persisting_history(): void

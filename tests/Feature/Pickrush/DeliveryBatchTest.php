@@ -202,7 +202,7 @@ class DeliveryBatchTest extends TestCase
         $api->getJson('/api/rider/dashboard')->assertOk()->assertJsonPath('activity.0.type', 'failed');
 
         // Earnings page: only the delivered parcel earns; the cash was remitted.
-        $rate = (float) config('pickrush.rider_pay.delivery_per_parcel');
+        $rate = (float) config('pickrush.shipping.min_rider_pay');      // a parcel without a class pays the minimum
         $api->getJson('/api/rider/earnings')->assertOk()
             ->assertJsonPath('today.deliveries', 1)
             ->assertJsonPath('today.pickups', 0)

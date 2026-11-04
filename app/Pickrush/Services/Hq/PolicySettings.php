@@ -27,16 +27,8 @@ class PolicySettings
         'policies.two_person_count_above' => ['Cash', 'Second counter needed above (₱)', 'required|numeric|min:0|max:10000000', 'Rider cash counts above this need two staff.'],
         'policies.remittance_cycle' => ['Cash', 'Station remittance cycle', 'required|in:daily,every_two_days,weekly', null],
         'policies.payout_release_days' => ['Cash', 'Seller payout window (days after delivery)', 'required|integer|min:0|max:60', 'The dispute window before COD is released to the seller.'],
-        'rates.same_city.base' => ['Rates', 'Same city: base fee (₱)', 'required|numeric|min:0|max:100000', null],
-        'rates.same_city.included_kg' => ['Rates', 'Same city: kg included', 'required|numeric|min:0|max:1000', null],
-        'rates.same_city.per_kg' => ['Rates', 'Same city: each extra kg (₱)', 'required|numeric|min:0|max:100000', null],
-        'rates.same_province.base' => ['Rates', 'Same province: base fee (₱)', 'required|numeric|min:0|max:100000', null],
-        'rates.same_province.included_kg' => ['Rates', 'Same province: kg included', 'required|numeric|min:0|max:1000', null],
-        'rates.same_province.per_kg' => ['Rates', 'Same province: each extra kg (₱)', 'required|numeric|min:0|max:100000', null],
-        'rates.inter_province.base' => ['Rates', 'Inter-province: base fee (₱)', 'required|numeric|min:0|max:100000', null],
-        'rates.inter_province.included_kg' => ['Rates', 'Inter-province: kg included', 'required|numeric|min:0|max:1000', null],
-        'rates.inter_province.per_kg' => ['Rates', 'Inter-province: each extra kg (₱)', 'required|numeric|min:0|max:100000', null],
-        'rates.cod_fee_percent' => ['Rates', 'COD fee (% of the COD amount)', 'required|numeric|min:0|max:100', null],
+        'shipping.min_rider_pay' => ['Marketplace shipping', 'Minimum rider pay per parcel (₱)', 'required|numeric|min:0|max:10000', 'No parcel class may pay a rider less than this.'],
+        'shipping.max_priced_weight_kg' => ['Marketplace shipping', 'Heaviest parcel priced automatically (kg)', 'required|numeric|min:1|max:1000', 'Heavier parcels need a manual quote.'],
     ];
 
     /** Apply saved values over the config defaults. Safe before the table exists. */

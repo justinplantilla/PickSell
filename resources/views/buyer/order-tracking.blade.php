@@ -57,6 +57,13 @@
                 <span class="tracking-meta">Delivering to</span>
                 <strong>{{ collect([$order->buyer?->house_no, $order->buyer?->street, $order->buyer?->barangay, $order->buyer?->municipality, $order->buyer?->province])->filter()->join(', ') ?: 'Address unavailable' }}</strong>
             </div>
+            @if($order->shipment)
+                <div>
+                    <span class="tracking-meta">Delivery fee (one parcel for this seller's items)</span>
+                    <strong>₱{{ number_format((float) $order->shipment->delivery_fee, 2) }}</strong>
+                    <span class="tracking-meta">Cash to pay on delivery: ₱{{ number_format((float) ($order->shipment->activeOrders()->sum('amount')) + (float) $order->shipment->delivery_fee, 2) }}</span>
+                </div>
+            @endif
         </div>
 
         {{-- Assurance banner --}}

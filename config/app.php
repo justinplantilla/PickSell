@@ -56,6 +56,9 @@ return [
 
     'platform_commission_rate' => (float) env('PLATFORM_COMMISSION_RATE', 10),
 
+    // PickSell's percentage of a delivery fee after the rider's pay (admin-editable; see AdminSettingsController).
+    'delivery_commission_rate' => (float) env('DELIVERY_COMMISSION_RATE', 20),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

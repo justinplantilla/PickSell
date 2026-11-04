@@ -5,6 +5,9 @@
 @section('title', 'Inventory')
 
 @section('content')
+@if($shippingRegionMissing ?? false)
+    <div class="alert alert-warning" role="alert">Complete your address (province) in <a href="{{ route('seller.account') }}">My Account</a> so buyers are charged the right shipping for your area. Until then a standard rate is used.</div>
+@endif
 <div class="card">
     <div class="card-header">
         <span class="card-title">Product Inventory</span>
@@ -57,6 +60,9 @@
                         <div>
                             <div class="inventory-strong">{{ $product->name }}</div>
                             <div class="inventory-muted-text">{{ Str::limit($product->description, 40) }}</div>
+                            @unless($product->hasShippingWeight())
+                                <div class="inventory-muted-text" role="alert" style="color:#c0392b">⚠ Add its weight: buyers cannot check it out until you do.</div>
+                            @endunless
                         </div>
                     </div>
                 </td>

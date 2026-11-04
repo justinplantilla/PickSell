@@ -55,6 +55,11 @@
                 <input id="commission-rate" type="number" name="commission_rate" class="form-control" value="{{ old('commission_rate', $commissionRate) }}" min="0" max="100" step="0.01" @cannot(\App\Auth\Permission::COMMISSION_MANAGE) disabled aria-describedby="commission-rate-locked" @endcannot>
                 @cannot(\App\Auth\Permission::COMMISSION_MANAGE)<small id="commission-rate-locked" class="form-hint">Requires commission management permission.</small>@endcannot
             </div>
+            <div class="form-group settings-single-field">
+                <label class="form-label" for="delivery-commission-rate">Delivery commission (% of the delivery fee after rider pay)</label>
+                <input id="delivery-commission-rate" type="number" name="delivery_commission_rate" class="form-control" value="{{ old('delivery_commission_rate', $deliveryCommissionRate) }}" min="0" max="100" step="0.01" @cannot(\App\Auth\Permission::COMMISSION_MANAGE) disabled @endcannot>
+                <small class="form-hint">Applies to orders placed after saving; the logistics company keeps the rest.</small>
+            </div>
             @can(\App\Auth\Permission::COMMISSION_MANAGE)
                 <button type="submit" class="btn btn-coral">Save financial settings</button>
             @endcan

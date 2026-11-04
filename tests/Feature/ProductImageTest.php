@@ -50,6 +50,7 @@ class ProductImageTest extends TestCase
             'discount' => 0,
             'voucher_discount' => 0,
             'stock' => 10,
+            'weight_kg' => 0.5,
             'gallery_managed' => '1',
             'gallery' => $gallery,
             'gallery_cover' => $cover,

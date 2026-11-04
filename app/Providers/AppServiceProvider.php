@@ -77,9 +77,12 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('reinstateSeller', [SellerCompliancePolicy::class, 'reinstate']);
 
         // One query, no schema lookup per request; rescue() keeps artisan working on a database not yet migrated.
-        $commissionRate = rescue(fn () => PlatformSetting::where('key', 'commission_rate')->value('value'), null, false);
-        if ($commissionRate !== null) {
-            config(['app.platform_commission_rate' => (float) $commissionRate]);
+        $rates = rescue(fn () => PlatformSetting::whereIn('key', ['commission_rate', 'delivery_commission_rate'])->pluck('value', 'key'), collect(), false);
+        if (isset($rates['commission_rate'])) {
+            config(['app.platform_commission_rate' => (float) $rates['commission_rate']]);
+        }
+        if (isset($rates['delivery_commission_rate'])) {
+            config(['app.delivery_commission_rate' => (float) $rates['delivery_commission_rate']]);
         }
 
         if (str_starts_with((string) config('app.url'), 'https://')) {

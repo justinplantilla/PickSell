@@ -61,6 +61,16 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
                 Route::get('/reports/export', [Hq\ReportController::class, 'export'])->name('reports.export');
                 Route::get('/settings', [Hq\SettingsController::class, 'index'])->name('settings');
                 Route::put('/settings', [Hq\SettingsController::class, 'update'])->name('settings.update');
+                Route::get('/shipping', [Hq\ShippingController::class, 'index'])->name('shipping');
+                Route::put('/shipping/route-levels', [Hq\ShippingController::class, 'updateRouteLevels'])->name('shipping.route-levels.update');
+                Route::put('/shipping/price-levels', [Hq\ShippingController::class, 'updatePriceLevels'])->name('shipping.price-levels.update');
+                Route::post('/shipping/rates', [Hq\ShippingController::class, 'storeRate'])->name('shipping.rates.store');
+                Route::put('/shipping/rates/{rate}/end', [Hq\ShippingController::class, 'endRate'])->name('shipping.rates.end');
+                Route::post('/shipping/overweight', [Hq\ShippingController::class, 'storeOverweight'])->name('shipping.overweight.store');
+                Route::put('/shipping/overweight/{rate}/end', [Hq\ShippingController::class, 'endOverweight'])->name('shipping.overweight.end');
+                Route::put('/shipping/classes/{class}', [Hq\ShippingController::class, 'updateClass'])->name('shipping.classes.update');
+                Route::post('/shipping/provinces', [Hq\ShippingController::class, 'storeProvince'])->name('shipping.provinces.store');
+                Route::delete('/shipping/provinces', [Hq\ShippingController::class, 'destroyProvince'])->name('shipping.provinces.destroy');
                 Route::get('/finance', [Hq\FinanceController::class, 'index'])->name('finance');
                 Route::post('/finance/remittances/{remittance}', [Hq\FinanceController::class, 'confirm'])->name('finance.confirm');
 

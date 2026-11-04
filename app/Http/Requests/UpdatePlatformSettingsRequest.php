@@ -18,6 +18,7 @@ class UpdatePlatformSettingsRequest extends FormRequest
             'platform_name' => ['sometimes', 'required', 'string', 'max:100'],
             'support_email' => ['sometimes', 'required', 'email', 'max:255'],
             'commission_rate' => ['sometimes', 'required', 'numeric', 'decimal:0,2', 'min:0', 'max:100'],
+            'delivery_commission_rate' => ['sometimes', 'required', 'numeric', 'decimal:0,2', 'min:0', 'max:100'],
             'max_file_upload_mb' => ['sometimes', 'required', 'integer', 'min:1', 'max:500'],
             'policy' => ['sometimes', 'nullable', 'string', 'max:100000'],
             'privacy' => ['sometimes', 'nullable', 'string', 'max:100000'],

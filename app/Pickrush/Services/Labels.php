@@ -14,9 +14,10 @@ class Labels
     public function parcel(Parcel $parcel): Response
     {
         $parcel->loadMissing('originHub', 'destHub');
-        $order = PicksellBridge::orderFor($parcel);
+        // A shared parcel lists every order it carries.
+        $orderNumber = PicksellBridge::orderNumbers([$parcel])[$parcel->id] ?? null;
 
-        return Pdf::loadView('pickrush.labels.parcel', ['parcel' => $parcel, 'orderNumber' => $order?->order_number])
+        return Pdf::loadView('pickrush.labels.parcel', ['parcel' => $parcel, 'orderNumber' => $orderNumber])
             ->setPaper([0, 0, 288, 432])        // 4 × 6 in
             ->stream("pickrush-label-{$parcel->tracking_no}.pdf");
     }

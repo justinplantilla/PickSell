@@ -8,6 +8,7 @@ use App\Pickrush\Enums\StaffRole;
 use App\Pickrush\Models\Assignment;
 use App\Pickrush\Models\RiderBatch;
 use App\Pickrush\Models\Staff;
+use App\Pickrush\Services\Rider\RiderEarnings;
 use Illuminate\Support\Collection;
 
 /**
@@ -71,7 +72,7 @@ final class RiderBatchView
             'dropped_off_count' => $droppedOff->count(),
             'not_collected_count' => $shown->where('status', 'failed')->count(),
             'last_pickup_at' => $picked->max('completed_at')?->toIso8601String(),
-            'est_earnings' => round($tasks->count() * self::rate('pickup'), 2),
+            'est_earnings' => round($tasks->count() * (float) config('pickrush.rider_pay.pickup_per_parcel', 0), 2),
             'stops' => $shown->groupBy(fn (Assignment $task) => $task->parcel->shipper_name.'|'.$task->parcel->pickup_address)
                 ->values()
                 ->map(function (Collection $tasks, int $i) use ($orderNumbers) {
@@ -142,7 +143,7 @@ final class RiderBatchView
             'to_remit' => $toRemit,
             'remitted' => $collected > 0 && $toRemit <= 0,
             'last_delivery_at' => $tasks->whereIn('status', ['completed', 'failed'])->max('completed_at')?->toIso8601String(),
-            'est_earnings' => round($tasks->count() * self::rate('delivery'), 2),
+            'est_earnings' => self::pay($tasks),
             'stops' => $tasks->groupBy(fn (Assignment $task) => self::recipient($task)['key'])
                 ->values()
                 ->map(function (Collection $tasks, int $i) use ($orderNumbers) {
@@ -167,7 +168,8 @@ final class RiderBatchView
                         'arrived_at' => $tasks->whereIn('status', ['out_for_delivery'])->min('arrived_at')?->toIso8601String(),
                         'parcel_count' => $tasks->count(),
                         'cod_total' => round($tasks->where('type', 'delivery')->sum(fn (Assignment $task) => (float) $task->parcel->cod_amount), 2),
-                        'earnings' => round($tasks->count() * self::rate('delivery'), 2),
+                        'earnings' => self::pay($tasks),
+                        'has_heavy' => $tasks->contains(fn (Assignment $task) => self::isHeavy($task)),
                         'items' => $tasks->map(fn (Assignment $task) => self::item($task, $orderNumbers, match ($task->status) {
                             'assigned' => $task->loaded_at ? 'loaded' : 'to_load',
                             'out_for_delivery' => 'out_for_delivery',
@@ -210,6 +212,10 @@ final class RiderBatchView
             'description' => $parcel->item_description,
             'weight_kg' => $parcel->weight_kg !== null ? (float) $parcel->weight_kg : null,
             'size' => $parcel->size_category,
+            // Marketplace parcels: the class sets the delivery pay; HEAVY and BULKY are flagged before pickup.
+            'parcel_class' => $parcel->parcel_class,
+            'is_heavy' => self::isHeavy($task),
+            'rider_pay' => (float) RiderEarnings::payFor($task),
             'cod_amount' => $task->type === 'delivery' ? (float) $parcel->cod_amount : 0.0,
             'status' => $status,
             'note' => in_array($task->status, ['failed'], true) ? $task->fail_note : null,
@@ -217,9 +223,15 @@ final class RiderBatchView
         ];
     }
 
-    private static function rate(string $type): float
+    /** What finishing these tasks pays (failed ones earn nothing, so this is the most they can earn). */
+    private static function pay(Collection $tasks): float
     {
-        return (float) config($type === 'pickup' ? 'pickrush.rider_pay.pickup_per_parcel' : 'pickrush.rider_pay.delivery_per_parcel', 0);
+        return round($tasks->sum(fn (Assignment $task) => (float) RiderEarnings::payFor($task)), 2);
+    }
+
+    private static function isHeavy(Assignment $task): bool
+    {
+        return in_array($task->parcel->parcel_class, ['HEAVY', 'BULKY'], true);
     }
 
     private static function manager(int $stationId): ?array

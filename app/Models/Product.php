@@ -13,10 +13,12 @@ class Product extends Model
         'seller_id', 'name', 'description', 'category',
         'price', 'discount', 'voucher_code', 'voucher_discount',
         'stock', 'is_featured', 'status',
+        'weight_kg',
     ];
 
     protected $casts = [
         'is_featured' => 'boolean',
+        'weight_kg' => 'decimal:2',
     ];
 
     // Product cards on nearly every page show the primary image, so keep images eager-loaded.
@@ -65,6 +67,12 @@ class Product extends Model
     public function isPurchasable(): bool
     {
         return $this->status === 'active' && $this->seller?->status === 'approved' && ! $this->seller->isOnVacation();
+    }
+
+    /** Shipping is priced on weight; without it the item cannot be checked out. */
+    public function hasShippingWeight(): bool
+    {
+        return $this->weight_kg !== null && (float) $this->weight_kg > 0;
     }
 
     public function sellerOnVacation(): bool

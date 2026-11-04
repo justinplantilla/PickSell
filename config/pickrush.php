@@ -53,21 +53,19 @@ return [
     ],
 
     /*
-    | Shipping rates. A parcel's fee is the base for its service type plus the per-kg charge
-    | above the included weight, plus the COD fee (% of the COD amount). HQ edits these.
+    | Marketplace (Picksell) shipping: courier rate tables by destination region and parcel
+    | classes live in the pr_shipping_* and pr_parcel_classes tables; these are the knobs
+    | around them. PickSell is Pickrush's only shipper, so every parcel is priced this way.
     */
-    'rates' => [
-        'same_city' => ['base' => 60, 'included_kg' => 1, 'per_kg' => 15],
-        'same_province' => ['base' => 85, 'included_kg' => 1, 'per_kg' => 20],
-        'inter_province' => ['base' => 120, 'included_kg' => 1, 'per_kg' => 30],
-        'cod_fee_percent' => 1.5,
+    'shipping' => [
+        'min_rider_pay' => 15,             // no parcel class may pay a rider less
+        'max_priced_weight_kg' => 50,      // heavier parcels need a manual quote
     ],
 
-    // What a rider earns per finished task, shown in the rider app (today's earnings, a batch's
-    // estimate). PLACEHOLDER amounts: replace with the real rider rates.
+    // What a rider earns per pickup. A delivery (or a return to the seller) pays the parcel
+    // class's rider pay (pr_parcel_classes); a failed attempt pays nothing.
     'rider_pay' => [
         'pickup_per_parcel' => 15,
-        'delivery_per_parcel' => 35,
     ],
 
     // "Arrived" near a pinned seller or station (metres). The rider's distance is always recorded;

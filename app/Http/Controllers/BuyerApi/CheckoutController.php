@@ -11,7 +11,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * Checkout with the website's rules: Cash on Delivery to the buyer's profile address, priced by
- * the product's discount and its own voucher code. No delivery or service fee.
+ * the product's discount and its own voucher code, plus one delivery fee per seller. No service fee.
  */
 class CheckoutController extends Controller
 {
@@ -29,7 +29,7 @@ class CheckoutController extends Controller
         $buyer = $request->user();
 
         return response()->json([
-            'quote'            => $this->quote->quote($this->placement->items($buyer, $data['item_ids']), $data['voucher_code'] ?? null),
+            'quote'            => $this->quote->quote($this->placement->items($buyer, $data['item_ids']), $data['voucher_code'] ?? null, buyer: $buyer),
             'delivery_address' => BuyerPresenter::deliveryAddress($buyer),
         ]);
     }
@@ -49,12 +49,14 @@ class CheckoutController extends Controller
         }
 
         $orders = $this->placement->place($buyer, $data['item_ids'], $data['voucher_code'] ?? null);
-        $orders->load('seller', 'product');
+        $orders->load('seller', 'product', 'shipment');
+        $shipping = $orders->pluck('shipment')->unique('id')->sum(fn ($shipment) => (float) $shipment->delivery_fee);
 
         return response()->json([
             'message'      => 'Order placed! We’ll notify you as it moves.',
             'checkout_ref' => $orders->first()->order_number,
-            'total'        => BuyerPresenter::money($orders->sum('amount')),
+            'shipping_total' => BuyerPresenter::money($shipping),
+            'total'        => BuyerPresenter::money($orders->sum('amount') + $shipping),
             'orders'       => $orders->map(fn ($o) => BuyerPresenter::orderCard($o))->values(),
         ], 201);
     }

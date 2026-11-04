@@ -9,6 +9,7 @@ use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\ParcelEvent;
 use App\Pickrush\Services\ParcelStatusChanged;
 use App\Services\AdminNotificationService;
+use App\Services\Finance\ShipmentSettlement;
 use App\Services\Orders\OrderLifecycleService;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -18,6 +19,8 @@ use Throwable;
  * note (so the buyer sees which hub it is at); the scans that matter to the marketplace also move
  * the order status, through the marketplace's own lifecycle rules, recorded with source
  * "pickrush". A sync problem never blocks the scan: it is reported and flagged to admins.
+ * A parcel can carry several of one seller's orders (an order shipment): each order follows it,
+ * and the shipment's delivery-fee split is credited on delivery (once) and never on failure.
  */
 class SyncOrderWithParcel
 {
@@ -50,7 +53,7 @@ class SyncOrderWithParcel
         'returned' => 'Your parcel was returned to the seller.',
     ];
 
-    public function __construct(private OrderLifecycleService $lifecycle) {}
+    public function __construct(private OrderLifecycleService $lifecycle, private ShipmentSettlement $settlement) {}
 
     public function handle(ParcelStatusChanged $changed): void
     {
@@ -63,18 +66,46 @@ class SyncOrderWithParcel
             if ($changed->event->status === ParcelStatus::Lost) {
                 $this->flag($parcel, "Pickrush reported parcel {$parcel->tracking_no} as lost. Decide the refund or replacement with the buyer and seller.");
             }
-            $this->sync($parcel, $changed->event->loadMissing('hub', 'toHub'));
+            $this->settle($parcel, $changed->event);
         } catch (Throwable $e) {
             report($e);
-            $this->flag($parcel, "Order could not follow parcel scan \"{$changed->event->status->label()}\": {$e->getMessage()}");
+            $this->flag($parcel, "Delivery earnings could not follow parcel scan \"{$changed->event->status->label()}\": {$e->getMessage()}");
+        }
+
+        $event = $changed->event->loadMissing('hub', 'toHub');
+        foreach (PicksellBridge::ordersFor($parcel) as $order) {
+            try {
+                $this->sync($parcel, $order, $event);
+            } catch (Throwable $e) {
+                report($e);
+                $this->flag($parcel, "Order {$order->order_number} could not follow parcel scan \"{$changed->event->status->label()}\": {$e->getMessage()}");
+            }
         }
     }
 
-    private function sync(Parcel $parcel, ParcelEvent $event): void
+    /** The shipment's money follows the parcel's outcome. */
+    private function settle(Parcel $parcel, ParcelEvent $event): void
     {
-        $moved = DB::transaction(function () use ($parcel, $event) {
-            $order = Order::whereKey((int) $parcel->external_ref)->lockForUpdate()->first();
-            if (! $order) {
+        $shipment = PicksellBridge::shipmentFor($parcel);
+        if (! $shipment) {
+            return;
+        }
+
+        match (true) {
+            $event->status === ParcelStatus::Delivered && ! $parcel->is_return => $this->settlement->delivered($shipment, $event->occurred_at),
+            $event->status === ParcelStatus::DeliveryFailed => $this->settlement->failed($shipment, $event->note, $event->occurred_at),
+            in_array($event->status, [ParcelStatus::ReturningToSender, ParcelStatus::ReturnedToSender], true) => $this->settlement->void($shipment, 'returned'),
+            $event->status === ParcelStatus::Cancelled => $this->settlement->void($shipment, 'cancelled'),
+            default => null,
+        };
+    }
+
+    private function sync(Parcel $parcel, Order $order, ParcelEvent $event): void
+    {
+        $moved = DB::transaction(function () use ($parcel, $order, $event) {
+            $order = Order::whereKey($order->id)->lockForUpdate()->first();
+            // An item cancelled out of a shared parcel no longer travels with it.
+            if (! $order || ($order->status === 'cancelled' && $order->order_shipment_id && $event->status !== ParcelStatus::Cancelled)) {
                 return null;
             }
 

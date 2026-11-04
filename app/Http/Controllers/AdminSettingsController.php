@@ -36,6 +36,7 @@ class AdminSettingsController extends Controller
             'platformName' => PlatformSetting::get('platform_name', 'PickSell'),
             'supportEmail' => PlatformSetting::get('support_email', 'support@picksell.ph'),
             'commissionRate' => PlatformSetting::get('commission_rate', '10'),
+            'deliveryCommissionRate' => PlatformSetting::get('delivery_commission_rate', (string) config('app.delivery_commission_rate')),
             'maxFileUploadMb' => PlatformSetting::get('max_file_upload_mb', '5'),
         ]);
     }
@@ -71,6 +72,18 @@ class AdminSettingsController extends Controller
                 );
             }
             $saved[] = 'Financial settings';
+        }
+
+        // PickSell's cut of each delivery fee after the rider's pay; applies to orders placed from now on.
+        if (isset($values['delivery_commission_rate'])) {
+            Gate::authorize('manageFinancial', PlatformSetting::class);
+            $rate = number_format((float) $values['delivery_commission_rate'], 2, '.', '');
+            if ((float) $rate !== (float) config('app.delivery_commission_rate')) {
+                $settings->save(['delivery_commission_rate' => $rate], 'commission.delivery_rate_changed', Permission::COMMISSION_MANAGE, $actorId);
+            }
+            if (! in_array('Financial settings', $saved, true)) {
+                $saved[] = 'Financial settings';
+            }
         }
 
         if (isset($values['max_file_upload_mb'])) {

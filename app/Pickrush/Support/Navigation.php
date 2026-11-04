@@ -61,6 +61,7 @@ final class Navigation
         $items[] = ['label' => 'Finance', 'route' => 'pickrush.hq.finance', 'active' => 'pickrush.hq.finance*'];
         $items[] = ['label' => 'Reports', 'route' => 'pickrush.hq.reports', 'active' => 'pickrush.hq.reports*'];
         $items[] = ['label' => 'Rates & policies', 'route' => 'pickrush.hq.settings', 'active' => 'pickrush.hq.settings*'];
+        $items[] = ['label' => 'Marketplace shipping', 'route' => 'pickrush.hq.shipping', 'active' => 'pickrush.hq.shipping*'];
         if ($is(StaffRole::SuperAdmin, StaffRole::Finance)) {
             $items[] = ['label' => 'Audit log', 'route' => 'pickrush.hq.audit', 'active' => 'pickrush.hq.audit'];
         }

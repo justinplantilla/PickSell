@@ -26,7 +26,7 @@ class Order extends Model
     ];
 
     protected $fillable = [
-        'order_number', 'product_id', 'buyer_id', 'seller_id',
+        'order_number', 'product_id', 'buyer_id', 'seller_id', 'order_shipment_id',
         'product_name', 'quantity', 'amount', 'commission', 'commission_rate', 'status',
         'waybill_number', 'tracking_status',
         'packed_at', 'handed_over_at', 'delivered_at', 'confirmed_by_seller_at',
@@ -119,6 +119,12 @@ class Order extends Model
     public function buyer()
     {
         return $this->belongsTo(User::class, 'buyer_id');
+    }
+
+    /** The parcel this order travels in with the seller's other items from the same checkout (none on older orders). */
+    public function shipment()
+    {
+        return $this->belongsTo(OrderShipment::class, 'order_shipment_id');
     }
 
     public function seller()

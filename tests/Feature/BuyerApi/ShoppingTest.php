@@ -4,6 +4,7 @@ namespace Tests\Feature\BuyerApi;
 
 use App\Models\CartItem;
 use App\Models\Order;
+use App\Models\OrderShipment;
 use App\Models\OrderStatusHistory;
 use App\Models\ProductVariation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -66,20 +67,23 @@ class ShoppingTest extends TestCase
         $lampLine = $this->cartLine($buyer, $lamp, 2);
         $mugLine = $this->cartLine($buyer, $mug, 1);
 
-        // The quote is what the order will store: 1000 -10% = 900, LAMP5 -5% = 855 each.
+        // The quote is what the order will store: 1000 -10% = 900, LAMP5 -5% = 855 each, plus one
+        // parcel for the seller's three 0.5 kg items, Cebu seller to Cebu buyer (within Visayas: local, 2 kg tier): ₱95.
         $this->postJson('/api/mobile/buyer/checkout/quote', ['item_ids' => [$lampLine->id, $mugLine->id], 'voucher_code' => 'LAMP5'])
             ->assertOk()
             ->assertJsonPath('quote.totals.merchandise_subtotal', 2050)
             ->assertJsonPath('quote.totals.discount_total', 90)
-            ->assertJsonPath('quote.totals.total', 1960)
-            ->assertJsonPath('quote.totals.shipping_total', 0)
+            ->assertJsonPath('quote.totals.total', 2055)
+            ->assertJsonPath('quote.totals.shipping_total', 95)
+            ->assertJsonPath('quote.groups.0.shipping.delivery_fee', '95.00')
+            ->assertJsonPath('quote.groups.0.shipping.parcel_class', 'STANDARD')
             ->assertJsonPath('delivery_address.full_address', '12, Gorordo Ave, Lahug, Cebu City, Cebu');
         // Product vouchers match case-sensitively, as on the website.
         $this->postJson('/api/mobile/buyer/checkout/quote', ['item_ids' => [$lampLine->id], 'voucher_code' => 'lamp5'])
             ->assertJsonPath('quote.totals.discount_total', 0);
 
         $this->postJson('/api/mobile/buyer/checkout', ['item_ids' => [$lampLine->id, $mugLine->id], 'voucher_code' => 'LAMP5', 'payment_method' => 'cod'])
-            ->assertCreated()->assertJsonPath('total', 1960);
+            ->assertCreated()->assertJsonPath('total', 2055)->assertJsonPath('shipping_total', 95);
 
         $order = Order::where('product_id', $lamp->id)->sole();
         $this->assertMatchesRegularExpression('/^ORD-[A-Z0-9]{8}$/', $order->order_number);
@@ -88,6 +92,11 @@ class ShoppingTest extends TestCase
             [$order->status, $order->tracking_status, $order->quantity, (float) $order->amount, (float) $order->commission, (string) $order->commission_rate, $order->seller_id],
         );
         $this->assertSame([3, 2], [$lamp->fresh()->stock, $mug->fresh()->stock]);
+        // Both items ship in one parcel with one fee.
+        $this->assertSame(1, OrderShipment::count());
+        $this->assertSame(2, $order->shipment->orders()->count());
+        $this->assertSame(['VISAYAS', '95.00', '15.00', '16.00', '64.00'], [$order->shipment->destination_region,
+            (string) $order->shipment->delivery_fee, (string) $order->shipment->rider_pay, (string) $order->shipment->platform_commission, (string) $order->shipment->logistics_share]);
         $this->assertSame(0, CartItem::count());
         // The order history and the seller's bell get the same rows a website order creates.
         $this->assertSame('placed', OrderStatusHistory::where('order_id', $order->id)->sole()->to_status);

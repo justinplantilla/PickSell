@@ -341,7 +341,10 @@ class SellerController extends Controller
             ->orderBy('id', $sortDirection)
             ->paginate(15);
 
-        return view('seller.inventory', compact('products', 'status', 'stockFilter', 'search', 'sort'));
+        // Without a province that matches a region, the seller's parcels get the generic (Metro Manila-origin) price.
+        $shippingRegionMissing = ! PicksellBridge::hasShippingRegion($this->seller());
+
+        return view('seller.inventory', compact('products', 'status', 'stockFilter', 'search', 'sort', 'shippingRegionMissing'));
     }
 
     private const PRODUCT_RULES = [
@@ -353,6 +356,8 @@ class SellerController extends Controller
         'voucher_code' => 'nullable|string|max:50',
         'voucher_discount' => 'nullable|numeric|min:0|max:100',
         'stock' => 'required|integer|min:0',
+        // Shipping is priced on the packed weight of one unit.
+        'weight_kg' => 'required|numeric|min:0.01|max:1000',
         'gallery' => 'nullable|array',
         'gallery.*' => 'string|max:64',
         'gallery_cover' => 'nullable|string|max:64',
@@ -449,18 +454,41 @@ class SellerController extends Controller
 
     public function packOrder(Order $order, OrderLifecycleService $lifecycle)
     {
-        DB::transaction(function () use ($order, $lifecycle): void {
+        $count = DB::transaction(function () use ($order, $lifecycle): int {
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             abort_if($locked->seller_id !== $this->seller()->id, 403);
             abort_unless(in_array($locked->status, ['placed', 'confirmed', 'pending'], true), 422, 'This order is not ready to be prepared.');
-            $lifecycle->transition($locked, 'preparing', $this->seller()->id, 'seller', null, [
-                'packed_at' => now(),
-                'tracking_status' => 'Seller is preparing the order',
-            ]);
+            // Items sharing a parcel are packed together.
+            $parcelOrders = $this->parcelOrders($locked)->filter(fn (Order $o) => in_array($o->status, ['placed', 'confirmed', 'pending'], true));
+            foreach ($parcelOrders as $item) {
+                $lifecycle->transition($item, 'preparing', $this->seller()->id, 'seller', null, [
+                    'packed_at' => now(),
+                    'tracking_status' => 'Seller is preparing the order',
+                ]);
+            }
             $order->setRawAttributes($locked->getAttributes(), true);
+
+            return $parcelOrders->count();
         });
 
-        return back()->with('success', 'Order marked as being prepared.');
+        return back()->with('success', $count > 1 ? "{$count} orders in this parcel marked as being prepared." : 'Order marked as being prepared.');
+    }
+
+    /**
+     * The order and the seller's other items from the same checkout that travel in its parcel,
+     * locked; cancelled items are no longer in it.
+     *
+     * @return \Illuminate\Support\Collection<int, Order>
+     */
+    private function parcelOrders(Order $locked)
+    {
+        if (! $locked->order_shipment_id) {
+            return collect([$locked]);
+        }
+
+        return Order::query()->where('order_shipment_id', $locked->order_shipment_id)->where('status', '!=', 'cancelled')
+            ->orderBy('id')->lockForUpdate()->get()
+            ->map(fn (Order $o) => $o->id === $locked->id ? $locked : $o);
     }
 
     public function cancelOrder(Request $request, Order $order, OrderCancellationService $cancellations)
@@ -478,10 +506,13 @@ class SellerController extends Controller
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             abort_if($locked->seller_id !== $this->seller()->id, 403);
             abort_unless(in_array($locked->status, ['preparing', 'processing'], true), 422, 'Prepare the order before generating its waybill.');
+            $parcelOrders = $this->parcelOrders($locked);
+            abort_if($parcelOrders->contains(fn (Order $o) => ! in_array($o->status, ['preparing', 'processing'], true)), 422,
+                'Prepare every item that ships in this parcel ('.$parcelOrders->pluck('order_number')->join(', ').') before generating its waybill.');
 
-            // Pickrush's tracking number is the waybill.
+            // Pickrush's tracking number is the waybill, shared by every item in the parcel.
             $parcel = $pickrush->book($locked);
-            $locked->update(['waybill_number' => $parcel->tracking_no]);
+            $parcelOrders->each(fn (Order $o) => $o->update(['waybill_number' => $parcel->tracking_no]));
 
             return $parcel;
         });
@@ -500,11 +531,13 @@ class SellerController extends Controller
             abort_unless(PicksellBridge::hasParcel($locked), 422, 'Generate and print the waybill before handing the order over.');
 
             $parcel = $pickrush->requestPickup($locked);
-            $lifecycle->transition($locked, 'ready_for_pickup', $this->seller()->id, 'seller', null, [
-                'waybill_number' => $parcel->tracking_no,
-                'handed_over_at' => now(),
-                'tracking_status' => 'Pickup requested from seller',
-            ]);
+            foreach ($this->parcelOrders($locked)->filter(fn (Order $o) => in_array($o->status, ['preparing', 'processing'], true)) as $item) {
+                $lifecycle->transition($item, 'ready_for_pickup', $this->seller()->id, 'seller', null, [
+                    'waybill_number' => $parcel->tracking_no,
+                    'handed_over_at' => now(),
+                    'tracking_status' => 'Pickup requested from seller',
+                ]);
+            }
             $order->setRawAttributes($locked->getAttributes(), true);
 
             return $parcel;

@@ -38,6 +38,9 @@ class PlatformSettingsService
                 }
                 PlatformSetting::set($key, $value);
             }
+            if (array_key_exists('delivery_commission_rate', $settings)) {
+                Config::set('app.delivery_commission_rate', (float) $settings['delivery_commission_rate']);
+            }
             if (array_key_exists('commission_rate', $settings)) {
                 Config::set('app.platform_commission_rate', (float) $settings['commission_rate']);
                 if (array_key_exists('commission_rate', $changes)) {
