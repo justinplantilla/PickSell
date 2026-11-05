@@ -471,7 +471,7 @@ class SellerController extends Controller
             return $parcelOrders->count();
         });
 
-        return back()->with('success', $count > 1 ? "{$count} orders in this parcel marked as being prepared." : 'Order marked as being prepared.');
+        return back()->with('success', $count > 1 ? "{$count} orders in this parcel confirmed and now being prepared." : 'Order confirmed and now being prepared.');
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Pickrush\Http\Middleware;
 
 use App\Pickrush\Models\RiderToken as Token;
+use App\Pickrush\Services\Rider\RiderPresence;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,6 +30,7 @@ class RiderToken
         if (! $token->last_used_at || $token->last_used_at->lt(now()->subMinutes(5))) {
             $token->forceFill(['last_used_at' => now()])->saveQuietly();
         }
+        app(RiderPresence::class)->seen($rider);
         app()->instance('pickrush.rider', $rider);
         $request->attributes->set('rider_token', $token);
 

@@ -43,7 +43,7 @@
                         @if(in_array($order->status, ['placed', 'confirmed', 'pending'], true))
                         <form method="POST" action="/seller/orders/{{ $order->id }}/pack">
                             @csrf @method('PATCH')
-                            <button type="submit" class="btn btn-coral btn-sm">Prepare</button>
+                            <button type="submit" class="btn btn-coral btn-sm">Confirm Order</button>
                         </form>
                         @elseif(in_array($order->status, ['preparing', 'processing'], true) && ! $order->waybill_number)
                         <form method="POST" action="{{ route('seller.orders.waybill.generate', $order) }}">

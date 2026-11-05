@@ -50,7 +50,7 @@ class DeliveryBatchTest extends TestCase
 
         $rider = Rider::withoutGlobalScopes()->create([
             'station_hub_id' => $this->tanauan->id, 'full_name' => "Driver {$n}", 'mobile_no' => '0919'.str_pad((string) $n, 7, '0', STR_PAD_LEFT),
-            'vehicle_type' => 'motorcycle', 'status' => 'active', 'shift_status' => 'on_shift',
+            'vehicle_type' => 'motorcycle', 'status' => 'active', 'shift_status' => 'on_shift', 'last_seen_at' => now(),
             'cod_limit' => 10000, 'max_parcels' => 30, 'created_by' => $this->manager->id,
         ]);
         RiderToken::issue($rider);   // logged in to the rider app
@@ -106,6 +106,18 @@ class DeliveryBatchTest extends TestCase
             ->assertJsonPath('batches.0.stops.0.lat', 14.087)
             ->assertJsonPath('batches.0.stops.0.lng', 121.149)
             ->assertJsonPath('batches.0.stops.1.lat', null);
+    }
+
+    public function test_the_buyers_number_reaches_the_rider_only_after_accepting(): void
+    {
+        $rider = $this->rider();
+        $batch = $this->dispatchTo([$this->readyParcel('Ana Reyes', 500)], $rider);
+        $api = $this->api($rider);
+
+        $api->getJson("/api/rider/batches/{$batch->id}")->assertOk()->assertJsonPath('batch.stops.0.mobile', null);
+
+        $api->postJson("/api/rider/batches/{$batch->id}/accept")->assertOk();
+        $api->getJson("/api/rider/batches/{$batch->id}")->assertOk()->assertJsonPath('batch.stops.0.mobile', '09171234567');
     }
 
     public function test_a_delivery_batch_goes_from_loading_to_delivered_and_ends_with_cash_and_returns_at_the_station(): void

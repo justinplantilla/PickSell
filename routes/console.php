@@ -63,3 +63,13 @@ Schedule::command('shipments:settle-delivered')
     ->hourly()
     ->name('settle-delivered-shipments')
     ->withoutOverlapping();
+
+Artisan::command('riders:expire-idle', function () {
+    $count = app(\App\Pickrush\Services\Rider\RiderPresence::class)->expireIdle();
+    $this->info("Set {$count} idle riders offline.");
+})->purpose('Switch off duty the on-shift riders whose app stopped checking in');
+
+Schedule::command('riders:expire-idle')
+    ->everyMinute()
+    ->name('expire-idle-riders')
+    ->withoutOverlapping();

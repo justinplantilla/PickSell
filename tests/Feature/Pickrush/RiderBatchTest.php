@@ -42,7 +42,7 @@ class RiderBatchTest extends TestCase
 
         $rider = Rider::withoutGlobalScopes()->create(array_merge([
             'station_hub_id' => $this->tanauan->id, 'full_name' => "Rider {$n}", 'mobile_no' => '0918'.str_pad((string) $n, 7, '0', STR_PAD_LEFT),
-            'vehicle_type' => 'motorcycle', 'status' => 'active', 'shift_status' => 'on_shift',
+            'vehicle_type' => 'motorcycle', 'status' => 'active', 'shift_status' => 'on_shift', 'last_seen_at' => now(),
             'cod_limit' => 10000, 'max_parcels' => 30, 'created_by' => $this->dispatcher->id,
         ], $overrides));
         RiderToken::issue($rider);   // logged in to the rider app
@@ -364,7 +364,7 @@ class RiderBatchTest extends TestCase
             ->assertSessionHasErrors('operation');
         $this->assertFalse($rider->fresh()->isOnShift(), 'the station cannot put a logged-out rider on shift');
 
-        $rider->refresh()->update(['shift_status' => 'on_shift']);   // left on shift from before this rule
+        $rider->refresh()->update(['shift_status' => 'on_shift', 'last_seen_at' => now()]);   // left on shift from before this rule
         $station->post($this->pickrushUrl('/station/dispatch'), ['parcel_ids' => [$parcel->id], 'rider_id' => $rider->id])
             ->assertSessionHasErrors();
         $this->assertSame(0, Assignment::where('rider_id', $rider->id)->count());
@@ -373,5 +373,39 @@ class RiderBatchTest extends TestCase
         $this->api($rider)->patchJson('/api/rider/shift', ['shift_status' => 'on_shift'])->assertOk();   // logs back in and goes online
         $this->assignPickups([$parcel], $rider);
         $this->assertSame(1, Assignment::where('rider_id', $rider->id)->count());
+    }
+
+    public function test_a_rider_whose_app_stopped_checking_in_goes_offline(): void
+    {
+        $rider = $this->rider();
+        $api = $this->api($rider);
+        $api->getJson('/api/rider/pulse')->assertOk();
+        $this->assertTrue($rider->fresh()->isOnShift(), 'the app checked in: still online');
+
+        // The app was closed: no check-ins for longer than the idle limit.
+        $this->travel(Rider::IDLE_MINUTES + 1)->minutes();
+        $this->assertFalse($rider->fresh()->isOnShift(), 'the station no longer counts them as on shift');
+        $station = $this->actingAs($this->dispatcher, 'pickrush');
+        $station->post($this->pickrushUrl('/station/dispatch'), ['parcel_ids' => [$this->parcel('Tote House')->id], 'rider_id' => $rider->id])
+            ->assertSessionHasErrors();
+
+        $this->artisan('riders:expire-idle')->assertSuccessful();
+        $this->assertSame('off_duty', $rider->fresh()->shift_status);
+        $this->assertSame('went_offline', RiderNotification::where('rider_id', $rider->id)->latest('id')->value('type'));
+
+        // Opening the app again shows them offline until they go online themselves.
+        $api->getJson('/api/rider/dashboard')->assertOk()->assertJsonPath('shift_status', 'off_duty');
+        $api->patchJson('/api/rider/shift', ['shift_status' => 'on_shift'])->assertOk();
+        $this->assertTrue($rider->fresh()->isOnShift());
+    }
+
+    public function test_a_rider_who_comes_back_after_going_quiet_is_offline_even_without_the_sweep(): void
+    {
+        $rider = $this->rider();
+        $this->api($rider)->getJson('/api/rider/pulse')->assertOk();
+
+        $this->travel(Rider::IDLE_MINUTES + 1)->minutes();
+        $this->api($rider)->getJson('/api/rider/dashboard')->assertOk()->assertJsonPath('shift_status', 'off_duty');
+        $this->assertSame(1, RiderNotification::where('rider_id', $rider->id)->where('type', 'went_offline')->count());
     }
 }

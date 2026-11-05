@@ -51,7 +51,7 @@
     <section class="pr-card">
         <h2>Today</h2>
         <dl class="pr-dl">
-            <dt>Shift</dt><dd>{{ $rider->shift_status === 'on_shift' ? 'On shift' : 'Off duty' }}</dd>
+            <dt>Shift</dt><dd>{{ $rider->isOnShift() ? 'On shift' : 'Off duty' }}@if($rider->last_seen_at) <span class="pr-muted">· app last seen {{ $rider->last_seen_at->diffForHumans() }}</span>@endif</dd>
             <dt>Rider app</dt><dd>{{ $rider->isSignedIn() ? 'Logged in' : 'Logged out' }}</dd>
             <dt>Open tasks</dt><dd>{{ $openCount }} / {{ $rider->max_parcels }}</dd>
             <dt>Cash to remit</dt><dd>₱{{ number_format($cashExpected, 2) }} <a href="{{ route('pickrush.station.cash') }}">Cash</a></dd>

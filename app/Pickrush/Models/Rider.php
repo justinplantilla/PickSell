@@ -21,9 +21,13 @@ class Rider extends Model
 
     protected string $hubColumn = 'station_hub_id';
 
+    /** Minutes without a check-in from the rider app before an on-shift rider goes offline. */
+    public const IDLE_MINUTES = 5;
+
     protected $hidden = ['device_id', 'password'];
 
     protected $casts = [
+        'last_seen_at' => 'datetime',
         'birthdate' => 'date',
         'cod_limit' => 'decimal:2',
         'on_probation' => 'boolean',
@@ -109,9 +113,16 @@ class Rider extends Model
         return $this->status === 'active';
     }
 
+    /** On shift and the app was open recently; a rider who closed the app is not offered tasks. */
     public function isOnShift(): bool
     {
-        return $this->shift_status === 'on_shift';
+        return $this->shift_status === 'on_shift' && ! $this->isIdle();
+    }
+
+    /** The rider app has not checked in for IDLE_MINUTES (closed, or killed by the phone). */
+    public function isIdle(): bool
+    {
+        return ! $this->last_seen_at || $this->last_seen_at->lt(now()->subMinutes(self::IDLE_MINUTES));
     }
 
     /** Signed in to the rider app on at least one device, so new tasks actually reach them. */

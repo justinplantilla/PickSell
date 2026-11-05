@@ -41,7 +41,7 @@ class RiderAccountTest extends TestCase
         $this->rider = Rider::withoutGlobalScopes()->create([
             'station_hub_id' => $this->tanauan->id, 'first_name' => 'Xtian', 'last_name' => 'Sorro', 'mobile_no' => '09181234567',
             'email' => 'xtian@rider.test', 'password' => 'Old-pass1!', 'vehicle_type' => 'motorcycle', 'plate_no' => 'NAB 1234',
-            'status' => 'active', 'shift_status' => 'on_shift', 'cod_limit' => 5000, 'max_parcels' => 20,
+            'status' => 'active', 'shift_status' => 'on_shift', 'last_seen_at' => now(), 'cod_limit' => 5000, 'max_parcels' => 20,
             'payout_method' => 'gcash', 'payout_account' => '09179876543', 'created_by' => $this->manager->id,
         ]);
     }

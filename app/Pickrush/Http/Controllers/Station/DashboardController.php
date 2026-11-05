@@ -33,7 +33,7 @@ class DashboardController extends StationController
             'codOnRoad' => (float) Assignment::whereIn('rider_id', $riders->pluck('id'))->whereIn('pr_assignments.status', Assignment::OPEN)
                 ->where('type', 'delivery')->join('pr_parcels', 'pr_parcels.id', '=', 'pr_assignments.parcel_id')->sum('pr_parcels.cod_amount'),
             'cashOnHand' => $cash->stationCashOnHand($station),
-            'ridersOnShift' => $riders->where('status', 'active')->where('shift_status', 'on_shift')->count(),
+            'ridersOnShift' => $riders->where('status', 'active')->filter->isOnShift()->count(),
             'ridersActive' => $riders->where('status', 'active')->count(),
             'riderApplications' => $riders->whereIn('status', ['pending', 'under_review'])->count(),
             'riderReports' => RiderReport::with('rider', 'batch')->where('station_hub_id', $station->id)->whereNull('resolved_at')->latest()->get(),

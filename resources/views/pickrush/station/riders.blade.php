@@ -27,7 +27,7 @@
                 <td>{{ ucfirst((string) $rider->vehicle_type) }} {{ $rider->plate_no }}</td>
                 <td>{{ $rider->zone?->name ?? '—' }}</td>
                 <td>@include('pickrush.station.partials.rider-status', ['status' => $rider->status])@if($rider->isApplication() && $rider->applied_at)<div class="pr-muted">applied {{ $rider->applied_at->diffForHumans() }}</div>@endif</td>
-                <td>{{ $rider->shift_status === 'on_shift' ? 'On shift' : 'Off duty' }}@if($rider->isActive() && ! $rider->isSignedIn())<div class="pr-muted">Logged out</div>@endif</td>
+                <td>{{ $rider->isOnShift() ? 'On shift' : 'Off duty' }}@if($rider->isActive() && ! $rider->isSignedIn())<div class="pr-muted">Logged out</div>@endif</td>
                 <td class="pr-num">₱{{ number_format((float) $rider->cod_limit) }} · {{ $rider->max_parcels }} parcels</td>
             </tr>
         @empty

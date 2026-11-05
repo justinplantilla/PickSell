@@ -44,6 +44,41 @@
 document.addEventListener('DOMContentLoaded', () => {
     const KEEP_ON = 'pickrush-scan-camera:' + location.pathname;   // reopen the camera after each scan reloads this page
     const LAST = 'pickrush-scan-last';         // the code just sent, ignored while it is still in view
+    const SENT = 'pickrush-scan-sent';         // a scan was submitted: this page load shows its result
+
+    // Scanner sounds, like the rider app: a short high beep when the scan is accepted,
+    // a low double buzz when it is refused. Played once the server has answered.
+    const tone = (ctx, freq, type, at, length, volume) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(volume, ctx.currentTime + at);
+        gain.gain.setValueAtTime(0, ctx.currentTime + at + length);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(ctx.currentTime + at);
+        osc.stop(ctx.currentTime + at + length + 0.02);
+    };
+    const scanSound = (ok) => {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            if (ctx.state === 'suspended') ctx.resume();
+            if (ok) {
+                tone(ctx, 1800, 'square', 0, 0.1, 0.2);
+            } else {
+                tone(ctx, 220, 'sawtooth', 0, 0.18, 0.35);
+                tone(ctx, 220, 'sawtooth', 0.27, 0.18, 0.35);
+            }
+        } catch (e) { /* no sound is fine */ }
+        if (navigator.vibrate) navigator.vibrate(ok ? 80 : [180, 90, 260]);
+    };
+
+    let sent = false;
+    try { sent = sessionStorage.getItem(SENT) === '1'; sessionStorage.removeItem(SENT); } catch (e) {}
+    if (sent) {
+        if (document.querySelector('.pr-alert-bad')) scanSound(false);
+        else if (document.querySelector('.pr-alert-ok')) scanSound(true);
+    }
 
     document.querySelectorAll('[data-scan-form]').forEach((form) => {
         const input = form.querySelector('input[name="tracking_no"]');
@@ -59,18 +94,6 @@ document.addEventListener('DOMContentLoaded', () => {
             status.className = tone ? 'is-' + tone : '';
         };
 
-        const beep = () => {
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                osc.frequency.value = 1200;
-                osc.connect(ctx.destination);
-                osc.start();
-                osc.stop(ctx.currentTime + 0.12);
-            } catch (e) { /* no sound is fine */ }
-            if (navigator.vibrate) navigator.vibrate(80);
-        };
-
         const onCode = (raw) => {
             const code = raw.replace(/\s+/g, '').toUpperCase();
             if (!code) return;
@@ -79,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (last && last.code === code && Date.now() - last.at < 6000) return;   // same waybill still in front of the camera
                 sessionStorage.setItem(LAST, JSON.stringify({ code, at: Date.now() }));
             } catch (e) { /* storage blocked: submit anyway */ }
-            beep();
             say('Got ' + code + ' — sending…', 'ok');
             input.value = code;
             scanner.pause(true);
@@ -187,11 +209,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) { torch.hidden = true; }
         });
 
+        form.addEventListener('submit', () => {
+            try { sessionStorage.setItem(SENT, '1'); } catch (e) {}
+        });
+
         let keepOn = false;
         try { keepOn = sessionStorage.getItem(KEEP_ON) === '1'; } catch (e) {}
         if (keepOn) {
-            // The scan just sent was refused (unknown, wrong station…): buzz, like the rider app.
-            if (document.querySelector('.pr-alert-bad') && navigator.vibrate) navigator.vibrate([180, 90, 260]);
             input.blur();   // camera mode: don't pop the phone keyboard after every scan
             start();
         }

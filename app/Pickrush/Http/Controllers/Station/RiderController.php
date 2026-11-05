@@ -115,6 +115,10 @@ class RiderController extends StationController
             return back()->withErrors(['operation' => "{$rider->full_name} is logged out of the rider app. They must log in before starting a shift."]);
         }
 
+        if ($data['shift_status'] === 'on_shift') {
+            $data['last_seen_at'] = now();   // counts as a check-in; still goes offline if the app stays closed
+        }
+
         return $this->attempt(fn () => $rider->update($data), $data['shift_status'] === 'on_shift' ? "{$rider->full_name} is on shift." : "{$rider->full_name} is off duty.");
     }
 

@@ -146,7 +146,7 @@ final class RiderBatchView
             'est_earnings' => self::pay($tasks),
             'stops' => $tasks->groupBy(fn (Assignment $task) => self::recipient($task)['key'])
                 ->values()
-                ->map(function (Collection $tasks, int $i) use ($orderNumbers) {
+                ->map(function (Collection $tasks, int $i) use ($orderNumbers, $batch) {
                     $first = $tasks->first();
                     $to = self::recipient($first);
                     $statuses = $tasks->pluck('status')->unique()->values();
@@ -155,7 +155,8 @@ final class RiderBatchView
                         'number' => $i + 1,
                         'kind' => $first->type,             // delivery, or return (to the seller)
                         'name' => $to['name'],
-                        'mobile' => $to['mobile'],
+                        // The buyer's number only reaches a rider who accepted the batch.
+                        'mobile' => $batch->status === 'offered' ? null : $to['mobile'],
                         'address' => $to['address'],
                         'lat' => $to['lat'],
                         'lng' => $to['lng'],

@@ -82,7 +82,7 @@ class EndToEndTest extends TestCase
 
         $rider = Rider::withoutGlobalScopes()->create([
             'station_hub_id' => $station->id, 'full_name' => $name, 'mobile_no' => '0920'.str_pad((string) $n, 7, '0', STR_PAD_LEFT),
-            'vehicle_type' => 'motorcycle', 'status' => 'active', 'shift_status' => 'on_shift',
+            'vehicle_type' => 'motorcycle', 'status' => 'active', 'shift_status' => 'on_shift', 'last_seen_at' => now(),
             'cod_limit' => 10000, 'max_parcels' => 30, 'created_by' => $this->manager->id,
         ]);
         RiderToken::issue($rider);
