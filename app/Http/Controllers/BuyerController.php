@@ -14,6 +14,8 @@ use App\Models\WishlistItem;
 use App\Pickrush\Bridge\PicksellBridge;
 use App\Services\CartQuote;
 use App\Services\OrderPlacement;
+use App\Services\Orders\OrderRating;
+use App\Support\DeliveryAddress;
 use App\Services\RecentlyViewed;
 use App\Services\LogisticsRoutingService;
 use App\Services\MessagingService;
@@ -433,16 +435,31 @@ class BuyerController extends Controller
      * Buyers rate once the parcel is delivered, as in the buyer app (the seller still completes the order), and may
      * leave feedback on a cancelled order from its tracking page.
      */
-    public function submitFeedback(Request $request, Order $order)
+    public function submitFeedback(Request $request, Order $order, OrderRating $ratings)
     {
         abort_if($order->buyer_id !== $this->buyer()->id, 403);
-        $request->validate([
-            'rating' => 'required|integer|min:1|max:5',
-            'feedback' => 'nullable|string|max:1000',
-        ]);
         abort_unless(in_array($order->status, ['delivered', 'completed', 'cancelled'], true), 422, 'You can rate an order once it has been delivered.');
+        abort_if($order->rating !== null, 422, 'You already rated this order.');
 
-        $order->update(['rating' => $request->rating, 'feedback' => $request->feedback]);
+        // A cancelled order is one experience rating; a delivered one rates the product, the seller and the delivery.
+        $delivered = $order->status !== 'cancelled';
+        $stars = 'integer|min:1|max:5';
+        $data = $request->validate([
+            'rating' => "required|$stars",
+            'seller_rating' => $delivered ? "required|$stars" : 'prohibited',
+            'delivery_rating' => $delivered ? "required|$stars" : 'prohibited',
+            'feedback' => 'nullable|string|max:1000',
+        ], [
+            'rating.required' => 'Rate the product.',
+            'seller_rating.required' => 'Rate the seller’s service.',
+            'delivery_rating.required' => 'Rate the delivery.',
+        ]);
+
+        if ($delivered) {
+            $ratings->rate($order, $data['rating'], $data['seller_rating'], $data['delivery_rating'], $data['feedback'] ?? null);
+        } else {
+            $order->update(['rating' => $data['rating'], 'feedback' => $data['feedback'] ?? null]);
+        }
 
         return back()->with('success', 'Feedback submitted. Thank you!');
     }

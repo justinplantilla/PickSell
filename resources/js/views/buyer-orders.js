@@ -1,17 +1,36 @@
-function openFeedback(orderId) {
-    document.getElementById('feedbackForm').action = '/buyer/orders/' + orderId + '/feedback';
-    document.getElementById('ratingInput').value = '';
-    document.querySelectorAll('.star').forEach(s => s.classList.remove('active'));
-    document.getElementById('feedbackModal').classList.add('open');
+const feedbackModal = document.getElementById('feedbackModal');
+const feedbackForm = document.getElementById('feedbackForm');
+
+/** Opens the rating modal for one order, showing the product being rated. */
+function openFeedback(button) {
+    feedbackForm.action = '/buyer/orders/' + button.dataset.openFeedback + '/feedback';
+    feedbackForm.reset();
+    feedbackForm.querySelectorAll('[data-star-group] input').forEach(input => { input.value = ''; });
+    feedbackModal.querySelectorAll('.star').forEach(s => s.classList.remove('active'));
+    feedbackModal.querySelector('[data-rate-error]').hidden = true;
+
+    const image = feedbackModal.querySelector('[data-rate-image]');
+    image.hidden = !button.dataset.image;
+    image.src = button.dataset.image || '';
+    image.alt = button.dataset.product || '';
+    feedbackModal.querySelector('[data-rate-product]').textContent = button.dataset.product || '';
+    feedbackModal.querySelector('[data-rate-option]').textContent = button.dataset.option || '';
+    feedbackModal.querySelector('[data-rate-store]').textContent = button.dataset.store || 'the seller';
+    feedbackModal.classList.add('open');
 }
-function setRating(val) {
-    document.getElementById('ratingInput').value = val;
-    document.querySelectorAll('.star').forEach(s => {
-        s.classList.toggle('active', parseInt(s.dataset.val) <= val);
-    });
+function setRating(star) {
+    const group = star.closest('[data-star-group]');
+    const val = Number(star.dataset.setRating);
+    group.querySelector('input').value = val;
+    group.querySelectorAll('.star').forEach(s => s.classList.toggle('active', Number(s.dataset.val) <= val));
 }
-document.getElementById('feedbackModal').addEventListener('click', e => {
-    if (e.target === document.getElementById('feedbackModal')) document.getElementById('feedbackModal').classList.remove('open');
+feedbackForm.addEventListener('submit', event => {
+    const missing = [...feedbackForm.querySelectorAll('[data-star-group] input')].some(input => !input.value);
+    feedbackModal.querySelector('[data-rate-error]').hidden = !missing;
+    if (missing) event.preventDefault();
+});
+feedbackModal.addEventListener('click', e => {
+    if (e.target === feedbackModal) feedbackModal.classList.remove('open');
 });
 window.openFeedback = openFeedback;
 window.setRating = setRating;
@@ -58,9 +77,9 @@ document.addEventListener('click', event => {
     const cancel = event.target.closest('[data-cancel-order]');
     if (cancel) return confirmCancel(cancel);
     const feedback = event.target.closest('[data-open-feedback]');
-    if (feedback) return openFeedback(feedback.dataset.openFeedback);
+    if (feedback) return openFeedback(feedback);
     const star = event.target.closest('[data-set-rating]');
-    if (star) return setRating(Number(star.dataset.setRating));
+    if (star) return setRating(star);
     if (event.target.closest('[data-close-feedback]')) document.getElementById('feedbackModal').classList.remove('open');
 });
 

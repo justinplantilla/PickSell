@@ -120,6 +120,14 @@ class User extends Authenticatable
         return $this->status === 'deactivated';
     }
 
+    /** Buyers' ratings of this seller's service: average (1 decimal) and how many. */
+    public function sellerRating(): array
+    {
+        $rated = Order::where('seller_id', $this->id)->whereNotNull('seller_rating');
+
+        return ['average' => round((float) (clone $rated)->avg('seller_rating'), 1), 'count' => $rated->count()];
+    }
+
     /** Away until vacation_ends_at; past it the seller is back even if vacation_mode is not cleared yet. */
     public function isOnVacation(): bool
     {

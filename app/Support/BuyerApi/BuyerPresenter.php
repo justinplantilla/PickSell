@@ -139,6 +139,8 @@ final class BuyerPresenter
             'unit_price'      => self::money($o->amount / $quantity),
             'total'           => self::money($o->amount),
             'rating'          => $o->rating,
+            'seller_rating'   => $o->seller_rating,
+            'delivery_rating' => $o->delivery_rating,
             'created_at'      => self::date($o->created_at),
         ];
     }

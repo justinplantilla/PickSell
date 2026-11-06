@@ -32,7 +32,7 @@ class Order extends Model
         'packed_at', 'handed_over_at', 'delivered_at', 'confirmed_by_seller_at',
         'confirmed_at', 'preparing_at', 'ready_for_pickup_at', 'picked_up_at', 'sorting_received_at',
         'sorted_at', 'assigned_to_rider_at', 'out_for_delivery_at', 'completed_at',
-        'rating', 'feedback',
+        'rating', 'seller_rating', 'delivery_rating', 'delivery_rider_id', 'feedback',
     ];
 
     protected $casts = [

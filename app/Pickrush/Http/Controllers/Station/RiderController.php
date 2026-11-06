@@ -2,6 +2,7 @@
 
 namespace App\Pickrush\Http\Controllers\Station;
 
+use App\Pickrush\Bridge\PicksellBridge;
 use App\Pickrush\Models\AuditLog;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\RiderDocument;
@@ -48,6 +49,7 @@ class RiderController extends StationController
             'open' => $rider->openAssignments()->with('parcel')->get(),
             'cashExpected' => $cash->expectedFrom($rider),
             'openCount' => $availability->openCount($rider),
+            'rating' => PicksellBridge::riderRating($rider),
             'zones' => Zone::orderBy('name')->get(),
             'history' => AuditLog::where('subject_type', 'Rider')->where('subject_id', $rider->id)->latest('id')->limit(20)->get(),
         ]);

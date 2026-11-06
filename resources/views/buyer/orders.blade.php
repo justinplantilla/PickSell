@@ -54,7 +54,16 @@
             </form>
             @endif
             @if(in_array($order->status, ['delivered', 'completed'], true) && !$order->rating)
-            <button class="btn btn-coral btn-sm" type="button" data-open-feedback="{{ $order->id }}">Rate & Review</button>
+            <button class="btn btn-coral btn-sm" type="button" data-open-feedback="{{ $order->id }}"
+                data-product="{{ $order->product_name }}" data-option="{{ $order->variation_label }}"
+                data-image="{{ $order->product?->primary_image ? Storage::url($order->product->primary_image) : '' }}"
+                data-store="{{ $order->seller?->business_name ?? $order->seller?->full_name }}">Rate & Review</button>
+            @endif
+            @if($order->status === 'completed' && $order->product_id)
+            <form method="POST" action="{{ route('buyer.orders.buy-again', $order) }}" data-no-confirm>
+                @csrf
+                <button type="submit" class="btn btn-outline btn-sm">Buy Again</button>
+            </form>
             @endif
             @if(in_array($order->status, ['delivered', 'completed'], true) && $order->rating)
             <div class="orders-muted-text-4">
@@ -175,21 +184,36 @@
 <div class="modal-overlay" id="feedbackModal">
     <div class="modal">
         <div class="orders-heading-2">Rate Your Order</div>
+        <div class="rate-product">
+            <img src="" alt="" class="orders-thumb" data-rate-image hidden>
+            <div>
+                <div class="orders-strong" data-rate-product></div>
+                <div class="orders-muted-text" data-rate-option></div>
+            </div>
+        </div>
         <form method="POST" id="feedbackForm">
             @csrf
-            <div class="form-group">
-                <label class="form-label">Rating</label>
-                <div class="star-rating" id="starRating">
+            @foreach([
+                'rating' => ['Product quality', 'How is the product you received?'],
+                'seller_rating' => ['Seller service', 'Packing, communication and how fast <span data-rate-store></span> shipped.'],
+                'delivery_rating' => ['Delivery', 'The courier and how your parcel arrived.'],
+            ] as $field => [$label, $hint])
+            <div class="form-group rate-group" data-star-group="{{ $field }}">
+                <label class="form-label" id="{{ $field }}-label">{{ $label }} *</label>
+                <small class="rate-hint">{!! $hint !!}</small>
+                <div class="star-rating" role="group" aria-labelledby="{{ $field }}-label">
                     @for($i=1;$i<=5;$i++)
                     <button type="button" class="star" data-val="{{ $i }}" data-set-rating="{{ $i }}" aria-label="{{ $i }} {{ $i === 1 ? 'star' : 'stars' }}">★</button>
                     @endfor
                 </div>
-                <input type="hidden" name="rating" id="ratingInput" required>
+                <input type="hidden" name="{{ $field }}">
             </div>
+            @endforeach
             <div class="form-group">
                 <label class="form-label">Review (optional)</label>
-                <textarea name="feedback" class="form-control" rows="3" placeholder="Share your experience..."></textarea>
+                <textarea name="feedback" class="form-control" rows="3" maxlength="1000" placeholder="Share your experience with the product..."></textarea>
             </div>
+            <p class="rate-error" data-rate-error role="alert" hidden>Rate the product, the seller and the delivery.</p>
             <div class="orders-row-2">
                 <button type="button" class="btn btn-outline" data-close-feedback>Cancel</button>
                 <button type="submit" class="btn btn-coral">Submit</button>

@@ -92,7 +92,7 @@ class OrderFollowUpTest extends TestCase
         $order = $this->order($buyer, $seller, 'delivered', ['product_id' => $product->id]);
 
         $this->actingAs($buyer)->get(route('buyer.orders'))->assertOk()->assertSee('Rate & Review', false);
-        $this->post(route('buyer.feedback', $order), ['rating' => 4, 'feedback' => 'Sturdy mug'])->assertRedirect();
+        $this->post(route('buyer.feedback', $order), ['rating' => 4, 'seller_rating' => 5, 'delivery_rating' => 5, 'feedback' => 'Sturdy mug'])->assertRedirect();
         $this->assertSame(4, (int) $order->fresh()->rating);
         $this->assertSame('delivered', $order->fresh()->status);
 

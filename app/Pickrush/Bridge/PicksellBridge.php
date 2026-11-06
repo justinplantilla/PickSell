@@ -7,6 +7,7 @@ use App\Models\OrderShipment;
 use App\Models\User;
 use App\Pickrush\Enums\ParcelStatus;
 use App\Pickrush\Models\Parcel;
+use App\Pickrush\Models\Rider;
 use App\Pickrush\Services\ParcelLedger;
 use App\Pickrush\Services\ParcelRegistrar;
 use App\Pickrush\Services\Shipping\QuoteFailure;
@@ -206,6 +207,22 @@ class PicksellBridge
     public static function parcelFor(Order $order): ?Parcel
     {
         return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->where('external_ref', self::ref($order))->first();
+    }
+
+    /** The rider who completed the delivery of the order's parcel, if it was delivered by one. */
+    public static function deliveryRiderId(Order $order): ?int
+    {
+        return self::parcelFor($order)?->assignments()
+            ->where('type', 'delivery')->where('status', 'completed')
+            ->value('rider_id');
+    }
+
+    /** Buyers' delivery ratings of a rider: average (1 decimal) and how many. */
+    public static function riderRating(Rider $rider): array
+    {
+        $rated = Order::where('delivery_rider_id', $rider->id)->whereNotNull('delivery_rating');
+
+        return ['average' => round((float) (clone $rated)->avg('delivery_rating'), 1), 'count' => $rated->count()];
     }
 
     public static function hasParcel(Order $order): bool

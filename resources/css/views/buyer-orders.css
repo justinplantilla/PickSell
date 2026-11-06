@@ -43,6 +43,13 @@
     .star.active { color: #f59e0b; }
     button.star { padding: 0; border: 0; background: none; font: inherit; line-height: 1; cursor: pointer; }
     button.star:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; border-radius: 4px; }
+    .rate-product { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; margin: 0.5rem 0 1rem; border: 1px solid #efe9df; border-radius: 10px; background: #faf7f2; }
+    .rate-group { margin-bottom: 0.9rem; }
+    .rate-hint { display: block; font-size: 0.75rem; color: #6b6b6b; margin-bottom: 0.2rem; }
+    .rate-error { color: #b91c1c; font-size: 0.8rem; font-weight: 600; margin: 0 0 0.75rem; }
+    body.dark .rate-product { background: #1a1a1a; border-color: #2a2a2a; }
+    body.dark .rate-hint { color: #a3a3a3; }
+    body.dark .rate-error { color: #fca5a5; }
 
     .return-request-panel,
     .return-request-summary { margin: 0 1.2rem 1rem; padding: 0.85rem 1rem; border: 1px solid #e8e2d8; border-radius: 10px; background: #fff; }

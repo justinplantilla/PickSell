@@ -12,6 +12,7 @@ use App\Models\ReturnRequest;
 use App\Models\ReturnRequestEvent;
 use App\Services\AdminNotificationService;
 use App\Services\Orders\OrderCancellationService;
+use App\Services\Orders\OrderRating;
 use App\Support\BuyerApi\BuyerPresenter;
 use App\Support\BuyerApi\OrderStatus;
 use Illuminate\Http\Request;
@@ -73,23 +74,21 @@ class OrderController extends Controller
      * POST /buyer/orders/{id}/rate {rating, feedback?} — the order rating the seller sees. Once the
      * seller has confirmed delivery (completed) it is also the product review, as on the website.
      */
-    public function rate(Request $request, Order $order)
+    /** POST /buyer/orders/{id}/rate {rating (product), seller_rating?, delivery_rating?, feedback?} */
+    public function rate(Request $request, Order $order, OrderRating $ratings)
     {
         $this->find($request, $order);
+        // seller_rating and delivery_rating stay optional here until the app sends them; the website requires them.
         $data = $request->validate([
-            'rating'   => 'required|integer|min:1|max:5',
-            'feedback' => 'nullable|string|max:1000',
+            'rating'          => 'required|integer|min:1|max:5',
+            'seller_rating'   => 'nullable|integer|min:1|max:5',
+            'delivery_rating' => 'nullable|integer|min:1|max:5',
+            'feedback'        => 'nullable|string|max:1000',
         ]);
         abort_unless(in_array(OrderStatus::of($order), OrderStatus::RATEABLE, true), 422, 'You can rate an order once it has been delivered.');
         abort_if($order->rating !== null, 422, 'You already rated this order.');
 
-        $order->update(['rating' => $data['rating'], 'feedback' => $data['feedback'] ?? null]);
-        if ($order->status === 'completed' && $order->product_id) {
-            ProductReview::updateOrCreate(
-                ['product_id' => $order->product_id, 'buyer_id' => $order->buyer_id, 'order_id' => $order->id],
-                ['rating' => $data['rating'], 'body' => $data['feedback'] ?? null],
-            );
-        }
+        $ratings->rate($order, $data['rating'], $data['seller_rating'] ?? null, $data['delivery_rating'] ?? null, $data['feedback'] ?? null);
 
         return $this->detail($order);
     }

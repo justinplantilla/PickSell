@@ -240,6 +240,13 @@ class EndToEndTest extends TestCase
             ->assertJsonPath('today.pickups', 2)
             ->assertJsonPath('today.delivered', 1)
             ->assertJsonCount(0, 'batches');
+
+        // 11. Ben rates: the delivery is credited to Jay, who delivered, not Xtian, whose attempt failed.
+        $this->actingAs($ben)->post(config('app.url')."/buyer/orders/{$benOrder->id}/feedback", ['rating' => 5, 'seller_rating' => 4, 'delivery_rating' => 3])
+            ->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertSame($jay->id, $benOrder->fresh()->delivery_rider_id);
+        $this->assertSame(['average' => 3.0, 'count' => 1], PicksellBridge::riderRating($jay));
+        $this->assertSame(0, PicksellBridge::riderRating($xtian)['count']);
     }
 
     public function test_an_order_to_another_city_travels_through_the_province_hub_to_the_buyers_station(): void

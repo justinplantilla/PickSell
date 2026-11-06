@@ -54,6 +54,7 @@
             <dt>Shift</dt><dd>{{ $rider->isOnShift() ? 'On shift' : 'Off duty' }}@if($rider->last_seen_at) <span class="pr-muted">· app last seen {{ $rider->last_seen_at->diffForHumans() }}</span>@endif</dd>
             <dt>Rider app</dt><dd>{{ $rider->isSignedIn() ? 'Logged in' : 'Logged out' }}</dd>
             <dt>Open tasks</dt><dd>{{ $openCount }} / {{ $rider->max_parcels }}</dd>
+            <dt>Buyer rating</dt><dd>@if($rating['count'])★ {{ number_format($rating['average'], 1) }} <span class="pr-muted">· {{ $rating['count'] }} {{ \Illuminate\Support\Str::plural('delivery', $rating['count']) }} rated</span>@else<span class="pr-muted">No ratings yet</span>@endif</dd>
             <dt>Cash to remit</dt><dd>₱{{ number_format($cashExpected, 2) }} <a href="{{ route('pickrush.station.cash') }}">Cash</a></dd>
             <dt>COD limit</dt><dd>₱{{ number_format((float) $rider->cod_limit, 2) }}@if($rider->on_probation) (probation)@endif</dd>
             <dt>Zone</dt><dd>{{ $rider->zone?->name ?? '—' }}</dd>
