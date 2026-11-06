@@ -61,18 +61,31 @@
 </div>
 
 @if($outbound && $manifest->status === 'draft')
+    @php
+        $vehiclesOut = $onTrip->pluck('vehicle_id')->filter()->flip();
+        $driversOut = $onTrip->pluck('driver_id')->filter()->flip();
+    @endphp
     <form method="POST" action="{{ route($prefix.'.dispatch', $manifest) }}" class="pr-sticky-bar">
         @csrf
         <strong>Dispatch</strong>
-        @if(! empty($vehicles) && $vehicles->isNotEmpty())
-            <select class="pr-select" aria-label="Fleet vehicle" data-fleet-picker>
-                <option value="">Pick from fleet…</option>
-                @foreach($vehicles as $vehicle)<option data-plate="{{ $vehicle->plate_no }}" data-driver="{{ $vehicle->driver_name }}">{{ $vehicle->plate_no }} · {{ $vehicle->vehicle_type }}{{ $vehicle->driver_name ? ' · '.$vehicle->driver_name : '' }}</option>@endforeach
+        @if($vehicles->isEmpty() || $drivers->isEmpty())
+            <span class="pr-muted">This hub needs a registered truck and driver first. <a href="{{ route('pickrush.fleet.index') }}">Trucks &amp; drivers</a></span>
+        @else
+            <select name="vehicle_id" class="pr-select" aria-label="Truck" required data-fleet-picker>
+                <option value="">Pick a truck…</option>
+                @foreach($vehicles as $vehicle)
+                    <option value="{{ $vehicle->id }}" data-driver="{{ $vehicle->default_driver_id }}" @selected((int) old('vehicle_id') === $vehicle->id) @disabled($vehiclesOut->has($vehicle->id))>{{ $vehicle->plate_no }} · {{ $vehicle->vehicle_type }}{{ $vehiclesOut->has($vehicle->id) ? ' · on a trip' : '' }}</option>
+                @endforeach
             </select>
+            <select name="driver_id" class="pr-select" aria-label="Driver" required>
+                <option value="">Pick a driver…</option>
+                @foreach($drivers as $driver)
+                    @php($unavailable = $driversOut->has($driver->id) || $driver->isLicenseExpired())
+                    <option value="{{ $driver->id }}" @selected((int) old('driver_id') === $driver->id) @disabled($unavailable)>{{ $driver->full_name }}{{ $driversOut->has($driver->id) ? ' · on a trip' : ($driver->isLicenseExpired() ? ' · license expired' : '') }}</option>
+                @endforeach
+            </select>
+            <button type="submit" class="pr-btn pr-btn-primary" data-confirm="Dispatch this trip with {{ $manifest->items->count() }} parcels?">Dispatch trip</button>
         @endif
-        <input name="vehicle_plate" class="pr-input" placeholder="Vehicle plate" value="{{ old('vehicle_plate') }}" required aria-label="Vehicle plate">
-        <input name="driver_name" class="pr-input" placeholder="Driver name" value="{{ old('driver_name') }}" required aria-label="Driver name">
-        <button type="submit" class="pr-btn pr-btn-primary" data-confirm="Dispatch this trip with {{ $manifest->items->count() }} parcels?">Dispatch trip</button>
     </form>
 @elseif($manifest->status !== 'draft')
     <section class="pr-card" style="margin-top:1rem">

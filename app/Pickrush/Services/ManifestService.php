@@ -3,12 +3,14 @@
 namespace App\Pickrush\Services;
 
 use App\Pickrush\Enums\ParcelStatus;
+use App\Pickrush\Models\Driver;
 use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\Manifest;
 use App\Pickrush\Models\ManifestParcel;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\ParcelException;
 use App\Pickrush\Models\Staff;
+use App\Pickrush\Models\Vehicle;
 use App\Pickrush\Services\Station\DispatchService;
 use App\Pickrush\Support\Actor;
 use Illuminate\Support\Facades\DB;
@@ -92,11 +94,15 @@ class ManifestService
         $manifest->update(['parcel_count' => $manifest->items()->count()]);
     }
 
-    /** The trip leaves: every parcel on it goes in transit to the receiving hub. */
-    public function dispatch(Manifest $manifest, string $vehiclePlate, string $driverName, Staff $staff): void
+    /**
+     * The trip leaves with one of the sending hub's registered trucks and drivers: every parcel on
+     * it goes in transit to the receiving hub. A truck or driver still out on a trip that has not
+     * been received yet cannot take another.
+     */
+    public function dispatch(Manifest $manifest, Vehicle $vehicle, Driver $driver, Staff $staff): void
     {
         $original = $manifest;
-        DB::transaction(function () use ($manifest, $vehiclePlate, $driverName, $staff, $original) {
+        DB::transaction(function () use ($manifest, $vehicle, $driver, $staff, $original) {
             $manifest = Manifest::withoutGlobalScopes()->whereKey($manifest->id)->lockForUpdate()->firstOrFail();
             if ($manifest->status !== 'draft') {
                 throw new OperationRefused('This trip was already dispatched.');
@@ -104,18 +110,39 @@ class ManifestService
             if ($manifest->items()->count() === 0) {
                 throw new OperationRefused('Add at least one parcel before dispatching.');
             }
+            if ($vehicle->hub_id !== $manifest->from_hub_id || $driver->hub_id !== $manifest->from_hub_id) {
+                throw new OperationRefused('Only this hub\'s own trucks and drivers can take its trips.');
+            }
+            if (! $vehicle->is_active) {
+                throw new OperationRefused("{$vehicle->plate_no} is inactive.");
+            }
+            if (! $driver->is_active) {
+                throw new OperationRefused("{$driver->full_name} is inactive.");
+            }
+            if ($driver->isLicenseExpired()) {
+                throw new OperationRefused("{$driver->full_name}'s license expired on {$driver->license_expiry->format('M d, Y')}. Update it under Trucks & drivers.");
+            }
+            $out = Manifest::withoutGlobalScopes()->where('status', 'dispatched');
+            if ((clone $out)->where('vehicle_id', $vehicle->id)->exists()) {
+                throw new OperationRefused("{$vehicle->plate_no} is still out on a trip.");
+            }
+            if ((clone $out)->where('driver_id', $driver->id)->exists()) {
+                throw new OperationRefused("{$driver->full_name} is still out on a trip.");
+            }
 
             $status = $manifest->toHub->isProvince() ? ParcelStatus::InTransitToProvince : ParcelStatus::InTransitToStation;
             foreach ($manifest->items()->with('parcel')->get() as $item) {
                 $this->ledger->record($item->parcel, $status, $manifest->fromHub, [
                     'to_hub' => $manifest->toHub,
-                    'meta' => ['manifest' => $manifest->manifest_no, 'vehicle' => $vehiclePlate],
+                    'meta' => ['manifest' => $manifest->manifest_no, 'vehicle' => $vehicle->plate_no, 'driver' => $driver->full_name],
                     'actor' => Actor::current(),
                 ]);
             }
 
             $manifest->update([
-                'status' => 'dispatched', 'vehicle_plate' => strtoupper($vehiclePlate), 'driver_name' => $driverName,
+                'status' => 'dispatched',
+                'vehicle_id' => $vehicle->id, 'vehicle_plate' => $vehicle->plate_no,
+                'driver_id' => $driver->id, 'driver_name' => $driver->full_name,
                 'dispatched_by' => $staff->id, 'dispatched_at' => now(),
             ]);
             $original->setRawAttributes($manifest->getAttributes(), true);

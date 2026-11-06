@@ -78,6 +78,12 @@ class Hub extends Model
         if (! $this->staff()->where('role', StaffRole::HubManager)->where('is_active', true)->where('is_sample', false)->exists()) {
             $gaps[] = 'No active hub manager';
         }
+        if (! Vehicle::withoutGlobalScopes()->where('hub_id', $this->id)->where('is_active', true)->exists()) {
+            $gaps[] = 'No truck: trips cannot be dispatched (add one under Trucks & drivers)';
+        }
+        if (! Driver::withoutGlobalScopes()->where('hub_id', $this->id)->where('is_active', true)->whereDate('license_expiry', '>=', today())->exists()) {
+            $gaps[] = 'No driver with a valid license (register one under Trucks & drivers)';
+        }
         if ($this->isStation()) {
             if (! Zone::withoutGlobalScopes()->where('station_hub_id', $this->id)->exists()) {
                 $gaps[] = 'No delivery zone set up';

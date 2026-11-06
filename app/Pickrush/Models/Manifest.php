@@ -44,6 +44,16 @@ class Manifest extends Model
         return $this->hasMany(ManifestParcel::class);
     }
 
+    public function vehicle()
+    {
+        return $this->belongsTo(Vehicle::class)->withoutGlobalScopes();
+    }
+
+    public function driver()
+    {
+        return $this->belongsTo(Driver::class)->withoutGlobalScopes();
+    }
+
     public function getRouteKeyName(): string
     {
         return 'manifest_no';

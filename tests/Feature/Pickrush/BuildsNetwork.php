@@ -3,9 +3,13 @@
 namespace Tests\Feature\Pickrush;
 
 use App\Pickrush\Enums\StaffRole;
+use App\Pickrush\Models\Driver;
 use App\Pickrush\Models\Hub;
+use App\Pickrush\Models\Manifest;
 use App\Pickrush\Models\Staff;
+use App\Pickrush\Models\Vehicle;
 use App\Pickrush\Services\HubNetworkBuilder;
+use App\Pickrush\Services\ManifestService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -59,6 +63,40 @@ trait BuildsNetwork
             'hub_id' => $hub?->id,
             'is_active' => true,
         ], $overrides));
+    }
+
+    /**
+     * The hub's registered truck and driver, created the first time.
+     *
+     * @return array{0: Vehicle, 1: Driver}
+     */
+    protected function fleet(Hub $hub): array
+    {
+        $driver = Driver::withoutGlobalScopes()->firstOrCreate(['hub_id' => $hub->id], [
+            'first_name' => 'Driver',
+            'last_name' => "No{$hub->id}",
+            'birthdate' => '1985-03-01',
+            'mobile_no' => sprintf('0918%07d', $hub->id),
+            'license_no' => sprintf('D01-21-%06d', $hub->id),
+            'license_codes' => 'B,B2,C',
+            'license_expiry' => today()->addYears(2)->toDateString(),
+            'is_active' => true,
+        ]);
+        $vehicle = Vehicle::withoutGlobalScopes()->firstOrCreate(['hub_id' => $hub->id], [
+            'plate_no' => "TRK {$hub->id}",
+            'vehicle_type' => 'truck',
+            'default_driver_id' => $driver->id,
+            'is_active' => true,
+        ]);
+
+        return [$vehicle, $driver];
+    }
+
+    /** Dispatch the trip with the sending hub's truck and driver. */
+    protected function dispatchTrip(Manifest $trip, Staff $staff): void
+    {
+        [$vehicle, $driver] = $this->fleet($trip->fromHub);
+        app(ManifestService::class)->dispatch($trip, $vehicle, $driver, $staff);
     }
 
     protected function pickrushUrl(string $path = '/'): string

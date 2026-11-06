@@ -97,13 +97,13 @@ class StationOperationsTest extends TestCase
         $this->as($this->dispatcher)->post($this->pickrushUrl('/station/receiving'), ['tracking_no' => $parcel->tracking_no]);
         $out = $manifests->create($this->tanauan, $batangas, $this->dispatcher);
         $manifests->add($out, $parcel->tracking_no);
-        $manifests->dispatch($out, 'ABC 123', 'Mang Jose', $this->dispatcher);
+        $this->dispatchTrip($out, $this->dispatcher);
 
         $this->as($sorter);
         $manifests->receive($out, $parcel->tracking_no, $sorter);
         $down = $manifests->create($batangas, $this->sanJose, $sorter);
         $manifests->add($down, $parcel->tracking_no);
-        $manifests->dispatch($down, 'XYZ 789', 'Mang Pedro', $sorter);
+        $this->dispatchTrip($down, $sorter);
 
         $this->as($this->sanJoseManager)->post($this->pickrushUrl('/station/receiving'), ['tracking_no' => $parcel->tracking_no])->assertSessionHasNoErrors();
 
@@ -152,11 +152,12 @@ class StationOperationsTest extends TestCase
         $this->as($this->dispatcher)->post($this->pickrushUrl("/station/trips/{$trip->manifest_no}/parcels/all"))->assertSessionHas('success', '2 parcels added.');
         $this->as($this->dispatcher)->post($this->pickrushUrl("/station/trips/{$trip->manifest_no}/parcels"), ['tracking_no' => $arrives->tracking_no])
             ->assertSessionHas('errors', fn ($bag) => str_contains($bag->first('operation'), 'already on a trip'));
-        $this->as($this->dispatcher)->post($this->pickrushUrl("/station/trips/{$trip->manifest_no}/dispatch"), ['vehicle_plate' => 'abc 123', 'driver_name' => 'Mang Jose'])
+        [$truck, $driver] = $this->fleet($this->tanauan);
+        $this->as($this->dispatcher)->post($this->pickrushUrl("/station/trips/{$trip->manifest_no}/dispatch"), ['vehicle_id' => $truck->id, 'driver_id' => $driver->id])
             ->assertSessionHasNoErrors();
 
         $this->assertSame([ParcelStatus::InTransitToProvince, $this->tanauan->parent_hub_id], [$arrives->fresh()->current_status, $arrives->fresh()->next_hub_id]);
-        $this->assertSame(['dispatched', 'ABC 123'], [$trip->fresh()->status, $trip->fresh()->vehicle_plate]);
+        $this->assertSame(['dispatched', $truck->plate_no, $driver->full_name], [$trip->fresh()->status, $trip->fresh()->vehicle_plate, $trip->fresh()->driver_name]);
 
         // Batangas checks the trip in (the province portal comes next; the service is shared).
         $sorter = $this->staff(StaffRole::Sorter, $this->tanauan->parent);
@@ -335,14 +336,14 @@ class StationOperationsTest extends TestCase
         $manifests = app(ManifestService::class);
         $up = $manifests->create($this->sanJose, $this->sanJose->parent, $this->sanJoseManager);
         $manifests->add($up, $parcel->tracking_no);
-        $manifests->dispatch($up, 'RET 1', 'Mang Ben', $this->sanJoseManager);
+        $this->dispatchTrip($up, $this->sanJoseManager);
         $sorter = $this->staff(StaffRole::Sorter, $this->tanauan->parent);
         $this->as($sorter);
         $manifests->receive($up, $parcel->tracking_no, $sorter);
         $this->assertSame($this->tanauan->id, $parcel->fresh()->next_hub_id, 'the return heads for the origin station');
         $down = $manifests->create($this->tanauan->parent, $this->tanauan, $sorter);
         $manifests->add($down, $parcel->tracking_no);
-        $manifests->dispatch($down, 'RET 2', 'Mang Ben', $sorter);
+        $this->dispatchTrip($down, $sorter);
         $this->as($this->manager)->post($this->pickrushUrl('/station/receiving'), ['tracking_no' => $parcel->tracking_no])->assertSessionHasNoErrors();
 
         $this->as($this->manager);
@@ -423,7 +424,8 @@ class StationOperationsTest extends TestCase
         $this->assertSame(['041029001'], $a->barangayLinks()->pluck('barangay_code')->all());
         $this->assertEqualsCanonicalizing(['041029002', '041029003'], $b->barangayLinks()->pluck('barangay_code')->all());
         $this->tanauan->update(['lat' => 14.0863, 'lng' => 121.1497]);
-        $this->assertSame(['No approved rider'], $this->tanauan->fresh()->readinessGaps(), 'manager, zones and map pin are in place; only a rider is missing');
+        $this->fleet($this->tanauan);
+        $this->assertSame(['No approved rider'], $this->tanauan->fresh()->readinessGaps(), 'manager, truck, driver, zones and map pin are in place; only a rider is missing');
     }
 
     // Pages -----------------------------------------------------------------------------------

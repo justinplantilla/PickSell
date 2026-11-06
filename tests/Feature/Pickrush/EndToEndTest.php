@@ -285,12 +285,12 @@ class EndToEndTest extends TestCase
         $this->asStaff($this->dispatcher);
         $up = $manifests->create($this->tanauan, $batangas, $this->dispatcher);
         $manifests->add($up, $parcel->tracking_no);
-        $manifests->dispatch($up, 'ABC 123', 'Mang Jose', $this->dispatcher);
+        $this->dispatchTrip($up, $this->dispatcher);
         $this->asStaff($sorter);
         $manifests->receive($up, $parcel->tracking_no, $sorter);
         $down = $manifests->create($batangas, $sanJose, $sorter);
         $manifests->add($down, $parcel->tracking_no);
-        $manifests->dispatch($down, 'XYZ 789', 'Mang Pedro', $sorter);
+        $this->dispatchTrip($down, $sorter);
         $this->asStaff($sanJoseManager)->post($this->pickrushUrl('/station/receiving'), ['tracking_no' => $parcel->tracking_no])
             ->assertSessionHasNoErrors();
         $this->assertSame('sorted', $order->fresh()->status, 'arrived at the buyer\'s station');

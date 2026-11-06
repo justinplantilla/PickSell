@@ -95,6 +95,9 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
             Route::get('/fleet', [FleetController::class, 'index'])->name('fleet.index');
             Route::post('/fleet', [FleetController::class, 'store'])->name('fleet.store');
             Route::put('/fleet/{vehicle}', [FleetController::class, 'update'])->name('fleet.update');
+            Route::post('/fleet/drivers', [FleetController::class, 'storeDriver'])->name('fleet.drivers.store');
+            Route::put('/fleet/drivers/{driver}', [FleetController::class, 'updateDriver'])->name('fleet.drivers.update');
+            Route::get('/fleet/drivers/{driver}/license/{side}', [FleetController::class, 'license'])->whereIn('side', ['front', 'back'])->name('fleet.drivers.license');
         });
 
         // Province hub portal (sorting center): receive, sort and move parcels in bulk.

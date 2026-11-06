@@ -21,6 +21,7 @@ final class Navigation
                 ['label' => 'Dispatch', 'route' => 'pickrush.station.dispatch', 'active' => 'pickrush.station.dispatch*'],
                 ['label' => 'Failed deliveries', 'route' => 'pickrush.station.failed', 'active' => 'pickrush.station.failed*'],
                 ['label' => 'Trips', 'route' => 'pickrush.station.trips.index', 'active' => 'pickrush.station.trips.*'],
+                ['label' => 'Trucks & drivers', 'route' => 'pickrush.fleet.index', 'active' => 'pickrush.fleet.*'],
                 ['label' => 'Riders', 'route' => 'pickrush.station.riders.index', 'active' => 'pickrush.station.riders.*'],
                 ['label' => 'Zones', 'route' => 'pickrush.station.zones.index', 'active' => 'pickrush.station.zones.*'],
                 ['label' => 'Location', 'route' => 'pickrush.station.location', 'active' => 'pickrush.station.location*'],
@@ -38,7 +39,7 @@ final class Navigation
                 ['label' => 'Outbound trips', 'route' => 'pickrush.province.trips.index', 'active' => 'pickrush.province.trips.*'],
                 ['label' => 'Inventory on hand', 'route' => 'pickrush.province.inventory', 'active' => 'pickrush.province.inventory'],
                 ['label' => 'Exceptions', 'route' => 'pickrush.exceptions.index', 'active' => 'pickrush.exceptions.*'],
-                ['label' => 'Vehicles & drivers', 'route' => 'pickrush.fleet.index', 'active' => 'pickrush.fleet.*'],
+                ['label' => 'Trucks & drivers', 'route' => 'pickrush.fleet.index', 'active' => 'pickrush.fleet.*'],
                 ['label' => 'Parcels', 'route' => 'pickrush.parcels.index', 'active' => 'pickrush.parcels.*'],
             ];
         }

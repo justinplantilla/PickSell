@@ -26,6 +26,12 @@ return [
     // Tracking numbers look like PR2610200000123X (prefix, yymmdd, sequence, check letter).
     'tracking_prefix' => 'PR',
 
+    // Hub-to-hub trucks are company-owned (registered under this name); Pickrush hires the drivers.
+    'fleet' => [
+        'company_name' => env('PICKRUSH_COMPANY_NAME', 'Pickrush Logistics'),
+        'max_vehicles' => ['station' => 1, 'province' => 3],
+    ],
+
     'policies' => [
         'max_delivery_attempts' => 3,
 
