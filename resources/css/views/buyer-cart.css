@@ -235,3 +235,5 @@ body.dark .checkout-address-list li { border-color:#2a2a2a; }
 body.dark .checkout-address-list li.is-selected { background:#24140f; border-color:var(--coral, #E8472A); }
 body.dark .checkout-address-tag { background:#2a1712; }
 body.dark .checkout-note-row td { background:#161616; }
+.checkout-eta { display:block; color:var(--success, #15803d); font-weight:700; font-size:.75rem; }
+body.dark .checkout-eta { color:#4ade80; }

@@ -79,7 +79,7 @@
                     <tbody class="cart-store">
                     <tr class="cart-store-head">
                         <td colspan="4"><a href="{{ route('buyer.seller', $store) }}" class="cart-store-name">{{ $store->business_name ?? $store->full_name }}</a></td>
-                        <td class="cart-muted-text-2">@if($parcel && $parcel['ok'])Shipping ₱{{ number_format((float) $parcel['delivery_fee'], 2) }}@endif</td>
+                        <td class="cart-muted-text-2">@if($parcel && $parcel['ok'])Shipping ₱{{ number_format((float) $parcel['delivery_fee'], 2) }}@if($parcel['estimated_delivery'])<span class="checkout-eta">Arrives {{ $parcel['estimated_delivery']['label'] }}</span>@endif @endif</td>
                     </tr>
                     @foreach($storeItems as $item)
                     <tr>
@@ -122,7 +122,7 @@
                         <span>
                             {{ $parcel['seller']->business_name ?? $parcel['seller']->full_name }}
                             @if($parcel['ok'])
-                                <small class="cart-muted-text">· Pickrush · {{ $parcel['chargeable_weight_kg'] }} kg{{ $parcel['parcel_class'] !== 'STANDARD' ? ' · '.ucfirst(strtolower($parcel['parcel_class'])).' parcel' : '' }}</small>
+                                <small class="cart-muted-text">· Pickrush{{ $parcel['estimated_delivery'] ? ' · arrives '.$parcel['estimated_delivery']['label'] : '' }} · {{ $parcel['chargeable_weight_kg'] }} kg{{ $parcel['parcel_class'] !== 'STANDARD' ? ' · '.ucfirst(strtolower($parcel['parcel_class'])).' parcel' : '' }}</small>
                             @endif
                         </span>
                         @if($parcel['ok'])

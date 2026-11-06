@@ -60,6 +60,8 @@ return [
     'shipping' => [
         'min_rider_pay' => 15,             // no parcel class may pay a rider less
         'max_priced_weight_kg' => 50,      // heavier parcels need a manual quote
+        // Days from checkout to delivery shown to buyers, by route level (0 local … 4 remote islands).
+        'delivery_days' => [0 => [1, 2], 1 => [2, 3], 2 => [3, 5], 3 => [4, 7], 4 => [5, 10]],
     ],
 
     // What a rider earns per pickup. A delivery (or a return to the seller) pays the parcel

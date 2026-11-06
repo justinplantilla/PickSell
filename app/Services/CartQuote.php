@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CartItem;
 use App\Models\User;
+use App\Pickrush\Services\Shipping\DeliveryEstimate;
 use App\Pickrush\Services\Shipping\ShippingQuote;
 use App\Support\BuyerApi\BuyerPresenter;
 use Illuminate\Support\Collection;
@@ -101,11 +102,14 @@ class CartQuote
             return ['ok' => false, 'reason' => $quote->failure->value, 'message' => OrderPlacement::shippingProblem($quote, $lines->values())];
         }
 
+        $eta = app(DeliveryEstimate::class)->for($quote);
+
         return [
             'ok' => true,
             'delivery_fee' => $quote->deliveryFee,
             'parcel_class' => $quote->parcelClass,
             'chargeable_weight_kg' => $quote->chargeableWeightKg,
+            'estimated_delivery' => $eta ? ['from' => $eta['from']->toDateString(), 'to' => $eta['to']->toDateString(), 'label' => $eta['label']] : null,
         ];
     }
 }
