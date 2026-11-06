@@ -131,6 +131,8 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
     Route::get('/browse', [BuyerController::class, 'browse'])->name('buyer.browse');
     Route::get('/recommended', [BuyerController::class, 'recommended'])->name('buyer.recommended');
     Route::get('/seller/{seller}', [BuyerController::class, 'sellerStorefront'])->name('buyer.seller');
+    Route::post('/seller/{seller}/follow', [BuyerController::class, 'toggleFollow'])->name('buyer.seller.follow');
+    Route::get('/following', [BuyerController::class, 'following'])->name('buyer.following');
     Route::get('/product/{product}', [BuyerController::class, 'productDetail'])->name('buyer.product');
     Route::post('/product/{product}/reviews', [BuyerController::class, 'submitProductReview'])->name('buyer.product.review');
 

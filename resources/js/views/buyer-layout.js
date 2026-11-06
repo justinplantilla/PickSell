@@ -14,6 +14,14 @@ function showBuyerNotificationDetail(notification) {
     modal.querySelector('h2').textContent = notification.title || notification.type || 'PickSell notification';
     modal.querySelector('.notification-detail-message').textContent = notification.message || 'No additional details available.';
     modal.querySelector('.notification-detail-time').textContent = new Date(notification.created_at).toLocaleString();
+    // Same-site paths only (e.g. a new product from a followed store).
+    if (typeof notification.url === 'string' && notification.url.startsWith('/') && !notification.url.startsWith('//')) {
+        const link = document.createElement('a');
+        link.className = 'btn btn-coral btn-sm notification-detail-link';
+        link.href = notification.url;
+        link.textContent = 'View';
+        modal.querySelector('.notification-detail-card').appendChild(link);
+    }
     document.body.appendChild(modal);
     const close = () => modal.remove();
     modal.querySelector('.notification-detail-close').addEventListener('click', close);

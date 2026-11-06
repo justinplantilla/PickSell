@@ -16,6 +16,11 @@
             <h1>{{ $seller->business_name ?? $seller->full_name }}</h1>
             <p>Browse this seller's available products and find something made for you.</p>
             <span class="seller-storefront-status"><i></i> Verified seller</span>
+            <x-seller-stats :seller="$seller" class="seller-storefront-stats" />
+            <div class="seller-storefront-actions">
+                <x-follow-seller-button :seller="$seller" />
+                <a href="/buyer/chat?user={{ $seller->id }}" class="btn btn-outline btn-sm">Chat</a>
+            </div>
             @if($seller->isOnVacation())<div class="alert alert-warning" role="note">On vacation until {{ $seller->vacation_ends_at?->format('M j') }}: browse freely, but orders are paused until the seller is back.</div>@endif
         </div>
         <div class="seller-storefront-count"><strong>{{ $products->total() }}</strong><span>products</span></div>

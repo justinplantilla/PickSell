@@ -260,6 +260,29 @@ class BuyerController extends Controller
         return view('buyer.seller-storefront', compact('seller', 'products', 'cartCount'));
     }
 
+    /** The stores this buyer follows, most recently followed first. */
+    public function following()
+    {
+        $stores = $this->buyer()->followedSellers()
+            ->withCount(['products as active_products_count' => fn ($q) => $q->where('status', 'active')])
+            ->orderByPivot('created_at', 'desc')->paginate(20);
+        $cartCount = CartItem::whereHas('cart', fn ($q) => $q->where('buyer_id', $this->buyer()->id))->count();
+
+        return view('buyer.following', compact('stores', 'cartCount'));
+    }
+
+    /** Follow a store, or unfollow it if already following. */
+    public function toggleFollow(Request $request, User $seller)
+    {
+        abort_unless($seller->role === 'seller' && $seller->status === 'approved', 404);
+        $result = $this->buyer()->followedSellers()->toggle($seller->id);
+        $following = ! empty($result['attached']);
+
+        return $request->expectsJson()
+            ? response()->json(['following' => $following, 'followers' => $seller->followers()->count()])
+            : back()->with('success', $following ? 'You are now following this store.' : 'You unfollowed this store.');
+    }
+
     // Add to Cart
     public function addToCart(Request $request, Product $product)
     {
@@ -636,8 +659,10 @@ class BuyerController extends Controller
                 'read_at' => $notification->read_at,
                 'order_id' => $payload['order_id'] ?? null,
                 'order_number' => $payload['order_number'] ?? null,
+                'title' => $payload['title'] ?? null,
                 'message' => $payload['message'] ?? 'New notification',
                 'status' => $payload['status'] ?? null,
+                'url' => $payload['url'] ?? null,
             ];
         });
 

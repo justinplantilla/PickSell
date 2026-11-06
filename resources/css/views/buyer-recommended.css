@@ -81,3 +81,16 @@
 .wishlist-remove-btn:hover {
     background: var(--coral-soft, #fff3f0);
 }
+
+/* Following: stores the buyer follows */
+.following-list { list-style:none; margin:0 0 1rem; padding:0; display:grid; gap:.75rem; }
+.following-card { display:flex; flex-wrap:wrap; align-items:center; gap:.9rem; padding:1rem; border:1px solid #efe9df; border-radius:12px; background:#fff; }
+.following-avatar { display:grid; place-items:center; width:48px; height:48px; border-radius:50%; background:#fff3f0; color:var(--coral, #E8472A); font-weight:800; text-decoration:none; flex-shrink:0; }
+.following-copy { flex:1; min-width:12rem; display:flex; flex-direction:column; gap:.2rem; }
+.following-copy small { color:#667085; font-size:.75rem; }
+.following-name { font-weight:800; color:#1f2328; text-decoration:none; }
+.following-name:hover { color:var(--coral, #E8472A); }
+.following-actions { display:flex; gap:.5rem; align-items:center; }
+body.dark .following-card { background:#1a1a1a; border-color:#2a2a2a; }
+body.dark .following-name { color:#e5e7eb; }
+body.dark .following-avatar { background:#2a1712; }

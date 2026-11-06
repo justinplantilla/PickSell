@@ -228,6 +228,24 @@ class User extends Authenticatable
         return $this->hasMany(Product::class, 'seller_id');
     }
 
+    /** Buyers following this seller's store. */
+    public function followers()
+    {
+        return $this->belongsToMany(User::class, 'seller_follows', 'seller_id', 'buyer_id')->withTimestamps();
+    }
+
+    /** A buyer's extra delivery addresses; the profile address is the default. */
+    public function addresses()
+    {
+        return $this->hasMany(BuyerAddress::class)->orderBy('id');
+    }
+
+    /** Stores this buyer follows. */
+    public function followedSellers()
+    {
+        return $this->belongsToMany(User::class, 'seller_follows', 'buyer_id', 'seller_id')->withTimestamps();
+    }
+
     public function wishlistItems()
     {
         return $this->hasMany(WishlistItem::class);

@@ -32,7 +32,7 @@ class NotificationController extends Controller
                     'id'          => $n->id,
                     'type'        => $order ? 'order' : 'message',
                     'status'      => $status ? (OrderStatus::LEGACY[$status] ?? $status) : null,
-                    'title'       => $status ? (OrderStatus::EVENTS[OrderStatus::LEGACY[$status] ?? $status][0] ?? 'Order update') : ($order ? 'Order update' : 'New message'),
+                    'title'       => $status ? (OrderStatus::EVENTS[OrderStatus::LEGACY[$status] ?? $status][0] ?? 'Order update') : ($order ? 'Order update' : ($data['title'] ?? 'New message')),
                     'body'        => $data['message'] ?? 'New notification',
                     'order_id'    => $order?->id,
                     'image'       => BuyerPresenter::image($order?->product?->primary_image),

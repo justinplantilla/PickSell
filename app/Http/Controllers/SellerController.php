@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductReview;
 use App\Models\ReturnRequest;
 use App\Models\User;
+use App\Notifications\FollowedStoreNewProduct;
 use App\Notifications\SellerDeliveryReceived;
 use App\Pickrush\Bridge\PicksellBridge;
 use App\Services\CommissionService;
@@ -25,6 +26,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Throwable;
@@ -389,7 +391,14 @@ class SellerController extends Controller
             if ($managed) {
                 $gallery->sync($product, $data['gallery'] ?? [], $data['gallery_cover'] ?? null, $data['gallery_alt'] ?? []);
             }
+
+            return $product;
         });
+
+        // Buyers following the store hear about it once it is listed.
+        if ($product->fresh()->isShowcased()) {
+            Notification::send($this->seller()->followers()->where('status', 'approved')->get(), new FollowedStoreNewProduct($product));
+        }
 
         return back()->with('success', 'Product added successfully.');
     }
