@@ -66,6 +66,10 @@
                 <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15.9V19h-2v-1.1c-1.3-.2-2.3-.9-2.7-2.1l1.8-.7c.3.8.9 1.2 1.9 1.2 1 0 1.6-.4 1.6-1 0-.5-.3-.8-1.8-1.2-1.8-.5-3.1-1.1-3.1-2.8 0-1.3.9-2.3 2.3-2.6V7h2v1.1c1.1.2 1.9.8 2.3 1.8l-1.7.8c-.3-.7-.8-1-1.6-1-.9 0-1.4.4-1.4 1 0 .6.5.8 1.9 1.2 1.7.5 3 1.1 3 2.8 0 1.5-1 2.5-2.5 2.8z"/></svg></span>
                 <span class="nav-label">Earnings</span>
             </a>
+            <a href="{{ route('seller.reviews') }}" class="nav-item {{ request()->is('seller/reviews*') ? 'active' : '' }}" title="Reviews">
+                <span class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="m12 17.3 6.2 3.7-1.6-7 5.4-4.7-7.1-.6L12 2 9.1 8.7 2 9.3l5.4 4.7-1.6 7z"/></svg></span>
+                <span class="nav-label">Reviews</span>
+            </a>
 
             <div class="nav-group-label">System</div>
             <hr class="nav-divider">

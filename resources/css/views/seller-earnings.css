@@ -62,3 +62,17 @@ body.dark .earnings-disclosure-trigger:hover,body.dark .earnings-disclosure-trig
     .earnings-filter-form .btn { flex:1 1 100%; }
     .earnings-export-actions .btn { flex:1 1 0; text-align:center; }
 }
+
+/* Reviews */
+.reviews-panel { padding:1rem 1.15rem; margin-top:1rem; }
+.review-row { padding:.85rem 0; border-bottom:1px solid #efe9df; }
+.review-row:last-of-type { border-bottom:0; }
+.review-row-head { display:flex; flex-wrap:wrap; justify-content:space-between; gap:.25rem .75rem; font-size:.88rem; }
+.review-row-stars { display:flex; flex-wrap:wrap; gap:.35rem 1.1rem; margin-top:.35rem; font-size:.8rem; }
+.review-row p { margin:.45rem 0 0; font-size:.85rem; }
+.review-muted { color:#667085; font-size:.78rem; }
+.review-stars { color:#f59e0b; letter-spacing:.05em; }
+.review-stars-off { color:#d0d5dd; }
+body.dark .review-row { border-color:#2a2a2a; }
+body.dark .review-muted { color:#a3a3a3; }
+body.dark .review-stars-off { color:#3a3a3a; }

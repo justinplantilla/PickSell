@@ -216,6 +216,7 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
 
     // Reports
     Route::get('/reports', [SellerController::class, 'reports'])->name('seller.reports');
+    Route::get('/reviews', [SellerController::class, 'reviews'])->name('seller.reviews');
     Route::get('/reports/csv', [SellerController::class, 'reportCsv'])->name('seller.reports.csv');
     Route::get('/reports/pdf', [SellerController::class, 'reportPdf'])->name('seller.reports.pdf');
 

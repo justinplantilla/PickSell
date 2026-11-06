@@ -794,6 +794,19 @@ class SellerController extends Controller
     }
 
     // Reports
+    /** Buyers' ratings of this seller's orders: product, service and delivery, newest first. */
+    public function reviews()
+    {
+        $rated = Order::where('seller_id', $this->seller()->id)->whereNotNull('rating')->where('status', '!=', 'cancelled');
+        $averages = collect(['rating', 'seller_rating', 'delivery_rating'])->mapWithKeys(fn ($field) => [$field => [
+            'average' => round((float) (clone $rated)->avg($field), 1),
+            'count' => (clone $rated)->whereNotNull($field)->count(),
+        ]]);
+        $reviews = (clone $rated)->with('buyer:id,first_name')->latest('updated_at')->paginate(20);
+
+        return view('seller.reviews', compact('averages', 'reviews'));
+    }
+
     public function reports(Request $request)
     {
         [$from, $to] = $this->reportDateRange($request);
