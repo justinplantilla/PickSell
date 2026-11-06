@@ -120,18 +120,26 @@
         $shipment = $order->shipment;
         $shippingFee = $shipment ? (float) $shipment->delivery_fee : 0.0;
         $sharedWith = $shipment ? $shipment->orders->where('status', '!=', 'cancelled')->count() : 1;
+        // PickSell vouchers come off the parcel; store vouchers are already in each order's amount.
+        $pickSellOff = $shipment ? (float) $shipment->platform_discount + (float) $shipment->shipping_discount : 0.0;
     @endphp
     <dl class="order-breakdown">
         <div><dt>Order #</dt><dd>{{ $order->order_number }}</dd></div>
         <div><dt>Item price</dt><dd>₱{{ number_format($unitPrice, 2) }}</dd></div>
         <div><dt>Quantity</dt><dd>× {{ $order->quantity }}</dd></div>
+        @if((float) $order->store_discount > 0)
+        <div><dt>Store voucher</dt><dd>−₱{{ number_format($order->store_discount, 2) }} <small class="orders-muted-text">included</small></dd></div>
+        @endif
         <div><dt>Subtotal</dt><dd>₱{{ number_format($order->amount, 2) }}</dd></div>
         <div><dt>Shipping fee</dt><dd>@if($shipment)₱{{ number_format($shippingFee, 2) }}@if($sharedWith > 1) <small class="orders-muted-text">for this parcel of {{ $sharedWith }} items</small>@endif @else — @endif</dd></div>
+        @if($pickSellOff > 0)
+        <div><dt>PickSell voucher</dt><dd>−₱{{ number_format($pickSellOff, 2) }}@if($sharedWith > 1) <small class="orders-muted-text">on this parcel</small>@endif</dd></div>
+        @endif
         @if($sharedWith > 1)
         <div class="order-breakdown-total"><dt>Total (this item)</dt><dd>₱{{ number_format($order->amount, 2) }}</dd></div>
-        <div><dt>Parcel total (COD)</dt><dd>₱{{ number_format($shipment->orders->where('status', '!=', 'cancelled')->sum('amount') + $shippingFee, 2) }}</dd></div>
+        <div><dt>Parcel total (COD)</dt><dd>₱{{ number_format(max(0, $shipment->orders->where('status', '!=', 'cancelled')->sum('amount') + $shippingFee - $pickSellOff), 2) }}</dd></div>
         @else
-        <div class="order-breakdown-total"><dt>Total</dt><dd>₱{{ number_format($order->amount + $shippingFee, 2) }}</dd></div>
+        <div class="order-breakdown-total"><dt>Total</dt><dd>₱{{ number_format(max(0, $order->amount + $shippingFee - $pickSellOff), 2) }}</dd></div>
         @endif
     </dl>
     </div>

@@ -31,6 +31,7 @@ use App\Http\Controllers\SellerController;
 use App\Http\Controllers\SellerProductImageController;
 use App\Http\Controllers\RegistrationResubmissionController;
 use App\Http\Controllers\SellerReturnRequestController;
+use App\Http\Controllers\SellerVoucherController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\BuyerMiddleware;
 use App\Http\Middleware\SellerMiddleware;
@@ -218,6 +219,10 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     // Reports
     Route::get('/reports', [SellerController::class, 'reports'])->name('seller.reports');
     Route::get('/reviews', [SellerController::class, 'reviews'])->name('seller.reviews');
+    Route::get('/vouchers', [SellerVoucherController::class, 'index'])->name('seller.vouchers');
+    Route::post('/vouchers', [SellerVoucherController::class, 'store'])->name('seller.vouchers.store');
+    Route::put('/vouchers/{voucher}', [SellerVoucherController::class, 'update'])->name('seller.vouchers.update');
+    Route::delete('/vouchers/{voucher}', [SellerVoucherController::class, 'destroy'])->name('seller.vouchers.destroy');
     Route::get('/reports/csv', [SellerController::class, 'reportCsv'])->name('seller.reports.csv');
     Route::get('/reports/pdf', [SellerController::class, 'reportPdf'])->name('seller.reports.pdf');
 

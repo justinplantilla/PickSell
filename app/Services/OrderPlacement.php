@@ -9,10 +9,13 @@ use App\Models\OrderShipment;
 use App\Models\Product;
 use App\Models\ProductVariation;
 use App\Models\User;
+use App\Models\Voucher;
+use App\Models\VoucherRedemption;
 use App\Notifications\NewSellerOrder;
 use App\Pickrush\Bridge\PicksellBridge;
 use App\Pickrush\Services\Shipping\QuoteFailure;
 use App\Pickrush\Services\Shipping\ShippingQuote;
+use App\Services\Vouchers\VoucherPricing;
 use App\Support\DeliveryAddress;
 use DomainException;
 use Illuminate\Support\Collection;
@@ -87,15 +90,14 @@ class OrderPlacement
     }
 
     /**
-     * @return Collection<int, Order>
-     *
-     * @throws ValidationException (field item_ids) when a line is unavailable or short of stock
-     */
-    /**
      * @param  DeliveryAddress|null  $to  where to ship; the buyer's profile (default) address when null
      * @param  array<int|string, string|null>  $notes  the buyer's note to each seller, keyed by seller id
+     * @param  array{stores?: array<int|string, int>, platform?: ?int}  $vouchers  voucher ids: one per store (keyed by seller id) and one platform voucher
+     * @return Collection<int, Order>
+     *
+     * @throws ValidationException (field item_ids, address or vouchers) when the checkout cannot go ahead
      */
-    public function place(User $buyer, array $itemIds, ?string $voucherCode, ?DeliveryAddress $to = null, array $notes = []): Collection
+    public function place(User $buyer, array $itemIds, ?string $voucherCode, ?DeliveryAddress $to = null, array $notes = [], array $vouchers = []): Collection
     {
         $to ??= DeliveryAddress::fromProfile($buyer);
         if (! $to->isComplete()) {
@@ -117,7 +119,7 @@ class OrderPlacement
         }
         $shipping = $this->priceShipping($buyer, $items, $to);
 
-        $placed = DB::transaction(function () use ($buyer, $items, $voucherCode, $shipping, $to, $notes) {
+        $placed = DB::transaction(function () use ($buyer, $items, $voucherCode, $shipping, $to, $notes, $vouchers) {
             // Lock the products so moderation, other buyers and stock changes cannot interleave.
             $products = Product::whereIn('id', $items->pluck('product_id'))->with('seller')->lockForUpdate()->get()->keyBy('id');
             $unavailable = $items->filter(fn ($item) => ! $products->get($item->product_id)?->isPurchasable());
@@ -139,6 +141,11 @@ class OrderPlacement
                     .($variations->has($variationId) ? ' ('.$variations[$variationId]->label.')' : ''))->join(', ').'.']);
             }
 
+            // Each line's price (with its product voucher), then the checkout vouchers on top.
+            $lineAmounts = $items->mapWithKeys(fn (CartItem $item) => [$item->id => round(self::unitPrice(
+                $products[$item->product_id], $voucherCode, $item->variation_id ? $variations[$item->variation_id] : null) * $item->quantity, 2)]);
+            $discounts = $this->voucherDiscounts($buyer, $items, $lineAmounts, $shipping, $vouchers);
+
             $shipments = $shipping->map(fn (array $priced, $sellerId) => OrderShipment::create([
                 'reference' => 'SHP-'.strtoupper(Str::random(10)),
                 'buyer_id' => $buyer->id,
@@ -156,13 +163,21 @@ class OrderPlacement
                 'delivery_commission_rate' => $priced['split']['rate'],
                 'rates_version' => $priced['quote']->ratesVersion,
                 'buyer_note' => filled($notes[$sellerId] ?? null) ? trim($notes[$sellerId]) : null,
+                'store_voucher_id' => $discounts['stores'][$sellerId]['voucher']?->id,
+                'store_discount' => $discounts['stores'][$sellerId]['amount'],
+                'platform_voucher_id' => $discounts['platform']?->id,
+                'platform_discount' => $discounts['platformShares'][$sellerId] ?? 0,
+                'shipping_discount' => $discounts['shippingShares'][$sellerId] ?? 0,
             ] + $to->shipmentColumns()));
+            $this->redeem($buyer, $discounts, $shipments);
 
-            return $items->map(function (CartItem $item) use ($buyer, $products, $variations, $voucherCode, $shipments) {
+            return $items->map(function (CartItem $item) use ($buyer, $products, $variations, $lineAmounts, $discounts, $shipments) {
                 $product = $products[$item->product_id];
                 $variation = $item->variation_id ? $variations[$item->variation_id] : null;
-                $amount = self::unitPrice($product, $voucherCode, $variation) * $item->quantity;
-                $commission = $this->commission->calculate((string) round($amount, 2));
+                // The store voucher is the seller's: the order is saved at the lower amount, so commission follows.
+                $storeDiscount = $discounts['lineShares'][$item->id] ?? 0;
+                $amount = round($lineAmounts[$item->id] - $storeDiscount, 2);
+                $commission = $this->commission->calculate((string) $amount);
 
                 $order = Order::create([
                     'order_number' => 'ORD-'.strtoupper(Str::random(8)),
@@ -175,6 +190,7 @@ class OrderPlacement
                     'variation_label' => $variation?->label,
                     'quantity' => $item->quantity,
                     'amount' => $amount,
+                    'store_discount' => $storeDiscount,
                     'commission' => $commission['commission'],
                     'commission_rate' => $commission['rate'],
                     'status' => 'placed',
@@ -194,6 +210,68 @@ class OrderPlacement
         }
 
         return $placed;
+    }
+
+    /**
+     * Checks the chosen vouchers again (under the checkout's lock) and works out what each takes off:
+     * a store voucher on that store's lines, spread over them; a platform voucher over the stores'
+     * parcels, on the items or (free shipping) on the delivery fees.
+     */
+    private function voucherDiscounts(User $buyer, Collection $items, Collection $lineAmounts, Collection $shipping, array $chosen): array
+    {
+        $pricing = app(VoucherPricing::class);
+        $refuse = fn (string $message) => throw ValidationException::withMessages(['vouchers' => $message]);
+        $bySeller = $items->groupBy(fn (CartItem $item) => $item->product->seller_id);
+
+        $stores = [];
+        $lineShares = [];
+        foreach ($bySeller as $sellerId => $lines) {
+            $subtotal = $lines->sum(fn (CartItem $item) => $lineAmounts[$item->id]);
+            $voucher = isset($chosen['stores'][$sellerId])
+                ? (Voucher::whereKey($chosen['stores'][$sellerId])->where('seller_id', $sellerId)->lockForUpdate()->first() ?? $refuse('That store voucher is not available.'))
+                : null;
+            if ($voucher && ($problem = $pricing->problem($voucher, $buyer, $subtotal))) {
+                $refuse("{$voucher->code}: {$problem}");
+            }
+            $amount = $voucher ? $pricing->discount($voucher, $subtotal) : 0;
+            $stores[$sellerId] = ['voucher' => $voucher, 'amount' => $amount];
+            $lineShares += VoucherPricing::allocate($amount, $lines->mapWithKeys(fn (CartItem $item) => [$item->id => $lineAmounts[$item->id]])->all());
+        }
+
+        $platform = ! empty($chosen['platform'])
+            ? (Voucher::whereKey($chosen['platform'])->whereNull('seller_id')->lockForUpdate()->first() ?? $refuse('That PickSell voucher is not available.'))
+            : null;
+        $merchBySeller = collect($stores)->map(fn ($store, $sellerId) => $bySeller[$sellerId]->sum(fn (CartItem $item) => $lineAmounts[$item->id]) - $store['amount']);
+        $feeBySeller = $shipping->map(fn (array $priced) => (float) $priced['split']['delivery_fee']);
+        $platformShares = [];
+        $shippingShares = [];
+        if ($platform) {
+            if ($problem = $pricing->problem($platform, $buyer, $merchBySeller->sum())) {
+                $refuse("{$platform->code}: {$problem}");
+            }
+            $off = $pricing->discount($platform, $merchBySeller->sum(), $feeBySeller->sum());
+            if ($platform->type === Voucher::FREE_SHIPPING) {
+                $shippingShares = VoucherPricing::allocate($off, $feeBySeller->all());
+            } else {
+                $platformShares = VoucherPricing::allocate($off, $merchBySeller->all());
+            }
+        }
+
+        return compact('stores', 'lineShares', 'platform', 'platformShares', 'shippingShares');
+    }
+
+    /** One redemption per voucher used in this checkout, so usage limits count each checkout once. */
+    private function redeem(User $buyer, array $discounts, Collection $shipments): void
+    {
+        foreach ($discounts['stores'] as $sellerId => $store) {
+            if ($store['voucher']) {
+                VoucherRedemption::create(['voucher_id' => $store['voucher']->id, 'buyer_id' => $buyer->id, 'order_shipment_id' => $shipments[$sellerId]->id, 'amount' => $store['amount']]);
+            }
+        }
+        if ($discounts['platform']) {
+            VoucherRedemption::create(['voucher_id' => $discounts['platform']->id, 'buyer_id' => $buyer->id, 'order_shipment_id' => $shipments->first()->id,
+                'amount' => array_sum($discounts['platformShares']) + array_sum($discounts['shippingShares'])]);
+        }
     }
 
     /**

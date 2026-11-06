@@ -159,11 +159,12 @@ final class BuyerPresenter
 
         return self::orderCard($o) + [
             'subtotal'          => self::money($o->amount),
-            'discount'          => 0.0,
+            // Store voucher share (already out of subtotal) plus the parcel's PickSell voucher.
+            'discount'          => self::money((float) $o->store_discount + ($shipment ? (float) $shipment->platform_discount + (float) $shipment->shipping_discount : 0)),
             'shipping_fee'      => $shipment ? self::money($shipment->delivery_fee) : 0.0,
             'service_fee'       => 0.0,
             'payment_method'    => 'Cash on Delivery',
-            'cod_amount'        => $parcel ? self::money($parcel->cod_amount) : self::money($o->amount + ($shipment ? (float) $shipment->delivery_fee : 0)),
+            'cod_amount'        => $parcel ? self::money($parcel->cod_amount) : self::money(max(0, $o->amount + ($shipment ? (float) $shipment->delivery_fee - (float) $shipment->platform_discount - (float) $shipment->shipping_discount : 0))),
             'shipment'          => $shipment ? [
                 'reference'      => $shipment->reference,
                 'parcel_class'   => $shipment->parcel_class,

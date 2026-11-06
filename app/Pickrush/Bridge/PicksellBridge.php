@@ -359,13 +359,20 @@ class PicksellBridge
         return $orders->map(fn (Order $order) => $order->product_name.($order->variation_label ? " ({$order->variation_label})" : '')." × {$order->quantity}")->join('; ');
     }
 
-    /** Cash to collect: the items still in the parcel plus the delivery fee (orders before shipments had none). */
+    /**
+     * Cash to collect: the items still in the parcel plus the delivery fee (orders before shipments
+     * had none), less what a PickSell voucher covers. Store vouchers are already in the order amounts.
+     */
     private static function codAmount(Collection $orders, ?OrderShipment $shipment): string
     {
         $money = app(CommissionService::class);
         $cents = $orders->sum(fn (Order $order) => $money->toCents((string) $order->amount));
+        if ($shipment) {
+            $cents += $money->toCents((string) $shipment->delivery_fee)
+                - $money->toCents((string) ($shipment->platform_discount ?? 0)) - $money->toCents((string) ($shipment->shipping_discount ?? 0));
+        }
 
-        return $money->fromCents($cents + ($shipment ? $money->toCents((string) $shipment->delivery_fee) : 0));
+        return $money->fromCents(max(0, $cents));
     }
 
     /** Codes saved on the account, or resolved now for accounts created before codes were stored. */

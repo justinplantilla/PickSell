@@ -27,7 +27,7 @@ class Order extends Model
 
     protected $fillable = [
         'order_number', 'product_id', 'variation_id', 'buyer_id', 'seller_id', 'order_shipment_id',
-        'product_name', 'variation_label', 'quantity', 'amount', 'commission', 'commission_rate', 'status',
+        'product_name', 'variation_label', 'quantity', 'amount', 'store_discount', 'commission', 'commission_rate', 'status',
         'waybill_number', 'tracking_status',
         'packed_at', 'handed_over_at', 'delivered_at', 'confirmed_by_seller_at',
         'confirmed_at', 'preparing_at', 'ready_for_pickup_at', 'picked_up_at', 'sorting_received_at',

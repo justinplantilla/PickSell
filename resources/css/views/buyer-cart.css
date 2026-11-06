@@ -132,6 +132,19 @@
 .checkout-voucher-desc { font-size: 0.75rem; color: #888; }
 .checkout-voucher-savings { font-weight: 800; font-size: 0.85rem; color: #16a34a; flex-shrink: 0; }
 .checkout-voucher-none .checkout-voucher-info .checkout-voucher-label { color: #888; font-weight: 600; }
+a.checkout-voucher-option { text-decoration: none; color: inherit; }
+.checkout-voucher-list + .checkout-voucher-hint { margin-top: 1rem; }
+.checkout-voucher-option.is-unavailable { opacity: 0.55; cursor: not-allowed; }
+.checkout-voucher-option.is-unavailable:hover { border-color: #e8e0d5; background: #faf8f4; }
+.checkout-voucher-badge--platform { background: #1f2937; }
+.checkout-voucher-code { margin-bottom: 1rem; }
+.checkout-voucher-code label { display: block; margin-bottom: 0.4rem; }
+.checkout-voucher-code-row { display: flex; gap: 0.5rem; }
+.checkout-voucher-code-row .form-control { flex: 1; min-width: 0; text-transform: uppercase; }
+.checkout-voucher-error { margin: 0.4rem 0 0; color: #b91c1c; font-size: 0.8rem; font-weight: 600; }
+body.dark .checkout-voucher-option.is-unavailable:hover { background: transparent; }
+body.dark .checkout-voucher-badge--platform { background: #e5e7eb; color: #111; }
+body.dark .checkout-voucher-error { color: #fca5a5; }
 
 @media (max-width: 900px) {
     /* Phones and small tablets: the summary (with Checkout) drops under the items instead of off screen. */

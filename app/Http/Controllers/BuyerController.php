@@ -11,6 +11,8 @@ use App\Models\Product;
 use App\Models\ProductReview;
 use App\Models\ProductReviewPhoto;
 use App\Models\ProductReviewVote;
+use App\Models\Voucher;
+use App\Services\Vouchers\VoucherPricing;
 use App\Models\User;
 use App\Models\WishlistItem;
 use App\Pickrush\Bridge\PicksellBridge;
@@ -381,8 +383,65 @@ class BuyerController extends Controller
         ] + CartQuote::shipping($quote, $items->filter(fn ($item) => $item->product->seller_id == $sellerId)));
         $shippingTotal = $shipping->where('ok', true)->sum(fn ($parcel) => (float) $parcel['delivery_fee']);
         $canPlace = $deliverTo->isComplete() && $shipping->every(fn ($parcel) => $parcel['ok']);
+        $vouchers = $this->checkoutVouchers($request, $items, $shippingTotal);
 
-        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount', 'shipping', 'shippingTotal', 'canPlace', 'addresses', 'addressId', 'deliverTo'));
+        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount', 'shipping', 'shippingTotal', 'canPlace', 'addresses', 'addressId', 'deliverTo', 'vouchers'));
+    }
+
+    /**
+     * The store and PickSell vouchers on offer at checkout, which ones are picked (store_voucher[seller],
+     * platform_voucher, or a typed code) and what they save. Placing the order checks them again.
+     */
+    private function checkoutVouchers(Request $request, $items, float $shippingTotal): array
+    {
+        $pricing = app(VoucherPricing::class);
+        $buyer = $this->buyer();
+        $subtotals = $items->groupBy(fn ($item) => $item->product->seller_id)->map(fn ($lines) => $lines->sum(fn ($item) => $item->subtotal));
+        $picked = ['stores' => array_map('intval', (array) $request->query('store_voucher', [])), 'platform' => (int) $request->query('platform_voucher') ?: null];
+        $error = null;
+
+        // A typed code picks the store or PickSell voucher it belongs to (codes are not case-sensitive).
+        $code = strtoupper(trim((string) $request->query('code', '')));
+        if ($code !== '') {
+            $typed = Voucher::live()->whereRaw('UPPER(code) = ?', [$code])
+                ->where(fn ($q) => $q->whereNull('seller_id')->orWhereIn('seller_id', $subtotals->keys()))->first();
+            if (! $typed) {
+                $error = "{$code} is not a voucher for these items.";
+            } elseif ($typed->isPlatform()) {
+                $picked['platform'] = $typed->id;
+            } else {
+                $picked['stores'][$typed->seller_id] = $typed->id;
+            }
+        }
+
+        $stores = $subtotals->map(fn ($subtotal, $sellerId) => $pricing->options($pricing->storeVouchers($sellerId), $buyer, $subtotal));
+        $storeSavings = [];
+        foreach ($stores as $sellerId => $options) {
+            $choice = $options->first(fn ($o) => $o['voucher']->id === ($picked['stores'][$sellerId] ?? null));
+            if ($choice && $choice['problem']) {
+                $error ??= "{$choice['voucher']->code}: {$choice['problem']}";
+            }
+            $storeSavings[$sellerId] = $choice && ! $choice['problem'] ? $choice['discount'] : 0;
+            if (! $storeSavings[$sellerId]) {
+                unset($picked['stores'][$sellerId]);
+            }
+        }
+
+        $platformOptions = $pricing->options($pricing->platformVouchers(), $buyer, $subtotals->sum() - array_sum($storeSavings), $shippingTotal);
+        $platformChoice = $platformOptions->first(fn ($o) => $o['voucher']->id === $picked['platform']);
+        if ($platformChoice && $platformChoice['problem']) {
+            $error ??= "{$platformChoice['voucher']->code}: {$platformChoice['problem']}";
+        }
+        $platformSaving = $platformChoice && ! $platformChoice['problem'] ? $platformChoice['discount'] : 0;
+        if (! $platformSaving) {
+            $picked['platform'] = null;
+        }
+
+        return [
+            'stores' => $stores, 'platform' => $platformOptions, 'picked' => $picked, 'error' => $error,
+            'storeSavings' => $storeSavings, 'platformSaving' => $platformSaving,
+            'total' => round(array_sum($storeSavings) + $platformSaving, 2),
+        ];
     }
 
     public function updateCart(Request $request, CartItem $item)
@@ -416,6 +475,9 @@ class BuyerController extends Controller
             'address_id' => 'nullable|integer',
             'notes' => 'nullable|array',
             'notes.*' => 'nullable|string|max:300',
+            'store_vouchers' => 'nullable|array',
+            'store_vouchers.*' => 'integer',
+            'platform_voucher' => 'nullable|integer',
         ], ['notes.*.max' => 'Keep each note to the seller under 300 characters.']);
 
         if ($placement->items($this->buyer(), $data['item_ids'])->isEmpty()) {
@@ -424,7 +486,8 @@ class BuyerController extends Controller
 
         try {
             $placement->place($this->buyer(), $data['item_ids'], $data['voucher_code'] ?? null,
-                DeliveryAddress::forBuyer($this->buyer(), $data['address_id'] ?? null), $data['notes'] ?? []);
+                DeliveryAddress::forBuyer($this->buyer(), $data['address_id'] ?? null), $data['notes'] ?? [],
+                ['stores' => $data['store_vouchers'] ?? [], 'platform' => $data['platform_voucher'] ?? null]);
         } catch (ValidationException $exception) {
             return redirect()->route('buyer.cart')->withErrors($exception->errors());
         }
