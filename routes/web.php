@@ -22,6 +22,7 @@ use App\Http\Controllers\AdminReturnDisputeController;
 use App\Http\Controllers\AdminSearchController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AdminUserController;
+use App\Http\Controllers\AdminVoucherController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BuyerAddressController;
 use App\Http\Controllers\BuyerController;
@@ -343,6 +344,12 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
     Route::patch('/complaints/{complaint}/resolve', [AdminComplaintController::class, 'resolve'])->middleware($can(Permission::COMPLAINTS_MANAGE))->name('admin.complaints.resolve');
 
     Route::get('/commission', [AdminController::class, 'commission'])->middleware($can(Permission::COMMISSION_VIEW))->name('admin.commission');
+    Route::get('/vouchers', [AdminVoucherController::class, 'index'])->middleware($can(Permission::SETTINGS_VIEW))->name('admin.vouchers');
+    Route::middleware($can(Permission::SETTINGS_MANAGE))->group(function () {
+        Route::post('/vouchers', [AdminVoucherController::class, 'store'])->name('admin.vouchers.store');
+        Route::put('/vouchers/{voucher}', [AdminVoucherController::class, 'update'])->name('admin.vouchers.update');
+        Route::delete('/vouchers/{voucher}', [AdminVoucherController::class, 'destroy'])->name('admin.vouchers.destroy');
+    });
 
     Route::get('/reports', [AdminReportController::class, 'index'])->middleware($can(Permission::REPORTS_VIEW))->name('admin.reports');
     Route::get('/reports/export', [AdminReportController::class, 'exportPdf'])->middleware($can(Permission::REPORTS_EXPORT))->name('admin.reports.export');

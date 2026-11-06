@@ -1,6 +1,6 @@
 @extends('seller.layout')
 @section('styles')
-@vite(['resources/css/views/seller-dashboard.css', 'resources/css/views/seller-earnings.css'])
+@vite(['resources/css/views/seller-dashboard.css', 'resources/css/views/seller-earnings.css', 'resources/css/components/vouchers.css'])
 @endsection
 @section('title', 'Vouchers')
 

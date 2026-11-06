@@ -1,0 +1,25 @@
+/* Voucher lists and forms: seller store vouchers and admin PickSell vouchers */
+.vouchers-panel { padding:1rem 1.15rem; margin-top:1rem; display:grid; gap:.6rem; }
+.voucher-new > summary { list-style:none; display:inline-flex; }
+.voucher-new > summary::-webkit-details-marker { display:none; }
+.voucher-new[open] > summary { margin-bottom:.9rem; }
+.voucher-row { border:1px solid #e8e2d8; border-radius:10px; padding:.75rem .9rem; }
+.voucher-row > summary { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem 1rem; cursor:pointer; list-style:none; }
+.voucher-row > summary::-webkit-details-marker { display:none; }
+.voucher-row[open] > summary { margin-bottom:.9rem; }
+.voucher-code { font-family:ui-monospace, Consolas, monospace; font-weight:700; background:#fff3f0; color:#c93a20; padding:.15rem .5rem; border-radius:6px; font-size:.82rem; }
+.voucher-main { display:grid; flex:1; min-width:12rem; }
+.voucher-main small, .voucher-meta small { color:#667085; font-size:.76rem; }
+.voucher-meta { display:grid; justify-items:end; gap:.1rem; }
+.voucher-state { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#667085; }
+.voucher-state.is-live { color:#15803d; }
+.voucher-form-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(11rem, 1fr)); gap:0 .9rem; }
+.voucher-active { display:inline-flex; align-items:center; gap:.4rem; margin:0 1rem .5rem 0; font-size:.85rem; font-weight:600; }
+.voucher-code-input { text-transform:uppercase; }
+.voucher-delete { margin-top:.5rem; }
+body.dark .voucher-row { border-color:#2a2a2a; }
+body.dark .voucher-code { background:#2a1712; color:#ff9b85; }
+body.dark .voucher-main small, body.dark .voucher-meta small { color:#a3a3a3; }
+@media (max-width:640px) { .voucher-meta { justify-items:start; } }
+.voucher-intro { margin:0 0 .5rem; color:#667085; font-size:.86rem; max-width:70ch; }
+body.dark .voucher-intro { color:#a3a3a3; }

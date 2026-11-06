@@ -92,7 +92,7 @@ class AdminNavigationTest extends TestCase
         }
         $this->assertSame([
             'Overview' => ['Dashboard', 'Notifications'],
-            'Marketplace' => ['Orders', 'Products', 'Seller Compliance'],
+            'Marketplace' => ['Orders', 'Products', 'Seller Compliance', 'Vouchers & Campaigns'],
             'Users' => ['Registrations', 'User Accounts'],
             'Operations' => ['Logistics'],
             'Customer Care' => ['Complaints & Disputes', 'Returns', 'Refunds'],
