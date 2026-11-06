@@ -390,7 +390,7 @@ class BuyerController extends Controller
     public function orders(Request $request)
     {
         $status = $request->get('status', 'all');
-        $query = Order::where('buyer_id', $this->buyer()->id)->with('product', 'seller', 'returnRequest');
+        $query = Order::where('buyer_id', $this->buyer()->id)->with('product', 'seller', 'returnRequest', 'shipment.orders');
         $statusGroups = [
             'pending' => ['pending', 'placed', 'confirmed'],
             'processing' => ['processing', 'preparing', 'ready_for_pickup'],
@@ -462,6 +462,32 @@ class BuyerController extends Controller
         }
 
         return back()->with('success', 'Feedback submitted. Thank you!');
+    }
+
+    /** Puts a completed order's product (and the same option) back in the cart, as the app's reorder does. */
+    public function buyAgain(Order $order)
+    {
+        abort_if($order->buyer_id !== $this->buyer()->id, 403);
+        abort_unless($order->status === 'completed', 404);
+
+        $product = $order->product()->with('seller', 'variations')->first();
+        if (! $product || ! $product->isPurchasable() || $product->stock <= 0) {
+            return back()->withErrors(['order' => "{$order->product_name} is no longer available."]);
+        }
+        $variation = $product->variations->firstWhere('id', $order->variation_id);
+        if ($product->variations->isNotEmpty() && ! $variation) {
+            return redirect()->route('buyer.product', $product)->withErrors(['variation_id' => 'Choose an option for this product.']);
+        }
+        $stock = $variation ? min($variation->stock, $product->stock) : $product->stock;
+        if ($stock <= 0) {
+            return back()->withErrors(['order' => "{$order->product_name} ({$variation->label}) is out of stock."]);
+        }
+
+        $item = CartItem::firstOrNew(['cart_id' => $this->getCart()->id, 'product_id' => $product->id, 'variation_id' => $variation?->id]);
+        $item->quantity = min((int) $item->quantity + (int) $order->quantity, $stock);
+        $item->save();
+
+        return redirect()->route('buyer.cart')->with('success', "{$product->name} is back in your cart.");
     }
 
     public function submitProductReview(Request $request, Product $product)

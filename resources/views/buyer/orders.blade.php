@@ -18,13 +18,15 @@
 {{-- The whole summary opens the order's details: delivery progress, Pickrush stops and the price breakdown. --}}
 <div class="order-card" data-order-card>
     <div class="order-card-header">
-        <div>
-            <span class="orders-muted-text">Order #</span>
-            <strong>{{ $order->order_number }}</strong>
-            <span class="orders-muted-text-2">{{ $order->created_at->format('M d, Y') }}</span>
+        {{-- The store comes first; the order number stays in Details for support. --}}
+        <div class="orders-row orders-store">
+            @if($order->seller)
+                <a href="{{ route('buyer.seller', $order->seller) }}" class="orders-store-name">{{ $order->seller->business_name ?? $order->seller->full_name }}</a>
+                <a href="/buyer/chat?user={{ $order->seller_id }}" class="btn btn-outline btn-sm orders-chat-btn">Chat</a>
+            @endif
         </div>
         <div class="orders-row">
-            <span class="orders-muted-text">{{ $order->seller->business_name ?? $order->seller->full_name }}</span>
+            <span class="orders-muted-text-2">{{ $order->created_at->format('M d, Y') }}</span>
             <x-order-status-badge :status="$order->status" />
             <button type="button" class="order-toggle" data-order-toggle aria-expanded="false" aria-controls="order-details-{{ $order->id }}">
                 <span>Details</span>
@@ -33,8 +35,10 @@
         </div>
     </div>
     <div class="order-card-body">
-        @if($order->product && $order->product->primary_image)
-            <img src="{{ Storage::url($order->product->primary_image) }}" class="orders-thumb">
+        @if($order->product)
+            <a href="{{ route('buyer.product', $order->product) }}" class="orders-thumb-link" aria-label="View {{ $order->product_name }}">
+                @if($order->product->primary_image)<img src="{{ Storage::url($order->product->primary_image) }}" class="orders-thumb" alt="">@else<div class="orders-thumb-placeholder"></div>@endif
+            </a>
         @else
             <div class="orders-thumb-placeholder"></div>
         @endif
@@ -112,13 +116,23 @@
 
     @php
         $unitPrice = $order->quantity > 0 ? $order->amount / $order->quantity : $order->amount;
+        // One delivery fee per store parcel, which may also carry the buyer's other items from that store.
+        $shipment = $order->shipment;
+        $shippingFee = $shipment ? (float) $shipment->delivery_fee : 0.0;
+        $sharedWith = $shipment ? $shipment->orders->where('status', '!=', 'cancelled')->count() : 1;
     @endphp
     <dl class="order-breakdown">
+        <div><dt>Order #</dt><dd>{{ $order->order_number }}</dd></div>
         <div><dt>Item price</dt><dd>₱{{ number_format($unitPrice, 2) }}</dd></div>
         <div><dt>Quantity</dt><dd>× {{ $order->quantity }}</dd></div>
         <div><dt>Subtotal</dt><dd>₱{{ number_format($order->amount, 2) }}</dd></div>
-        <div><dt>Shipping fee</dt><dd>₱0.00</dd></div>
-        <div class="order-breakdown-total"><dt>Total</dt><dd>₱{{ number_format($order->amount, 2) }}</dd></div>
+        <div><dt>Shipping fee</dt><dd>@if($shipment)₱{{ number_format($shippingFee, 2) }}@if($sharedWith > 1) <small class="orders-muted-text">for this parcel of {{ $sharedWith }} items</small>@endif @else — @endif</dd></div>
+        @if($sharedWith > 1)
+        <div class="order-breakdown-total"><dt>Total (this item)</dt><dd>₱{{ number_format($order->amount, 2) }}</dd></div>
+        <div><dt>Parcel total (COD)</dt><dd>₱{{ number_format($shipment->orders->where('status', '!=', 'cancelled')->sum('amount') + $shippingFee, 2) }}</dd></div>
+        @else
+        <div class="order-breakdown-total"><dt>Total</dt><dd>₱{{ number_format($order->amount + $shippingFee, 2) }}</dd></div>
+        @endif
     </dl>
     </div>
 

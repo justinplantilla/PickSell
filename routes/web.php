@@ -154,6 +154,7 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
     Route::patch('/orders/{order}/cancel', [BuyerController::class, 'cancelOrder'])->name('buyer.orders.cancel');
     Route::post('/orders/{order}/returns', [BuyerReturnRequestController::class, 'store'])->name('buyer.orders.returns.store');
     Route::post('/orders/{order}/feedback', [BuyerController::class, 'submitFeedback'])->name('buyer.feedback');
+    Route::post('/orders/{order}/buy-again', [BuyerController::class, 'buyAgain'])->name('buyer.orders.buy-again');
     Route::get('/notifications', [BuyerController::class, 'notifications'])->name('buyer.notifications');
     Route::post('/notifications/read', [BuyerController::class, 'markNotificationsRead'])->name('buyer.notifications.read');
 

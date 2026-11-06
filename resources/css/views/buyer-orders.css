@@ -148,3 +148,12 @@
 .orders-spaced { margin-top:1rem !important; }
 .orders-heading-2 { font-size:1rem !important; font-weight:700 !important; margin-bottom:1rem !important; }
 .orders-row-2 { display:flex !important; gap:0.8rem !important; justify-content:flex-end !important; margin-top:1rem !important; }
+
+/* Store link, chat and product links on the order card */
+.orders-store-name { font-weight:700; font-size:0.88rem; color:#1f2328; text-decoration:none; }
+.orders-store-name:hover, .orders-product-link:hover { color:var(--coral, #E8472A); }
+.orders-chat-btn { padding:0.2rem 0.65rem !important; font-size:0.75rem !important; }
+.orders-thumb-link { display:block; flex-shrink:0; border-radius:8px; }
+.orders-thumb-link:focus-visible, .orders-product-link:focus-visible, .orders-store-name:focus-visible { outline:2px solid var(--coral, #E8472A); outline-offset:2px; }
+.orders-product-link { color:inherit; text-decoration:none; }
+body.dark .orders-store-name { color:#e5e7eb; }
