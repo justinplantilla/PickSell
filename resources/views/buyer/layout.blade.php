@@ -32,7 +32,7 @@
                 </button>
                 <div class="notif-dropdown" id="buyerNotifDropdown">
                     <div class="notif-header"><span>Notifications <span id="buyerNotifCount"></span></span><button type="button" class="notif-mark-read" id="markBuyerNotificationsRead">Mark all as read</button></div>
-                    <div id="buyerNotifList"><div class="notif-empty">Loading...</div></div>
+                    <div id="buyerNotifList"><div class="skeleton-list" aria-label="Loading notifications"><span class="skeleton-line"></span><span class="skeleton-line is-short"></span><span class="skeleton-line"></span><span class="skeleton-line is-short"></span></div></div>
                 </div>
             </div>
             <a href="/buyer/chat" class="nav-icon-btn" aria-label="Messages">

@@ -9,10 +9,10 @@
 @endphp
 <div class="map-pin" data-map-pin="{{ $id }}" data-lat="{{ $hasPin ? $lat : '' }}" data-lng="{{ $hasPin ? $lng : '' }}"
      data-start="{{ json_encode($start) }}" data-zoom="{{ $hasPin ? 17 : ($center ?? null ? 14 : 6) }}">
-    <div id="{{ $id }}-map" style="height:320px;border-radius:10px;border:1px solid #e3e6ec;z-index:0"></div>
-    <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-top:.6rem">
-        <button type="button" data-map-pin-locate style="padding:.45rem .8rem;border-radius:8px;border:1px solid #d0d5dd;background:#fff;cursor:pointer">📍 Use my current location</button>
-        <span data-map-pin-label style="color:#6b7280;font-size:.9em">{{ $hasPin ? 'Pinned at '.round((float) $lat, 6).', '.round((float) $lng, 6) : 'No pin yet: click the map to drop one.' }}</span>
+    <div id="{{ $id }}-map" class="map-pin-canvas"></div>
+    <div class="map-pin-bar">
+        <button type="button" data-map-pin-locate class="map-pin-locate">📍 Use my current location</button>
+        <span data-map-pin-label class="map-pin-label">{{ $hasPin ? 'Pinned at '.round((float) $lat, 6).', '.round((float) $lng, 6) : 'No pin yet: click the map to drop one.' }}</span>
     </div>
     <input type="hidden" name="lat" value="{{ $hasPin ? $lat : '' }}" data-map-pin-lat>
     <input type="hidden" name="lng" value="{{ $hasPin ? $lng : '' }}" data-map-pin-lng>

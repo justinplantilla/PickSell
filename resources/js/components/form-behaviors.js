@@ -1,23 +1,51 @@
+import '../../css/components/ui-feedback.css';
+import '../../css/components/table-cards.css';
+
+/** Confirm dialog for every portal; resolves true on OK. Escape or a click outside cancels. */
 function showConfirm(message, { okText = 'Confirm', cancelText = 'Cancel' } = {}) {
     return new Promise(resolve => {
         const overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9998;display:flex;align-items:center;justify-content:center;';
-        overlay.innerHTML = `<div style="background:#fff;border-radius:12px;padding:1.5rem;max-width:360px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.18);">
-            <p id="confirmMessage" style="font-size:0.9rem;margin-bottom:1.2rem;color:#333;"></p>
-            <div style="display:flex;gap:0.75rem;justify-content:flex-end;">
-                <button id="confirmCancel" type="button" style="padding:0.45rem 1rem;font-size:0.82rem;border:1.5px solid #ddd6c8;border-radius:6px;background:transparent;cursor:pointer;">${cancelText}</button>
-                <button id="confirmOk" type="button" style="padding:0.45rem 1rem;font-size:0.82rem;border:none;border-radius:6px;background:#dc2626;color:#fff;cursor:pointer;">${okText}</button>
-            </div>
+        overlay.className = 'ui-dialog-overlay';
+        overlay.innerHTML = `<div class="ui-dialog" role="alertdialog" aria-modal="true" aria-describedby="uiDialogMessage">
+            <p id="uiDialogMessage"></p>
+            <div class="ui-dialog-actions"><button type="button" class="ui-dialog-cancel"></button><button type="button" class="ui-dialog-ok"></button></div>
         </div>`;
-        overlay.querySelector('#confirmMessage').textContent = message;
+        overlay.querySelector('#uiDialogMessage').textContent = message;
+        overlay.querySelector('.ui-dialog-cancel').textContent = cancelText;
+        overlay.querySelector('.ui-dialog-ok').textContent = okText;
+        const returnFocus = document.activeElement;
+        const done = answer => { overlay.remove(); document.removeEventListener('keydown', onKey); returnFocus?.focus?.(); resolve(answer); };
+        const onKey = event => { if (event.key === 'Escape') done(false); };
+        overlay.querySelector('.ui-dialog-cancel').addEventListener('click', () => done(false));
+        overlay.querySelector('.ui-dialog-ok').addEventListener('click', () => done(true));
+        overlay.addEventListener('click', event => { if (event.target === overlay) done(false); });
+        document.addEventListener('keydown', onKey);
         document.body.appendChild(overlay);
-        overlay.querySelector('#confirmCancel').addEventListener('click', () => { overlay.remove(); resolve(false); });
-        overlay.querySelector('#confirmOk').addEventListener('click', () => { overlay.remove(); resolve(true); });
-        const close = () => { overlay.remove(); resolve(false); };
-        overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+        overlay.querySelector('.ui-dialog-ok').focus();
     });
 }
 window.showConfirm = showConfirm;
+
+/** Short status message in the corner; type is 'success' or 'error'. */
+function showToast(message, type = 'success') {
+    let container = document.querySelector('.ui-toasts');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'ui-toasts';
+        container.setAttribute('role', 'status');
+        container.setAttribute('aria-live', 'polite');
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `ui-toast ui-toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('is-leaving');
+        setTimeout(() => toast.remove(), 220);
+    }, 2800);
+}
+window.showToast = showToast;
 
 document.addEventListener('change', event => {
     if (event.target.matches('[data-submit-on-change]')) event.target.form?.submit();
@@ -92,3 +120,10 @@ document.addEventListener('click', event => {
         });
     }
 });
+
+// Product photo placeholders shimmer until their image has loaded (or failed).
+const markLoaded = img => img.closest('.product-img-wrap, .product-detail-img')?.classList.add('is-loaded');
+document.addEventListener('load', event => { if (event.target.tagName === 'IMG') markLoaded(event.target); }, true);
+document.addEventListener('error', event => { if (event.target.tagName === 'IMG') markLoaded(event.target); }, true);
+const markReady = () => document.querySelectorAll('.product-img-wrap img, .product-detail-img img').forEach(img => { if (img.complete) markLoaded(img); });
+document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', markReady) : markReady();

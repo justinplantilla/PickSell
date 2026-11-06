@@ -79,7 +79,7 @@
         <div class="card">
             <div class="card-header"><span class="card-title">Order Items</span></div>
             <div class="cart-scroll">
-                <table class="checkout-table">
+                <table class="checkout-table table-cards">
                     <thead><tr><th>Product</th><th>Variation</th><th>Price</th><th>Qty</th><th>Subtotal</th></tr></thead>
                     @foreach($items->groupBy(fn ($item) => $item->product->seller_id) as $sellerId => $storeItems)
                     @php $store = $storeItems->first()->product->seller; $parcel = $shipping[$sellerId] ?? null; @endphp
@@ -90,7 +90,7 @@
                     </tr>
                     @foreach($storeItems as $item)
                     <tr>
-                        <td>
+                        <td class="cell-main">
                             <div class="cart-row-2">
                                 @if($item->product->primary_image)
                                     <img src="{{ Storage::url($item->product->primary_image) }}" class="cart-thumb">
@@ -102,10 +102,10 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="cart-muted-text-2">{{ $item->variation?->label ?? '—' }}</td>
-                        <td class="cart-accent-text">₱{{ number_format($item->unit_price, 2) }}</td>
-                        <td>{{ $item->quantity }}</td>
-                        <td class="cart-strong">₱{{ number_format($item->subtotal, 2) }}</td>
+                        <td class="cart-muted-text-2" data-label="Option">{{ $item->variation?->label ?? '—' }}</td>
+                        <td class="cart-accent-text" data-label="Price">₱{{ number_format($item->unit_price, 2) }}</td>
+                        <td data-label="Qty">{{ $item->quantity }}</td>
+                        <td class="cart-strong" data-label="Subtotal">₱{{ number_format($item->subtotal, 2) }}</td>
                     </tr>
                     @endforeach
                     <tr class="checkout-note-row">

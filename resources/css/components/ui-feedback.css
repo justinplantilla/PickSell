@@ -1,0 +1,47 @@
+/* Shared toasts and confirm dialog (resources/js/components/form-behaviors.js), in both themes. */
+:root { --ui-dialog-bg: #ffffff; --ui-dialog-fg: #1f2328; --ui-dialog-line: #ddd6c8; --ui-toast-ok: #15803d; --ui-toast-bad: #c0392b; }
+body.dark { --ui-dialog-bg: #1c1f24; --ui-dialog-fg: #e5e7eb; --ui-dialog-line: #3a3f47; --ui-toast-ok: #166534; --ui-toast-bad: #991b1b; }
+
+.ui-toasts { position: fixed; right: max(1.2rem, env(safe-area-inset-right, 0px)); bottom: max(1.2rem, env(safe-area-inset-bottom, 0px)); z-index: 10000; display: grid; gap: .5rem; pointer-events: none; }
+.ui-toast { max-width: min(340px, calc(100vw - 2rem)); padding: .75rem 1rem; border-radius: 9px; color: #fff; background: var(--ui-toast-ok); box-shadow: 0 12px 28px rgba(0,0,0,.2); font-size: .82rem; font-weight: 700; animation: ui-toast-in .22s ease both; pointer-events: auto; }
+.ui-toast-error { background: var(--ui-toast-bad); }
+.ui-toast.is-leaving { opacity: 0; transform: translateY(8px); transition: opacity .22s, transform .22s; }
+@keyframes ui-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.ui-dialog-overlay { position: fixed; inset: 0; z-index: 9998; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(0,0,0,.45); }
+.ui-dialog { width: 100%; max-width: 360px; padding: 1.5rem; border-radius: 12px; background: var(--ui-dialog-bg); color: var(--ui-dialog-fg); box-shadow: 0 8px 32px rgba(0,0,0,.25); }
+.ui-dialog p { margin: 0 0 1.2rem; font-size: .9rem; line-height: 1.5; }
+.ui-dialog-actions { display: flex; justify-content: flex-end; gap: .75rem; }
+.ui-dialog-actions button { padding: .45rem 1rem; font: inherit; font-size: .82rem; font-weight: 600; border-radius: 6px; cursor: pointer; }
+.ui-dialog-cancel { border: 1.5px solid var(--ui-dialog-line); background: transparent; color: inherit; }
+.ui-dialog-ok { border: 0; background: #dc2626; color: #fff; }
+.ui-dialog-actions button:focus-visible { outline: 2px solid var(--coral, #E8472A); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) { .ui-toast { animation: none; } .ui-toast.is-leaving { transition: none; } }
+
+/* Loading placeholders: skeleton lines, and a shimmer behind product photos until they load */
+:root { --ui-skeleton-a: #f1ede6; --ui-skeleton-b: #f9f7f3; }
+body.dark { --ui-skeleton-a: #23262b; --ui-skeleton-b: #2c3036; }
+.skeleton-list { display: grid; gap: .6rem; padding: .9rem 1rem; }
+.skeleton-line { display: block; height: .7rem; border-radius: 6px; background: linear-gradient(90deg, var(--ui-skeleton-a) 25%, var(--ui-skeleton-b) 50%, var(--ui-skeleton-a) 75%); background-size: 200% 100%; animation: ui-shimmer 1.2s linear infinite; }
+.skeleton-line.is-short { width: 60%; }
+.product-img-wrap, .product-detail-img { background-image: linear-gradient(90deg, var(--ui-skeleton-a) 25%, var(--ui-skeleton-b) 50%, var(--ui-skeleton-a) 75%); background-size: 200% 100%; animation: ui-shimmer 1.4s linear infinite; }
+@keyframes ui-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton-line, .product-img-wrap, .product-detail-img { animation: none; } }
+
+/* Empty states */
+.orders-empty { display: grid; justify-items: center; gap: .5rem; padding: 3rem 1rem; text-align: center; color: #667085; }
+.orders-empty strong { color: inherit; font-size: 1rem; }
+.orders-empty span { max-width: 36ch; font-size: .85rem; }
+body.dark .orders-empty { color: #a3a3a3; }
+.product-img-wrap.is-loaded, .product-detail-img.is-loaded { animation: none; background-image: none; }
+.product-img-wrap:has(.product-img-placeholder), .product-detail-img:has(.product-image-fallback) { animation: none; background-image: none; }
+
+/* Map pin picker (partials/map-pin) */
+.map-pin-canvas { height: 320px; border-radius: 10px; border: 1px solid #e3e6ec; z-index: 0; }
+.map-pin-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin-top: .6rem; }
+.map-pin-locate { padding: .45rem .8rem; border: 1px solid #d0d5dd; border-radius: 8px; background: #fff; color: inherit; font: inherit; cursor: pointer; }
+.map-pin-label { color: #6b7280; font-size: .9em; }
+body.dark .map-pin-canvas { border-color: #333; }
+body.dark .map-pin-locate { background: #1e1e1e; border-color: #3a3f47; }
+body.dark .map-pin-label { color: #a3a3a3; }

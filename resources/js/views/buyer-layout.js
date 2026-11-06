@@ -94,25 +94,7 @@ function dismissAnnouncement(id, button) {
     banner.remove();
 }
 
-function showBuyerToast(message, type = 'success') {
-    let container = document.getElementById('buyer-toast-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'buyer-toast-container';
-        container.className = 'buyer-toast-container';
-        document.body.appendChild(container);
-    }
-    const toast = document.createElement('div');
-    toast.className = `buyer-toast buyer-toast-${type}`;
-    toast.setAttribute('role', 'status');
-    toast.setAttribute('aria-live', 'polite');
-    toast.textContent = message;
-    container.appendChild(toast);
-    setTimeout(() => {
-        toast.classList.add('is-leaving');
-        setTimeout(() => toast.remove(), 220);
-    }, 2800);
-}
+const showBuyerToast = (...args) => window.showToast(...args);
 
 function incrementBuyerCartBadge() {
     const badge = document.querySelector('.cart-badge');

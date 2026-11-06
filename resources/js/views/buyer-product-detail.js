@@ -19,26 +19,7 @@ function changeQty(delta) {
     input.value = val;
 }
 
-function showToast(message, type = 'success') {
-    let container = document.getElementById('toast-container');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'toast-container';
-        container.style.cssText = 'position:fixed;left:1rem;bottom:1rem;z-index:99999;display:flex;flex-direction:column;gap:0.6rem;align-items:flex-start;pointer-events:none;';
-        document.body.appendChild(container);
-    }
-    const toast = document.createElement('div');
-    toast.setAttribute('role', 'status');
-    toast.setAttribute('aria-live', 'polite');
-    toast.style.cssText = `padding:0.75rem 1.1rem;border-radius:10px;font-size:0.82rem;font-weight:600;color:#fff;background:${type === 'success' ? '#16a34a' : '#dc2626'};box-shadow:0 10px 24px rgba(0,0,0,0.18);animation:toast-in 0.25s ease;border:1px solid rgba(255,255,255,0.12);max-width:min(320px, calc(100vw - 2rem));pointer-events:auto;`;
-    toast.textContent = message;
-    container.appendChild(toast);
-    setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3000);
-}
-
-const style = document.createElement('style');
-style.textContent = '@keyframes toast-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}';
-document.head.appendChild(style);
+const showToast = (...args) => window.showToast(...args);
 
 function updateCartBadge(delta = 1) {
     const badge = document.querySelector('.cart-badge');
@@ -142,3 +123,35 @@ document.querySelectorAll('[data-gallery-thumb]').forEach(thumb => {
 
 document.querySelectorAll('.var-btn[data-type-slug]').forEach(button => button.addEventListener('click', () => selectVariation(button, button.dataset.typeSlug)));
 document.querySelectorAll('[data-qty-step]').forEach(button => button.addEventListener('click', () => changeQty(Number(button.dataset.qtyStep))));
+
+// Zoom: hovering magnifies under the pointer (mouse only); clicking opens the photo full size.
+const zoom = document.querySelector('[data-zoom]');
+if (zoom) {
+    const img = zoom.querySelector('img');
+    const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (finePointer && !still) {
+        zoom.addEventListener('mousemove', event => {
+            const box = zoom.getBoundingClientRect();
+            img.style.transformOrigin = `${((event.clientX - box.left) / box.width) * 100}% ${((event.clientY - box.top) / box.height) * 100}%`;
+            img.style.transform = 'scale(2)';
+        });
+        zoom.addEventListener('mouseleave', () => { img.style.transform = ''; });
+    }
+    zoom.addEventListener('click', () => {
+        const overlay = document.createElement('div');
+        overlay.className = 'zoom-lightbox';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-label', img.alt);
+        overlay.innerHTML = '<button type="button" class="zoom-lightbox-close" aria-label="Close">×</button><img alt="">';
+        overlay.querySelector('img').src = img.src;
+        overlay.querySelector('img').alt = img.alt;
+        const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); zoom.focus(); };
+        const onKey = event => { if (event.key === 'Escape') close(); };
+        overlay.addEventListener('click', event => { if (event.target !== overlay.querySelector('img')) close(); });
+        document.addEventListener('keydown', onKey);
+        document.body.appendChild(overlay);
+        overlay.querySelector('.zoom-lightbox-close').focus();
+    });
+}

@@ -86,7 +86,7 @@
                 <button type="button" class="notif-btn" id="notifBtn" aria-label="Notifications"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4a2 2 0 0 0 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4a1.5 1.5 0 0 0-3 0v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg><span class="notif-dot" id="notifDot"></span></button>
                 <div class="notif-dropdown" id="notifDropdown">
                     <div class="notif-header"><span>Notifications <span id="notifCount" class="admin-shell-accent"></span></span><button type="button" class="notif-mark-read" id="markAdminNotificationsRead">Mark all as read</button></div>
-                    <div id="notifList"><div class="notif-empty">Loading...</div></div>
+                    <div id="notifList"><div class="skeleton-list" aria-label="Loading notifications"><span class="skeleton-line"></span><span class="skeleton-line is-short"></span><span class="skeleton-line"></span><span class="skeleton-line is-short"></span></div></div>
                 </div>
                 <button type="button" class="dm-toggle" data-theme-toggle title="Toggle dark mode" aria-label="Toggle dark mode">
                     <svg class="dm-moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>

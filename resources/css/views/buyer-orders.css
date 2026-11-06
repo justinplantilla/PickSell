@@ -147,7 +147,6 @@
 .orders-muted-text-3 { font-size:0.78rem !important; color:#888 !important; }
 .orders-muted-text-4 { font-size:0.82rem !important; color:#888 !important; }
 .orders-block { padding:0 1.2rem 1rem !important; }
-.orders-empty { text-align:center !important; padding:3rem !important; color:#aaa !important; }
 .orders-spaced { margin-top:1rem !important; }
 .orders-heading-2 { font-size:1rem !important; font-weight:700 !important; margin-bottom:1rem !important; }
 .orders-row-2 { display:flex !important; gap:0.8rem !important; justify-content:flex-end !important; margin-top:1rem !important; }

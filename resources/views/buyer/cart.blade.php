@@ -27,7 +27,7 @@
                 </label>
             </div>
             <div class="cart-scroll">
-                <table>
+                <table class="table-cards">
                     <thead><tr><th></th><th>Product</th><th>Variation</th><th>Price</th><th>Qty</th><th>Subtotal</th><th></th></tr></thead>
                     {{-- One block per store: each store ships its items as one parcel. --}}
                     @foreach($items->groupBy(fn ($item) => $item->product->seller_id) as $storeItems)
@@ -44,8 +44,8 @@
                     </tr>
                     @foreach($storeItems as $item)
                     <tr>
-                        <td><input type="checkbox" name="item_ids[]" value="{{ $item->id }}" class="item-check"></td>
-                        <td>
+                        <td class="cell-check"><input type="checkbox" name="item_ids[]" value="{{ $item->id }}" class="item-check" aria-label="Select {{ $item->product->name }}"></td>
+                        <td class="cell-main">
                             <div class="cart-row-2">
                                 @if($item->product->primary_image)
                                     <img src="{{ Storage::url($item->product->primary_image) }}" class="cart-thumb">
@@ -58,9 +58,9 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="cart-muted-text-2">{{ $item->variation?->label ?? '—' }}@if(! $item->variation && $item->product->variations->isNotEmpty())<div class="cart-unavailable" role="note">Choose an option: remove it and add it again</div>@endif</td>
-                        <td class="cart-accent-text">₱{{ number_format($item->unit_price, 2) }}</td>
-                        <td>
+                        <td class="cart-muted-text-2" data-label="Option">{{ $item->variation?->label ?? '—' }}@if(! $item->variation && $item->product->variations->isNotEmpty())<div class="cart-unavailable" role="note">Choose an option: remove it and add it again</div>@endif</td>
+                        <td class="cart-accent-text" data-label="Price">₱{{ number_format($item->unit_price, 2) }}</td>
+                        <td data-label="Qty">
                             <div class="qty-stepper">
                                 <button type="button" class="qty-btn qty-dec" data-item-id="{{ $item->id }}" aria-label="Decrease">−</button>
                                 <input type="number"
@@ -72,8 +72,8 @@
                                 <button type="button" class="qty-btn qty-inc" data-item-id="{{ $item->id }}" aria-label="Increase">+</button>
                             </div>
                         </td>
-                        <td class="cart-strong" data-subtotal="{{ $item->subtotal }}">₱{{ number_format($item->subtotal, 2) }}</td>
-                        <td>
+                        <td class="cart-strong" data-label="Subtotal" data-subtotal="{{ $item->subtotal }}">₱{{ number_format($item->subtotal, 2) }}</td>
+                        <td class="cell-remove">
                             <button type="button" class="cart-remove-btn remove-item-btn" data-item-id="{{ $item->id }}" title="Remove">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                             </button>

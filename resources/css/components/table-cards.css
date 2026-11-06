@@ -1,0 +1,20 @@
+/*
+ * Tables marked .table-cards (cart, checkout, seller orders) become one card per row on phones.
+ * Cells with data-label show it on the left; .cell-main spans the card, .cell-check sits top-right.
+ */
+@media (max-width: 640px) {
+    .table-cards thead { display: none; }
+    .table-cards, .table-cards tbody, .table-cards tr, .table-cards td { display: block; width: 100%; }
+    .table-cards tr { position: relative; margin-bottom: .6rem; padding: .7rem .8rem; border: 1px solid #e8e2d8; border-radius: 10px; background: #fff; }
+    .table-cards td { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .2rem 0; border: 0; text-align: right; }
+    .table-cards td[data-label]::before { content: attr(data-label); flex-shrink: 0; color: #667085; font-size: .78rem; font-weight: 600; text-align: left; }
+    .table-cards td.cell-main { display: block; padding-right: 2rem; padding-bottom: .4rem; text-align: left; }
+    .table-cards td.cell-check { position: absolute; top: .7rem; right: .8rem; width: auto; padding: 0; }
+    .table-cards td.cell-remove, .table-cards td.cell-actions { justify-content: flex-end; padding-top: .4rem; }
+    .table-cards tr.cart-store-head, .table-cards tr.checkout-note-row { margin-bottom: .4rem; padding: .5rem .2rem; border: 0; background: transparent; }
+    .table-cards tr.cart-store-head td, .table-cards tr.checkout-note-row td { display: block; padding: 0; background: transparent; text-align: left; }
+    .table-cards tr.cart-store-head td:first-child { display: inline-block; width: auto; margin-right: .4rem; }
+    .table-cards tr.cart-store-head td[colspan] { display: inline-block; width: auto; }
+    body.dark .table-cards tr { background: #1a1a1a; border-color: #2a2a2a; }
+    body.dark .table-cards td[data-label]::before { color: #a3a3a3; }
+}

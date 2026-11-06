@@ -29,22 +29,22 @@
         @error('order_ids')<span class="seller-orders-bulk-error" role="alert">{{ $message }}</span>@enderror
     </form>
     <div class="seller-orders-scroll">
-        <table>
+        <table class="table-cards">
             <thead>
                 <tr><th><input type="checkbox" data-bulk-all aria-label="Select all orders on this page"></th><th>Order #</th><th>Buyer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr>
             </thead>
             <tbody>
             @forelse($orders as $order)
             <tr>
-                <td><input type="checkbox" name="order_ids[]" value="{{ $order->id }}" form="bulkOrdersForm" data-bulk-order aria-label="Select order {{ $order->order_number }}"></td>
-                <td><a href="/seller/orders/{{ $order->id }}" class="seller-orders-accent-text">{{ $order->order_number }}</a></td>
-                <td>{{ $order->buyer->full_name ?? '—' }}</td>
-                <td>{{ $order->product_name }}@if($order->variation_label)<div class="seller-orders-muted-text">{{ $order->variation_label }}</div>@endif</td>
-                <td>{{ $order->quantity }}</td>
-                <td>₱{{ number_format($order->amount, 2) }}</td>
-                <td><x-order-status-badge :status="$order->status" /></td>
-                <td class="seller-orders-muted-text">{{ $order->created_at->format('M d, Y') }}</td>
-                <td>
+                <td class="cell-check"><input type="checkbox" name="order_ids[]" value="{{ $order->id }}" form="bulkOrdersForm" data-bulk-order aria-label="Select order {{ $order->order_number }}"></td>
+                <td class="cell-main"><a href="/seller/orders/{{ $order->id }}" class="seller-orders-accent-text">{{ $order->order_number }}</a></td>
+                <td data-label="Buyer">{{ $order->buyer->full_name ?? '—' }}</td>
+                <td data-label="Product">{{ $order->product_name }}@if($order->variation_label)<div class="seller-orders-muted-text">{{ $order->variation_label }}</div>@endif</td>
+                <td data-label="Qty">{{ $order->quantity }}</td>
+                <td data-label="Amount">₱{{ number_format($order->amount, 2) }}</td>
+                <td data-label="Status"><x-order-status-badge :status="$order->status" /></td>
+                <td class="seller-orders-muted-text" data-label="Date">{{ $order->created_at->format('M d, Y') }}</td>
+                <td class="cell-actions">
                     <div class="seller-orders-row">
                         <a href="/seller/orders/{{ $order->id }}" class="btn btn-outline btn-sm">View</a>
                         @if($order->waybill_number)

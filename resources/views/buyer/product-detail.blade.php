@@ -12,7 +12,9 @@
     <section class="product-gallery" aria-label="Product images">
         <div class="product-detail-img">
             @if($product->primary_image)
-                <img src="{{ Storage::url($product->primary_image) }}" alt="{{ $product->name }}" data-gallery-main>
+                <button type="button" class="product-zoom" data-zoom aria-label="View {{ $product->name }} full size">
+                    <img src="{{ Storage::url($product->primary_image) }}" alt="{{ $product->name }}" data-gallery-main>
+                </button>
             @else
                 <svg class="product-image-fallback" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4Zm2 2v10h12V7Zm2 2h2v2H8Zm4 0h4v2h-4Z" fill="currentColor"/></svg>
             @endif
