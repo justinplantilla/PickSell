@@ -69,7 +69,7 @@ class ProvinceOperationsTest extends TestCase
         foreach ($parcels as $parcel) {
             $manifests->add($trip, $parcel->tracking_no);
         }
-        $manifests->dispatch($trip, 'NAA 1111', 'Mang Jose', $this->stationStaff);
+        $this->dispatchTrip($trip, $this->stationStaff);
 
         return $trip;
     }
@@ -140,18 +140,20 @@ class ProvinceOperationsTest extends TestCase
         foreach ([$local, $interProvince] as $parcel) {
             app(ManifestService::class)->receive($trip, $parcel->tracking_no, $this->sorter);
         }
-        Vehicle::withoutGlobalScopes()->create(['hub_id' => $this->batangas->id, 'plate_no' => 'TRK 900', 'vehicle_type' => 'truck', 'driver_name' => 'Mang Pedro']);
+        [$truck, $driver] = $this->fleet($this->batangas);
 
         $this->as($this->sorter)->post($this->pickrushUrl('/province/trips'), ['to_hub_id' => $this->station('043405000')->id])
             ->assertSessionHasErrors('operation');   // Calamba is another province's station
         $this->as($this->sorter)->post($this->pickrushUrl('/province/trips'), ['to_hub_id' => $interProvince->fresh()->next_hub_id])->assertRedirect();
         $across = Manifest::where('from_hub_id', $this->batangas->id)->sole();
-        $this->as($this->sorter)->get($this->pickrushUrl("/province/trips/{$across->manifest_no}"))->assertOk()->assertSee('TRK 900');
+        $this->as($this->sorter)->get($this->pickrushUrl("/province/trips/{$across->manifest_no}"))->assertOk()->assertSee($truck->plate_no)->assertSee($driver->full_name);
         $this->as($this->sorter)->post($this->pickrushUrl("/province/trips/{$across->manifest_no}/parcels"), ['tracking_no' => $local->tracking_no])
             ->assertSessionHasErrors('operation');   // San Jose's parcel does not go to Metro Manila
         $this->as($this->sorter)->post($this->pickrushUrl("/province/trips/{$across->manifest_no}/parcels/all"))->assertSessionHas('success', '1 parcels added.');
-        $this->as($this->sorter)->post($this->pickrushUrl("/province/trips/{$across->manifest_no}/dispatch"), ['vehicle_plate' => 'TRK 900', 'driver_name' => 'Mang Pedro'])
+        $this->as($this->sorter)->post($this->pickrushUrl("/province/trips/{$across->manifest_no}/dispatch"), ['vehicle_id' => $truck->id, 'driver_id' => $driver->id])
             ->assertSessionHasNoErrors();
+        $this->assertSame([$truck->id, $driver->id, $truck->plate_no, $driver->full_name],
+            [$across->fresh()->vehicle_id, $across->fresh()->driver_id, $across->fresh()->vehicle_plate, $across->fresh()->driver_name]);
 
         $this->assertSame([ParcelStatus::InTransitToProvince, 'Metro Manila Eastern District Hub'], [$interProvince->fresh()->current_status, $interProvince->fresh()->nextHub->name]);
         $this->as($this->sorter)->get($this->pickrushUrl('/fleet'))->assertOk()->assertSee('On a trip');

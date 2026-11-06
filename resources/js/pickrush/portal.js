@@ -34,6 +34,42 @@ document.addEventListener('change', event => {
     const master = event.target.closest('input[type="checkbox"][data-check-all]');
     if (master) document.querySelectorAll(master.dataset.checkAll).forEach(box => { box.checked = master.checked; });
 });
+// Driver fields, formatted like the rider app: data-digits-only keeps digits, data-license-no
+// shapes the license as A00-00-000000 (1 letter, then 10 digits).
+document.addEventListener('input', event => {
+    const field = event.target;
+    if (field.matches('[data-digits-only]')) {
+        field.value = field.value.replace(/\D/g, '').slice(0, field.maxLength > 0 ? field.maxLength : undefined);
+    } else if (field.matches('[data-license-no]')) {
+        let out = '';
+        let n = 0;
+        for (const ch of field.value.toUpperCase().replace(/[^A-Z0-9]/g, '')) {
+            if (n >= 11) break;
+            const isLetter = /[A-Z]/.test(ch);
+            if (n === 0 ? !isLetter : isLetter) continue;
+            if (n === 3 || n === 5) out += '-';
+            out += ch;
+            n++;
+        }
+        field.value = out;
+    }
+});
+// data-require-one="<message>": a checkbox group that needs at least one tick. Like a required
+// field, the browser shows the reminder on the group and the form is not sent.
+document.addEventListener('submit', event => {
+    for (const group of event.target.querySelectorAll('[data-require-one]')) {
+        const boxes = [...group.querySelectorAll('input[type="checkbox"]')];
+        if (!boxes.length || boxes.some(box => box.checked)) continue;
+        event.preventDefault();
+        boxes[0].setCustomValidity(group.dataset.requireOne);
+        boxes[0].reportValidity();
+        return;
+    }
+}, true);
+document.addEventListener('change', event => {
+    const group = event.target.closest('[data-require-one]');
+    if (group) group.querySelectorAll('input[type="checkbox"]').forEach(box => box.setCustomValidity(''));
+});
 // data-filter-list="<selector>": a search box that hides the matching items whose data-brgy does not contain the text.
 document.addEventListener('input', event => {
     const box = event.target.closest('[data-filter-list]');
@@ -58,12 +94,13 @@ document.addEventListener('click', event => {
 document.addEventListener('change', event => {
     // data-submit-on-change: a filter select that applies itself.
     if (event.target.matches('[data-submit-on-change]')) event.target.form?.submit();
-    // data-fleet-picker: choosing a fleet vehicle fills the trip's plate and driver fields.
+    // data-fleet-picker: choosing a truck picks its default driver (staff can still switch drivers).
     const picker = event.target.closest('select[data-fleet-picker]');
     if (picker) {
-        const option = picker.selectedOptions[0];
-        picker.form.vehicle_plate.value = option?.dataset.plate || '';
-        picker.form.driver_name.value = option?.dataset.driver || '';
+        const driverId = picker.selectedOptions[0]?.dataset.driver;
+        const driverSelect = picker.form.driver_id;
+        const option = driverId && driverSelect?.querySelector(`option[value="${driverId}"]`);
+        if (option && !option.disabled) driverSelect.value = driverId;
     }
 });
 

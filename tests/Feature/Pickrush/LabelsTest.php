@@ -112,7 +112,7 @@ class LabelsTest extends TestCase
         app(ParcelLedger::class)->record($parcel, ParcelStatus::AtOriginHub, $tanauan);
         $trip = app(ManifestService::class)->create($tanauan, $tanauan->parent, $stationStaff);
         app(ManifestService::class)->add($trip, $parcel->tracking_no);
-        app(ManifestService::class)->dispatch($trip, 'ABC 1', 'Jose', $stationStaff);
+        $this->dispatchTrip($trip, $stationStaff);
 
         $this->actingAs($sorter, 'pickrush')->post($this->pickrushUrl('/province/inbound'), ['tracking_no' => strtolower($trip->manifest_no)])
             ->assertRedirect(route('pickrush.province.trips.show', $trip));

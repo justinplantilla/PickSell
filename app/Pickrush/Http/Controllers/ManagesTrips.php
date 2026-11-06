@@ -2,6 +2,7 @@
 
 namespace App\Pickrush\Http\Controllers;
 
+use App\Pickrush\Models\Driver;
 use App\Pickrush\Models\Manifest;
 use App\Pickrush\Models\ManifestParcel;
 use App\Pickrush\Models\Vehicle;
@@ -29,6 +30,8 @@ trait ManagesTrips
             'scanKey' => (string) Str::uuid(),
             'readyCount' => $manifest->status === 'draft' ? $manifests->readyFor($manifest->fromHub, $manifest->toHub)->count() : 0,
             'vehicles' => Vehicle::where('is_active', true)->orderBy('plate_no')->get(),
+            'drivers' => Driver::where('is_active', true)->orderBy('full_name')->get(),
+            'onTrip' => Manifest::withoutGlobalScopes()->where('status', 'dispatched')->get(['vehicle_id', 'driver_id']),
         ]);
     }
 
@@ -63,10 +66,15 @@ trait ManagesTrips
     public function dispatch(Request $request, Manifest $manifest, ManifestService $manifests)
     {
         $this->outboundOnly($manifest);
-        $data = $request->validate(['vehicle_plate' => 'required|string|max:20', 'driver_name' => 'required|string|max:120']);
+        $data = $request->validate(['vehicle_id' => 'required|integer', 'driver_id' => 'required|integer']);
+        $vehicle = Vehicle::find($data['vehicle_id']);   // hub-scoped: another hub's truck is not found
+        $driver = Driver::find($data['driver_id']);
+        if (! $vehicle || ! $driver) {
+            return back()->withErrors(['operation' => 'Pick one of this hub\'s registered trucks and drivers.'])->withInput();
+        }
 
         return $this->attempt(
-            fn () => $manifests->dispatch($manifest, $data['vehicle_plate'], $data['driver_name'], $this->staff()),
+            fn () => $manifests->dispatch($manifest, $vehicle, $driver, $this->staff()),
             "Trip {$manifest->manifest_no} dispatched to {$manifest->toHub->name}.",
         );
     }
