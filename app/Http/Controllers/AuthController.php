@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Rules\DeliverableEmail;
 use App\Services\EmailVerificationService;
 use App\Support\SellerTypes;
 use Illuminate\Http\Request;
@@ -322,7 +323,7 @@ class AuthController extends Controller
 
     private function emailRules(): array
     {
-        return ['required', 'string', 'max:255', 'email:rfc', 'regex:/^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$/', Rule::unique('users', 'email')];
+        return ['required', 'string', 'max:255', 'email:rfc', 'regex:/^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$/', new DeliverableEmail, Rule::unique('users', 'email')];
     }
 
     private function emailMessages(): array

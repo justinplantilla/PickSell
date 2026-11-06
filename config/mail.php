@@ -110,6 +110,9 @@ return [
     |
     */
 
+    // Registration refuses email domains without a mail server (off in tests, which have no DNS).
+    'verify_domains' => env('MAIL_VERIFY_DOMAINS', true),
+
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
