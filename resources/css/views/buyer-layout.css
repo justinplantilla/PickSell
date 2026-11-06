@@ -529,3 +529,5 @@ body.dark .seller-stats { color:#a3a3a3; }
 }
 .address-extra-actions { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.6rem; }
 .address-extra-actions form { margin:0; }
+.seller-preferred { padding:.05rem .45rem; border-radius:999px; background:#ecfdf3; color:#027a48; font-weight:800; }
+body.dark .seller-preferred { background:#0f2a1c; color:#6ce9a6; }

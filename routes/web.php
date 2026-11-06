@@ -21,6 +21,7 @@ use App\Http\Controllers\AdminReturnController;
 use App\Http\Controllers\AdminReturnDisputeController;
 use App\Http\Controllers\AdminReviewController;
 use App\Http\Controllers\AdminSearchController;
+use App\Http\Controllers\AdminSellerPerformanceController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AdminVoucherController;
@@ -352,6 +353,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
     Route::patch('/complaints/{complaint}/resolve', [AdminComplaintController::class, 'resolve'])->middleware($can(Permission::COMPLAINTS_MANAGE))->name('admin.complaints.resolve');
 
     Route::get('/commission', [AdminController::class, 'commission'])->middleware($can(Permission::COMMISSION_VIEW))->name('admin.commission');
+    Route::get('/seller-performance', AdminSellerPerformanceController::class)->middleware($can(Permission::SELLER_COMPLIANCE_VIEW))->name('admin.seller-performance');
     Route::get('/reviews', [AdminReviewController::class, 'index'])->middleware($can(Permission::PRODUCTS_VIEW))->name('admin.reviews');
     Route::middleware($can(Permission::PRODUCTS_MODERATE))->group(function () {
         Route::post('/reviews/{review}/hide', [AdminReviewController::class, 'hide'])->name('admin.reviews.hide');

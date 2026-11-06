@@ -103,11 +103,12 @@
                     <strong>{{ $totalOrders }}</strong>
                     <small>{{ $ordersDelta > 0 ? '↑' : ($ordersDelta < 0 ? '↓' : '→') }} {{ number_format(abs($ordersDelta), 1) }}% vs previous {{ $periodLabel }}</small>
                 </a>
-                @php $sellerRating = auth()->user()->sellerRating(); @endphp
+                @php $sellerRating = auth()->user()->sellerRating(); $standing = app(\App\Services\SellerPerformance::class)->for(auth()->user()); @endphp
                 <a href="{{ route('seller.reviews') }}" class="kpi-item kpi-link">
                     <span>Seller rating</span>
                     <strong>{{ $sellerRating['count'] ? '★ '.number_format($sellerRating['average'], 1) : '—' }}</strong>
                     <small>{{ $sellerRating['count'] ? 'From '.$sellerRating['count'].' '.Str::plural('buyer rating', $sellerRating['count']) : 'No buyer ratings yet' }}</small>
+                    <small>{{ $standing['preferred'] ? '✓ Preferred Seller' : 'Preferred Seller: ★4.0+, 10+ completed, ≤10% cancelled (last 90 days)' }}</small>
                 </a>
             </div>
         </div>
