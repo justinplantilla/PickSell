@@ -18,7 +18,7 @@
         <ul class="following-list">
             @foreach($stores as $store)
             <li class="following-card">
-                <a href="{{ route('buyer.seller', $store) }}" class="following-avatar" aria-hidden="true" tabindex="-1">{{ strtoupper(substr($store->business_name ?: $store->first_name, 0, 1)) }}</a>
+                <a href="{{ route('buyer.seller', $store) }}" class="following-avatar" aria-hidden="true" tabindex="-1">@if($store->store_logo_url)<img src="{{ $store->store_logo_url }}" alt="">@else{{ strtoupper(substr($store->business_name ?: $store->first_name, 0, 1)) }}@endif</a>
                 <div class="following-copy">
                     <a href="{{ route('buyer.seller', $store) }}" class="following-name">{{ $store->business_name ?? $store->full_name }}</a>
                     <x-seller-stats :seller="$store" />

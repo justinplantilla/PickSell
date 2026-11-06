@@ -6,6 +6,7 @@ use App\Auth\Permission;
 use App\Services\Geo\AddressResolver;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -25,6 +26,7 @@ class User extends Authenticatable
         'business_name', 'line_of_business', 'business_permit',
         'seller_type', 'tin', 'dti_certificate', 'sec_certificate', 'bir_certificate',
         'vacation_mode', 'vacation_started_at', 'vacation_ends_at', 'vacation_message',
+        'store_logo', 'store_banner', 'store_description',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -118,6 +120,17 @@ class User extends Authenticatable
     public function isDeactivated(): bool
     {
         return $this->status === 'deactivated';
+    }
+
+    /** Public URL of the store's logo, or null (pages then show the store's first letter). */
+    public function getStoreLogoUrlAttribute(): ?string
+    {
+        return $this->store_logo ? Storage::disk('public')->url($this->store_logo) : null;
+    }
+
+    public function getStoreBannerUrlAttribute(): ?string
+    {
+        return $this->store_banner ? Storage::disk('public')->url($this->store_banner) : null;
     }
 
     /** Buyers' ratings of this seller's service: average (1 decimal) and how many. */

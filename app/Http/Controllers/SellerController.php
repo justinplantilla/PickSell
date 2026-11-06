@@ -27,6 +27,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Throwable;
@@ -1040,6 +1041,35 @@ class SellerController extends Controller
         ));
 
         return back()->with('success', 'Account updated successfully.');
+    }
+
+    /** Storefront branding: logo, banner and description buyers see on the store and its products. */
+    public function updateStoreProfile(Request $request)
+    {
+        $data = $request->validate([
+            'store_logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'store_banner' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:4096',
+            'store_description' => 'nullable|string|max:1000',
+        ], [
+            'store_logo.max' => 'The logo must be 2 MB or smaller.',
+            'store_banner.max' => 'The banner must be 4 MB or smaller.',
+            '*.mimes' => 'Use a JPG, PNG or WEBP image.',
+        ]);
+        $seller = $this->seller();
+        $changes = ['store_description' => filled($data['store_description'] ?? null) ? trim($data['store_description']) : null];
+        foreach (['store_logo', 'store_banner'] as $field) {
+            $replace = $request->hasFile($field);
+            if (($replace || $request->boolean("remove_{$field}")) && $seller->$field) {
+                Storage::disk('public')->delete($seller->$field);
+                $changes[$field] = null;
+            }
+            if ($replace) {
+                $changes[$field] = $request->file($field)->store('store-branding', 'public');
+            }
+        }
+        $seller->update($changes);
+
+        return back()->with('success', 'Store profile saved.');
     }
 
     /** The shop pin Pickrush riders check "Arrived" against (and navigate to). */

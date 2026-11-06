@@ -9,12 +9,15 @@
 @section('content')
 <div class="seller-storefront">
     <a href="/buyer/shop" class="storefront-back">← Back to shop</a>
-    <section class="seller-storefront-hero">
-        <div class="seller-storefront-avatar">{{ strtoupper(substr($seller->first_name, 0, 1)) }}</div>
+    @if($seller->store_banner_url)
+    <div class="seller-storefront-banner" style="background-image:url('{{ $seller->store_banner_url }}')" role="img" aria-label="{{ $seller->business_name ?? $seller->full_name }} banner"></div>
+    @endif
+    <section class="seller-storefront-hero {{ $seller->store_banner_url ? 'has-banner' : '' }}">
+        <div class="seller-storefront-avatar">@if($seller->store_logo_url)<img src="{{ $seller->store_logo_url }}" alt="{{ $seller->business_name ?? $seller->full_name }} logo">@else{{ strtoupper(substr($seller->business_name ?: $seller->first_name, 0, 1)) }}@endif</div>
         <div class="seller-storefront-copy">
             <span class="seller-storefront-kicker">PickSell seller store</span>
             <h1>{{ $seller->business_name ?? $seller->full_name }}</h1>
-            <p>Browse this seller's available products and find something made for you.</p>
+            <p>{{ $seller->store_description ?: "Browse this seller's available products and find something made for you." }}</p>
             <span class="seller-storefront-status"><i></i> Verified seller</span>
             <x-seller-stats :seller="$seller" class="seller-storefront-stats" />
             <div class="seller-storefront-actions">

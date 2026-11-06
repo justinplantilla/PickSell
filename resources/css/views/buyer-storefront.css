@@ -23,3 +23,11 @@
 .storefront-empty span { color:#667085; font-size:.82rem; margin-bottom:.5rem; }
 @media(max-width:900px) { .seller-storefront-products .product-grid { grid-template-columns:repeat(3,1fr); } }
 @media(max-width:650px) { .seller-storefront { margin-inline:.75rem; } .seller-storefront-hero { align-items:flex-start; flex-wrap:wrap; padding:1.1rem; } .seller-storefront-avatar { width:54px; height:54px; flex-basis:54px; border-radius:15px; font-size:1.4rem; } .seller-storefront-count { margin-left:auto; } .seller-storefront-products .product-grid { grid-template-columns:repeat(2,1fr); } }
+
+/* Store branding: banner above the hero, logo in the avatar */
+.seller-storefront-banner { height:180px; border-radius:16px 16px 0 0; background:#fbeee9 center / cover no-repeat; }
+.seller-storefront-hero.has-banner { border-top-left-radius:0; border-top-right-radius:0; border-top:0; }
+.seller-storefront-avatar { overflow:hidden; }
+.seller-storefront-avatar img { width:100%; height:100%; object-fit:cover; background:#fff; }
+.seller-storefront-copy p { white-space:pre-line; max-width:65ch; }
+@media(max-width:650px) { .seller-storefront-banner { height:110px; } }

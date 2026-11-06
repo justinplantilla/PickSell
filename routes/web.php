@@ -237,6 +237,7 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     Route::patch('/account/password', [SellerController::class, 'updatePassword'])->name('seller.account.password');
     Route::patch('/account/pickup-location', [SellerController::class, 'updatePickupLocation'])->name('seller.account.pickup-location');
     Route::patch('/account/vacation', [SellerController::class, 'updateVacation'])->name('seller.account.vacation');
+    Route::post('/account/store-profile', [SellerController::class, 'updateStoreProfile'])->name('seller.account.store-profile');
 });
 
 // Admin Routes: the single Super Admin holds every permission (config/permissions.php).
