@@ -98,7 +98,7 @@
                         <td class="cart-muted-text-2">{{ $item->variation?->label ?? '—' }}</td>
                         <td class="cart-accent-text">₱{{ number_format($item->unit_price, 2) }}</td>
                         <td>{{ $item->quantity }}</td>
-                        <td class="cart-strong">₱{{ number_format($item->product->effective_price * $item->quantity, 2) }}</td>
+                        <td class="cart-strong">₱{{ number_format($item->subtotal, 2) }}</td>
                     </tr>
                     @endforeach
                     <tr class="checkout-note-row">
@@ -162,14 +162,14 @@
                             <input type="radio" name="voucher_pick"
                                 value="{{ $item->product->voucher_code }}"
                                 data-discount="{{ $item->product->voucher_discount }}"
-                                data-item-subtotal="{{ $item->product->effective_price * $item->quantity }}"
+                                data-item-subtotal="{{ $item->subtotal }}"
                                 data-base-total="{{ $total + $shippingTotal }}">
                             <div class="checkout-voucher-badge">{{ $item->product->voucher_discount }}% OFF</div>
                             <div class="checkout-voucher-info">
                                 <span class="checkout-voucher-label">{{ $item->product->voucher_code }}</span>
                                 <span class="checkout-voucher-desc">{{ $item->product->voucher_discount }}% off on <strong>{{ $item->product->name }}</strong></span>
                             </div>
-                            <span class="checkout-voucher-savings">−₱{{ number_format($item->product->effective_price * $item->quantity * $item->product->voucher_discount / 100, 2) }}</span>
+                            <span class="checkout-voucher-savings">−₱{{ number_format($item->subtotal * $item->product->voucher_discount / 100, 2) }}</span>
                         </label>
                         @endforeach
                     </div>

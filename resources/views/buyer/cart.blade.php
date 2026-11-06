@@ -72,7 +72,7 @@
                                 <button type="button" class="qty-btn qty-inc" data-item-id="{{ $item->id }}" aria-label="Increase">+</button>
                             </div>
                         </td>
-                        <td class="cart-strong" data-subtotal="{{ $item->product->effective_price * $item->quantity }}">₱{{ number_format($item->product->effective_price * $item->quantity, 2) }}</td>
+                        <td class="cart-strong" data-subtotal="{{ $item->subtotal }}">₱{{ number_format($item->subtotal, 2) }}</td>
                         <td>
                             <button type="button" class="cart-remove-btn remove-item-btn" data-item-id="{{ $item->id }}" title="Remove">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>

@@ -41,7 +41,9 @@
             </form>
         </div>
 
-        <div class="product-price-block"><span class="detail-price">₱{{ number_format($product->effective_price, 2) }}</span>@if($product->discount > 0)<span class="detail-original">₱{{ number_format($product->price, 2) }}</span><span class="detail-discount">-{{ $product->discount }}%</span>@endif</div>
+        @php [$lowPrice, $highPrice] = $product->priceRange(); @endphp
+        {{-- Options can have their own price: show the range until one is picked. --}}
+        <div class="product-price-block"><span class="detail-price" id="detailPrice">₱{{ number_format($lowPrice, 2) }}@if($highPrice > $lowPrice) – ₱{{ number_format($highPrice, 2) }}@endif</span>@if($product->discount > 0 && $highPrice <= $lowPrice)<span class="detail-original">₱{{ number_format($product->price, 2) }}</span>@endif @if($product->discount > 0)<span class="detail-discount">-{{ $product->discount }}%</span>@endif</div>
         @if($product->description)<p class="product-description">{{ $product->description }}</p>@endif
 
         @php $sellerAway = $product->sellerOnVacation(); @endphp

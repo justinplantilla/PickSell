@@ -12,8 +12,14 @@ class CartItem extends Model
     public function product()   { return $this->belongsTo(Product::class); }
     public function variation() { return $this->belongsTo(ProductVariation::class, 'variation_id'); }
 
+    /** One unit after the product's discount, at the chosen option's price. */
+    public function getUnitPriceAttribute(): float
+    {
+        return $this->product->priceFor($this->variation);
+    }
+
     public function getSubtotalAttribute(): float
     {
-        return $this->product->effective_price * $this->quantity;
+        return $this->unit_price * $this->quantity;
     }
 }

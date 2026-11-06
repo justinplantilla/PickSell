@@ -82,7 +82,26 @@ class Product extends Model
 
     public function getEffectivePriceAttribute(): float
     {
-        return $this->price * (1 - $this->discount / 100);
+        return $this->priceFor(null);
+    }
+
+    /** What one unit costs after the product's discount: the option's own price when it has one. */
+    public function priceFor(?ProductVariation $variation): float
+    {
+        $base = $variation?->price !== null ? (float) $variation->price : (float) $this->price;
+
+        return $base * (1 - $this->discount / 100);
+    }
+
+    /** The cheapest and dearest unit price across its options (equal when they share the product's price). */
+    public function priceRange(): array
+    {
+        $prices = $this->variations->map(fn (ProductVariation $v) => $this->priceFor($v));
+        if ($prices->isEmpty()) {
+            return [$this->effective_price, $this->effective_price];
+        }
+
+        return [$prices->min(), $prices->max()];
     }
 
     public function scopeLowStock($query)

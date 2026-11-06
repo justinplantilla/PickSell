@@ -353,7 +353,7 @@ class BuyerController extends Controller
             return redirect()->route('buyer.cart')->withErrors(['item_ids' => OrderPlacement::missingOptionMessage($unchosen)]);
         }
 
-        $total = $items->sum(fn ($i) => $i->product->effective_price * $i->quantity);
+        $total = $items->sum(fn ($i) => $i->subtotal);
         $cartCount = CartItem::where('cart_id', $cart->id)->count();
 
         // Where it ships: the default (profile) address unless the buyer picked one from their address book.

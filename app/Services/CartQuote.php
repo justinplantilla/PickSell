@@ -30,9 +30,9 @@ class CartQuote
 
         $lines = $items->map(function (CartItem $item) use ($voucherCode, $wanted, $wantedOption, $wishlistIds) {
             $product = $item->product;
-            $unit = BuyerPresenter::money($product->effective_price);
+            $unit = BuyerPresenter::money($product->priceFor($item->variation));
             $lineTotal = round($unit * $item->quantity, 2);
-            $withVoucher = round(OrderPlacement::unitPrice($product, $voucherCode) * $item->quantity, 2);
+            $withVoucher = round(OrderPlacement::unitPrice($product, $voucherCode, $item->variation) * $item->quantity, 2);
 
             return [
                 'cart_item_id'    => $item->id,

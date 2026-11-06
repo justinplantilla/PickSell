@@ -88,7 +88,7 @@ final class BuyerPresenter
     {
         return $p->variations->groupBy('type')->map(fn (Collection $rows, string $type) => [
             'name'    => $type,
-            'options' => $rows->map(fn ($v) => ['id' => $v->id, 'value' => $v->value, 'stock' => (int) $v->stock])->values(),
+            'options' => $rows->map(fn ($v) => ['id' => $v->id, 'value' => $v->value, 'stock' => (int) $v->stock, 'price' => self::money($p->priceFor($v))])->values(),
         ])->values()->all();
     }
 

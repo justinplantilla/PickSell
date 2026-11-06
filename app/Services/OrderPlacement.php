@@ -75,10 +75,10 @@ class OrderPlacement
         return CartItem::where('cart_id', $cart->id)->whereIn('id', $ids)->with('product.seller', 'product.variations', 'variation')->get();
     }
 
-    /** What one cart line costs per unit, with the product voucher applied when [$voucherCode] matches. */
-    public static function unitPrice(Product $product, ?string $voucherCode): float
+    /** What one cart line costs per unit (at its option's price), with the product voucher applied when [$voucherCode] matches. */
+    public static function unitPrice(Product $product, ?string $voucherCode, ?ProductVariation $variation = null): float
     {
-        $price = $product->effective_price;
+        $price = $product->priceFor($variation);
         if (! empty($voucherCode) && $product->voucher_code === $voucherCode) {
             $price = $price * (1 - $product->voucher_discount / 100);
         }
