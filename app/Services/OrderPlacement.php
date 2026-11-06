@@ -13,6 +13,7 @@ use App\Notifications\NewSellerOrder;
 use App\Pickrush\Bridge\PicksellBridge;
 use App\Pickrush\Services\Shipping\QuoteFailure;
 use App\Pickrush\Services\Shipping\ShippingQuote;
+use App\Support\DeliveryAddress;
 use DomainException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -44,11 +45,11 @@ class OrderPlacement
      * @param  Collection<int, CartItem>  $items  lines with product.seller loaded
      * @return Collection<int, ShippingQuote>  keyed by seller id
      */
-    public function shippingQuotes(User $buyer, Collection $items): Collection
+    public function shippingQuotes(User $buyer, Collection $items, ?DeliveryAddress $to = null): Collection
     {
         return $items->groupBy(fn (CartItem $item) => $item->product->seller_id)
             ->map(fn (Collection $lines) => $this->pickrush->quote($buyer, $lines->first()->product->seller,
-                $lines->map(fn (CartItem $item) => ['product' => $item->product, 'quantity' => (int) $item->quantity])));
+                $lines->map(fn (CartItem $item) => ['product' => $item->product, 'quantity' => (int) $item->quantity]), $to));
     }
 
     /** What the buyer is told when a seller's items cannot be priced. */
@@ -90,8 +91,16 @@ class OrderPlacement
      *
      * @throws ValidationException (field item_ids) when a line is unavailable or short of stock
      */
-    public function place(User $buyer, array $itemIds, ?string $voucherCode): Collection
+    /**
+     * @param  DeliveryAddress|null  $to  where to ship; the buyer's profile (default) address when null
+     * @param  array<int|string, string|null>  $notes  the buyer's note to each seller, keyed by seller id
+     */
+    public function place(User $buyer, array $itemIds, ?string $voucherCode, ?DeliveryAddress $to = null, array $notes = []): Collection
     {
+        $to ??= DeliveryAddress::fromProfile($buyer);
+        if (! $to->isComplete()) {
+            throw ValidationException::withMessages(['address' => 'Add the province, city and barangay of your delivery address before placing an order.']);
+        }
         $items = $this->items($buyer, $itemIds);
         if ($items->isEmpty()) {
             throw ValidationException::withMessages(['item_ids' => 'No items selected.']);
@@ -108,7 +117,7 @@ class OrderPlacement
         }
         $shipping = $this->priceShipping($buyer, $items, $to);
 
-        $placed = DB::transaction(function () use ($buyer, $items, $voucherCode, $shipping) {
+        $placed = DB::transaction(function () use ($buyer, $items, $voucherCode, $shipping, $to, $notes) {
             // Lock the products so moderation, other buyers and stock changes cannot interleave.
             $products = Product::whereIn('id', $items->pluck('product_id'))->with('seller')->lockForUpdate()->get()->keyBy('id');
             $unavailable = $items->filter(fn ($item) => ! $products->get($item->product_id)?->isPurchasable());
@@ -146,7 +155,8 @@ class OrderPlacement
                 'logistics_share' => $priced['split']['logistics_share'],
                 'delivery_commission_rate' => $priced['split']['rate'],
                 'rates_version' => $priced['quote']->ratesVersion,
-            ]));
+                'buyer_note' => filled($notes[$sellerId] ?? null) ? trim($notes[$sellerId]) : null,
+            ] + $to->shipmentColumns()));
 
             return $items->map(function (CartItem $item) use ($buyer, $products, $variations, $voucherCode, $shipments) {
                 $product = $products[$item->product_id];
@@ -191,11 +201,11 @@ class OrderPlacement
      *
      * @return Collection<int, array{quote: ShippingQuote, split: array, seller: ?User}>  keyed by seller id
      */
-    private function priceShipping(User $buyer, Collection $items): Collection
+    private function priceShipping(User $buyer, Collection $items, DeliveryAddress $to): Collection
     {
         $groups = $items->groupBy(fn (CartItem $item) => $item->product->seller_id);
 
-        return $this->shippingQuotes($buyer, $items)->map(function (ShippingQuote $quote, $sellerId) use ($groups) {
+        return $this->shippingQuotes($buyer, $items, $to)->map(function (ShippingQuote $quote, $sellerId) use ($groups) {
             $lines = $groups[$sellerId];
             if (! $quote->ok()) {
                 throw ValidationException::withMessages(['item_ids' => self::shippingProblem($quote, $lines)]);

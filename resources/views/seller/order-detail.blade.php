@@ -46,7 +46,14 @@
                     <tr><td class="order-detail-muted-label">Name</td><td>{{ $order->buyer->full_name }}</td></tr>
                     <tr><td class="order-detail-muted">Email</td><td>{{ $order->buyer->email }}</td></tr>
                     <tr><td class="order-detail-muted">Contact</td><td>{{ $order->buyer->contact_no }}</td></tr>
-                    <tr><td class="order-detail-muted">Address</td><td>{{ implode(', ', array_filter([$order->buyer->house_no, $order->buyer->street, $order->buyer->barangay, $order->buyer->municipality, $order->buyer->province])) }}</td></tr>
+                    @php($deliverTo = $order->deliverTo())
+                    @if($deliverTo['name'] !== $order->buyer->full_name || $deliverTo['phone'] !== $order->buyer->contact_no)
+                    <tr><td class="order-detail-muted">Ship to</td><td>{{ $deliverTo['name'] }} · {{ $deliverTo['phone'] }}</td></tr>
+                    @endif
+                    <tr><td class="order-detail-muted">Address</td><td>{{ $deliverTo['address'] }}</td></tr>
+                    @if($order->shipment?->buyer_note)
+                    <tr><td class="order-detail-muted">Buyer's note</td><td><strong>{{ $order->shipment->buyer_note }}</strong></td></tr>
+                    @endif
                 </table>
                 @else
                 <p class="order-detail-muted-2">Buyer info unavailable.</p>

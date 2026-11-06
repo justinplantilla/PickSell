@@ -10,6 +10,65 @@
 <div class="checkout-layout">
     {{-- LEFT: Order Items --}}
     <div class="checkout-left">
+        {{-- Delivery address: the default (profile) one or another from the address book; shipping is priced on it. --}}
+        <div class="card checkout-address-card" id="delivery-address">
+            <div class="card-header"><span class="card-title">📍 Delivery Address</span></div>
+            <div class="card-body">
+                <div class="checkout-address-current">
+                    <strong>{{ $deliverTo->recipientName }}</strong> <span class="cart-muted-text-2">{{ $deliverTo->phone }}</span>
+                    <span class="checkout-address-tag">{{ $addressId ? ($deliverTo->label ?: 'Saved address') : 'Default' }}</span>
+                    <p>{{ $deliverTo->line() ?: 'No address yet' }}</p>
+                    @unless($deliverTo->isComplete())
+                        <p class="checkout-address-warning" role="alert">This address needs a province, city and barangay before you can order. @if(! $addressId)<a href="{{ route('buyer.account') }}">Complete your profile address</a>@endif</p>
+                    @endunless
+                </div>
+
+                <details class="checkout-address-choices" @if($errors->hasAny(['recipient_name', 'contact_no', 'province', 'municipality', 'barangay'])) open @endif>
+                    <summary>Change or add an address</summary>
+                    <ul class="checkout-address-list">
+                        @php $checkoutUrl = fn ($id) => route('buyer.checkout.start', array_filter(['item_ids' => $itemIds, 'address_id' => $id])); @endphp
+                        <li class="{{ ! $addressId ? 'is-selected' : '' }}">
+                            <a href="{{ $checkoutUrl(null) }}" @if(! $addressId) aria-current="true" @endif>
+                                <strong>Default</strong> · {{ auth()->user()->full_name }}
+                                <span>{{ \App\Support\DeliveryAddress::fromProfile(auth()->user())->line() ?: 'Not set' }}</span>
+                            </a>
+                            <a href="{{ route('buyer.account') }}" class="checkout-address-action">Edit in profile</a>
+                        </li>
+                        @foreach($addresses as $saved)
+                        <li class="{{ $addressId === $saved->id ? 'is-selected' : '' }}">
+                            <a href="{{ $checkoutUrl($saved->id) }}" @if($addressId === $saved->id) aria-current="true" @endif>
+                                <strong>{{ $saved->label ?: 'Saved address' }}</strong> · {{ $saved->recipient_name }}
+                                <span>{{ \App\Support\DeliveryAddress::fromBook($saved)->line() }}</span>
+                            </a>
+                            <details class="checkout-address-edit">
+                                <summary class="checkout-address-action">Edit</summary>
+                                @include('buyer.partials.address-form', ['address' => $saved])
+                                <div class="address-extra-actions">
+                                    <form method="POST" action="{{ route('buyer.addresses.default', $saved) }}">
+                                        @csrf
+                                        @foreach($itemIds as $id)<input type="hidden" name="item_ids[]" value="{{ $id }}">@endforeach
+                                        <button type="submit" class="btn btn-outline btn-sm">Set as default</button>
+                                    </form>
+                                    <form method="POST" action="{{ route('buyer.addresses.destroy', $saved) }}">
+                                        @csrf @method('DELETE')
+                                        @foreach($itemIds as $id)<input type="hidden" name="item_ids[]" value="{{ $id }}">@endforeach
+                                        <button type="submit" class="btn btn-outline btn-sm checkout-address-delete">Delete this address</button>
+                                    </form>
+                                </div>
+                            </details>
+                        </li>
+                        @endforeach
+                    </ul>
+                    @if($addresses->count() < \App\Http\Controllers\BuyerAddressController::MAX_ADDRESSES)
+                    <details class="checkout-address-new" @if($errors->hasAny(['recipient_name', 'contact_no', 'province', 'municipality', 'barangay'])) open @endif>
+                        <summary class="btn btn-outline btn-sm">+ Add new address</summary>
+                        @include('buyer.partials.address-form', ['address' => null])
+                    </details>
+                    @endif
+                </details>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header"><span class="card-title">Order Items</span></div>
             <div class="cart-scroll">
@@ -42,6 +101,12 @@
                         <td class="cart-strong">₱{{ number_format($item->product->effective_price * $item->quantity, 2) }}</td>
                     </tr>
                     @endforeach
+                    <tr class="checkout-note-row">
+                        <td colspan="5">
+                            <label class="form-label" for="note-{{ $sellerId }}">Note to {{ $store->business_name ?? $store->full_name }} <span class="cart-muted-text">(optional)</span></label>
+                            <textarea id="note-{{ $sellerId }}" name="notes[{{ $sellerId }}]" form="checkoutPlaceForm" class="form-control" rows="2" maxlength="300" placeholder="e.g. Please wrap it well, it's a gift.">{{ old('notes.'.$sellerId) }}</textarea>
+                        </td>
+                    </tr>
                     </tbody>
                     @endforeach
                 </table>
@@ -124,10 +189,12 @@
                         <input type="hidden" name="item_ids[]" value="{{ $id }}">
                     @endforeach
                     <input type="hidden" name="voucher_code" id="voucherCodeInput" value="">
+                    @if($addressId)<input type="hidden" name="address_id" value="{{ $addressId }}">@endif
 
                     <div class="checkout-defaults">
                         <div><strong>Payment</strong><span>Cash on Delivery</span></div>
                         <div><strong>Delivery</strong><span>Pickrush</span></div>
+                        <div><strong>Ship to</strong><span><a href="#delivery-address">{{ $deliverTo->municipality ?: 'Set an address' }}</a></span></div>
                     </div>
 
                     <hr class="cart-divider">
@@ -153,7 +220,7 @@
                         Place Order
                     </button>
                     @unless($canPlace)
-                        <small class="form-hint">Shipping could not be priced for some items; see Shipping on the left.</small>
+                        <small class="form-hint">{{ $deliverTo->isComplete() ? 'Shipping could not be priced for some items; see Shipping on the left.' : 'Complete the delivery address first.' }}</small>
                     @endunless
                 </form>
                 <a href="/buyer/cart" class="btn btn-outline" style="width:100%;justify-content:center;margin-top:0.5rem;">← Back to Cart</a>
@@ -164,6 +231,7 @@
 @endsection
 
 @section('scripts')
+@vite('resources/js/components/address-picker.js')
 <script>
 document.querySelectorAll('input[name="voucher_pick"]').forEach(radio => {
     radio.addEventListener('change', function () {

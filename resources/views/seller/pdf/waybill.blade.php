@@ -53,12 +53,14 @@
         <div class="section-title">Shipment details</div>
         <table class="meta">
             <tr><td>Seller</td><td>{{ $order->seller?->business_name ?? $order->seller?->full_name ?? '—' }}</td></tr>
-            <tr><td>Buyer</td><td>{{ $order->buyer?->full_name ?? '—' }}</td></tr>
+            @php $deliverTo = $order->deliverTo(); @endphp
+            <tr><td>Buyer</td><td>{{ $deliverTo['name'] ?? '—' }}@if($deliverTo['phone']) · {{ $deliverTo['phone'] }}@endif</td></tr>
             <tr><td>Status</td><td><span class="status">{{ str_replace('_', ' ', $order->status) }}</span></td></tr>
         </table>
 
         <div class="section-title">Delivery address</div>
-        <div class="address">{{ implode(', ', array_filter([$order->buyer?->house_no, $order->buyer?->street, $order->buyer?->barangay, $order->buyer?->municipality, $order->buyer?->province])) ?: 'Address unavailable' }}</div>
+        <div class="address">{{ $deliverTo['address'] ?: 'Address unavailable' }}</div>
+        @if($order->shipment?->buyer_note)<div class="address"><strong>Buyer's note:</strong> {{ $order->shipment->buyer_note }}</div>@endif
 
         <div class="section-title">Item summary</div>
         <table class="item">

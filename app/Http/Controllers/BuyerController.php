@@ -356,14 +356,19 @@ class BuyerController extends Controller
         $total = $items->sum(fn ($i) => $i->product->effective_price * $i->quantity);
         $cartCount = CartItem::where('cart_id', $cart->id)->count();
 
+        // Where it ships: the default (profile) address unless the buyer picked one from their address book.
+        $addresses = $this->buyer()->addresses;
+        $addressId = $addresses->contains('id', (int) $request->query('address_id')) ? (int) $request->query('address_id') : null;
+        $deliverTo = DeliveryAddress::forBuyer($this->buyer(), $addressId);
+
         // One parcel and one delivery fee per seller, priced the way the order will be.
-        $shipping = $placement->shippingQuotes($this->buyer(), $items)->map(fn ($quote, $sellerId) => [
+        $shipping = $placement->shippingQuotes($this->buyer(), $items, $deliverTo)->map(fn ($quote, $sellerId) => [
             'seller' => $items->firstWhere('product.seller_id', $sellerId)->product->seller,
         ] + CartQuote::shipping($quote, $items->filter(fn ($item) => $item->product->seller_id == $sellerId)));
         $shippingTotal = $shipping->where('ok', true)->sum(fn ($parcel) => (float) $parcel['delivery_fee']);
-        $canPlace = $shipping->every(fn ($parcel) => $parcel['ok']);
+        $canPlace = $deliverTo->isComplete() && $shipping->every(fn ($parcel) => $parcel['ok']);
 
-        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount', 'shipping', 'shippingTotal', 'canPlace'));
+        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount', 'shipping', 'shippingTotal', 'canPlace', 'addresses', 'addressId', 'deliverTo'));
     }
 
     public function updateCart(Request $request, CartItem $item)
@@ -394,14 +399,18 @@ class BuyerController extends Controller
             'item_ids' => 'required|array',
             'item_ids.*' => 'exists:cart_items,id',
             'voucher_code' => 'nullable|string',
-        ]);
+            'address_id' => 'nullable|integer',
+            'notes' => 'nullable|array',
+            'notes.*' => 'nullable|string|max:300',
+        ], ['notes.*.max' => 'Keep each note to the seller under 300 characters.']);
 
         if ($placement->items($this->buyer(), $data['item_ids'])->isEmpty()) {
             return back()->withErrors(['item_ids' => 'No items selected.']);
         }
 
         try {
-            $placement->place($this->buyer(), $data['item_ids'], $data['voucher_code'] ?? null);
+            $placement->place($this->buyer(), $data['item_ids'], $data['voucher_code'] ?? null,
+                DeliveryAddress::forBuyer($this->buyer(), $data['address_id'] ?? null), $data['notes'] ?? []);
         } catch (ValidationException $exception) {
             return redirect()->route('buyer.cart')->withErrors($exception->errors());
         }

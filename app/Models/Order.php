@@ -127,6 +127,27 @@ class Order extends Model
         return $this->belongsTo(OrderShipment::class, 'order_shipment_id');
     }
 
+    /**
+     * Who and where the parcel goes: the address chosen at checkout, copied onto the shipment, or
+     * for orders from before the address book, the buyer's profile.
+     *
+     * @return array{name: ?string, phone: ?string, address: string}
+     */
+    public function deliverTo(): array
+    {
+        $shipment = $this->shipment;
+        if ($shipment?->delivery_province) {
+            return ['name' => $shipment->recipient_name, 'phone' => $shipment->recipient_phone, 'address' => (string) $shipment->delivery_address];
+        }
+        $buyer = $this->buyer;
+
+        return [
+            'name' => $buyer?->full_name,
+            'phone' => $buyer?->contact_no,
+            'address' => implode(', ', array_filter([$buyer?->house_no, $buyer?->street, $buyer?->barangay, $buyer?->municipality, $buyer?->province])),
+        ];
+    }
+
     public function seller()
     {
         return $this->belongsTo(User::class, 'seller_id');

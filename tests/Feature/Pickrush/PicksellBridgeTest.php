@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Pickrush;
 
+use App\Models\BuyerAddress;
 use App\Models\Order;
+use App\Models\OrderShipment;
 use App\Models\Product;
 use App\Models\User;
 use App\Notifications\BuyerOrderUpdate;
@@ -12,6 +14,7 @@ use App\Pickrush\Enums\StaffRole;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Services\ParcelLedger;
 use App\Services\Orders\OrderAdministrationService;
+use App\Support\DeliveryAddress;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
@@ -64,7 +67,11 @@ class PicksellBridgeTest extends TestCase
     /** An order the seller has prepared, labelled and handed over, so Pickrush is waiting to pick it up. */
     private function handedOver(?User $buyer = null): array
     {
-        $order = $this->preparing($buyer);
+        return $this->handOver($this->preparing($buyer));
+    }
+
+    private function handOver(Order $order): array
+    {
         $this->actingAs($this->seller)->post(config('app.url')."/seller/orders/{$order->id}/waybill")->assertRedirect();
         $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$order->id}/handover")->assertRedirect();
 
@@ -165,6 +172,29 @@ class PicksellBridgeTest extends TestCase
         $this->actingAs($this->buyer)->patch(config('app.url').'/buyer/account/delivery-location', ['lat' => 40.7, 'lng' => -74.0])
             ->assertSessionHasErrors('lat');
         $this->actingAs($this->buyer)->get(config('app.url').'/buyer/account')->assertOk()->assertSee('Delivery Pin')->assertSee('data-map-pin="buyer-pin"', false);
+    }
+
+    public function test_a_parcel_goes_to_the_address_chosen_at_checkout_and_keeps_its_own_pin(): void
+    {
+        $this->buyer->update(['delivery_lat' => 14.6500, 'delivery_lng' => 121.0300]);
+        $office = BuyerAddress::create(['user_id' => $this->buyer->id, 'label' => 'Office', 'recipient_name' => 'Ana Cruz', 'contact_no' => '09175550101',
+            'province' => 'Batangas', 'municipality' => 'City of Tanauan', 'barangay' => 'Altura Matanda', 'street' => 'Mabini St', 'house_no' => '7']);
+        $order = $this->preparing();
+        $shipment = OrderShipment::create(['reference' => 'SHP-OFFICE01', 'buyer_id' => $this->buyer->id, 'seller_id' => $this->seller->id,
+            'destination_region' => 'LUZON', 'price_source' => 'GENERIC_FALLBACK', 'parcel_class' => 'STANDARD', 'chargeable_weight_kg' => 1,
+            'delivery_fee' => 100, 'rider_pay' => 50, 'platform_commission' => 10, 'logistics_share' => 40, 'delivery_commission_rate' => 10,
+            'rates_version' => 'test'] + DeliveryAddress::fromBook($office)->shipmentColumns());
+        $order->update(['order_shipment_id' => $shipment->id]);
+
+        [, $parcel] = $this->handOver($order);
+        $this->assertSame(['Ana Cruz', '09175550101', '7, Mabini St, Altura Matanda, City of Tanauan, Batangas'],
+            [$parcel->consignee_name, $parcel->consignee_mobile, $parcel->delivery_address]);
+        $this->assertSame('041029000', $parcel->delivery_municipality_code, 'routed to the office, not the Quezon City profile');
+        $this->assertNull($parcel->delivery_lat, 'the home pin is not the office');
+
+        // Moving the home pin leaves the office parcel alone.
+        $this->actingAs($this->buyer)->patch(config('app.url').'/buyer/account/delivery-location', ['lat' => 14.6600, 'lng' => 121.0400])->assertSessionHasNoErrors();
+        $this->assertNull($parcel->fresh()->delivery_lat);
     }
 
     public function test_every_hub_scan_reaches_the_order_and_the_buyer(): void

@@ -46,3 +46,16 @@
 .buyer-account-pin { margin-top: 1.25rem; }
 .buyer-account-pin-note { margin-bottom: .75rem; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
 .buyer-account-pin-save { margin-top: .75rem; }
+
+/* Address book */
+.buyer-account-book-item { padding:.75rem .9rem; margin-bottom:.5rem; border:1px solid #efe9df; border-radius:10px; }
+.buyer-account-book-item > summary { cursor:pointer; font-size:.85rem; }
+.buyer-account-book-item > summary span { display:block; margin-top:.15rem; color:#667085; font-size:.8rem; }
+.buyer-account-book-item[open] > summary { margin-bottom:.75rem; }
+.buyer-account-book-delete { color:#b91c1c !important; }
+.buyer-account-book-empty { color:#667085; font-size:.85rem; }
+.buyer-account-book-new > summary { list-style:none; display:inline-flex; }
+.buyer-account-book-new > summary::-webkit-details-marker { display:none; }
+.buyer-account-book-new[open] > summary { margin-bottom:.75rem; }
+body.dark .buyer-account-book-item { border-color:#2a2a2a; }
+body.dark .buyer-account-book-item > summary span, body.dark .buyer-account-book-empty { color:#a3a3a3; }

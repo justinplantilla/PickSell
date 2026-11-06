@@ -97,6 +97,43 @@
         </section>
     </form>
 
+    {{-- Other delivery addresses, chosen at checkout; the profile address above stays the default. --}}
+    <section class="buyer-account-section buyer-account-book" id="addresses">
+        <div class="buyer-account-section-heading compact-heading">
+            <div>
+                <h2>Other Addresses</h2>
+                <p>Save other places you ship to, like work or family. Pick one at checkout.</p>
+            </div>
+        </div>
+        @forelse(auth()->user()->addresses as $saved)
+            <details class="buyer-account-book-item">
+                <summary>
+                    <strong>{{ $saved->label ?: 'Saved address' }}</strong> · {{ $saved->recipient_name }} · {{ $saved->contact_no }}
+                    <span>{{ \App\Support\DeliveryAddress::fromBook($saved)->line() }}</span>
+                </summary>
+                @include('buyer.partials.address-form', ['address' => $saved, 'itemIds' => []])
+                <div class="address-extra-actions">
+                    <form method="POST" action="{{ route('buyer.addresses.default', $saved) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-outline btn-sm">Set as default</button>
+                    </form>
+                    <form method="POST" action="{{ route('buyer.addresses.destroy', $saved) }}">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="btn btn-outline btn-sm buyer-account-book-delete">Delete this address</button>
+                    </form>
+                </div>
+            </details>
+        @empty
+            <p class="buyer-account-book-empty">No other addresses yet.</p>
+        @endforelse
+        @if(auth()->user()->addresses->count() < \App\Http\Controllers\BuyerAddressController::MAX_ADDRESSES)
+        <details class="buyer-account-book-new">
+            <summary class="btn btn-outline btn-sm">+ Add address</summary>
+            @include('buyer.partials.address-form', ['address' => null, 'itemIds' => []])
+        </details>
+        @endif
+    </section>
+
     <section class="buyer-account-section buyer-account-pin" id="delivery-location">
         <div class="buyer-account-section-heading compact-heading">
             <div>
@@ -165,4 +202,5 @@
 
 @section('scripts')
 @include('partials.profile-address-script')
+@vite('resources/js/components/address-picker.js')
 @endsection

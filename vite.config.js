@@ -26,6 +26,7 @@ export default defineConfig({
                 'resources/js/components/welcome-splash.js',
                 'resources/js/components/search-suggestions.js',
                 'resources/js/components/profile-address.js',
+                'resources/js/components/address-picker.js',
                 'resources/js/components/navbar.js',
                 'resources/js/components/form-behaviors.js',
                 'resources/js/components/admin-saved-filters.js',

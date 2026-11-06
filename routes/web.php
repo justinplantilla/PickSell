@@ -23,6 +23,7 @@ use App\Http\Controllers\AdminSearchController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BuyerAddressController;
 use App\Http\Controllers\BuyerController;
 use App\Http\Controllers\BuyerReturnRequestController;
 use App\Http\Controllers\BuyerWishlistController;
@@ -166,6 +167,10 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
 
     // Account
     Route::get('/account', [BuyerController::class, 'account'])->name('buyer.account');
+    Route::post('/addresses', [BuyerAddressController::class, 'store'])->name('buyer.addresses.store');
+    Route::put('/addresses/{address}', [BuyerAddressController::class, 'update'])->name('buyer.addresses.update');
+    Route::delete('/addresses/{address}', [BuyerAddressController::class, 'destroy'])->name('buyer.addresses.destroy');
+    Route::post('/addresses/{address}/default', [BuyerAddressController::class, 'makeDefault'])->name('buyer.addresses.default');
     Route::patch('/account', [BuyerController::class, 'updateAccount'])->name('buyer.account.update');
     Route::patch('/account/password', [BuyerController::class, 'updatePassword'])->name('buyer.account.password');
     Route::patch('/account/delivery-location', [BuyerController::class, 'updateDeliveryLocation'])->name('buyer.account.delivery-location');

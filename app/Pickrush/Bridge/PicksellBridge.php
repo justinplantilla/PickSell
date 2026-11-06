@@ -2,6 +2,7 @@
 
 namespace App\Pickrush\Bridge;
 
+use App\Models\BuyerAddress;
 use App\Models\Order;
 use App\Models\OrderShipment;
 use App\Models\User;
@@ -17,6 +18,7 @@ use App\Pickrush\Services\Shipping\ShippingQuote;
 use App\Pickrush\Support\Actor;
 use App\Services\CommissionService;
 use App\Services\Geo\AddressResolver;
+use App\Support\DeliveryAddress;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Throwable;
@@ -42,11 +44,11 @@ class PicksellBridge
     ) {}
 
     /**
-     * The delivery fee for one seller's items to the buyer's address, priced by Pickrush.
+     * The delivery fee for one seller's items to the buyer's address (or [$to], one they chose), priced by Pickrush.
      *
      * @param  iterable<array{product: \App\Models\Product, quantity: int}>  $lines
      */
-    public function quote(?User $buyer, ?User $seller, iterable $lines): ShippingQuote
+    public function quote(?User $buyer, ?User $seller, iterable $lines, ?DeliveryAddress $to = null): ShippingQuote
     {
         $items = collect($lines)->map(fn (array $line) => [
             'weight_kg' => $line['product']->weight_kg,
@@ -54,7 +56,7 @@ class PicksellBridge
         ])->values()->all();
 
         try {
-            return $this->shipping->quote($items, $buyer?->province, $seller?->province, buyerCity: $buyer?->municipality);
+            return $this->shipping->quote($items, $to ? $to->province : $buyer?->province, $seller?->province, buyerCity: $to ? $to->municipality : $buyer?->municipality);
         } catch (Throwable $e) {
             report($e);
 
@@ -75,8 +77,13 @@ class PicksellBridge
         $seller = $order->seller;
         $buyer = $order->buyer;
         $pickup = $this->codes($seller);
-        $delivery = $this->codes($buyer);
         $shipment = $order->shipment;
+        // Shipments since the address book keep a copy of the address chosen at checkout.
+        $to = $shipment?->delivery_province ? $shipment : null;
+        $delivery = $to
+            ? ($to->delivery_municipality_code ? ['municipality_code' => $to->delivery_municipality_code, 'barangay_code' => $to->delivery_barangay_code]
+                : $this->addresses->resolve($to->delivery_province, $to->delivery_municipality, $to->delivery_barangay))
+            : $this->codes($buyer);
         $orders = $shipment ? $shipment->activeOrders()->orderBy('id')->get() : collect([$order]);
 
         return $this->registrar->register([
@@ -89,13 +96,14 @@ class PicksellBridge
             'pickup_municipality_code' => $pickup['municipality_code'],
             'pickup_lat' => $seller?->pickup_lat,
             'pickup_lng' => $seller?->pickup_lng,
-            'consignee_name' => $buyer?->full_name ?? 'Picksell buyer',
-            'consignee_mobile' => $buyer?->contact_no,
-            'delivery_address' => self::address($buyer),
+            'consignee_name' => $to?->recipient_name ?? $buyer?->full_name ?? 'Picksell buyer',
+            'consignee_mobile' => $to ? $to->recipient_phone : $buyer?->contact_no,
+            'delivery_address' => $to ? $to->delivery_address : self::address($buyer),
             'delivery_barangay_code' => $delivery['barangay_code'],
             'delivery_municipality_code' => $delivery['municipality_code'],
-            'delivery_lat' => $buyer?->delivery_lat,
-            'delivery_lng' => $buyer?->delivery_lng,
+            // Kept current on the shipment when the buyer moves that address's pin (buyerPinned, addressPinned).
+            'delivery_lat' => $to ? $to->delivery_lat : $buyer?->delivery_lat,
+            'delivery_lng' => $to ? $to->delivery_lng : $buyer?->delivery_lng,
             'item_description' => self::contents($orders),
             'cod_amount' => self::codAmount($orders, $shipment),
         ] + ($shipment ? [
@@ -170,15 +178,33 @@ class PicksellBridge
             ->update(['pickup_lat' => $seller->pickup_lat, 'pickup_lng' => $seller->pickup_lng]);
     }
 
-    /** The buyer moved their delivery pin: parcels not yet delivered follow it, so the rider navigates to the new spot. */
+    /** The buyer moved their default address's pin: parcels not yet delivered there follow it, so the rider navigates to the new spot. */
     public static function buyerPinned(User $buyer): int
     {
-        $refs = self::refsWhere('buyer_id', $buyer->id);
+        // Parcels going to an address-book entry keep that entry's pin.
+        $toDefault = OrderShipment::where('buyer_id', $buyer->id)->whereNull('buyer_address_id');
+        $refs = Order::where('buyer_id', $buyer->id)->whereNull('order_shipment_id')->pluck('id')->map(fn ($id) => (string) $id)
+            ->merge((clone $toDefault)->pluck('reference'));
+
+        return self::movePin($toDefault, $refs, $buyer->delivery_lat, $buyer->delivery_lng);
+    }
+
+    /** The buyer moved an address-book entry's pin: the same for parcels going there. */
+    public static function addressPinned(BuyerAddress $address): int
+    {
+        $toAddress = OrderShipment::where('buyer_address_id', $address->id);
+
+        return self::movePin($toAddress, (clone $toAddress)->pluck('reference'), $address->delivery_lat, $address->delivery_lng);
+    }
+
+    private static function movePin($shipments, Collection $refs, $lat, $lng): int
+    {
+        $shipments->whereNotIn('status', ['delivered', ...OrderShipment::VOID])->update(['delivery_lat' => $lat, 'delivery_lng' => $lng]);
 
         return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->whereIn('external_ref', $refs)
             ->where('is_return', false)
             ->whereNotIn('current_status', [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled])
-            ->update(['delivery_lat' => $buyer->delivery_lat, 'delivery_lng' => $buyer->delivery_lng]);
+            ->update(['delivery_lat' => $lat, 'delivery_lng' => $lng]);
     }
 
     /**

@@ -52,6 +52,8 @@
                 // box.dispatchEvent(new CustomEvent('map-pin:center', { detail: { lat, lng, zoom } }))
                 box.addEventListener('map-pin:center', (e) => map.setView([e.detail.lat, e.detail.lng], e.detail.zoom || 16));
                 box.mapPinHasPin = () => marker !== null;
+                // A map drawn inside a closed <details> has no size yet: redraw it when opened.
+                box.closest('details')?.addEventListener('toggle', () => map.invalidateSize());
 
                 box.querySelector('[data-map-pin-locate]').addEventListener('click', () => {
                     if (!navigator.geolocation) return alert('This browser cannot share its location.');
