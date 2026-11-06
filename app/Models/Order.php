@@ -158,6 +158,12 @@ class Order extends Model
         return $this->belongsTo(Product::class);
     }
 
+    /** The product review published from this order's rating (once completed). */
+    public function productReview()
+    {
+        return $this->hasOne(ProductReview::class);
+    }
+
     /** Photos the buyer attached when rating this order. */
     public function reviewPhotos()
     {

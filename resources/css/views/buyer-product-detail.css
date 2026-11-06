@@ -114,3 +114,7 @@ body.dark .review-helpful.is-active { background:#2a1712; }
 .wishlist-toggle { display:inline-flex; align-items:center; gap:.4rem; padding:.4rem .8rem; border:1px solid var(--line); border-radius:999px; background:transparent; color:var(--coral); font-size:.78rem; font-weight:700; cursor:pointer; }
 .wishlist-toggle svg { width:16px; height:16px; }
 .wishlist-toggle:hover, .wishlist-toggle.is-saved { border-color:var(--coral); background:var(--coral-soft); }
+.review-seller-reply { margin-top:.6rem; padding:.55rem .75rem; border-left:3px solid var(--coral); background:#fff7f4; border-radius:0 8px 8px 0; }
+.review-seller-reply strong { font-size:.75rem; }
+.review-seller-reply p { margin-top:.2rem; }
+body.dark .review-seller-reply { background:#2a1712; }

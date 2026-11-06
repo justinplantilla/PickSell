@@ -6,7 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProductReview extends Model
 {
-    protected $fillable = ['product_id', 'buyer_id', 'order_id', 'rating', 'body'];
+    protected $fillable = ['product_id', 'buyer_id', 'order_id', 'rating', 'body', 'seller_reply', 'seller_replied_at'];
+
+    protected $casts = ['seller_replied_at' => 'datetime'];
 
     public function product() { return $this->belongsTo(Product::class); }
     public function buyer() { return $this->belongsTo(User::class, 'buyer_id'); }

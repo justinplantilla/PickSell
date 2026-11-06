@@ -103,6 +103,7 @@ final class BuyerPresenter
             'comment'    => $r->body,
             'photos'     => $r->photos->map(fn ($photo) => self::image($photo->path))->values(),
             'helpful_count' => (int) ($r->votes_count ?? $r->votes()->count()),
+            'seller_reply' => $r->seller_reply,
             'created_at' => self::date($r->created_at),
         ];
     }

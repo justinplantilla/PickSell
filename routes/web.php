@@ -220,6 +220,7 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     // Reports
     Route::get('/reports', [SellerController::class, 'reports'])->name('seller.reports');
     Route::get('/reviews', [SellerController::class, 'reviews'])->name('seller.reviews');
+    Route::put('/reviews/{review}/reply', [SellerController::class, 'replyToReview'])->name('seller.reviews.reply');
     Route::get('/vouchers', [SellerVoucherController::class, 'index'])->name('seller.vouchers');
     Route::post('/vouchers', [SellerVoucherController::class, 'store'])->name('seller.vouchers.store');
     Route::put('/vouchers/{voucher}', [SellerVoucherController::class, 'update'])->name('seller.vouchers.update');

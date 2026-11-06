@@ -10,6 +10,7 @@ use App\Models\ProductReview;
 use App\Models\ReturnRequest;
 use App\Models\User;
 use App\Notifications\FollowedStoreNewProduct;
+use App\Notifications\SellerRepliedToReview;
 use App\Notifications\SellerDeliveryReceived;
 use App\Pickrush\Bridge\PicksellBridge;
 use App\Services\CommissionService;
@@ -803,9 +804,25 @@ class SellerController extends Controller
             'average' => round((float) (clone $rated)->avg($field), 1),
             'count' => (clone $rated)->whereNotNull($field)->count(),
         ]]);
-        $reviews = (clone $rated)->with('buyer:id,first_name')->latest('updated_at')->paginate(20);
+        $reviews = (clone $rated)->with('buyer:id,first_name', 'productReview')->latest('updated_at')->paginate(20);
 
         return view('seller.reviews', compact('averages', 'reviews'));
+    }
+
+    /** The seller's public answer under a product review; an empty reply takes it down. */
+    public function replyToReview(Request $request, ProductReview $review)
+    {
+        abort_unless($review->product?->seller_id === $this->seller()->id, 404);
+        $data = $request->validate(['seller_reply' => 'nullable|string|max:1000']);
+        $reply = filled($data['seller_reply'] ?? null) ? trim($data['seller_reply']) : null;
+        $firstReply = $reply && ! $review->seller_reply;
+        $review->update(['seller_reply' => $reply, 'seller_replied_at' => $reply ? now() : null]);
+
+        if ($firstReply) {
+            $review->buyer?->notify(new SellerRepliedToReview($review));
+        }
+
+        return back()->with('success', $reply ? 'Reply posted.' : 'Reply removed.');
     }
 
     public function reports(Request $request)

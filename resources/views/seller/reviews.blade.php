@@ -39,6 +39,17 @@
                 @endforeach
             </div>
             @if($order->feedback)<p>{{ $order->feedback }}</p>@endif
+            @if($order->productReview)
+            {{-- The reply shows under the review on the product page. --}}
+            <form method="POST" action="{{ route('seller.reviews.reply', $order->productReview) }}" class="review-reply-form">
+                @csrf @method('PUT')
+                <label class="review-muted" for="reply-{{ $order->productReview->id }}">{{ $order->productReview->seller_reply ? 'Your public reply' : 'Reply publicly' }}</label>
+                <textarea id="reply-{{ $order->productReview->id }}" name="seller_reply" class="form-control" rows="2" maxlength="1000" placeholder="Thank the buyer or answer their concern.">{{ $order->productReview->seller_reply }}</textarea>
+                <button type="submit" class="btn btn-outline btn-sm">{{ $order->productReview->seller_reply ? 'Update reply' : 'Post reply' }}</button>
+            </form>
+            @else
+            <p class="review-muted">You can reply once you confirm the delivery and the review is published.</p>
+            @endif
         </article>
         @empty
         <p class="review-muted">No ratings yet. Buyers can rate an order once it is delivered.</p>

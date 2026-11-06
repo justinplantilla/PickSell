@@ -76,4 +76,6 @@ body.dark .earnings-disclosure-trigger:hover,body.dark .earnings-disclosure-trig
 body.dark .review-row { border-color:#2a2a2a; }
 body.dark .review-muted { color:#a3a3a3; }
 body.dark .review-stars-off { color:#3a3a3a; }
-
+.review-reply-form { display:grid; gap:.35rem; margin-top:.6rem; padding:.6rem .75rem; border-left:3px solid #f1d8d1; background:#fcfaf7; border-radius:0 8px 8px 0; }
+.review-reply-form .btn { justify-self:start; }
+body.dark .review-reply-form { background:#161616; border-left-color:#3a2a25; }

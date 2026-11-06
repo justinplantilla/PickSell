@@ -72,6 +72,9 @@
 <article class="review-item" id="review-{{ $review->id }}">
     <div class="review-item-head"><strong>{{ $review->buyer->first_name ?? 'Buyer' }}</strong><span>{{ str_repeat('★', $review->rating) }}{{ str_repeat('☆', 5 - $review->rating) }}</span></div>
     @if($review->body)<p>{{ $review->body }}</p>@endif
+    @if($review->seller_reply)
+    <div class="review-seller-reply"><strong>Seller's reply</strong><p>{{ $review->seller_reply }}</p></div>
+    @endif
     @if($review->photos->isNotEmpty())
     <div class="review-photos">@foreach($review->photos as $photo)<a href="{{ Storage::url($photo->path) }}" target="_blank" rel="noopener"><img src="{{ Storage::url($photo->path) }}" alt="Photo from {{ $review->buyer->first_name ?? 'a buyer' }}'s review" loading="lazy"></a>@endforeach</div>
     @endif
