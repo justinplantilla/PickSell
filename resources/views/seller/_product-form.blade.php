@@ -49,6 +49,7 @@
     <div class="form-group">
         <label class="form-label">Stock *</label>
         <input type="number" name="stock" class="form-control" min="0" required>
+        <small class="form-hint" data-variation-stock-hint hidden>This is now the total of the options' stock. Set each option's stock under Variations.</small>
     </div>
     <div class="form-group">
         <label class="form-label">Packed weight (kg) *</label>

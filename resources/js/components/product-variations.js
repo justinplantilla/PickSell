@@ -15,10 +15,13 @@ class ProductVariations {
         this.typeWrap = root.querySelector('[data-variation-type-wrap]');
         this.type = root.querySelector('[data-variation-type]');
         this.stock = this.form.querySelector('[name=stock]');
+        this.stockHint = this.form.querySelector('[data-variation-stock-hint]');
 
         root.querySelector('[data-variations-managed]').disabled = false;
         root.querySelector('[data-add-variation]').addEventListener('click', () => {
-            this.addRow().querySelector('[data-variation-value]').focus();
+            // The first option starts with the product's current stock, so adding options never empties it.
+            const first = !this.rows.querySelector('[data-variation-row]');
+            this.addRow({ stock: first ? (parseInt(this.stock.value, 10) || 0) : 0 }).querySelector('[data-variation-value]').focus();
         });
         this.rows.addEventListener('input', () => this.refresh());
         this.rows.addEventListener('click', event => {
@@ -65,6 +68,7 @@ class ProductVariations {
         this.typeWrap.hidden = !hasOptions;
         this.type.required = hasOptions;
         this.stock.readOnly = hasOptions;
+        if (this.stockHint) this.stockHint.hidden = !hasOptions;
         if (hasOptions) {
             this.stock.value = stocks.reduce((sum, input) => sum + (parseInt(input.value, 10) || 0), 0);
         }
