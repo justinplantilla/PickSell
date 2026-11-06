@@ -359,6 +359,10 @@ class SellerController extends Controller
         'category' => 'nullable|string|max:100',
         'price' => 'required|numeric|min:0',
         'discount' => 'nullable|numeric|min:0|max:100',
+        // A scheduled sale replaces the discount between its two dates.
+        'sale_discount' => 'nullable|numeric|min:1|max:100',
+        'sale_starts_at' => 'nullable|required_with:sale_discount|date',
+        'sale_ends_at' => 'nullable|required_with:sale_discount|date|after:sale_starts_at',
         'voucher_code' => 'nullable|string|max:50',
         'voucher_discount' => 'nullable|numeric|min:0|max:100',
         'stock' => 'required|integer|min:0',
@@ -427,6 +431,9 @@ class SellerController extends Controller
     }
 
     private const PRODUCT_MESSAGES = [
+        'sale_starts_at.required_with' => 'Pick when the sale starts.',
+        'sale_ends_at.required_with' => 'Pick when the sale ends.',
+        'sale_ends_at.after' => 'The sale must end after it starts.',
         'variation_type.required_with' => 'Name the option, e.g. Size or Color.',
         'variations.*.value.required' => 'Each option needs a value.',
         'variations.*.value.distinct' => 'Each option value must be different.',

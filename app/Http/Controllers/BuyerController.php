@@ -77,7 +77,7 @@ class BuyerController extends Controller
             $query->where('category', $category);
         }
         if ($deals) {
-            $query->where('discount', '>', 0);
+            $query->onSale();
         }
 
         $products = $query->latest()->paginate(12);
@@ -87,7 +87,7 @@ class BuyerController extends Controller
         if (!$search && !$category && !$deals) {
             $dealProducts = Product::showcased()
                 ->where('stock', '>', 0)
-                ->where('discount', '>', 0)
+                ->onSale()
                 ->with('seller')
                 ->latest()
                 ->take(14)
@@ -146,9 +146,6 @@ class BuyerController extends Controller
         return view('buyer.recommended', compact('products', 'cartCount'));
     }
 
-    /** What buyers pay for one unit, in SQL, so price filters and sorts follow the discount. */
-    private const EFFECTIVE_PRICE_SQL = 'price * (1 - discount / 100.0)';
-
     public const BROWSE_SORTS = [
         'latest' => 'Latest', 'popular' => 'Best selling', 'rating' => 'Top rated',
         'price_asc' => 'Price: Low to High', 'price_desc' => 'Price: High to Low',
@@ -180,13 +177,14 @@ class BuyerController extends Controller
             $query->where('category', $category);
         }
         if ($dealsOnly) {
-            $query->where('discount', '>', 0);
+            $query->onSale();
         }
+        [$priceSql, $priceBindings] = Product::effectivePriceSql();
         if ($minPrice !== null) {
-            $query->whereRaw(self::EFFECTIVE_PRICE_SQL.' >= CAST(? AS DECIMAL(12,2))', [$minPrice]);
+            $query->whereRaw($priceSql.' >= CAST(? AS DECIMAL(12,2))', [...$priceBindings, $minPrice]);
         }
         if ($maxPrice !== null) {
-            $query->whereRaw(self::EFFECTIVE_PRICE_SQL.' <= CAST(? AS DECIMAL(12,2))', [$maxPrice]);
+            $query->whereRaw($priceSql.' <= CAST(? AS DECIMAL(12,2))', [...$priceBindings, $maxPrice]);
         }
         if ($minRating) {
             $query->whereRaw('(select avg(rating) from product_reviews where product_reviews.product_id = products.id and product_reviews.hidden_at is null) >= ?', [$minRating]);
@@ -198,8 +196,8 @@ class BuyerController extends Controller
         match ($sort) {
             'popular' => $query->withSum(['orders as units_sold' => fn ($q) => $q->whereIn('status', ['delivered', 'completed'])], 'quantity')->orderByDesc('units_sold'),
             'rating' => $query->orderByDesc('reviews_avg_rating')->orderByDesc('reviews_count'),
-            'price_asc' => $query->orderByRaw(self::EFFECTIVE_PRICE_SQL.' asc'),
-            'price_desc' => $query->orderByRaw(self::EFFECTIVE_PRICE_SQL.' desc'),
+            'price_asc' => $query->orderByRaw($priceSql.' asc', $priceBindings),
+            'price_desc' => $query->orderByRaw($priceSql.' desc', $priceBindings),
             default => $query->latest(),
         };
 

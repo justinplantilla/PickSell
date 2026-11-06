@@ -35,6 +35,25 @@
         <input type="number" name="discount" class="form-control" step="0.01" min="0" max="100" value="0">
     </div>
 </div>
+{{-- A scheduled sale: between the two dates its discount replaces the regular one. --}}
+<details class="product-sale" data-product-sale>
+    <summary class="form-label">Schedule a sale <span class="cart-muted-text">(optional)</span></summary>
+    <div class="grid-3">
+        <div class="form-group">
+            <label class="form-label" for="sale-discount-{{ !empty($edit) ? 'edit' : 'add' }}">Sale discount (%)</label>
+            <input type="number" id="sale-discount-{{ !empty($edit) ? 'edit' : 'add' }}" name="sale_discount" class="form-control" step="0.01" min="1" max="100" placeholder="e.g. 20">
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="sale-start-{{ !empty($edit) ? 'edit' : 'add' }}">Starts</label>
+            <input type="datetime-local" id="sale-start-{{ !empty($edit) ? 'edit' : 'add' }}" name="sale_starts_at" class="form-control">
+        </div>
+        <div class="form-group">
+            <label class="form-label" for="sale-end-{{ !empty($edit) ? 'edit' : 'add' }}">Ends</label>
+            <input type="datetime-local" id="sale-end-{{ !empty($edit) ? 'edit' : 'add' }}" name="sale_ends_at" class="form-control">
+        </div>
+    </div>
+    <small class="form-hint">During the sale buyers get this discount instead of the regular one. It starts and ends by itself; leave the discount empty for no sale.</small>
+</details>
 <div class="grid-2">
     <div class="form-group">
         <label class="form-label">Voucher Code</label>

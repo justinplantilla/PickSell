@@ -118,3 +118,5 @@ body.dark .review-helpful.is-active { background:#2a1712; }
 .review-seller-reply strong { font-size:.75rem; }
 .review-seller-reply p { margin-top:.2rem; }
 body.dark .review-seller-reply { background:#2a1712; }
+.detail-sale-ends { display:inline-block; margin-left:.5rem; padding:.15rem .55rem; border-radius:999px; background:#fef3c7; color:#92400e; font-size:.72rem; font-weight:700; }
+body.dark .detail-sale-ends { background:#3a2c08; color:#fcd34d; }

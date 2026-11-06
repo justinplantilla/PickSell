@@ -43,7 +43,7 @@
 
         @php [$lowPrice, $highPrice] = $product->priceRange(); @endphp
         {{-- Options can have their own price: show the range until one is picked. --}}
-        <div class="product-price-block"><span class="detail-price" id="detailPrice">₱{{ number_format($lowPrice, 2) }}@if($highPrice > $lowPrice) – ₱{{ number_format($highPrice, 2) }}@endif</span>@if($product->discount > 0 && $highPrice <= $lowPrice)<span class="detail-original">₱{{ number_format($product->price, 2) }}</span>@endif @if($product->discount > 0)<span class="detail-discount">-{{ $product->discount }}%</span>@endif</div>
+        <div class="product-price-block"><span class="detail-price" id="detailPrice">₱{{ number_format($lowPrice, 2) }}@if($highPrice > $lowPrice) – ₱{{ number_format($highPrice, 2) }}@endif</span>@if($product->discount > 0 && $highPrice <= $lowPrice)<span class="detail-original">₱{{ number_format($product->price, 2) }}</span>@endif @if($product->discount > 0)<span class="detail-discount">-{{ $product->discount }}%</span>@endif @if($product->saleIsOn())<span class="detail-sale-ends">Sale ends {{ $product->sale_ends_at->format('M j, g:i A') }}</span>@endif</div>
         @if($product->description)<p class="product-description">{{ $product->description }}</p>@endif
 
         @php $sellerAway = $product->sellerOnVacation(); @endphp

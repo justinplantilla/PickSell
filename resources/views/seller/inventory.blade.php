@@ -71,7 +71,7 @@
                 </td>
                 <td>{{ $product->category ?? '—' }}</td>
                 <td>₱{{ number_format($product->price, 2) }}</td>
-                <td>{{ $product->discount > 0 ? $product->discount.'%' : '—' }}</td>
+                <td>{{ $product->regular_discount > 0 ? $product->regular_discount.'%' : '—' }}@if($product->sale_discount && $product->sale_ends_at?->isFuture())<div class="inventory-muted-text inventory-sale-note">{{ $product->saleIsOn() ? 'Sale on' : 'Sale' }}: {{ rtrim(rtrim($product->sale_discount, '0'), '.') }}% · {{ $product->sale_starts_at->format('M j') }}–{{ $product->sale_ends_at->format('M j') }}</div>@endif</td>
                 <td>{{ $product->voucher_code ? $product->voucher_code.' ('.$product->voucher_discount.'%)' : '—' }}</td>
                 <td><span class="inventory-strong">{{ $product->stock }}</span></td>
                 <td><x-stock-status-badge :product="$product" /></td>

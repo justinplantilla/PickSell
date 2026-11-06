@@ -15,12 +15,18 @@ class Product extends Model
         'price', 'discount', 'voucher_code', 'voucher_discount',
         'stock', 'is_featured', 'status',
         'weight_kg',
+        'sale_discount', 'sale_starts_at', 'sale_ends_at',
     ];
 
     protected $casts = [
         'is_featured' => 'boolean',
         'weight_kg' => 'decimal:2',
+        'sale_starts_at' => 'datetime',
+        'sale_ends_at' => 'datetime',
     ];
+
+    // The seller's edit form needs the regular discount even while a sale is on.
+    protected $appends = ['regular_discount'];
 
     // Product cards on nearly every page show the primary image, so keep images eager-loaded.
     protected $with = ['images'];
@@ -87,6 +93,45 @@ class Product extends Model
     public function sellerOnVacation(): bool
     {
         return (bool) $this->seller?->isOnVacation();
+    }
+
+    /** A scheduled sale is running right now. */
+    public function saleIsOn(): bool
+    {
+        $sale = $this->attributes['sale_discount'] ?? null;
+
+        return $sale !== null && (float) $sale > 0 && $this->sale_starts_at && $this->sale_ends_at
+            && $this->sale_starts_at->lte(now()) && $this->sale_ends_at->gte(now());
+    }
+
+    /** The discount buyers get now: the scheduled sale's while it runs, the regular one otherwise. */
+    public function getDiscountAttribute($value)
+    {
+        return $this->saleIsOn() ? $this->attributes['sale_discount'] : $value;
+    }
+
+    public function getRegularDiscountAttribute()
+    {
+        return $this->attributes['discount'] ?? 0;
+    }
+
+    /** Products buyers get a discount on right now (a regular one or a running sale). */
+    public function scopeOnSale($query)
+    {
+        return $query->where(fn ($q) => $q->where('discount', '>', 0)->orWhere(fn ($s) => $s->where('sale_discount', '>', 0)
+            ->where('sale_starts_at', '<=', now())->where('sale_ends_at', '>=', now())));
+    }
+
+    /**
+     * What buyers pay for one unit, as SQL with its bindings, so price filters and sorts follow
+     * the discount and any running sale.
+     *
+     * @return array{0: string, 1: array}
+     */
+    public static function effectivePriceSql(): array
+    {
+        return ['price * (1 - (CASE WHEN sale_discount IS NOT NULL AND sale_starts_at <= ? AND sale_ends_at >= ? THEN sale_discount ELSE discount END) / 100.0)',
+            [now()->toDateTimeString(), now()->toDateTimeString()]];
     }
 
     public function getEffectivePriceAttribute(): float

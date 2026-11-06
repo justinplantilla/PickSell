@@ -44,7 +44,7 @@ class CatalogController extends Controller
 
     public function home(RecentlyViewed $recentlyViewed)
     {
-        $deals = self::listable()->where('discount', '>', 0)->latest()->take(14)->get();
+        $deals = self::listable()->onSale()->latest()->take(14)->get();
         $topDiscount = $deals->sortByDesc('discount')->first();
 
         $banners = collect();
@@ -113,7 +113,7 @@ class CatalogController extends Controller
             $query->where(fn ($q) => $q->where('name', 'like', "%{$s}%")->orWhere('category', 'like', "%{$s}%"));
         }
         if ($c = $data['category'] ?? null) $query->where('category', $c);
-        if (! empty($data['on_sale'])) $query->where('discount', '>', 0);
+        if (! empty($data['on_sale'])) $query->onSale();
         if (isset($data['min_price'])) $query->whereRaw("{$priceSql} >= ?", [$data['min_price']]);
         if (isset($data['max_price'])) $query->whereRaw("{$priceSql} <= ?", [$data['max_price']]);
         if ($sid = $data['seller_id'] ?? null) $query->where('seller_id', $sid);

@@ -16,7 +16,13 @@ function openEditModal(id, p) {
     f.querySelector('[name=description]').value = p.description || '';
     f.querySelector('[name=category]').value = p.category || '';
     f.querySelector('[name=price]').value = p.price;
-    f.querySelector('[name=discount]').value = p.discount || 0;
+    f.querySelector('[name=discount]').value = p.regular_discount || 0;
+    // datetime-local wants "YYYY-MM-DDTHH:MM" in local time.
+    const local = value => value ? new Date(new Date(value).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
+    f.querySelector('[name=sale_discount]').value = p.sale_discount ?? '';
+    f.querySelector('[name=sale_starts_at]').value = local(p.sale_starts_at);
+    f.querySelector('[name=sale_ends_at]').value = local(p.sale_ends_at);
+    f.querySelector('[data-product-sale]').open = Boolean(p.sale_discount);
     f.querySelector('[name=voucher_code]').value = p.voucher_code || '';
     f.querySelector('[name=voucher_discount]').value = p.voucher_discount || 0;
     f.querySelector('[name=stock]').value = p.stock;
