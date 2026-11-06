@@ -140,19 +140,34 @@ class BuyerController extends Controller
         return view('buyer.recommended', compact('products', 'cartCount'));
     }
 
+    /** What buyers pay for one unit, in SQL, so price filters and sorts follow the discount. */
+    private const EFFECTIVE_PRICE_SQL = 'price * (1 - discount / 100.0)';
+
+    public const BROWSE_SORTS = [
+        'latest' => 'Latest', 'popular' => 'Best selling', 'rating' => 'Top rated',
+        'price_asc' => 'Price: Low to High', 'price_desc' => 'Price: High to Low',
+    ];
+
     public function browse(Request $request)
     {
         $search = trim((string) $request->get('search', ''));
         $category = $request->get('category');
-        $sort = $request->get('sort', 'latest');
+        $sort = array_key_exists($request->get('sort'), self::BROWSE_SORTS) ? $request->get('sort') : 'latest';
         $dealsOnly = $request->boolean('deals');
+        $minPrice = is_numeric($request->get('min_price')) ? max(0, (float) $request->get('min_price')) : null;
+        $maxPrice = is_numeric($request->get('max_price')) ? max(0, (float) $request->get('max_price')) : null;
+        $minRating = in_array((int) $request->get('rating'), [3, 4], true) ? (int) $request->get('rating') : null;
+        // "near" means stores in the buyer's own province: the cheapest, fastest shipping.
+        $location = trim((string) $request->get('location', ''));
+        $province = $location === 'near' ? $this->buyer()->province : ($location ?: null);
 
-        $query = Product::showcased()->where('stock', '>', 0)->with('seller');
+        $query = Product::showcased()->where('stock', '>', 0)->with('seller')->withAvg('reviews', 'rating')->withCount('reviews');
 
         if ($search) {
             $query->where(function ($b) use ($search) {
                 $b->whereLike('name', "%{$search}%")
-                  ->orWhereLike('category', "%{$search}%");
+                  ->orWhereLike('category', "%{$search}%")
+                  ->orWhereHas('seller', fn ($s) => $s->whereLike('business_name', "%{$search}%"));
             });
         }
         if ($category) {
@@ -161,25 +176,38 @@ class BuyerController extends Controller
         if ($dealsOnly) {
             $query->where('discount', '>', 0);
         }
-
-        if ($sort === 'popular') {
-            $query = $query->withSum(['orders as units_sold' => fn ($q) => $q->whereIn('status', ['delivered', 'completed'])], 'quantity')->orderByDesc('units_sold');
-        } elseif ($sort === 'price_asc') {
-            $query->orderBy('price');
-        } elseif ($sort === 'price_desc') {
-            $query->orderByDesc('price');
-        } else {
-            $query->latest();
+        if ($minPrice !== null) {
+            $query->whereRaw(self::EFFECTIVE_PRICE_SQL.' >= CAST(? AS DECIMAL(12,2))', [$minPrice]);
+        }
+        if ($maxPrice !== null) {
+            $query->whereRaw(self::EFFECTIVE_PRICE_SQL.' <= CAST(? AS DECIMAL(12,2))', [$maxPrice]);
+        }
+        if ($minRating) {
+            $query->whereRaw('(select avg(rating) from product_reviews where product_reviews.product_id = products.id) >= ?', [$minRating]);
+        }
+        if ($province) {
+            $query->whereHas('seller', fn ($s) => $s->where('province', $province));
         }
 
+        match ($sort) {
+            'popular' => $query->withSum(['orders as units_sold' => fn ($q) => $q->whereIn('status', ['delivered', 'completed'])], 'quantity')->orderByDesc('units_sold'),
+            'rating' => $query->orderByDesc('reviews_avg_rating')->orderByDesc('reviews_count'),
+            'price_asc' => $query->orderByRaw(self::EFFECTIVE_PRICE_SQL.' asc'),
+            'price_desc' => $query->orderByRaw(self::EFFECTIVE_PRICE_SQL.' desc'),
+            default => $query->latest(),
+        };
+
         $products = $query->paginate(30)->withQueryString();
+        $provinces = User::where('role', 'seller')->where('status', 'approved')->whereHas('products', fn ($p) => $p->showcased())
+            ->whereNotNull('province')->distinct()->orderBy('province')->pluck('province');
+        $filters = compact('minPrice', 'maxPrice', 'minRating', 'location');
         $categoryNames = ['Beauty', 'Books', 'Clothing', 'Electronics', 'Fashion', 'Food & Grocery', 'Home & Living', 'Pet Supplies', 'Sports', 'Toys'];
         $categories = collect($categoryNames)
             ->merge(Product::showcased()->whereNotNull('category')->distinct()->pluck('category'))
             ->filter()->unique()->sort()->values();
         $cartCount = CartItem::whereHas('cart', fn ($q) => $q->where('buyer_id', $this->buyer()->id))->count();
 
-        return view('buyer.browse', compact('products', 'categories', 'search', 'category', 'sort', 'dealsOnly', 'cartCount'));
+        return view('buyer.browse', compact('products', 'categories', 'search', 'category', 'sort', 'dealsOnly', 'cartCount', 'provinces', 'filters'));
     }
 
     public function categories(Request $request)
@@ -209,27 +237,10 @@ class BuyerController extends Controller
         return view('buyer.categories', compact('categories', 'categoryCounts', 'products', 'category', 'cartCount'));
     }
 
-    // Search Results
+    // Search Results: the browse page has the filters and sorts, so searches land there.
     public function search(Request $request)
     {
-        $query = trim($request->get('search', ''));
-        $category = $request->get('category');
-
-        $products = Product::showcased()
-            ->where('stock', '>', 0)
-            ->with('seller')
-            ->when($query, fn ($q) => $q->where(function ($b) use ($query) {
-                $b->whereLike('name', "%{$query}%")
-                  ->orWhereLike('category', "%{$query}%");
-            }))
-            ->when($category, fn ($q) => $q->where('category', $category))
-            ->latest()
-            ->paginate(16)
-            ->withQueryString();
-
-        $cartCount = CartItem::whereHas('cart', fn ($q) => $q->where('buyer_id', $this->buyer()->id))->count();
-
-        return view('buyer.search', compact('products', 'query', 'category', 'cartCount'));
+        return redirect()->route('buyer.browse', $request->query());
     }
 
     // Product Detail
