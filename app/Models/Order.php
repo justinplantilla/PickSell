@@ -158,6 +158,12 @@ class Order extends Model
         return $this->belongsTo(Product::class);
     }
 
+    /** Photos the buyer attached when rating this order. */
+    public function reviewPhotos()
+    {
+        return $this->hasMany(ProductReviewPhoto::class);
+    }
+
     public function variation()
     {
         return $this->belongsTo(ProductVariation::class, 'variation_id');

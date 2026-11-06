@@ -8,6 +8,7 @@ use App\Models\CartItem;
 use App\Models\Complaint;
 use App\Models\Order;
 use App\Models\ProductReview;
+use App\Models\ProductReviewPhoto;
 use App\Models\ReturnRequest;
 use App\Models\ReturnRequestEvent;
 use App\Services\AdminNotificationService;
@@ -71,10 +72,10 @@ class OrderController extends Controller
     }
 
     /**
-     * POST /buyer/orders/{id}/rate {rating, feedback?} — the order rating the seller sees. Once the
-     * seller has confirmed delivery (completed) it is also the product review, as on the website.
+     * POST /buyer/orders/{id}/rate {rating (product), seller_rating?, delivery_rating?, feedback?, photos[]?}
+     * Photos are multipart, up to 3. Once the seller has confirmed delivery (completed) the
+     * product rating is also the product review, as on the website.
      */
-    /** POST /buyer/orders/{id}/rate {rating (product), seller_rating?, delivery_rating?, feedback?} */
     public function rate(Request $request, Order $order, OrderRating $ratings)
     {
         $this->find($request, $order);
@@ -84,11 +85,13 @@ class OrderController extends Controller
             'seller_rating'   => 'nullable|integer|min:1|max:5',
             'delivery_rating' => 'nullable|integer|min:1|max:5',
             'feedback'        => 'nullable|string|max:1000',
+            'photos'          => 'nullable|array|max:'.ProductReviewPhoto::MAX_PER_REVIEW,
+            'photos.*'        => 'image|mimes:jpg,jpeg,png,webp|max:5120',
         ]);
         abort_unless(in_array(OrderStatus::of($order), OrderStatus::RATEABLE, true), 422, 'You can rate an order once it has been delivered.');
         abort_if($order->rating !== null, 422, 'You already rated this order.');
 
-        $ratings->rate($order, $data['rating'], $data['seller_rating'] ?? null, $data['delivery_rating'] ?? null, $data['feedback'] ?? null);
+        $ratings->rate($order, $data['rating'], $data['seller_rating'] ?? null, $data['delivery_rating'] ?? null, $data['feedback'] ?? null, $request->file('photos', []));
 
         return $this->detail($order);
     }

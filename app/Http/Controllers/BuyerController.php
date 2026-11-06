@@ -9,6 +9,8 @@ use App\Models\Message;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductReview;
+use App\Models\ProductReviewPhoto;
+use App\Models\ProductReviewVote;
 use App\Models\User;
 use App\Models\WishlistItem;
 use App\Pickrush\Bridge\PicksellBridge;
@@ -247,14 +249,15 @@ class BuyerController extends Controller
     public function productDetail(Product $product, RecentlyViewed $recentlyViewed)
     {
         abort_if($product->status !== 'active', 404);
-        $product->load('seller', 'variations', 'reviews.buyer');
+        $product->load(['seller', 'variations', 'reviews' => fn ($q) => $q->with('buyer', 'photos')->withCount('votes')->latest()]);
+        $helpfulIds = ProductReviewVote::where('user_id', $this->buyer()->id)->whereIn('product_review_id', $product->reviews->pluck('id'))->pluck('product_review_id')->all();
         $cartCount = CartItem::whereHas('cart', fn ($q) => $q->where('buyer_id', $this->buyer()->id))->count();
         $reviewCount = $product->reviews->count();
         $reviewAverage = $reviewCount ? round($product->reviews->avg('rating'), 1) : 0;
         $wishlisted = WishlistItem::where('user_id', $this->buyer()->id)->where('product_id', $product->id)->exists();
         $recentlyViewed->record($this->buyer(), $product);
 
-        return view('buyer.product-detail', compact('product', 'cartCount', 'reviewCount', 'reviewAverage', 'wishlisted'));
+        return view('buyer.product-detail', compact('product', 'cartCount', 'reviewCount', 'reviewAverage', 'wishlisted', 'helpfulIds'));
     }
 
     public function sellerStorefront(User $seller)
@@ -492,14 +495,20 @@ class BuyerController extends Controller
             'seller_rating' => $delivered ? "required|$stars" : 'prohibited',
             'delivery_rating' => $delivered ? "required|$stars" : 'prohibited',
             'feedback' => 'nullable|string|max:1000',
+            'photos' => $delivered ? 'nullable|array|max:'.ProductReviewPhoto::MAX_PER_REVIEW : 'prohibited',
+            'photos.*' => 'image|mimes:jpg,jpeg,png,webp|max:5120',
         ], [
+            'photos.max' => 'Add up to '.ProductReviewPhoto::MAX_PER_REVIEW.' photos.',
+            'photos.*.image' => 'Photos must be JPG, PNG or WEBP images.',
+            'photos.*.mimes' => 'Photos must be JPG, PNG or WEBP images.',
+            'photos.*.max' => 'Each photo must be 5 MB or smaller.',
             'rating.required' => 'Rate the product.',
             'seller_rating.required' => 'Rate the seller’s service.',
             'delivery_rating.required' => 'Rate the delivery.',
         ]);
 
         if ($delivered) {
-            $ratings->rate($order, $data['rating'], $data['seller_rating'], $data['delivery_rating'], $data['feedback'] ?? null);
+            $ratings->rate($order, $data['rating'], $data['seller_rating'], $data['delivery_rating'], $data['feedback'] ?? null, $request->file('photos', []));
         } else {
             $order->update(['rating' => $data['rating'], 'feedback' => $data['feedback'] ?? null]);
         }
@@ -531,6 +540,18 @@ class BuyerController extends Controller
         $item->save();
 
         return redirect()->route('buyer.cart')->with('success', "{$product->name} is back in your cart.");
+    }
+
+    /** Mark a review helpful, or take the mark back. Buyers cannot vote on their own review. */
+    public function toggleHelpful(Request $request, ProductReview $review)
+    {
+        abort_if($review->buyer_id === $this->buyer()->id, 422, 'You cannot vote on your own review.');
+        $vote = ProductReviewVote::where(['product_review_id' => $review->id, 'user_id' => $this->buyer()->id])->first();
+        $vote ? $vote->delete() : ProductReviewVote::create(['product_review_id' => $review->id, 'user_id' => $this->buyer()->id]);
+
+        return $request->expectsJson()
+            ? response()->json(['helpful' => ! $vote, 'count' => $review->votes()->count()])
+            : redirect()->to(route('buyer.product', $review->product_id).'#review-'.$review->id);
     }
 
     public function submitProductReview(Request $request, Product $product)

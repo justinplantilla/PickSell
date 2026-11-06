@@ -8,6 +8,7 @@ function openFeedback(button) {
     feedbackForm.querySelectorAll('[data-star-group] input').forEach(input => { input.value = ''; });
     feedbackModal.querySelectorAll('.star').forEach(s => s.classList.remove('active'));
     feedbackModal.querySelector('[data-rate-error]').hidden = true;
+    feedbackModal.querySelector('[data-rate-photo-previews]').innerHTML = '';
 
     const image = feedbackModal.querySelector('[data-rate-image]');
     image.hidden = !button.dataset.image;
@@ -24,6 +25,24 @@ function setRating(star) {
     group.querySelector('input').value = val;
     group.querySelectorAll('.star').forEach(s => s.classList.toggle('active', Number(s.dataset.val) <= val));
 }
+const MAX_REVIEW_PHOTOS = 3;
+const photoInput = feedbackForm.querySelector('[data-rate-photos]');
+// Previews of the chosen photos; more than three keeps the first three.
+photoInput?.addEventListener('change', () => {
+    if (photoInput.files.length > MAX_REVIEW_PHOTOS) {
+        const keep = new DataTransfer();
+        [...photoInput.files].slice(0, MAX_REVIEW_PHOTOS).forEach(file => keep.items.add(file));
+        photoInput.files = keep.files;
+    }
+    const previews = feedbackModal.querySelector('[data-rate-photo-previews]');
+    previews.innerHTML = '';
+    [...photoInput.files].forEach(file => {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.alt = file.name;
+        previews.appendChild(img);
+    });
+});
 feedbackForm.addEventListener('submit', event => {
     const missing = [...feedbackForm.querySelectorAll('[data-star-group] input')].some(input => !input.value);
     feedbackModal.querySelector('[data-rate-error]').hidden = !missing;

@@ -136,6 +136,7 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
     Route::get('/following', [BuyerController::class, 'following'])->name('buyer.following');
     Route::get('/product/{product}', [BuyerController::class, 'productDetail'])->name('buyer.product');
     Route::post('/product/{product}/reviews', [BuyerController::class, 'submitProductReview'])->name('buyer.product.review');
+    Route::post('/reviews/{review}/helpful', [BuyerController::class, 'toggleHelpful'])->name('buyer.reviews.helpful');
 
     // Cart
     Route::get('/cart', [BuyerController::class, 'cart'])->name('buyer.cart');

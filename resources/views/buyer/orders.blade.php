@@ -205,7 +205,7 @@
                 <div class="orders-muted-text" data-rate-option></div>
             </div>
         </div>
-        <form method="POST" id="feedbackForm">
+        <form method="POST" id="feedbackForm" enctype="multipart/form-data">
             @csrf
             @foreach([
                 'rating' => ['Product quality', 'How is the product you received?'],
@@ -226,6 +226,12 @@
             <div class="form-group">
                 <label class="form-label">Review (optional)</label>
                 <textarea name="feedback" class="form-control" rows="3" maxlength="1000" placeholder="Share your experience with the product..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="ratePhotos">Photos (optional)</label>
+                <input type="file" id="ratePhotos" name="photos[]" class="form-control" accept="image/jpeg,image/png,image/webp" multiple data-rate-photos>
+                <small class="rate-hint">Up to {{ \App\Models\ProductReviewPhoto::MAX_PER_REVIEW }} photos of what you received · JPG, PNG or WEBP · 5 MB each. They show with your product review.</small>
+                <div class="rate-photo-previews" data-rate-photo-previews></div>
             </div>
             <p class="rate-error" data-rate-error role="alert" hidden>Rate the product, the seller and the delivery.</p>
             <div class="orders-row-2">

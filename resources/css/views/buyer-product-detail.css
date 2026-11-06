@@ -39,6 +39,14 @@
 .review-item-head span { color:#f59e0b; letter-spacing:.08em; }
 .review-item p { margin-top:.5rem; color:#4b5563; line-height:1.5; }
 .review-item small { display:block; margin-top:.5rem; color:#98a2b3; }
+.review-photos { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.6rem; }
+.review-photos img { width:72px; height:72px; object-fit:cover; border-radius:8px; border:1px solid #eee9e1; }
+.review-item-foot { display:flex; align-items:center; justify-content:space-between; gap:.75rem; flex-wrap:wrap; }
+.review-item-foot form { margin:.5rem 0 0; }
+.review-helpful { padding:.25rem .65rem; border:1px solid #e3ddd2; border-radius:999px; background:transparent; color:#667085; font:inherit; font-size:.75rem; font-weight:700; cursor:pointer; }
+.review-helpful:hover, .review-helpful.is-active { border-color:var(--coral); color:var(--coral); background:#fff3f0; }
+body.dark .review-helpful { border-color:#333; color:#a3a3a3; }
+body.dark .review-helpful.is-active { background:#2a1712; }
 
 /* Reference-style product detail layout. These page-owned rules intentionally come last. */
 .product-breadcrumb { display:flex; align-items:center; gap:.5rem; max-width:1180px; margin:0 auto 1rem; color:#98a2b3; font-size:.75rem; }

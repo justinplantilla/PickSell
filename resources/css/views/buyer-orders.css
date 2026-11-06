@@ -47,6 +47,9 @@
     .rate-group { margin-bottom: 0.9rem; }
     .rate-hint { display: block; font-size: 0.75rem; color: #6b6b6b; margin-bottom: 0.2rem; }
     .rate-error { color: #b91c1c; font-size: 0.8rem; font-weight: 600; margin: 0 0 0.75rem; }
+    .rate-photo-previews { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+    .rate-photo-previews:empty { display: none; }
+    .rate-photo-previews img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid #efe9df; }
     body.dark .rate-product { background: #1a1a1a; border-color: #2a2a2a; }
     body.dark .rate-hint { color: #a3a3a3; }
     body.dark .rate-error { color: #fca5a5; }

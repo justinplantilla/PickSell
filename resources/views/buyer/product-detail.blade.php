@@ -68,7 +68,27 @@
 
 <section class="product-information-grid"><article><span class="detail-eyebrow">Product details</span><h2>Made for everyday use.</h2><p>{{ $product->description ?: 'A carefully selected product from a verified local seller. Review the details above and message the seller if you need help before ordering.' }}</p></article><div class="detail-list"><div><strong>Category</strong><span>{{ $product->category ?? 'Product' }}</span></div><div><strong>Availability</strong><span>{{ $product->stock }} in stock</span></div><div><strong>Delivery</strong><span>Tracked delivery available</span></div></div></section>
 
-<section class="product-reviews" id="reviews"><div class="reviews-header"><div><span class="detail-eyebrow">Customer feedback</span><h2>Product reviews</h2></div><div class="review-summary"><strong>{{ $reviewAverage ?: '—' }}</strong><span>{{ $reviewCount }} {{ $reviewCount === 1 ? 'review' : 'reviews' }}</span></div></div>@if($product->reviews->isEmpty())<div class="reviews-empty"><svg class="reviews-empty-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><strong>No reviews yet</strong><span>Completed buyers will be able to share their experience here.</span></div>@else<div class="review-list">@foreach($product->reviews as $review)<article class="review-item"><div class="review-item-head"><strong>{{ $review->buyer->first_name ?? 'Buyer' }}</strong><span>{{ str_repeat('★', $review->rating) }}{{ str_repeat('☆', 5 - $review->rating) }}</span></div>@if($review->body)<p>{{ $review->body }}</p>@endif<small>{{ $review->created_at->format('M d, Y') }}</small></article>@endforeach</div>@endif</section>
+<section class="product-reviews" id="reviews"><div class="reviews-header"><div><span class="detail-eyebrow">Customer feedback</span><h2>Product reviews</h2></div><div class="review-summary"><strong>{{ $reviewAverage ?: '—' }}</strong><span>{{ $reviewCount }} {{ $reviewCount === 1 ? 'review' : 'reviews' }}</span></div></div>@if($product->reviews->isEmpty())<div class="reviews-empty"><svg class="reviews-empty-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><strong>No reviews yet</strong><span>Completed buyers will be able to share their experience here.</span></div>@else<div class="review-list">@foreach($product->reviews as $review)
+<article class="review-item" id="review-{{ $review->id }}">
+    <div class="review-item-head"><strong>{{ $review->buyer->first_name ?? 'Buyer' }}</strong><span>{{ str_repeat('★', $review->rating) }}{{ str_repeat('☆', 5 - $review->rating) }}</span></div>
+    @if($review->body)<p>{{ $review->body }}</p>@endif
+    @if($review->photos->isNotEmpty())
+    <div class="review-photos">@foreach($review->photos as $photo)<a href="{{ Storage::url($photo->path) }}" target="_blank" rel="noopener"><img src="{{ Storage::url($photo->path) }}" alt="Photo from {{ $review->buyer->first_name ?? 'a buyer' }}'s review" loading="lazy"></a>@endforeach</div>
+    @endif
+    <div class="review-item-foot">
+        <small>{{ $review->created_at->format('M d, Y') }}</small>
+        @if($review->buyer_id !== auth()->id())
+        <form method="POST" action="{{ route('buyer.reviews.helpful', $review) }}" data-no-confirm>
+            @csrf
+            @php $markedHelpful = in_array($review->id, $helpfulIds, true); @endphp
+            <button type="submit" class="review-helpful {{ $markedHelpful ? 'is-active' : '' }}" aria-pressed="{{ $markedHelpful ? 'true' : 'false' }}">👍 Helpful{{ $review->votes_count ? ' ('.$review->votes_count.')' : '' }}</button>
+        </form>
+        @elseif($review->votes_count)
+        <small>{{ $review->votes_count }} found this helpful</small>
+        @endif
+    </div>
+</article>
+@endforeach</div>@endif</section>
 
 @php $recommendations = $product->seller->products->where('id', '!=', $product->id)->where('status', 'active')->take(5); @endphp
 @if($recommendations->isNotEmpty())<section class="related-products"><div class="related-heading"><div><span class="detail-eyebrow">Keep exploring</span><h2>You might also like</h2></div><a href="/buyer/shop?category={{ urlencode($product->category ?? '') }}">View more</a></div><div class="related-grid">@foreach($recommendations as $recommendation)<a href="{{ route('buyer.product', $recommendation) }}" class="related-card">@if($recommendation->primary_image)<img src="{{ Storage::url($recommendation->primary_image) }}" alt="{{ $recommendation->name }}">@endif<div><strong>{{ $recommendation->name }}</strong><span>₱{{ number_format($recommendation->effective_price, 2) }}</span></div></a>@endforeach</div></section>@endif

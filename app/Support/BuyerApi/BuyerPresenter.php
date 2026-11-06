@@ -101,6 +101,8 @@ final class BuyerPresenter
             'reviewer'   => $buyer ? trim($buyer->first_name.' '.mb_substr((string) $buyer->last_name, 0, 1).'.') : 'PickSell buyer',
             'rating'     => (int) $r->rating,
             'comment'    => $r->body,
+            'photos'     => $r->photos->map(fn ($photo) => self::image($photo->path))->values(),
+            'helpful_count' => (int) ($r->votes_count ?? $r->votes()->count()),
             'created_at' => self::date($r->created_at),
         ];
     }
