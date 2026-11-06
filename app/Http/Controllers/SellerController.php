@@ -472,6 +472,33 @@ class SellerController extends Controller
         $product->variations()->whereNotIn('id', $kept)->delete();
     }
 
+    /**
+     * A copy to start a similar listing from: same details, options and photos (the files are
+     * copied too), archived with no stock so it only goes live once the seller edits it.
+     */
+    public function duplicateProduct(Product $product)
+    {
+        abort_if($product->seller_id !== $this->seller()->id, 403);
+        $copy = DB::transaction(function () use ($product) {
+            $copy = $product->replicate(['is_featured']);
+            $copy->fill(['name' => Str::limit($product->name, 240, '').' (copy)', 'status' => 'archived', 'stock' => 0])->save();
+            foreach ($product->variations as $variation) {
+                $copy->variations()->create($variation->only(['type', 'value', 'price']) + ['stock' => 0]);
+            }
+            foreach ($product->images as $image) {
+                $path = 'products/'.Str::uuid().'.'.pathinfo($image->image_url, PATHINFO_EXTENSION);
+                if (Storage::disk('public')->exists($image->image_url) && Storage::disk('public')->copy($image->image_url, $path)) {
+                    $copy->images()->create(['image_url' => $path] + $image->only(['display_order', 'is_primary', 'alt_text']));
+                }
+            }
+
+            return $copy;
+        });
+
+        return redirect()->route('seller.inventory', ['status' => 'archived'])
+            ->with('success', "Copied to \"{$copy->name}\". It is archived with no stock: edit it, then restore it to list it.");
+    }
+
     public function archiveProduct(Product $product)
     {
         abort_if($product->seller_id !== $this->seller()->id, 403);
@@ -525,7 +552,15 @@ class SellerController extends Controller
 
     public function packOrder(Order $order, OrderLifecycleService $lifecycle)
     {
-        $count = DB::transaction(function () use ($order, $lifecycle): int {
+        $count = $this->prepareParcel($order, $lifecycle);
+
+        return back()->with('success', $count > 1 ? "{$count} orders in this parcel confirmed and now being prepared." : 'Order confirmed and now being prepared.');
+    }
+
+    /** Confirms the order and the rest of its parcel; returns how many orders started preparing. */
+    private function prepareParcel(Order $order, OrderLifecycleService $lifecycle): int
+    {
+        return DB::transaction(function () use ($order, $lifecycle): int {
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             abort_if($locked->seller_id !== $this->seller()->id, 403);
             abort_unless(in_array($locked->status, ['placed', 'confirmed', 'pending'], true), 422, 'This order is not ready to be prepared.');
@@ -541,8 +576,53 @@ class SellerController extends Controller
 
             return $parcelOrders->count();
         });
+    }
 
-        return back()->with('success', $count > 1 ? "{$count} orders in this parcel confirmed and now being prepared." : 'Order confirmed and now being prepared.');
+    /**
+     * Several orders at once from the orders list: start preparing them, generate their waybills,
+     * or print their labels in one PDF. Orders that are not at that step are skipped and counted.
+     */
+    public function bulkOrders(Request $request, OrderLifecycleService $lifecycle, PicksellBridge $pickrush)
+    {
+        $data = $request->validate([
+            'order_ids' => 'required|array|min:1|max:100',
+            'order_ids.*' => 'integer',
+            'action' => 'required|in:prepare,waybills,print',
+        ], ['order_ids.required' => 'Select at least one order first.']);
+        $orders = Order::where('seller_id', $this->seller()->id)->whereIn('id', $data['order_ids'])->orderBy('id')->get();
+
+        if ($data['action'] === 'print') {
+            $parcels = $orders->map(fn (Order $order) => PicksellBridge::parcelFor($order))->filter()->unique('id')->values();
+            if ($parcels->isEmpty()) {
+                return back()->withErrors(['order_ids' => 'None of the selected orders has a waybill yet. Generate the waybills first.']);
+            }
+
+            return app(\App\Pickrush\Services\Labels::class)->parcels($parcels);
+        }
+
+        $done = 0;
+        $skipped = 0;
+        $handled = [];
+        foreach ($orders as $order) {
+            // An earlier order in the same parcel already covered this one.
+            if ($order->order_shipment_id && isset($handled[$order->order_shipment_id])) {
+                continue;
+            }
+            try {
+                if ($data['action'] === 'prepare') {
+                    $done += $this->prepareParcel($order, $lifecycle);
+                } else {
+                    PicksellBridge::hasParcel($order) ? $skipped++ : ($this->waybillFor($order, $pickrush) && $done++);
+                }
+                $handled[$order->order_shipment_id ?? 'order-'.$order->id] = true;
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpException) {
+                $skipped++;
+            }
+        }
+
+        $what = $data['action'] === 'prepare' ? ($done === 1 ? 'order is now being prepared' : 'orders are now being prepared') : ($done === 1 ? 'waybill generated' : 'waybills generated');
+
+        return back()->with('success', "{$done} {$what}.".($skipped ? " {$skipped} skipped: not at that step yet or already done." : ''));
     }
 
     /**
@@ -573,7 +653,16 @@ class SellerController extends Controller
     /** Step 1: print the label. Pickrush is not alerted yet, so the seller can finish packing. */
     public function generateWaybill(Order $order, PicksellBridge $pickrush)
     {
-        $parcel = DB::transaction(function () use ($order, $pickrush) {
+        $parcel = $this->waybillFor($order, $pickrush);
+
+        return back()->with('success', 'Waybill '.$parcel->tracking_no.' generated. Print it and pack the order, then press Hand Over when it is ready for the rider.'
+            .($parcel->needs_address_fix ? ' Pickrush could not match the pickup or delivery address to a station yet; its team will confirm the address before pickup.' : ''));
+    }
+
+    /** Books the order's parcel as "label created" and stamps its tracking number on every item in it. */
+    private function waybillFor(Order $order, PicksellBridge $pickrush)
+    {
+        return DB::transaction(function () use ($order, $pickrush) {
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             abort_if($locked->seller_id !== $this->seller()->id, 403);
             abort_unless(in_array($locked->status, ['preparing', 'processing'], true), 422, 'Prepare the order before generating its waybill.');
@@ -587,9 +676,6 @@ class SellerController extends Controller
 
             return $parcel;
         });
-
-        return back()->with('success', 'Waybill '.$parcel->tracking_no.' generated. Print it and pack the order, then press Hand Over when it is ready for the rider.'
-            .($parcel->needs_address_fix ? ' Pickrush could not match the pickup or delivery address to a station yet; its team will confirm the address before pickup.' : ''));
     }
 
     /** Step 2: the parcel is packed and labelled; Pickrush schedules the pickup. */

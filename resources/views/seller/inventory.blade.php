@@ -78,6 +78,10 @@
                 <td>
                     <div class="inventory-row-3">
                         <button class="btn btn-outline btn-sm" data-edit-product="{{ json_encode($product) }}">Edit</button>
+                        <form method="POST" action="{{ route('seller.inventory.duplicate', $product) }}" data-no-confirm>
+                            @csrf
+                            <button type="submit" class="btn btn-outline btn-sm" title="Start a new listing from a copy of this one">Duplicate</button>
+                        </form>
                         @if($product->isUnderAdminHold())
                             <span class="admin-hold" title="{{ $product->latestStatusModeration->reason }}">
                                 Archived by Admin

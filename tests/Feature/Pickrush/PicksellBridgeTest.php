@@ -104,6 +104,24 @@ class PicksellBridgeTest extends TestCase
         $this->assertSame(1, $this->buyer->notifications()->count(), 'the buyer hears about the handover only');
     }
 
+    public function test_sellers_generate_and_print_several_waybills_at_once(): void
+    {
+        $first = $this->preparing();
+        $second = $this->preparing();
+
+        $this->actingAs($this->seller)->post(config('app.url').'/seller/orders/bulk', ['action' => 'waybills', 'order_ids' => [$first->id, $second->id]])
+            ->assertSessionHas('success', '2 waybills generated.');
+        $this->assertNotNull(PicksellBridge::parcelFor($first));
+        $this->assertNotNull(PicksellBridge::parcelFor($second));
+
+        // Again: already done, so skipped. Printing gives one PDF with both labels.
+        $this->actingAs($this->seller)->post(config('app.url').'/seller/orders/bulk', ['action' => 'waybills', 'order_ids' => [$first->id]])
+            ->assertSessionHas('success', '0 waybills generated. 1 skipped: not at that step yet or already done.');
+        $pdf = $this->actingAs($this->seller)->post(config('app.url').'/seller/orders/bulk', ['action' => 'print', 'order_ids' => [$first->id, $second->id]]);
+        $pdf->assertOk();
+        $this->assertSame('application/pdf', $pdf->headers->get('content-type'));
+    }
+
     public function test_a_labelled_order_can_still_be_cancelled_before_handover(): void
     {
         $order = $this->preparing();

@@ -193,11 +193,13 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     Route::post('/inventory', [SellerController::class, 'storeProduct'])->name('seller.inventory.store');
     Route::patch('/inventory/{product}', [SellerController::class, 'updateProduct'])->name('seller.inventory.update');
     Route::patch('/inventory/{product}/archive', [SellerController::class, 'archiveProduct'])->name('seller.inventory.archive');
+    Route::post('/inventory/{product}/duplicate', [SellerController::class, 'duplicateProduct'])->name('seller.inventory.duplicate');
     Route::post('/inventory/images', [SellerProductImageController::class, 'store'])->name('seller.inventory.images.store');
     Route::delete('/inventory/images/{token}', [SellerProductImageController::class, 'destroy'])->name('seller.inventory.images.destroy');
 
     // Orders
     Route::get('/orders', [SellerController::class, 'orders'])->name('seller.orders');
+    Route::post('/orders/bulk', [SellerController::class, 'bulkOrders'])->name('seller.orders.bulk');
     Route::get('/orders/{order}', [SellerController::class, 'showOrder'])->name('seller.orders.show');
     Route::get('/orders/{order}/waybill', [SellerController::class, 'showWaybill'])->name('seller.orders.waybill');
     Route::patch('/orders/{order}/cancel', [SellerController::class, 'cancelOrder'])->name('seller.orders.cancel');

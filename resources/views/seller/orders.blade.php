@@ -19,14 +19,24 @@
             </form>
         </div>
     </div>
+    {{-- Bulk actions: the checkboxes below belong to this form. --}}
+    <form method="POST" action="{{ route('seller.orders.bulk') }}" id="bulkOrdersForm" class="seller-orders-bulk" data-no-confirm>
+        @csrf
+        <span class="seller-orders-muted-text"><span data-bulk-count>0</span> selected</span>
+        <button type="submit" name="action" value="prepare" class="btn btn-outline btn-sm" data-bulk-action>Start preparing</button>
+        <button type="submit" name="action" value="waybills" class="btn btn-outline btn-sm" data-bulk-action>Generate waybills</button>
+        <button type="submit" name="action" value="print" class="btn btn-outline btn-sm" data-bulk-action formtarget="_blank">Print waybills</button>
+        @error('order_ids')<span class="seller-orders-bulk-error" role="alert">{{ $message }}</span>@enderror
+    </form>
     <div class="seller-orders-scroll">
         <table>
             <thead>
-                <tr><th>Order #</th><th>Buyer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr>
+                <tr><th><input type="checkbox" data-bulk-all aria-label="Select all orders on this page"></th><th>Order #</th><th>Buyer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr>
             </thead>
             <tbody>
             @forelse($orders as $order)
             <tr>
+                <td><input type="checkbox" name="order_ids[]" value="{{ $order->id }}" form="bulkOrdersForm" data-bulk-order aria-label="Select order {{ $order->order_number }}"></td>
                 <td><a href="/seller/orders/{{ $order->id }}" class="seller-orders-accent-text">{{ $order->order_number }}</a></td>
                 <td>{{ $order->buyer->full_name ?? '—' }}</td>
                 <td>{{ $order->product_name }}@if($order->variation_label)<div class="seller-orders-muted-text">{{ $order->variation_label }}</div>@endif</td>
@@ -57,7 +67,7 @@
                 </td>
             </tr>
             @empty
-            <tr><td colspan="8" class="seller-orders-empty">No orders found.</td></tr>
+            <tr><td colspan="9" class="seller-orders-empty">No orders found.</td></tr>
             @endforelse
             </tbody>
         </table>

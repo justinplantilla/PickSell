@@ -11,3 +11,19 @@ document.addEventListener('click', event => {
     if (event.target.closest('[data-close-handover]')) document.getElementById('handoverModal').classList.remove('open');
 });
 window.openHandover = openHandover;
+
+// Bulk actions: count the ticked orders and keep the buttons off until one is picked.
+const bulkBoxes = [...document.querySelectorAll('[data-bulk-order]')];
+const bulkAll = document.querySelector('[data-bulk-all]');
+function syncBulk() {
+    const picked = bulkBoxes.filter(box => box.checked).length;
+    document.querySelector('[data-bulk-count]')?.replaceChildren(String(picked));
+    document.querySelectorAll('[data-bulk-action]').forEach(button => { button.disabled = picked === 0; });
+    if (bulkAll) {
+        bulkAll.checked = picked > 0 && picked === bulkBoxes.length;
+        bulkAll.indeterminate = picked > 0 && picked < bulkBoxes.length;
+    }
+}
+bulkAll?.addEventListener('change', () => { bulkBoxes.forEach(box => { box.checked = bulkAll.checked; }); syncBulk(); });
+bulkBoxes.forEach(box => box.addEventListener('change', syncBulk));
+syncBulk();

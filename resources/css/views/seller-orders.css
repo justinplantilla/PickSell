@@ -96,3 +96,10 @@ body.dark .return-request-list-row { border-color:#333; }
 	.return-request-list-row { align-items:flex-start; flex-direction:column; }
 	.return-request-list-meta { align-items:flex-start; }
 }
+
+/* Bulk actions bar above the orders table */
+.seller-orders-bulk { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; padding:.6rem 1rem; border-bottom:1px solid #eee9e1; }
+.seller-orders-bulk .btn:disabled { opacity:.5; cursor:not-allowed; }
+.seller-orders-bulk-error { color:#b91c1c; font-size:.8rem; font-weight:600; }
+body.dark .seller-orders-bulk { border-color:#2a2a2a; }
+body.dark .seller-orders-bulk-error { color:#fca5a5; }
