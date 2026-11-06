@@ -247,6 +247,16 @@ class EndToEndTest extends TestCase
         $this->assertSame($jay->id, $benOrder->fresh()->delivery_rider_id);
         $this->assertSame(['average' => 3.0, 'count' => 1], PicksellBridge::riderRating($jay));
         $this->assertSame(0, PicksellBridge::riderRating($xtian)['count']);
+
+        // 12. Four more poor delivery ratings: Jay's station gets one alert on its dashboard.
+        foreach (range(1, 4) as $i) {
+            Order::whereKey(Order::create(['order_number' => "ORD-JAY{$i}", 'buyer_id' => $ben->id, 'seller_id' => $benOrder->seller_id,
+                'product_name' => 'Tote', 'quantity' => 1, 'amount' => 100, 'commission' => 10, 'status' => 'completed'])->id)
+                ->update(['delivery_rider_id' => $jay->id, 'delivery_rating' => 1]);
+            PicksellBridge::deliveryRated($jay->id);
+        }
+        $this->assertSame(1, \App\Pickrush\Models\RiderReport::where(['rider_id' => $jay->id, 'type' => 'low_rating'])->count());
+        $this->asStaff($this->manager)->get($this->pickrushUrl('/station'))->assertOk()->assertSee('Jay Reyes: Low buyer delivery ratings');
     }
 
     public function test_an_order_to_another_city_travels_through_the_province_hub_to_the_buyers_station(): void

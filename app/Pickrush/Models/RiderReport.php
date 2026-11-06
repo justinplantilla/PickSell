@@ -28,6 +28,6 @@ class RiderReport extends Model
 
     public function label(): string
     {
-        return config("pickrush.rider_problems.{$this->type}", ucfirst($this->type));
+        return config("pickrush.rider_problems.{$this->type}") ?? config("pickrush.rider_alerts.{$this->type}", ucfirst($this->type));
     }
 }

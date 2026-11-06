@@ -24,7 +24,7 @@
     <div class="pr-alert pr-alert-bad pr-report" role="alert">
         <span class="pr-report-icon" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span>
         <div class="pr-report-body">
-            <strong>{{ $report->rider->full_name }} reported: {{ $report->label() }}</strong>
+            <strong>{{ $report->rider->full_name }}{{ array_key_exists($report->type, config('pickrush.rider_alerts')) ? ': ' : ' reported: ' }}{{ $report->label() }}</strong>
             <div class="pr-report-meta">
                 @if($report->batch)<span>batch #{{ $report->batch->batch_no }}</span>@endif
                 <span>{{ $report->created_at->diffForHumans() }}</span>

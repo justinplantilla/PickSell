@@ -26,6 +26,12 @@ class OrderRating
             'delivery_rider_id' => $delivery ? PicksellBridge::deliveryRiderId($order) : null,
             'feedback' => $feedback,
         ]);
+        if ($order->delivery_rider_id) {
+            PicksellBridge::deliveryRated($order->delivery_rider_id);
+        }
+        if ($order->seller) {
+            app(\App\Services\SellerPerformance::class)->forget($order->seller);
+        }
         foreach (array_slice($photos, 0, ProductReviewPhoto::MAX_PER_REVIEW) as $photo) {
             $order->reviewPhotos()->create(['path' => $photo->store('review-photos', 'public')]);
         }

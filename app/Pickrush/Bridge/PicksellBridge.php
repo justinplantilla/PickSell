@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Pickrush\Enums\ParcelStatus;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\Rider;
+use App\Pickrush\Models\RiderReport;
 use App\Pickrush\Services\ParcelLedger;
 use App\Pickrush\Services\ParcelRegistrar;
 use App\Pickrush\Services\Shipping\QuoteFailure;
@@ -241,6 +242,24 @@ class PicksellBridge
         return self::parcelFor($order)?->assignments()
             ->where('type', 'delivery')->where('status', 'completed')
             ->value('rider_id');
+    }
+
+    /**
+     * A buyer rated a rider's delivery: when the rider's last 10 ratings (at least 5) average under
+     * pickrush.low_rating_threshold, the rider's station gets an alert on its dashboard (one open at a time).
+     */
+    public static function deliveryRated(int $riderId): void
+    {
+        $recent = Order::where('delivery_rider_id', $riderId)->whereNotNull('delivery_rating')->latest('updated_at')->take(10)->pluck('delivery_rating');
+        $rider = Rider::withoutGlobalScopes()->find($riderId);
+        if (! $rider || $recent->count() < 5 || $recent->avg() >= (float) config('pickrush.low_rating_threshold')) {
+            return;
+        }
+        $open = RiderReport::where('rider_id', $riderId)->where('type', 'low_rating')->whereNull('resolved_at')->exists();
+        if (! $open) {
+            RiderReport::create(['rider_id' => $riderId, 'station_hub_id' => $rider->station_hub_id, 'type' => 'low_rating',
+                'note' => 'Buyers rated the last '.$recent->count().' deliveries '.number_format($recent->avg(), 1).' of 5 on average. Check in with the rider.']);
+        }
     }
 
     /** Buyers' delivery ratings of a rider: average (1 decimal) and how many. */

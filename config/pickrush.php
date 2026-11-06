@@ -94,6 +94,13 @@ return [
         'other' => 'Other',
     ],
 
+    // Alerts the system raises for a station about one of its riders (not choosable in the rider app).
+    'rider_alerts' => [
+        'low_rating' => 'Low buyer delivery ratings',
+    ],
+    // Raise low_rating when a rider's last 10 delivery ratings (at least 5) average under this.
+    'low_rating_threshold' => 3.0,
+
     // Closed list so failure reports are comparable across hubs.
     'failure_reasons' => [
         'buyer_unavailable' => 'Buyer unavailable (no answer, nobody home)',
