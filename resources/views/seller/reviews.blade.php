@@ -1,6 +1,6 @@
 @extends('seller.layout')
 @section('styles')
-@vite(['resources/css/views/seller-dashboard.css', 'resources/css/views/seller-earnings.css'])
+@vite(['resources/css/views/seller-dashboard.css', 'resources/css/views/seller-earnings.css', 'resources/css/components/review-moderation.css'])
 @endsection
 @section('title', 'Reviews')
 
@@ -47,6 +47,11 @@
                 <textarea id="reply-{{ $order->productReview->id }}" name="seller_reply" class="form-control" rows="2" maxlength="1000" placeholder="Thank the buyer or answer their concern.">{{ $order->productReview->seller_reply }}</textarea>
                 <button type="submit" class="btn btn-outline btn-sm">{{ $order->productReview->seller_reply ? 'Update reply' : 'Post reply' }}</button>
             </form>
+            @if($order->productReview->hidden_at)
+            <p class="review-muted">PickSell hid this review: {{ $order->productReview->hidden_reason }}</p>
+            @else
+            @include('partials.review-report-form', ['action' => route('seller.reviews.report', $order->productReview), 'id' => $order->productReview->id])
+            @endif
             @else
             <p class="review-muted">You can reply once you confirm the delivery and the review is published.</p>
             @endif

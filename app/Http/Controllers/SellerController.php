@@ -11,6 +11,7 @@ use App\Models\ReturnRequest;
 use App\Models\User;
 use App\Notifications\FollowedStoreNewProduct;
 use App\Notifications\SellerRepliedToReview;
+use App\Support\ReviewReports;
 use App\Notifications\SellerDeliveryReceived;
 use App\Pickrush\Bridge\PicksellBridge;
 use App\Services\CommissionService;
@@ -807,6 +808,15 @@ class SellerController extends Controller
         $reviews = (clone $rated)->with('buyer:id,first_name', 'productReview')->latest('updated_at')->paginate(20);
 
         return view('seller.reviews', compact('averages', 'reviews'));
+    }
+
+    /** Report a review of one of the seller's products to PickSell's moderators. */
+    public function reportReview(Request $request, ProductReview $review)
+    {
+        abort_unless($review->product?->seller_id === $this->seller()->id, 404);
+        ReviewReports::file($request, $review);
+
+        return back()->with('success', 'Review reported. PickSell will look at it.');
     }
 
     /** The seller's public answer under a product review; an empty reply takes it down. */

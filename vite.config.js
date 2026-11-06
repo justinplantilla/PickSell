@@ -21,6 +21,7 @@ export default defineConfig({
                 'resources/css/components/stock-status-badge.css',
                 'resources/css/components/pickrush-tracking.css',
                 'resources/css/components/vouchers.css',
+                'resources/css/components/review-moderation.css',
                 'resources/js/app.js',
                 'resources/js/pages/auth.js',
                 'resources/js/components/dashboard-clock.js',

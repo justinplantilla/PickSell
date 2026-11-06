@@ -2,7 +2,7 @@
 @section('title', $product->name)
 
 @section('styles')
-@vite('resources/css/views/buyer-product-detail.css')
+@vite(['resources/css/views/buyer-product-detail.css', 'resources/css/components/review-moderation.css'])
 @endsection
 
 @section('content')
@@ -90,6 +90,9 @@
         <small>{{ $review->votes_count }} found this helpful</small>
         @endif
     </div>
+    @if($review->buyer_id !== auth()->id())
+    @include('partials.review-report-form', ['action' => route('buyer.reviews.report', $review), 'id' => $review->id])
+    @endif
 </article>
 @endforeach</div>@endif</section>
 

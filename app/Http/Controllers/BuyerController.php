@@ -12,6 +12,7 @@ use App\Models\ProductReview;
 use App\Models\ProductReviewPhoto;
 use App\Models\ProductReviewVote;
 use App\Models\Voucher;
+use App\Support\ReviewReports;
 use App\Services\Vouchers\VoucherPricing;
 use App\Models\User;
 use App\Models\WishlistItem;
@@ -187,7 +188,7 @@ class BuyerController extends Controller
             $query->whereRaw(self::EFFECTIVE_PRICE_SQL.' <= CAST(? AS DECIMAL(12,2))', [$maxPrice]);
         }
         if ($minRating) {
-            $query->whereRaw('(select avg(rating) from product_reviews where product_reviews.product_id = products.id) >= ?', [$minRating]);
+            $query->whereRaw('(select avg(rating) from product_reviews where product_reviews.product_id = products.id and product_reviews.hidden_at is null) >= ?', [$minRating]);
         }
         if ($province) {
             $query->whereHas('seller', fn ($s) => $s->where('province', $province));
@@ -615,6 +616,15 @@ class BuyerController extends Controller
         return $request->expectsJson()
             ? response()->json(['helpful' => ! $vote, 'count' => $review->votes()->count()])
             : redirect()->to(route('buyer.product', $review->product_id).'#review-'.$review->id);
+    }
+
+    /** Report a review to PickSell's moderators, once per buyer. */
+    public function reportReview(Request $request, ProductReview $review)
+    {
+        abort_if($review->buyer_id === $this->buyer()->id, 422, 'You cannot report your own review.');
+        ReviewReports::file($request, $review);
+
+        return redirect()->to(route('buyer.product', $review->product_id).'#review-'.$review->id)->with('success', 'Thanks. Our team will look at this review.');
     }
 
     public function submitProductReview(Request $request, Product $product)

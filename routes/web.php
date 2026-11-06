@@ -19,6 +19,7 @@ use App\Http\Controllers\AdminRegistrationController;
 use App\Http\Controllers\AdminReportController;
 use App\Http\Controllers\AdminReturnController;
 use App\Http\Controllers\AdminReturnDisputeController;
+use App\Http\Controllers\AdminReviewController;
 use App\Http\Controllers\AdminSearchController;
 use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\AdminUserController;
@@ -139,6 +140,7 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
     Route::get('/product/{product}', [BuyerController::class, 'productDetail'])->name('buyer.product');
     Route::post('/product/{product}/reviews', [BuyerController::class, 'submitProductReview'])->name('buyer.product.review');
     Route::post('/reviews/{review}/helpful', [BuyerController::class, 'toggleHelpful'])->name('buyer.reviews.helpful');
+    Route::post('/reviews/{review}/report', [BuyerController::class, 'reportReview'])->name('buyer.reviews.report');
 
     // Cart
     Route::get('/cart', [BuyerController::class, 'cart'])->name('buyer.cart');
@@ -221,6 +223,7 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     Route::get('/reports', [SellerController::class, 'reports'])->name('seller.reports');
     Route::get('/reviews', [SellerController::class, 'reviews'])->name('seller.reviews');
     Route::put('/reviews/{review}/reply', [SellerController::class, 'replyToReview'])->name('seller.reviews.reply');
+    Route::post('/reviews/{review}/report', [SellerController::class, 'reportReview'])->name('seller.reviews.report');
     Route::get('/vouchers', [SellerVoucherController::class, 'index'])->name('seller.vouchers');
     Route::post('/vouchers', [SellerVoucherController::class, 'store'])->name('seller.vouchers.store');
     Route::put('/vouchers/{voucher}', [SellerVoucherController::class, 'update'])->name('seller.vouchers.update');
@@ -346,6 +349,12 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
     Route::patch('/complaints/{complaint}/resolve', [AdminComplaintController::class, 'resolve'])->middleware($can(Permission::COMPLAINTS_MANAGE))->name('admin.complaints.resolve');
 
     Route::get('/commission', [AdminController::class, 'commission'])->middleware($can(Permission::COMMISSION_VIEW))->name('admin.commission');
+    Route::get('/reviews', [AdminReviewController::class, 'index'])->middleware($can(Permission::PRODUCTS_VIEW))->name('admin.reviews');
+    Route::middleware($can(Permission::PRODUCTS_MODERATE))->group(function () {
+        Route::post('/reviews/{review}/hide', [AdminReviewController::class, 'hide'])->name('admin.reviews.hide');
+        Route::post('/reviews/{review}/restore', [AdminReviewController::class, 'restore'])->name('admin.reviews.restore');
+        Route::post('/reviews/{review}/dismiss', [AdminReviewController::class, 'dismiss'])->name('admin.reviews.dismiss');
+    });
     Route::get('/vouchers', [AdminVoucherController::class, 'index'])->middleware($can(Permission::SETTINGS_VIEW))->name('admin.vouchers');
     Route::middleware($can(Permission::SETTINGS_MANAGE))->group(function () {
         Route::post('/vouchers', [AdminVoucherController::class, 'store'])->name('admin.vouchers.store');

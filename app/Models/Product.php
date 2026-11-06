@@ -36,7 +36,8 @@ class Product extends Model
     public function variations() { return $this->hasMany(ProductVariation::class)->orderBy('id'); }
     public function cartItems()  { return $this->hasMany(CartItem::class); }
     public function wishlistItems() { return $this->hasMany(WishlistItem::class); }
-    public function reviews()    { return $this->hasMany(ProductReview::class); }
+    /** Published reviews; ones an admin hid are left out everywhere, ratings included. */
+    public function reviews()    { return $this->hasMany(ProductReview::class)->whereNull('hidden_at'); }
     public function images()     { return $this->hasMany(ProductImage::class)->orderBy('display_order')->orderBy('id'); }
 
     public function moderationLogs() { return $this->hasMany(ProductModerationLog::class)->latest()->latest('id'); }
