@@ -79,3 +79,15 @@ body.dark .review-stars-off { color:#3a3a3a; }
 .review-reply-form { display:grid; gap:.35rem; margin-top:.6rem; padding:.6rem .75rem; border-left:3px solid #f1d8d1; background:#fcfaf7; border-radius:0 8px 8px 0; }
 .review-reply-form .btn { justify-self:start; }
 body.dark .review-reply-form { background:#161616; border-left-color:#3a2a25; }
+
+/* Product performance */
+.analytics-ranges { display:flex; flex-wrap:wrap; gap:.4rem; }
+.analytics-summary { grid-template-columns:repeat(4, minmax(0, 1fr)); }
+.analytics-panel { padding:1rem 1.15rem; margin-top:1rem; }
+.analytics-table-wrap { overflow-x:auto; }
+.analytics-table { width:100%; border-collapse:collapse; font-size:.86rem; }
+.analytics-table th, .analytics-table td { padding:.55rem .7rem; text-align:right; border-bottom:1px solid #efe9df; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.analytics-table th:first-child, .analytics-table td:first-child { text-align:left; white-space:normal; }
+.analytics-table th { font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:#667085; }
+body.dark .analytics-table th, body.dark .analytics-table td { border-color:#2a2a2a; }
+@media (max-width:760px) { .analytics-summary { grid-template-columns:repeat(2, minmax(0, 1fr)); } }

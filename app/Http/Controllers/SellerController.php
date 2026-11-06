@@ -884,6 +884,46 @@ class SellerController extends Controller
     }
 
     // Reports
+    public const ANALYTICS_RANGES = [7 => 'Last 7 days', 30 => 'Last 30 days', 90 => 'Last 90 days'];
+
+    /**
+     * How each product does over a recent window: views and add-to-carts (product_daily_stats),
+     * units sold and sales from orders that were not cancelled, and the view-to-order rate.
+     */
+    public function productAnalytics(Request $request)
+    {
+        $days = array_key_exists((int) $request->query('days'), self::ANALYTICS_RANGES) ? (int) $request->query('days') : 30;
+        $from = today()->subDays($days - 1);
+        $sellerId = $this->seller()->id;
+        $stats = DB::table('product_daily_stats')->where('date', '>=', $from->toDateString())
+            ->whereIn('product_id', Product::where('seller_id', $sellerId)->select('id'))
+            ->groupBy('product_id')->selectRaw('product_id, SUM(views) as views, SUM(cart_adds) as cart_adds')->get()->keyBy('product_id');
+        $sales = Order::where('seller_id', $sellerId)->where('created_at', '>=', $from)->where('status', '!=', 'cancelled')
+            ->groupBy('product_id')->selectRaw('product_id, COUNT(*) as orders, SUM(quantity) as units, SUM(amount) as revenue')->get()->keyBy('product_id');
+
+        $rows = Product::where('seller_id', $sellerId)->get()->map(function (Product $product) use ($stats, $sales) {
+            $views = (int) ($stats[$product->id]->views ?? 0);
+            $orders = (int) ($sales[$product->id]->orders ?? 0);
+
+            return [
+                'product' => $product,
+                'views' => $views,
+                'cart_adds' => (int) ($stats[$product->id]->cart_adds ?? 0),
+                'orders' => $orders,
+                'units' => (int) ($sales[$product->id]->units ?? 0),
+                'revenue' => (float) ($sales[$product->id]->revenue ?? 0),
+                'conversion' => $views > 0 ? round($orders / $views * 100, 1) : null,
+            ];
+        })->sortByDesc(fn ($row) => [$row['revenue'], $row['views']])->values();
+
+        $totals = [
+            'views' => $rows->sum('views'), 'cart_adds' => $rows->sum('cart_adds'),
+            'units' => $rows->sum('units'), 'revenue' => $rows->sum('revenue'),
+        ];
+
+        return view('seller.analytics', compact('rows', 'totals', 'days'));
+    }
+
     /** Buyers' ratings of this seller's orders: product, service and delivery, newest first. */
     public function reviews()
     {

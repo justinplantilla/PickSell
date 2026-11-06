@@ -8,6 +8,7 @@ use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\WishlistItem;
 use App\Services\CartQuote;
+use App\Services\ProductStats;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -53,6 +54,7 @@ class CartController extends Controller
         $this->assertStock($product, (int) $item->quantity + $data['quantity'], $variationId);
         $item->quantity = (int) $item->quantity + $data['quantity'];
         $item->save();
+        app(ProductStats::class)->addedToCart($product, $request->user());
 
         return response()->json([
             'message'      => "{$product->name} added to cart.",

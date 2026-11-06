@@ -224,6 +224,7 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     // Reports
     Route::get('/reports', [SellerController::class, 'reports'])->name('seller.reports');
     Route::get('/reviews', [SellerController::class, 'reviews'])->name('seller.reviews');
+    Route::get('/analytics', [SellerController::class, 'productAnalytics'])->name('seller.analytics');
     Route::put('/reviews/{review}/reply', [SellerController::class, 'replyToReview'])->name('seller.reviews.reply');
     Route::post('/reviews/{review}/report', [SellerController::class, 'reportReview'])->name('seller.reviews.report');
     Route::get('/vouchers', [SellerVoucherController::class, 'index'])->name('seller.vouchers');

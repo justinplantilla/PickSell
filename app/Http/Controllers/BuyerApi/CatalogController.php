@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\WishlistItem;
+use App\Services\ProductStats;
 use App\Services\RecentlyViewed;
 use App\Support\BuyerApi\BuyerPresenter;
 use Illuminate\Http\Request;
@@ -142,6 +143,7 @@ class CatalogController extends Controller
         if ($buyer = $this->buyer()) {
             $recentlyViewed->record($buyer, $product);
         }
+        app(ProductStats::class)->viewed($product, $buyer);
 
         $distribution = $product->reviews()->selectRaw('rating, COUNT(*) as n')->groupBy('rating')->pluck('n', 'rating');
         $vouchers = $product->voucher_code && $product->voucher_discount > 0 ? [[

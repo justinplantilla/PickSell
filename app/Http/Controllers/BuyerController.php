@@ -21,6 +21,7 @@ use App\Services\CartQuote;
 use App\Services\OrderPlacement;
 use App\Services\Orders\OrderRating;
 use App\Support\DeliveryAddress;
+use App\Services\ProductStats;
 use App\Services\RecentlyViewed;
 use App\Services\LogisticsRoutingService;
 use App\Services\MessagingService;
@@ -259,6 +260,7 @@ class BuyerController extends Controller
         $reviewAverage = $reviewCount ? round($product->reviews->avg('rating'), 1) : 0;
         $wishlisted = WishlistItem::where('user_id', $this->buyer()->id)->where('product_id', $product->id)->exists();
         $recentlyViewed->record($this->buyer(), $product);
+        app(ProductStats::class)->viewed($product, $this->buyer());
 
         return view('buyer.product-detail', compact('product', 'cartCount', 'reviewCount', 'reviewAverage', 'wishlisted', 'helpfulIds'));
     }
@@ -321,6 +323,7 @@ class BuyerController extends Controller
             ['quantity' => 0]
         );
         $item->increment('quantity', $data['quantity']);
+        app(ProductStats::class)->addedToCart($product, $this->buyer());
 
         return $request->expectsJson()
             ? response()->json([
