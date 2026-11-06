@@ -37,7 +37,7 @@ class SellerVariationTest extends TestCase
         $this->assertSame(7, $product->stock);
         $this->assertSame([['Size', 'S', 2], ['Size', 'M', 5]], $product->variations->map(fn ($v) => [$v->type, $v->value, $v->stock])->all());
 
-        $this->get(route('seller.inventory'))->assertOk()->assertSee('Size: S (2) · M (5)');
+        $this->get(route('seller.inventory'))->assertOk()->assertSeeText('Size: S (2) · M (5)');
     }
 
     public function test_options_need_a_name_and_different_values(): void

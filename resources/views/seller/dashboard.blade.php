@@ -226,7 +226,7 @@
             <div class="panel-header">
                 <div>
                     <span class="panel-title">Low-stock inventory</span>
-                    <p class="panel-description">Active products with 5 or fewer units in stock.</p>
+                    <p class="panel-description">Active products, or options of them, with {{ \App\Models\Product::LOW_STOCK_THRESHOLD }} or fewer units in stock.</p>
                 </div>
             </div>
             @if($lowStockProducts->isEmpty())
@@ -235,7 +235,7 @@
                 <div class="inventory-list">
                     @foreach($lowStockProducts as $product)
                         <div class="inventory-item">
-                            <span>{{ $product->name }}</span>
+                            <span>{{ $product->name }}@if($product->lowStockOptions()->isNotEmpty())<small class="inventory-item-options">{{ $product->lowStockOptions()->map(fn ($v) => $v->label.': '.$v->stock.' left')->join(' · ') }}</small>@endif</span>
                             <span class="inventory-item-stock"><strong>{{ $product->stock }} {{ $product->stock === 1 ? 'unit' : 'units' }} left</strong><x-stock-status-badge :product="$product" /></span>
                         </div>
                     @endforeach

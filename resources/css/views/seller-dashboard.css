@@ -866,3 +866,5 @@ body.dark .kpi-link:hover {
     gap: 0.5rem;
     flex-shrink: 0;
 }
+.inventory-item-options { display:block; color:#b91c1c; font-size:.75rem; font-weight:600; }
+body.dark .inventory-item-options { color:#fca5a5; }

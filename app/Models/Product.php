@@ -115,7 +115,15 @@ class Product extends Model
 
     public function scopeLowStock($query)
     {
-        return $query->where('status', 'active')->where('stock', '<=', self::LOW_STOCK_THRESHOLD);
+        // Low when the product as a whole, or any one of its options, is at or under the line.
+        return $query->where('status', 'active')->where(fn ($q) => $q->where('stock', '<=', self::LOW_STOCK_THRESHOLD)
+            ->orWhereHas('variations', fn ($v) => $v->where('stock', '<=', self::LOW_STOCK_THRESHOLD)));
+    }
+
+    /** Options at or under the low-stock line (loads variations). */
+    public function lowStockOptions()
+    {
+        return $this->variations->filter(fn (ProductVariation $v) => $v->stock <= self::LOW_STOCK_THRESHOLD)->values();
     }
 
     /** One of: archived, out_of_stock, low_stock, in_stock. Archival takes precedence over stock level. */

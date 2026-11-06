@@ -61,7 +61,7 @@
                             <div class="inventory-strong">{{ $product->name }}</div>
                             <div class="inventory-muted-text">{{ Str::limit($product->description, 40) }}</div>
                             @if($product->variations->isNotEmpty())
-                                <div class="inventory-muted-text">{{ ucfirst($product->variations->first()->type) }}: {{ $product->variations->map(fn ($v) => $v->value.($v->price !== null ? ' ₱'.number_format($v->price, 2) : '').' ('.$v->stock.')')->join(' · ') }}</div>
+                                <div class="inventory-muted-text">{{ ucfirst($product->variations->first()->type) }}: @foreach($product->variations as $v)<span class="{{ $v->stock <= \App\Models\Product::LOW_STOCK_THRESHOLD ? 'inventory-option-low' : '' }}">{{ $v->value }}{{ $v->price !== null ? ' ₱'.number_format($v->price, 2) : '' }} ({{ $v->stock }})</span>{{ $loop->last ? '' : ' · ' }}@endforeach</div>
                             @endif
                             @unless($product->hasShippingWeight())
                                 <div class="inventory-muted-text" role="alert" style="color:#c0392b">⚠ Add its weight: buyers cannot check it out until you do.</div>

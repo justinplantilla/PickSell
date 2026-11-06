@@ -122,6 +122,7 @@ class SellerController extends Controller
             : 0;
         $lowStockProducts = Product::where('seller_id', $seller->id)
             ->lowStock()
+            ->with('variations')
             ->orderBy('stock', 'asc')
             ->limit(5)
             ->get();

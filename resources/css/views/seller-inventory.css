@@ -97,3 +97,7 @@ body.dark .admin-hold small { color: #a3a3a3; }
     .inventory-search-group { flex: 1 1 100%; }
     .inventory-search-group .search-input { flex: 1 1 auto; min-width: 0; }
 }
+
+/* An option at or under the low-stock line */
+.inventory-option-low { color:#b91c1c; font-weight:700; }
+body.dark .inventory-option-low { color:#fca5a5; }

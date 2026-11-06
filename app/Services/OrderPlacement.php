@@ -11,6 +11,7 @@ use App\Models\ProductVariation;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Models\VoucherRedemption;
+use App\Notifications\LowStockAlert;
 use App\Notifications\NewSellerOrder;
 use App\Pickrush\Bridge\PicksellBridge;
 use App\Pickrush\Services\Shipping\QuoteFailure;
@@ -199,6 +200,7 @@ class OrderPlacement
 
                 $product->decrement('stock', $item->quantity);
                 $variation?->decrement('stock', $item->quantity);
+                $this->alertLowStock($product, $variation, (int) $item->quantity);
                 $item->delete();
 
                 return $order;
@@ -258,6 +260,17 @@ class OrderPlacement
         }
 
         return compact('stores', 'lineShares', 'platform', 'platformShares', 'shippingShares');
+    }
+
+    /** Tell the seller when this order took the product or option down to (or past) the low-stock line. */
+    private function alertLowStock(Product $product, ?ProductVariation $variation, int $quantity): void
+    {
+        $crossed = fn (int $after) => $after <= Product::LOW_STOCK_THRESHOLD && $after + $quantity > Product::LOW_STOCK_THRESHOLD;
+        if ($variation && $crossed((int) $variation->stock)) {
+            $product->seller?->notify(new LowStockAlert($product, $variation, (int) $variation->stock));
+        } elseif (! $variation && $crossed((int) $product->stock)) {
+            $product->seller?->notify(new LowStockAlert($product, null, (int) $product->stock));
+        }
     }
 
     /** One redemption per voucher used in this checkout, so usage limits count each checkout once. */
