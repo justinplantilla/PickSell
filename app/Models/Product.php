@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WishlistAlerts;
 use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
@@ -24,10 +25,17 @@ class Product extends Model
     // Product cards on nearly every page show the primary image, so keep images eager-loaded.
     protected $with = ['images'];
 
+    protected static function booted(): void
+    {
+        // Price drops and restocks reach the buyers who wishlisted the product.
+        static::updated(fn (Product $product) => WishlistAlerts::productUpdated($product));
+    }
+
     public function seller()     { return $this->belongsTo(User::class, 'seller_id'); }
     public function orders()     { return $this->hasMany(Order::class); }
     public function variations() { return $this->hasMany(ProductVariation::class)->orderBy('id'); }
     public function cartItems()  { return $this->hasMany(CartItem::class); }
+    public function wishlistItems() { return $this->hasMany(WishlistItem::class); }
     public function reviews()    { return $this->hasMany(ProductReview::class); }
     public function images()     { return $this->hasMany(ProductImage::class)->orderBy('display_order')->orderBy('id'); }
 

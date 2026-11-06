@@ -94,7 +94,8 @@ class OrderLifecycleService
         $order->update($extra);
 
         if (in_array($to, self::RESTOCK_ON, true) && $order->product_id) {
-            Product::whereKey($order->product_id)->increment('stock', (int) $order->quantity);
+            // Through the model, so buyers waiting on a sold-out product hear it is back (WishlistAlerts).
+            Product::find($order->product_id)?->increment('stock', (int) $order->quantity);
             if ($order->variation_id) {
                 ProductVariation::whereKey($order->variation_id)->increment('stock', (int) $order->quantity);
             }
