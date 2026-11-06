@@ -46,6 +46,13 @@ function updateSummary() {
     document.getElementById('placeOrderBtn').disabled = checked.length === 0;
     const selectAll = document.querySelector('[data-cart-select-all]');
     if (selectAll) selectAll.checked = checked.length > 0 && checked.length === document.querySelectorAll('.item-check').length;
+    document.querySelectorAll('[data-cart-store]').forEach(store => {
+        const items = [...store.querySelectorAll('.item-check')];
+        const picked = items.filter(item => item.checked).length;
+        const box = store.querySelector('[data-cart-select-store]');
+        box.checked = picked > 0 && picked === items.length;
+        box.indeterminate = picked > 0 && picked < items.length;
+    });
 
     // Spinning border on summary card
     document.getElementById('cartSummaryCard')?.classList.toggle('has-selection', checked.length > 0);
@@ -77,6 +84,10 @@ document.querySelector('[data-cart-select-all]')?.addEventListener('change', eve
     document.querySelectorAll('.item-check').forEach(item => { item.checked = event.target.checked; });
     updateSummary();
 });
+document.querySelectorAll('[data-cart-select-store]').forEach(box => box.addEventListener('change', () => {
+    box.closest('[data-cart-store]').querySelectorAll('.item-check').forEach(item => { item.checked = box.checked; });
+    updateSummary();
+}));
 document.querySelectorAll('.item-check').forEach(item => item.addEventListener('change', updateSummary));
 updateSummary();
 

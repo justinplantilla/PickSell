@@ -15,8 +15,14 @@
             <div class="cart-scroll">
                 <table class="checkout-table">
                     <thead><tr><th>Product</th><th>Variation</th><th>Price</th><th>Qty</th><th>Subtotal</th></tr></thead>
-                    <tbody>
-                    @foreach($items as $item)
+                    @foreach($items->groupBy(fn ($item) => $item->product->seller_id) as $sellerId => $storeItems)
+                    @php $store = $storeItems->first()->product->seller; $parcel = $shipping[$sellerId] ?? null; @endphp
+                    <tbody class="cart-store">
+                    <tr class="cart-store-head">
+                        <td colspan="4"><a href="{{ route('buyer.seller', $store) }}" class="cart-store-name">{{ $store->business_name ?? $store->full_name }}</a></td>
+                        <td class="cart-muted-text-2">@if($parcel && $parcel['ok'])Shipping ₱{{ number_format((float) $parcel['delivery_fee'], 2) }}@endif</td>
+                    </tr>
+                    @foreach($storeItems as $item)
                     <tr>
                         <td>
                             <div class="cart-row-2">
@@ -27,7 +33,6 @@
                                 @endif
                                 <div>
                                     <div class="cart-title">{{ $item->product->name }}</div>
-                                    <div class="cart-muted-text">{{ $item->product->seller->business_name ?? $item->product->seller->full_name }}</div>
                                 </div>
                             </div>
                         </td>
@@ -38,6 +43,7 @@
                     </tr>
                     @endforeach
                     </tbody>
+                    @endforeach
                 </table>
             </div>
         </div>

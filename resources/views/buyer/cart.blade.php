@@ -5,7 +5,7 @@
 @section('title', 'My Cart')
 
 @section('content')
-<h2 class="cart-heading">My Cart ({{ $items->total() }} item{{ $items->total() !== 1 ? 's' : '' }})</h2>
+<h2 class="cart-heading">My Cart ({{ $items->count() }} item{{ $items->count() !== 1 ? 's' : '' }})</h2>
 
 @if($items->isEmpty())
 <div class="cart-empty">
@@ -29,8 +29,20 @@
             <div class="cart-scroll">
                 <table>
                     <thead><tr><th></th><th>Product</th><th>Variation</th><th>Price</th><th>Qty</th><th>Subtotal</th><th></th></tr></thead>
-                    <tbody>
-                    @foreach($items as $item)
+                    {{-- One block per store: each store ships its items as one parcel. --}}
+                    @foreach($items->groupBy(fn ($item) => $item->product->seller_id) as $storeItems)
+                    @php $store = $storeItems->first()->product->seller; @endphp
+                    <tbody class="cart-store" data-cart-store>
+                    <tr class="cart-store-head">
+                        <td><input type="checkbox" data-cart-select-store aria-label="Select all items from {{ $store->business_name ?? $store->full_name }}"></td>
+                        <td colspan="6">
+                            <a href="{{ route('buyer.seller', $store) }}" class="cart-store-name">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v10h16V10M3 4h18l-1 6H4L3 4Zm6 16v-6h6v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                                {{ $store->business_name ?? $store->full_name }}
+                            </a>
+                        </td>
+                    </tr>
+                    @foreach($storeItems as $item)
                     <tr>
                         <td><input type="checkbox" name="item_ids[]" value="{{ $item->id }}" class="item-check"></td>
                         <td>
@@ -43,7 +55,6 @@
                                 <div>
                                     <div class="cart-title">{{ $item->product->name }}</div>
                                     @unless($item->product->isPurchasable())<div class="cart-unavailable" role="note">{{ $item->product->sellerOnVacation() ? "Seller is on vacation — remove it to check out" : "No longer available — remove it to check out" }}</div>@endunless
-                                    <div class="cart-muted-text">{{ $item->product->seller->business_name ?? $item->product->seller->full_name }}</div>
                                 </div>
                             </div>
                         </td>
@@ -70,12 +81,10 @@
                     </tr>
                     @endforeach
                     </tbody>
+                    @endforeach
                 </table>
             </div>
         </div>
-        @if($items->hasPages())
-            <div class="buyer-pagination dashboard-pagination">{{ $items->withQueryString()->links() }}</div>
-        @endif
     </div>
 
     {{-- RIGHT: Order Summary first, then You May Also Like --}}
