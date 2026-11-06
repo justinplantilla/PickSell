@@ -7,6 +7,7 @@ use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\OrderShipment;
 use App\Models\Product;
+use App\Models\ProductVariation;
 use App\Models\User;
 use App\Notifications\NewSellerOrder;
 use App\Pickrush\Bridge\PicksellBridge;
@@ -70,7 +71,7 @@ class OrderPlacement
     {
         $cart = Cart::firstOrCreate(['buyer_id' => $buyer->id]);
 
-        return CartItem::where('cart_id', $cart->id)->whereIn('id', $ids)->with('product.seller', 'variation')->get();
+        return CartItem::where('cart_id', $cart->id)->whereIn('id', $ids)->with('product.seller', 'product.variations', 'variation')->get();
     }
 
     /** What one cart line costs per unit, with the product voucher applied when [$voucherCode] matches. */
@@ -101,7 +102,11 @@ class OrderPlacement
         if ($unavailable->isNotEmpty()) {
             throw ValidationException::withMessages(['item_ids' => self::unavailableMessage($unavailable)]);
         }
-        $shipping = $this->priceShipping($buyer, $items);
+        $unchosen = self::missingOption($items);
+        if ($unchosen->isNotEmpty()) {
+            throw ValidationException::withMessages(['item_ids' => self::missingOptionMessage($unchosen)]);
+        }
+        $shipping = $this->priceShipping($buyer, $items, $to);
 
         $placed = DB::transaction(function () use ($buyer, $items, $voucherCode, $shipping) {
             // Lock the products so moderation, other buyers and stock changes cannot interleave.
@@ -115,6 +120,14 @@ class OrderPlacement
                 ->filter(fn ($lines, $productId) => $products[$productId]->stock < $lines->sum('quantity'));
             if ($shortStock->isNotEmpty()) {
                 throw ValidationException::withMessages(['item_ids' => 'Not enough stock for: '.$shortStock->keys()->map(fn ($productId) => $products[$productId]->name)->join(', ').'.']);
+            }
+            // Each option has its own stock too; lines whose option was deleted are caught above.
+            $variations = ProductVariation::whereIn('id', $items->pluck('variation_id')->filter())->lockForUpdate()->get()->keyBy('id');
+            $shortOption = $items->whereNotNull('variation_id')->groupBy('variation_id')
+                ->filter(fn ($lines, $variationId) => ($variations->get($variationId)?->stock ?? 0) < $lines->sum('quantity'));
+            if ($shortOption->isNotEmpty()) {
+                throw ValidationException::withMessages(['item_ids' => 'Not enough stock for: '.$shortOption->map(fn ($lines, $variationId) => $products[$lines->first()->product_id]->name
+                    .($variations->has($variationId) ? ' ('.$variations[$variationId]->label.')' : ''))->join(', ').'.']);
             }
 
             $shipments = $shipping->map(fn (array $priced, $sellerId) => OrderShipment::create([
@@ -135,18 +148,21 @@ class OrderPlacement
                 'rates_version' => $priced['quote']->ratesVersion,
             ]));
 
-            return $items->map(function (CartItem $item) use ($buyer, $products, $voucherCode, $shipments) {
+            return $items->map(function (CartItem $item) use ($buyer, $products, $variations, $voucherCode, $shipments) {
                 $product = $products[$item->product_id];
-                $amount = self::unitPrice($product, $voucherCode) * $item->quantity;
+                $variation = $item->variation_id ? $variations[$item->variation_id] : null;
+                $amount = self::unitPrice($product, $voucherCode, $variation) * $item->quantity;
                 $commission = $this->commission->calculate((string) round($amount, 2));
 
                 $order = Order::create([
                     'order_number' => 'ORD-'.strtoupper(Str::random(8)),
                     'product_id' => $product->id,
+                    'variation_id' => $variation?->id,
                     'buyer_id' => $buyer->id,
                     'seller_id' => $product->seller_id,
                     'order_shipment_id' => $shipments[$product->seller_id]->id,
                     'product_name' => $product->name,
+                    'variation_label' => $variation?->label,
                     'quantity' => $item->quantity,
                     'amount' => $amount,
                     'commission' => $commission['commission'],
@@ -156,6 +172,7 @@ class OrderPlacement
                 ]);
 
                 $product->decrement('stock', $item->quantity);
+                $variation?->decrement('stock', $item->quantity);
                 $item->delete();
 
                 return $order;
@@ -195,6 +212,18 @@ class OrderPlacement
 
             return ['quote' => $quote, 'split' => $split, 'seller' => $lines->first()->product->seller];
         });
+    }
+
+    /** Lines of a product sold in options whose line has none (never chosen, or the seller deleted it). */
+    public static function missingOption(Collection $items): Collection
+    {
+        return $items->filter(fn (CartItem $item) => $item->product && ! $item->variation_id && $item->product->variations->isNotEmpty());
+    }
+
+    public static function missingOptionMessage(Collection $items): string
+    {
+        return 'Choose an option for: '.$items->map(fn ($item) => $item->product->name)->unique()->join(', ')
+            .'. Remove '.($items->count() === 1 ? 'it' : 'them').' from your cart and add '.($items->count() === 1 ? 'it' : 'them').' again with an option.';
     }
 
     public static function unavailableMessage(Collection $items): string

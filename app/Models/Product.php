@@ -26,7 +26,7 @@ class Product extends Model
 
     public function seller()     { return $this->belongsTo(User::class, 'seller_id'); }
     public function orders()     { return $this->hasMany(Order::class); }
-    public function variations() { return $this->hasMany(ProductVariation::class); }
+    public function variations() { return $this->hasMany(ProductVariation::class)->orderBy('id'); }
     public function cartItems()  { return $this->hasMany(CartItem::class); }
     public function reviews()    { return $this->hasMany(ProductReview::class); }
     public function images()     { return $this->hasMany(ProductImage::class)->orderBy('display_order')->orderBy('id'); }

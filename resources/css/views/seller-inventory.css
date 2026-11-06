@@ -77,6 +77,16 @@ body.dark .gallery-tile.is-uploading .gallery-tile-overlay { background:rgba(0,0
 body.dark .gallery-tile-status, body.dark .gallery-progress-text { color:#e5e7eb; }
 body.dark .gallery-tile.is-failed .gallery-tile-overlay { background:rgba(45,15,13,0.85); color:#f28b82; }
 
+/* Variations (options) editor */
+.product-variations-type { margin:0.5rem 0 0; }
+.product-variation-rows { display:flex; flex-direction:column; gap:0.45rem; margin:0.5rem 0; }
+.product-variation-rows:empty { margin:0.25rem 0; }
+.product-variation-row { display:grid; grid-template-columns:minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1fr) auto; gap:0.45rem; align-items:center; }
+@media (max-width: 640px) { .product-variation-row { grid-template-columns:1fr 1fr; } }
+.product-variation-row .form-control { margin:0; }
+.form-control[readonly] { background:#f4f1ea; cursor:not-allowed; }
+body.dark .form-control[readonly] { background:#161616; }
+
 /* Product archived by PickSell Admin: seller cannot restore it */
 .admin-hold { display: inline-flex; flex-direction: column; gap: 0.1rem; max-width: 220px; font-size: 0.75rem; font-weight: 700; color: #b91c1c; }
 .admin-hold small { font-weight: 400; color: #6b6b6b; white-space: normal; }

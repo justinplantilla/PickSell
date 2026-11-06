@@ -19,6 +19,7 @@ use App\Services\LogisticsRoutingService;
 use App\Services\MessagingService;
 use App\Services\Orders\OrderCancellationService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -262,8 +263,13 @@ class BuyerController extends Controller
     {
         $data = $request->validate([
             'quantity' => 'required|integer|min:1',
-            'variation_id' => 'nullable|exists:product_variations,id',
-        ]);
+            // Only this product's own options; one is required when it is sold in options.
+            'variation_id' => [
+                Rule::requiredIf(fn () => $product->variations()->exists()),
+                'nullable',
+                Rule::exists('product_variations', 'id')->where('product_id', $product->id),
+            ],
+        ], ['variation_id.required' => 'Choose an option first.', 'variation_id.exists' => 'That option isn’t available for this product.']);
         abort_unless($product->isPurchasable(), 404);
 
         $cart = $this->getCart();
@@ -287,7 +293,8 @@ class BuyerController extends Controller
     public function cart()
     {
         $cart = $this->getCart();
-        $items = CartItem::where('cart_id', $cart->id)->with('product.seller', 'variation')->latest()->paginate(20)->withQueryString();
+        // The whole cart on one page, so a store's items are never split across pages.
+        $items = CartItem::where('cart_id', $cart->id)->with('product.seller', 'product.variations', 'variation')->latest()->get();
         $cartCount = CartItem::where('cart_id', $cart->id)->count();
         $recommendations = Product::purchasable()->where('stock', '>', 0)->with('seller')->latest()->take(4)->get();
         $recommendedProducts = Product::purchasable()->where('stock', '>', 0)->with('seller')->latest()->take(8)->get();
@@ -305,7 +312,7 @@ class BuyerController extends Controller
         $cart = $this->getCart();
         $items = CartItem::whereIn('id', $itemIds)
             ->where('cart_id', $cart->id)
-            ->with('product.seller', 'variation')
+            ->with('product.seller', 'product.variations', 'variation')
             ->get();
 
         if ($items->isEmpty()) {
@@ -315,6 +322,10 @@ class BuyerController extends Controller
         $unavailable = $items->reject(fn ($item) => $item->product?->isPurchasable());
         if ($unavailable->isNotEmpty()) {
             return redirect()->route('buyer.cart')->withErrors(['item_ids' => OrderPlacement::unavailableMessage($unavailable)]);
+        }
+        $unchosen = OrderPlacement::missingOption($items);
+        if ($unchosen->isNotEmpty()) {
+            return redirect()->route('buyer.cart')->withErrors(['item_ids' => OrderPlacement::missingOptionMessage($unchosen)]);
         }
 
         $total = $items->sum(fn ($i) => $i->product->effective_price * $i->quantity);

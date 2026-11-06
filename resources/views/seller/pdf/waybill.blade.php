@@ -63,7 +63,7 @@
         <div class="section-title">Item summary</div>
         <table class="item">
             <thead><tr><th>Product</th><th>Qty</th></tr></thead>
-            <tbody><tr><td><span class="product-name">{{ $order->product_name }}</span><br><span class="muted">Order item</span></td><td>{{ $order->quantity }}</td></tr></tbody>
+            <tbody><tr><td><span class="product-name">{{ $order->product_name }}</span><br><span class="muted">{{ $order->variation_label ?? 'Order item' }}</span></td><td>{{ $order->quantity }}</td></tr></tbody>
         </table>
 
         <div class="rule"></div>

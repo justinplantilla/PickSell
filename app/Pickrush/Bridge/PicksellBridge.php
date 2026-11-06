@@ -313,7 +313,7 @@ class PicksellBridge
     /** What is in the parcel, for the label and the rider. */
     private static function contents(Collection $orders): string
     {
-        return $orders->map(fn (Order $order) => "{$order->product_name} × {$order->quantity}")->join('; ');
+        return $orders->map(fn (Order $order) => $order->product_name.($order->variation_label ? " ({$order->variation_label})" : '')." × {$order->quantity}")->join('; ');
     }
 
     /** Cash to collect: the items still in the parcel plus the delivery fee (orders before shipments had none). */

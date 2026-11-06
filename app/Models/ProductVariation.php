@@ -9,4 +9,10 @@ class ProductVariation extends Model
     protected $fillable = ['product_id', 'type', 'value', 'stock'];
 
     public function product() { return $this->belongsTo(Product::class); }
+
+    /** How carts and orders name the choice, e.g. "Size: XL". */
+    public function getLabelAttribute(): string
+    {
+        return ucfirst($this->type).': '.$this->value;
+    }
 }

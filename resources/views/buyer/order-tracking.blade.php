@@ -47,6 +47,7 @@
         <div class="order-card-body tracking-summary">
             <div>
                 <strong>{{ $order->product_name }}</strong>
+                @if($order->variation_label)<span class="tracking-meta">{{ $order->variation_label }}</span>@endif
                 <span class="tracking-meta">Quantity: {{ $order->quantity }}</span>
             </div>
             <div>

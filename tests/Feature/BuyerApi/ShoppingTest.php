@@ -46,7 +46,7 @@ class ShoppingTest extends TestCase
         $this->postJson('/api/mobile/buyer/cart', ['product_id' => $lamp->id, 'quantity' => 1, 'variation_ids' => [$red->id]])->assertCreated();
         $this->postJson('/api/mobile/buyer/cart', ['product_id' => $lamp->id, 'quantity' => 1, 'variation_ids' => [$red->id, $blue->id]])
             ->assertUnprocessable()->assertJsonValidationErrors('variation_ids');
-        $this->postJson('/api/mobile/buyer/cart', ['product_id' => $lamp->id, 'quantity' => 9])->assertUnprocessable()->assertJsonValidationErrors('quantity');
+        $this->postJson('/api/mobile/buyer/cart', ['product_id' => $lamp->id, 'quantity' => 9, 'variation_ids' => [$red->id]])->assertUnprocessable()->assertJsonValidationErrors('quantity');
 
         $line = CartItem::sole();
         $this->assertSame([$red->id, 2], [$line->variation_id, $line->quantity]);
@@ -109,9 +109,10 @@ class ShoppingTest extends TestCase
         $seller = $this->seller();
         $lamp = $this->product($seller, ['stock' => 2]);
         $buyer = $this->actingAsBuyer();
-        $first = $this->cartLine($buyer, $lamp, 2);
         $red = ProductVariation::create(['product_id' => $lamp->id, 'type' => 'Color', 'value' => 'Red', 'stock' => 5]);
-        $second = $this->cartLine($buyer, $lamp, 1, $red->id);
+        $blue = ProductVariation::create(['product_id' => $lamp->id, 'type' => 'Color', 'value' => 'Blue', 'stock' => 5]);
+        $first = $this->cartLine($buyer, $lamp, 2, $red->id);
+        $second = $this->cartLine($buyer, $lamp, 1, $blue->id);
 
         // Lines of the same product share its stock.
         $this->postJson('/api/mobile/buyer/checkout', ['item_ids' => [$first->id, $second->id]])

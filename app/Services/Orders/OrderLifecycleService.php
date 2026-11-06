@@ -4,6 +4,7 @@ namespace App\Services\Orders;
 
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductVariation;
 
 /**
  * The order lifecycle: which status may follow which, the timestamp column each status sets, and
@@ -94,6 +95,9 @@ class OrderLifecycleService
 
         if (in_array($to, self::RESTOCK_ON, true) && $order->product_id) {
             Product::whereKey($order->product_id)->increment('stock', (int) $order->quantity);
+            if ($order->variation_id) {
+                ProductVariation::whereKey($order->variation_id)->increment('stock', (int) $order->quantity);
+            }
         }
     }
 }

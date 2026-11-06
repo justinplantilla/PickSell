@@ -1,6 +1,8 @@
 import { initProductGalleries } from '../components/product-gallery.js';
+import { initProductVariations } from '../components/product-variations.js';
 
 initProductGalleries();
+initProductVariations();
 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -19,6 +21,7 @@ function openEditModal(id, p) {
     f.querySelector('[name=voucher_discount]').value = p.voucher_discount || 0;
     f.querySelector('[name=stock]').value = p.stock;
     f.querySelector('[name=weight_kg]').value = p.weight_kg ?? '';
+    f.querySelector('[data-product-variations]').productVariations?.load(p.variations || []);
     f.querySelector('[data-product-gallery]').productGallery?.load(p.images || [], p.name);
     openModal('editModal');
 }

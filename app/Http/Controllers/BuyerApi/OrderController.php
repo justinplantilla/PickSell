@@ -193,12 +193,16 @@ class OrderController extends Controller
     public function reorder(Request $request, Order $order)
     {
         $this->find($request, $order);
-        $product = $order->product()->with('seller')->first();
+        $product = $order->product()->with('seller', 'variations')->first();
         abort_unless($product && $product->isPurchasable() && $product->stock > 0, 422, 'This product is no longer available.');
+        // The same option as before; if the seller has since removed it, the buyer picks again.
+        $variation = $product->variations->firstWhere('id', $order->variation_id);
+        abort_if($product->variations->isNotEmpty() && ! $variation, 422, 'Choose an option for this product on its page.');
+        abort_if($variation && $variation->stock <= 0, 422, 'That option is out of stock.');
 
         $cart = Cart::firstOrCreate(['buyer_id' => $request->user()->id]);
-        $item = CartItem::firstOrNew(['cart_id' => $cart->id, 'product_id' => $product->id, 'variation_id' => null]);
-        $item->quantity = min((int) $item->quantity + (int) $order->quantity, (int) $product->stock);
+        $item = CartItem::firstOrNew(['cart_id' => $cart->id, 'product_id' => $product->id, 'variation_id' => $variation?->id]);
+        $item->quantity = min((int) $item->quantity + (int) $order->quantity, (int) ($variation ? min($variation->stock, $product->stock) : $product->stock));
         $item->save();
 
         return response()->json([

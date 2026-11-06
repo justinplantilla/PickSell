@@ -29,7 +29,7 @@
             <tr>
                 <td><a href="/seller/orders/{{ $order->id }}" class="seller-orders-accent-text">{{ $order->order_number }}</a></td>
                 <td>{{ $order->buyer->full_name ?? '—' }}</td>
-                <td>{{ $order->product_name }}</td>
+                <td>{{ $order->product_name }}@if($order->variation_label)<div class="seller-orders-muted-text">{{ $order->variation_label }}</div>@endif</td>
                 <td>{{ $order->quantity }}</td>
                 <td>₱{{ number_format($order->amount, 2) }}</td>
                 <td><x-order-status-badge :status="$order->status" /></td>

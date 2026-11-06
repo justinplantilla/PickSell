@@ -3,6 +3,12 @@ function selectVariation(btn, typeSlug) {
     btn.classList.add('selected');
     document.getElementById('selected_' + typeSlug).textContent = btn.dataset.value;
     document.getElementById('variation_id').value = btn.dataset.id;
+    // Each option has its own stock: cap the quantity and show what this option has left.
+    const qty = document.getElementById('qtyInput');
+    qty.max = btn.dataset.stock;
+    if (parseInt(qty.value) > parseInt(qty.max)) qty.value = qty.max;
+    document.getElementById('stockAvailable').textContent = `${btn.dataset.stock} available`;
+    if (btn.dataset.price) document.getElementById('detailPrice').textContent = btn.dataset.price;
 }
 function changeQty(delta) {
     const input = document.getElementById('qtyInput');
@@ -53,6 +59,7 @@ function updateCartBadge(delta = 1) {
 
 async function addProductToCart({ redirectToCheckout = false } = {}) {
     const form = document.getElementById('addCartForm');
+    if (!optionChosen()) return;
     const data = new FormData(form);
     const button = redirectToCheckout ? document.getElementById('buyNowBtn') : document.getElementById('addToCartBtn');
     if (button) button.disabled = true;
@@ -93,8 +100,18 @@ async function addProductToCart({ redirectToCheckout = false } = {}) {
     }
 }
 
+/** Products sold in options need one picked before they go in the cart. */
+function optionChosen() {
+    const variation = document.getElementById('variation_id');
+    if (variation.dataset.required === '1' && !variation.value) {
+        showToast('Choose an option first.', 'error');
+        return false;
+    }
+    return true;
+}
+
 function confirmCartAction(button, message, options) {
-    if (button.disabled) return;
+    if (button.disabled || !optionChosen()) return;
     button.disabled = true;
     window.showConfirm(message).then(confirmed => {
         if (confirmed) addProductToCart(options);

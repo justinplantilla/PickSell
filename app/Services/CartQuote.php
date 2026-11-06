@@ -26,8 +26,9 @@ class CartQuote
         $voucherCode = $voucherCode !== null ? trim($voucherCode) : null;
         // Several lines (variations) can draw on the same product's stock, as on the website.
         $wanted = $items->groupBy('product_id')->map(fn ($lines) => $lines->sum('quantity'));
+        $wantedOption = $items->whereNotNull('variation_id')->groupBy('variation_id')->map(fn ($lines) => $lines->sum('quantity'));
 
-        $lines = $items->map(function (CartItem $item) use ($voucherCode, $wanted, $wishlistIds) {
+        $lines = $items->map(function (CartItem $item) use ($voucherCode, $wanted, $wantedOption, $wishlistIds) {
             $product = $item->product;
             $unit = BuyerPresenter::money($product->effective_price);
             $lineTotal = round($unit * $item->quantity, 2);
@@ -41,12 +42,16 @@ class CartQuote
                 'line_total'      => $lineTotal,
                 'discount'        => round($lineTotal - $withVoucher, 2),
                 'variation_ids'   => $item->variation_id ? [$item->variation_id] : [],
-                'variation_label' => $item->variation ? ucfirst($item->variation->type).': '.$item->variation->value : null,
-                'available_stock' => max(0, (int) $product->stock),
+                'variation_label' => $item->variation?->label,
+                'available_stock' => max(0, (int) ($item->variation ? min($item->variation->stock, $product->stock) : $product->stock)),
                 'issue'           => match (true) {
                     ! $product->isPurchasable()                        => 'unavailable',
+                    // The product is sold in options and this line has none (or the seller deleted it).
+                    ! $item->variation && $product->variations->isNotEmpty() => 'option_required',
                     $product->stock <= 0                               => 'out_of_stock',
+                    $item->variation && $item->variation->stock <= 0   => 'out_of_stock',
                     $wanted[$item->product_id] > $product->stock       => 'insufficient_stock',
+                    $item->variation && $wantedOption[$item->variation_id] > $item->variation->stock => 'insufficient_stock',
                     default                                            => null,
                 },
                 'seller'          => $product->seller,

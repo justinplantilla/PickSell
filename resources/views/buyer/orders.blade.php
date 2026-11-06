@@ -39,8 +39,8 @@
             <div class="orders-thumb-placeholder"></div>
         @endif
         <div class="orders-grow">
-            <div class="orders-strong">{{ $order->product_name }}</div>
-            <div class="orders-muted-text">Qty: {{ $order->quantity }}</div>
+            <div class="orders-strong">@if($order->product)<a href="{{ route('buyer.product', $order->product) }}" class="orders-product-link">{{ $order->product_name }}</a>@else{{ $order->product_name }}@endif</div>
+            <div class="orders-muted-text">@if($order->variation_label){{ $order->variation_label }} · @endif Qty: {{ $order->quantity }}</div>
             <div class="orders-accent-text">₱{{ number_format($order->amount, 2) }}</div>
         </div>
         <div class="orders-stack">

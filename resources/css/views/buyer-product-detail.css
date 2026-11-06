@@ -10,6 +10,8 @@
     .variation-options { display: flex; flex-wrap: wrap; gap: 0.5rem; }
     .var-btn { padding: 0.35rem 0.8rem; border: 1.5px solid #ddd6c8; border-radius: 6px; font-size: 0.82rem; cursor: pointer; background: #fff; transition: all 0.15s; }
     .var-btn:hover, .var-btn.selected { border-color: var(--coral); color: var(--coral); background: #fff3f0; }
+    .var-btn:disabled { opacity: 0.45; cursor: not-allowed; text-decoration: line-through; }
+    .var-btn:disabled:hover { border-color: #ddd6c8; color: inherit; background: #fff; }
     .qty-control { display: flex; align-items: center; gap: 0; border: 1.5px solid #ddd6c8; border-radius: 8px; overflow: hidden; width: fit-content; }
     .qty-btn { width: 36px; height: 36px; background: var(--bone); border: none; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .qty-btn:hover { background: #e8e2d8; }

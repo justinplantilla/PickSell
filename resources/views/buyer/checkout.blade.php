@@ -31,8 +31,8 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="cart-muted-text-2">{{ $item->variation ? $item->variation->type.': '.$item->variation->value : '—' }}</td>
-                        <td class="cart-accent-text">₱{{ number_format($item->product->effective_price, 2) }}</td>
+                        <td class="cart-muted-text-2">{{ $item->variation?->label ?? '—' }}</td>
+                        <td class="cart-accent-text">₱{{ number_format($item->unit_price, 2) }}</td>
                         <td>{{ $item->quantity }}</td>
                         <td class="cart-strong">₱{{ number_format($item->product->effective_price * $item->quantity, 2) }}</td>
                     </tr>

@@ -38,6 +38,7 @@
                     @else
                         {{ $order->product_name }}
                     @endif
+                    @if($order->variation_label)<span class="oversight-meta">{{ $order->variation_label }}</span>@endif
                     × {{ $order->quantity }}<span class="oversight-meta">₱{{ number_format($order->quantity ? $money['amount'] / $order->quantity : 0, 2) }} each</span></dd></div>
                 <div><dt>Placed</dt><dd>{{ $order->created_at->format('M d, Y h:i A') }}</dd></div>
             </dl>

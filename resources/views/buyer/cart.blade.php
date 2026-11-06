@@ -47,15 +47,15 @@
                                 </div>
                             </div>
                         </td>
-                        <td class="cart-muted-text-2">{{ $item->variation ? $item->variation->type.': '.$item->variation->value : '—' }}</td>
-                        <td class="cart-accent-text">₱{{ number_format($item->product->effective_price, 2) }}</td>
+                        <td class="cart-muted-text-2">{{ $item->variation?->label ?? '—' }}@if(! $item->variation && $item->product->variations->isNotEmpty())<div class="cart-unavailable" role="note">Choose an option: remove it and add it again</div>@endif</td>
+                        <td class="cart-accent-text">₱{{ number_format($item->unit_price, 2) }}</td>
                         <td>
                             <div class="qty-stepper">
                                 <button type="button" class="qty-btn qty-dec" data-item-id="{{ $item->id }}" aria-label="Decrease">−</button>
                                 <input type="number"
                                        value="{{ $item->quantity }}"
                                        min="1"
-                                       max="{{ $item->product->stock }}"
+                                       max="{{ $item->variation ? min($item->variation->stock, $item->product->stock) : $item->product->stock }}"
                                        data-item-id="{{ $item->id }}"
                                        class="qty-input">
                                 <button type="button" class="qty-btn qty-inc" data-item-id="{{ $item->id }}" aria-label="Increase">+</button>

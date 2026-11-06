@@ -50,7 +50,7 @@ class CartController extends Controller
         $cart = $this->cart($request);
 
         $item = CartItem::firstOrNew(['cart_id' => $cart->id, 'product_id' => $product->id, 'variation_id' => $variationId]);
-        $this->assertStock($product, (int) $item->quantity + $data['quantity']);
+        $this->assertStock($product, (int) $item->quantity + $data['quantity'], $variationId);
         $item->quantity = (int) $item->quantity + $data['quantity'];
         $item->save();
 
@@ -86,7 +86,7 @@ class CartController extends Controller
             $item->variation_id = $variationId;
         }
         if (isset($data['quantity'])) {
-            $this->assertStock($product, $data['quantity']);
+            $this->assertStock($product, $data['quantity'], $item->variation_id);
             $item->quantity = $data['quantity'];
         }
         $item->save();
@@ -129,6 +129,9 @@ class CartController extends Controller
 
     private function variation(Product $product, ?int $id): ?int
     {
+        if ($id === null && $product->variations->isNotEmpty()) {
+            throw ValidationException::withMessages(['variation_ids' => 'Choose an option.']);
+        }
         if ($id === null) return null;
         if (! $product->variations->contains('id', $id)) {
             throw ValidationException::withMessages(['variation_ids' => 'That option isn’t available for this product.']);
@@ -137,13 +140,15 @@ class CartController extends Controller
         return $id;
     }
 
-    private function assertStock(Product $product, int $quantity): void
+    private function assertStock(Product $product, int $quantity, ?int $variationId = null): void
     {
-        if ($product->stock <= 0) {
+        // A chosen option can have less stock than the product as a whole.
+        $stock = $variationId ? min((int) $product->variations->firstWhere('id', $variationId)?->stock, $product->stock) : $product->stock;
+        if ($stock <= 0) {
             throw ValidationException::withMessages(['quantity' => 'This item is out of stock.']);
         }
-        if ($quantity > $product->stock) {
-            throw ValidationException::withMessages(['quantity' => "Only {$product->stock} left in stock."]);
+        if ($quantity > $stock) {
+            throw ValidationException::withMessages(['quantity' => "Only {$stock} left in stock."]);
         }
     }
 }

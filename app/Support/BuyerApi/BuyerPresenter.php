@@ -133,6 +133,7 @@ final class BuyerPresenter
             'seller'          => $o->seller ? self::sellerBrief($o->seller) : null,
             'product_id'      => $o->product_id,
             'product_name'    => $o->product_name,
+            'variation_label' => $o->variation_label,
             'image'           => self::image($o->product?->primary_image),
             'quantity'        => (int) $o->quantity,
             'unit_price'      => self::money($o->amount / $quantity),

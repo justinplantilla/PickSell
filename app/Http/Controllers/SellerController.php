@@ -326,7 +326,7 @@ class SellerController extends Controller
         if (! array_key_exists($sort, $sortOptions)) {
             $sort = 'newest';
         }
-        $query = Product::where('seller_id', $this->seller()->id)->with('latestStatusModeration');
+        $query = Product::where('seller_id', $this->seller()->id)->with('latestStatusModeration', 'variations');
         if ($stockFilter === 'low') {
             $status = 'active';
             $query->lowStock();
@@ -364,16 +364,27 @@ class SellerController extends Controller
         'gallery_managed' => 'nullable|boolean',
         'gallery_alt' => 'nullable|array',
         'gallery_alt.*' => 'nullable|string|max:255',
+        // One kind of option per product (e.g. Size), each value with its own stock.
+        'variations_managed' => 'nullable|boolean',
+        'variation_type' => 'nullable|required_with:variations|string|max:50',
+        'variations' => 'nullable|array|max:30',
+        'variations.*.id' => 'nullable|integer',
+        'variations.*.value' => 'required|string|max:50|distinct:ignore_case',
+        'variations.*.price' => 'nullable|numeric|min:0',
+        'variations.*.stock' => 'required|integer|min:0',
     ];
+
+    private const PRODUCT_EXTRAS = ['gallery', 'gallery_cover', 'gallery_managed', 'gallery_alt', 'variations_managed', 'variation_type', 'variations'];
 
     public function storeProduct(Request $request, ProductGallery $gallery)
     {
-        $data = $request->validate(self::PRODUCT_RULES);
+        $data = $this->withVariationStock($request->validate(self::PRODUCT_RULES, self::PRODUCT_MESSAGES));
         $data['seller_id'] = $this->seller()->id;
 
         $managed = $request->boolean('gallery_managed');
-        DB::transaction(function () use ($data, $gallery, $managed) {
-            $product = Product::create(collect($data)->except(['gallery', 'gallery_cover', 'gallery_managed', 'gallery_alt'])->all());
+        $product = DB::transaction(function () use ($data, $gallery, $managed) {
+            $product = Product::create(collect($data)->except(self::PRODUCT_EXTRAS)->all());
+            $this->syncVariations($product, $data);
             // Only the JS gallery control sets gallery_managed, so a no-JS submit never wipes images.
             if ($managed) {
                 $gallery->sync($product, $data['gallery'] ?? [], $data['gallery_cover'] ?? null, $data['gallery_alt'] ?? []);
@@ -387,11 +398,12 @@ class SellerController extends Controller
     {
         abort_if($product->seller_id !== $this->seller()->id, 403);
 
-        $data = $request->validate(self::PRODUCT_RULES);
+        $data = $this->withVariationStock($request->validate(self::PRODUCT_RULES, self::PRODUCT_MESSAGES));
 
         $managed = $request->boolean('gallery_managed');
         DB::transaction(function () use ($product, $data, $gallery, $managed) {
-            $product->update(collect($data)->except(['gallery', 'gallery_cover', 'gallery_managed', 'gallery_alt'])->all());
+            $product->update(collect($data)->except(self::PRODUCT_EXTRAS)->all());
+            $this->syncVariations($product, $data);
             // Only the JS gallery control sets gallery_managed, so a no-JS submit never wipes images.
             if ($managed) {
                 $gallery->sync($product, $data['gallery'] ?? [], $data['gallery_cover'] ?? null, $data['gallery_alt'] ?? []);
@@ -399,6 +411,52 @@ class SellerController extends Controller
         });
 
         return back()->with('success', 'Product updated.');
+    }
+
+    private const PRODUCT_MESSAGES = [
+        'variation_type.required_with' => 'Name the option, e.g. Size or Color.',
+        'variations.*.value.required' => 'Each option needs a value.',
+        'variations.*.value.distinct' => 'Each option value must be different.',
+        'variations.*.stock.required' => 'Each option needs its stock.',
+    ];
+
+    /** With options, the product's stock is what its options add up to. */
+    private function withVariationStock(array $data): array
+    {
+        if (! empty($data['variations_managed']) && ! empty($data['variations'])) {
+            $data['stock'] = collect($data['variations'])->sum('stock');
+        }
+
+        return $data;
+    }
+
+    /**
+     * Make the product's options match the form: keep the rows it still lists (by id), add new
+     * ones, delete the rest. Only the JS options editor sets variations_managed, like the gallery.
+     */
+    private function syncVariations(Product $product, array $data): void
+    {
+        if (empty($data['variations_managed'])) {
+            return;
+        }
+
+        $existing = $product->variations()->get()->keyBy('id');
+        $kept = [];
+        // validate() lists rows that have an id first; the keys keep the form's order.
+        foreach (collect($data['variations'] ?? [])->sortKeys() as $row) {
+            $values = ['type' => trim($data['variation_type']), 'value' => trim($row['value']), 'stock' => (int) $row['stock'],
+                'price' => isset($row['price']) && $row['price'] !== '' ? $row['price'] : null];
+            $variation = isset($row['id']) ? $existing->get((int) $row['id']) : null;
+            if ($variation) {
+                $variation->update($values);
+            } else {
+                $variation = $product->variations()->create($values);
+            }
+            $kept[] = $variation->id;
+        }
+
+        // Carts holding a deleted option lose it (null) and must pick again before checkout.
+        $product->variations()->whereNotIn('id', $kept)->delete();
     }
 
     public function archiveProduct(Product $product)

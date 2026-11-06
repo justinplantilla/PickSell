@@ -20,6 +20,7 @@
                 <table>
                     <tr><td class="order-detail-muted-label">Order #</td><td><strong>{{ $order->order_number }}</strong></td></tr>
                     <tr><td class="order-detail-muted">Product</td><td>{{ $order->product_name }}</td></tr>
+                    @if($order->variation_label)<tr><td class="order-detail-muted">Option</td><td><strong>{{ $order->variation_label }}</strong></td></tr>@endif
                     <tr><td class="order-detail-muted">Quantity</td><td>{{ $order->quantity }}</td></tr>
                     <tr><td class="order-detail-muted">Amount</td><td><strong>₱{{ number_format($order->amount, 2) }}</strong></td></tr>
                     <tr><td class="order-detail-muted">Commission ({{ number_format($commissionRate, 2) }}%)</td><td>-₱{{ number_format($commission, 2) }}</td></tr>
