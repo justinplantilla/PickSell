@@ -18,16 +18,7 @@
     </form>
 </div>
 
-@if($drafts->isNotEmpty())
-    <div class="pr-alert pr-alert-warn pr-loading">
-        <strong>Being loaded:</strong>
-        <div class="pr-loading-list">
-        @foreach($drafts as $draft)
-            <a class="pr-loading-trip" href="{{ route('pickrush.province.trips.show', $draft) }}"><span>{{ $draft->manifest_no }} → {{ $draft->toHub->name }}</span> <b>({{ $draft->parcel_count }})</b></a>
-        @endforeach
-        </div>
-    </div>
-@endif
+@include('pickrush.trips.partials.loading', ['prefix' => 'pickrush.province.trips'])
 
 <section class="pr-section">
     <h2>Ready to leave, by destination</h2>

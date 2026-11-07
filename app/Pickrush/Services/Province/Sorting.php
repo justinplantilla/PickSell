@@ -4,6 +4,7 @@ namespace App\Pickrush\Services\Province;
 
 use App\Pickrush\Enums\ParcelStatus;
 use App\Pickrush\Models\Hub;
+use App\Pickrush\Models\Manifest;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\ParcelException;
 use App\Pickrush\Models\Staff;
@@ -33,7 +34,11 @@ class Sorting
         return DB::transaction(function () use ($parcel, $hub, $staff) {
             $received = false;
             if (in_array($parcel->current_status, [ParcelStatus::InTransitToProvince, ParcelStatus::InTransitToStation], true)) {
-                $this->manifests->arrive($parcel, $hub);   // refuses (with the mis-sort hint) if it was not coming here
+                // Ticked off its trip like a scan on the trip page; refuses (with the mis-sort hint) if it was not coming here.
+                $trip = Manifest::withoutGlobalScopes()->where('to_hub_id', $hub->id)->whereIn('status', ['dispatched', 'received'])
+                    ->whereHas('items', fn ($q) => $q->where('parcel_id', $parcel->id))->first();
+                $trip ? $this->manifests->receive($trip, $parcel->tracking_no, $staff) : $this->manifests->arrive($parcel, $hub);
+                $parcel->refresh();
                 $received = true;
             }
             if ($parcel->current_hub_id !== $hub->id || $parcel->current_status !== ParcelStatus::AtProvinceHub) {

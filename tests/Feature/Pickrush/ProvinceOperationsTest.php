@@ -95,6 +95,92 @@ class ProvinceOperationsTest extends TestCase
         $this->assertSame(ParcelStatus::AtProvinceHub, $missing->fresh()->current_status);
     }
 
+    public function test_a_trip_being_loaded_can_be_cancelled_and_its_parcels_go_back_to_ready(): void
+    {
+        $manifests = app(ManifestService::class);
+        $parcel = $this->parcel();
+        $this->as($this->stationStaff);
+        app(ParcelLedger::class)->record($parcel, ParcelStatus::AtOriginHub, $this->tanauan);
+        $trip = $manifests->create($this->tanauan, $this->batangas, $this->stationStaff);
+        $manifests->add($trip, $parcel->tracking_no);
+
+        $this->as($this->stationStaff)->get($this->pickrushUrl('/station/trips'))->assertOk()
+            ->assertSee('Being loaded (1)')->assertSee('Continue loading')->assertSee('class="pr-nav-badge"', false);
+        $this->as($this->sorter)->delete($this->pickrushUrl("/province/trips/{$trip->manifest_no}"))->assertForbidden();   // not the sending hub
+
+        $this->as($this->stationStaff)->delete($this->pickrushUrl("/station/trips/{$trip->manifest_no}"))
+            ->assertRedirect(route('pickrush.station.trips.index'))
+            ->assertSessionHas('success', "Trip {$trip->manifest_no} cancelled. Its 1 parcel went back to ready to leave.");
+        $this->assertNull(Manifest::withoutGlobalScopes()->find($trip->id));
+        $this->assertSame([$parcel->id], $manifests->readyFor($this->tanauan, $this->batangas)->pluck('id')->all());
+
+        // Once a trip has left it cannot be cancelled.
+        $gone = $this->tripUp($this->parcel());
+        $this->as($this->stationStaff)->delete($this->pickrushUrl("/station/trips/{$gone->manifest_no}"))
+            ->assertSessionHas('errors', fn ($bag) => str_contains($bag->first('operation'), 'Only a trip still being loaded'));
+        $this->assertSame('dispatched', $gone->fresh()->status);
+    }
+
+    public function test_sidebar_shows_how_much_is_waiting_on_each_tab(): void
+    {
+        $this->tripUp($this->parcel(), $this->parcel());
+        $this->as($this->sorter);
+        $this->assertSame(['pickrush.province.inbound' => 1], \App\Pickrush\Support\NavBadges::for($this->sorter));
+
+        $this->as($this->sorter)->post($this->pickrushUrl('/province/inbound'), ['tracking_no' => Parcel::withoutGlobalScopes()->first()->tracking_no]);
+        $this->assertSame(['pickrush.province.inbound' => 1, 'pickrush.province.sorting' => 1], \App\Pickrush\Support\NavBadges::for($this->sorter));
+    }
+
+    public function test_incoming_tracking_numbers_stay_hidden_until_scanned_and_show_who_scanned_them(): void
+    {
+        $first = $this->parcel();
+        $second = $this->parcel();
+        $trip = $this->tripUp($first, $second);
+
+        // The sending hub sees everything; the receiving hub only a masked number, with nothing to copy.
+        $this->as($this->stationStaff)->get($this->pickrushUrl("/station/trips/{$trip->manifest_no}"))->assertOk()->assertSee($first->tracking_no);
+        foreach (["/province/trips/{$trip->manifest_no}", '/province/inbound', '/parcels'] as $page) {
+            $this->as($this->sorter)->get($this->pickrushUrl($page))->assertOk()
+                ->assertDontSee($first->tracking_no)->assertSee($first->fresh()->maskedTrackingNo());
+        }
+        $this->as($this->sorter)->get($this->pickrushUrl("/parcels/{$first->tracking_no}/label"))->assertForbidden();
+
+        $this->as($this->sorter)->post($this->pickrushUrl("/province/trips/{$trip->manifest_no}/receive"), ['tracking_no' => $first->tracking_no])->assertSessionHasNoErrors();
+        $this->as($this->sorter)->get($this->pickrushUrl("/province/trips/{$trip->manifest_no}"))->assertOk()
+            ->assertSee($first->tracking_no)->assertSee($this->sorter->full_name)
+            ->assertDontSee($second->tracking_no);
+        $this->assertSame($this->sorter->id, $trip->items()->where('parcel_id', $first->id)->sole()->scanned_by);
+    }
+
+    public function test_a_trip_closes_itself_once_every_parcel_is_scanned(): void
+    {
+        $first = $this->parcel();
+        $second = $this->parcel();
+        $trip = $this->tripUp($first, $second);
+
+        $this->as($this->sorter)->post($this->pickrushUrl("/province/trips/{$trip->manifest_no}/receive"), ['tracking_no' => $first->tracking_no])
+            ->assertSessionHas('success', "{$first->tracking_no} received.");
+        $this->assertSame('received', $trip->fresh()->status);
+
+        $this->as($this->sorter)->post($this->pickrushUrl("/province/trips/{$trip->manifest_no}/receive"), ['tracking_no' => $second->tracking_no])
+            ->assertSessionHas('success', "{$second->tracking_no} received. Every parcel is in; the trip is closed.");
+        $this->assertSame('closed', $trip->fresh()->status);
+        $this->assertNotNull($trip->fresh()->closed_at);
+        $this->assertSame(0, ParcelException::withoutGlobalScopes()->count());
+        $this->as($this->sorter)->get($this->pickrushUrl('/province/inbound'))->assertOk()->assertDontSee($trip->manifest_no);
+    }
+
+    public function test_sort_scanning_parcels_off_the_truck_ticks_them_off_the_trip(): void
+    {
+        $parcel = $this->parcel('041005000');
+        $trip = $this->tripUp($parcel);
+
+        $this->as($this->sorter)->post($this->pickrushUrl('/province/sorting'), ['tracking_no' => $parcel->tracking_no])->assertSessionHasNoErrors();
+
+        $this->assertSame('scanned', $trip->items()->sole()->scan_status);
+        $this->assertSame('closed', $trip->fresh()->status);
+    }
+
     public function test_sort_scan_shows_the_bin_and_receives_parcels_straight_off_the_truck(): void
     {
         $local = $this->parcel('041005000');           // San Jose, Batangas: down to a station

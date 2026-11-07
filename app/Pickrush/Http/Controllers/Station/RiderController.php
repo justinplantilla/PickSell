@@ -55,11 +55,17 @@ class RiderController extends StationController
         ]);
     }
 
+    /**
+     * The station only sets the rider's home zone. Their personal, vehicle and payout details were
+     * checked against their documents and stay as the rider gave them.
+     */
     public function update(Request $request, Rider $rider)
     {
-        $data = $this->validated($request, $rider);
+        $data = $request->validate([
+            'zone_id' => ['nullable', 'integer', Rule::exists('pr_zones', 'id')->where('station_hub_id', $this->station()->id)],
+        ]);
 
-        return $this->attempt(fn () => $rider->update($data), 'Rider details saved.');
+        return $this->attempt(fn () => $rider->update($data), 'Home zone saved.');
     }
 
     /** Short-lived signed link; documents never sit on a public URL. */
@@ -122,25 +128,5 @@ class RiderController extends StationController
         }
 
         return $this->attempt(fn () => $rider->update($data), $data['shift_status'] === 'on_shift' ? "{$rider->full_name} is on shift." : "{$rider->full_name} is off duty.");
-    }
-
-    private function validated(Request $request, ?Rider $rider = null): array
-    {
-        return $request->validate([
-            'first_name' => 'required|string|max:60',
-            'last_name' => 'required|string|max:60',
-            'mobile_no' => ['required', 'regex:/^09\d{9}$/', Rule::unique('pr_riders', 'mobile_no')->ignore($rider?->id)],
-            'birthdate' => 'required|date|before:-18 years',
-            'address' => 'required|string|max:255',
-            'emergency_contact_name' => 'nullable|string|max:120',
-            'emergency_contact_no' => ['nullable', 'regex:/^09\d{9}$/'],
-            'vehicle_type' => ['required', Rule::in(array_keys(Rider::VEHICLE_TYPES))],
-            'vehicle_model' => 'nullable|string|max:80',
-            'plate_no' => 'required|string|max:20',
-            'license_no' => 'nullable|string|max:30',
-            'zone_id' => ['nullable', 'integer', Rule::exists('pr_zones', 'id')->where('station_hub_id', $this->station()->id)],
-            'payout_method' => 'nullable|in:gcash,maya,bank',
-            'payout_account' => 'nullable|string|max:60',
-        ]);
     }
 }

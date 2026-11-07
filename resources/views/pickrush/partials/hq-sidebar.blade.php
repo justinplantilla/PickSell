@@ -49,6 +49,7 @@
         'pickrush.station.cash' => 'M2 6h20v13H2zM12 10a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM6 10v.01M18 15v.01',
     ];
     $items = collect(\App\Pickrush\Support\Navigation::for($staff))->keyBy('route');
+    $badges = \App\Pickrush\Support\NavBadges::for($staff);
     $grouped = collect($groups)->map(fn ($routes) => $items->only($routes)->sortBy(fn ($item, $route) => array_search($route, $routes)))->filter->isNotEmpty();
     $rest = $items->except(collect($groups)->flatten()->all());
     if ($rest->isNotEmpty()) {
@@ -68,6 +69,7 @@
                 <a href="{{ route($item['route']) }}" @class(['is-active' => request()->routeIs($item['active'])]) @if(request()->routeIs($item['active'])) aria-current="page" @endif>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $icons[$route] ?? 'M12 5v14M5 12h14' }}"/></svg>
                     <span>{{ $item['label'] }}</span>
+                    @isset($badges[$route])<span @class(['pr-nav-badge', 'is-wide' => $badges[$route] > 99]) aria-label="{{ $badges[$route] }} waiting">{{ $badges[$route] > 99 ? '99+' : $badges[$route] }}</span>@endisset
                 </a>
             @endforeach
         @endforeach

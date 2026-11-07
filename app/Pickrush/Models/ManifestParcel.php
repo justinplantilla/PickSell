@@ -19,6 +19,11 @@ class ManifestParcel extends Model
         return $this->belongsTo(Manifest::class);
     }
 
+    public function scanner()
+    {
+        return $this->belongsTo(Staff::class, 'scanned_by');
+    }
+
     public function parcel()
     {
         return $this->belongsTo(Parcel::class)->withoutGlobalScopes();

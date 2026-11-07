@@ -19,7 +19,8 @@ use Illuminate\Support\Str;
 /**
  * Trips between hubs. The sending hub builds a batch of parcels that are due at the same next
  * hub and dispatches it with a vehicle and driver; the receiving hub scans every parcel against
- * the list. Unscanned parcels become "missing" when the trip is closed, unlisted ones "extra".
+ * the list. The trip closes by itself once every listed parcel is scanned; closed early, the
+ * unscanned ones become "missing". Unlisted parcels scanned off it are "extra".
  * Used by station hubs (to and from their province hub) and province hubs alike.
  */
 class ManifestService
@@ -92,6 +93,24 @@ class ManifestService
         }
         $item->delete();
         $manifest->update(['parcel_count' => $manifest->items()->count()]);
+    }
+
+    /**
+     * Drop a trip that has not left. Nothing moved yet, so its parcels simply go back to "ready to
+     * leave" for the next trip. The audit log keeps the record.
+     */
+    public function cancel(Manifest $manifest, Staff $staff): int
+    {
+        return DB::transaction(function () use ($manifest, $staff) {
+            $manifest = Manifest::withoutGlobalScopes()->whereKey($manifest->id)->lockForUpdate()->firstOrFail();
+            if ($manifest->status !== 'draft' || $manifest->from_hub_id !== $staff->hub_id) {
+                throw new OperationRefused('Only a trip still being loaded can be cancelled, by the hub sending it.');
+            }
+            $count = $manifest->items()->count();
+            $manifest->delete();   // its parcel list goes with it
+
+            return $count;
+        });
     }
 
     /**
@@ -170,10 +189,14 @@ class ManifestService
             $this->arrive($parcel, $manifest->toHub, $idempotencyKey, $manifest->manifest_no);
 
             $item
-                ? $item->update(['scan_status' => 'scanned', 'scanned_at' => now()])
-                : ManifestParcel::create(['manifest_id' => $manifest->id, 'parcel_id' => $parcel->id, 'scan_status' => 'extra', 'scanned_at' => now()]);
+                ? $item->update(['scan_status' => 'scanned', 'scanned_at' => now(), 'scanned_by' => $staff->id])
+                : ManifestParcel::create(['manifest_id' => $manifest->id, 'parcel_id' => $parcel->id, 'scan_status' => 'extra', 'scanned_at' => now(), 'scanned_by' => $staff->id]);
             if ($manifest->status === 'dispatched') {
                 $manifest->update(['status' => 'received', 'received_by' => $staff->id, 'received_at' => now()]);
+            }
+            // Every listed parcel is in: nothing is left to check, so the trip closes itself.
+            if (! $manifest->items()->where('scan_status', 'expected')->exists()) {
+                $manifest->update(['status' => 'closed', 'closed_at' => now()]);
             }
 
             return $parcel;

@@ -14,6 +14,12 @@
     <div>
         <a href="{{ route($prefix.'.print', $manifest) }}" target="_blank" rel="noopener" class="pr-btn pr-btn-outline pr-btn-sm">Print manifest</a>
         <span class="pr-badge pr-badge-brand">{{ ucfirst($manifest->status) }}</span>
+        @if($outbound && $manifest->status === 'draft')
+            <form method="POST" action="{{ route($prefix.'.cancel', $manifest) }}" style="display:inline">
+                @csrf @method('DELETE')
+                <button type="submit" class="pr-btn pr-btn-danger pr-btn-sm" data-confirm="Cancel this trip? Its {{ $manifest->items->count() }} parcels go back to ready to leave.">Cancel trip</button>
+            </form>
+        @endif
     </div>
 </div>
 
@@ -41,20 +47,23 @@
 
 <div class="pr-table-wrap">
     <table class="pr-table">
-        <thead><tr><th>Tracking no.</th><th>Deliver to</th><th>Check</th>@if($outbound && $manifest->status === 'draft')<th></th>@endif</tr></thead>
+        <thead><tr><th>Tracking no.</th><th>Deliver to</th><th>Check</th>@unless($manifest->status === 'draft')<th>Scanned by</th>@endunless @if($outbound && $manifest->status === 'draft')<th></th>@endif</tr></thead>
         <tbody>
         @forelse($manifest->items as $item)
             <tr>
-                <td><a href="{{ route('pickrush.parcels.show', $item->parcel) }}">{{ $item->parcel->tracking_no }}</a>@if($item->parcel->is_return) <span class="pr-badge pr-badge-warn">Return</span>@endif</td>
+                <td>@include('pickrush.partials.tracking-no', ['parcel' => $item->parcel])@if($item->parcel->is_return) <span class="pr-badge pr-badge-warn">Return</span>@endif</td>
                 <td>{{ $item->parcel->is_return ? $item->parcel->shipper_name : $item->parcel->consignee_name }}</td>
                 <td><span class="pr-badge {{ $badge($item->scan_status) }}">{{ ucfirst($item->scan_status) }}</span></td>
+                @unless($manifest->status === 'draft')
+                    <td>@if($item->scanned_at){{ $item->scanner?->full_name ?? '—' }}<div class="pr-muted">{{ $item->scanned_at->format('M d, h:i A') }}</div>@else<span class="pr-muted">—</span>@endif</td>
+                @endunless
                 @if($outbound && $manifest->status === 'draft')
                     <td><form method="POST" action="{{ route($prefix.'.remove', [$manifest, $item]) }}">@csrf @method('DELETE')
                         <button class="pr-btn pr-btn-danger pr-btn-sm" type="submit">Remove</button></form></td>
                 @endif
             </tr>
         @empty
-            <tr><td colspan="4" class="pr-muted">No parcels yet.</td></tr>
+            <tr><td colspan="5" class="pr-muted">No parcels yet.</td></tr>
         @endforelse
         </tbody>
     </table>

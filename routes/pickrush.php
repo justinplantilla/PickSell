@@ -118,6 +118,7 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
             Route::post('/trips/{manifest}/parcels/all', [Province\TripController::class, 'addAll'])->name('trips.add-all');
             Route::delete('/trips/{manifest}/parcels/{item}', [Province\TripController::class, 'remove'])->name('trips.remove');
             Route::post('/trips/{manifest}/dispatch', [Province\TripController::class, 'dispatch'])->name('trips.dispatch');
+            Route::delete('/trips/{manifest}', [Province\TripController::class, 'cancel'])->name('trips.cancel');
             Route::post('/trips/{manifest}/receive', [Province\TripController::class, 'receive'])->name('trips.receive');
             Route::post('/trips/{manifest}/close', [Province\TripController::class, 'close'])->name('trips.close');
         });
@@ -137,6 +138,7 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
             Route::post('/trips/{manifest}/parcels/all', [Station\TripController::class, 'addAll'])->name('trips.add-all');
             Route::delete('/trips/{manifest}/parcels/{item}', [Station\TripController::class, 'remove'])->name('trips.remove');
             Route::post('/trips/{manifest}/dispatch', [Station\TripController::class, 'dispatch'])->name('trips.dispatch');
+            Route::delete('/trips/{manifest}', [Station\TripController::class, 'cancel'])->name('trips.cancel');
             Route::post('/trips/{manifest}/receive', [Station\TripController::class, 'receive'])->name('trips.receive');
             Route::post('/trips/{manifest}/close', [Station\TripController::class, 'close'])->name('trips.close');
 

@@ -5,7 +5,7 @@
         @forelse($rows as $ex)
             <tr>
                 <td><span class="pr-badge pr-badge-warn">{{ $ex->label() }}</span><div class="pr-muted">{{ $ex->created_at->diffForHumans() }}</div></td>
-                <td>@if($ex->parcel)<a href="{{ route('pickrush.parcels.show', $ex->parcel) }}">{{ $ex->parcel->tracking_no }}</a><div class="pr-muted">{{ $ex->parcel->current_status->label() }}</div>@else — @endif</td>
+                <td>@if($ex->parcel)@include('pickrush.partials.tracking-no', ['parcel' => $ex->parcel])<div class="pr-muted">{{ $ex->parcel->current_status->label() }}</div>@else — @endif</td>
                 <td>{{ $ex->note }}@if($ex->manifest)<div class="pr-muted">Trip {{ $ex->manifest->manifest_no }}</div>@endif</td>
                 <td>{{ $showAgainst ? ($ex->againstHub?->name ?? '—') : $ex->hub?->name }}</td>
                 <td>

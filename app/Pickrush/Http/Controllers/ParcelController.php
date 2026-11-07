@@ -29,6 +29,8 @@ class ParcelController extends Controller
     /** The 4×6 label (barcode + QR) to print or reprint. */
     public function label(Parcel $parcel, Labels $labels)
     {
+        // A label printed here would be scannable without the parcel ever arriving.
+        abort_if($parcel->isHiddenFrom(), 403, 'This parcel is on its way to your hub. Its label can be printed once it is scanned in.');
         \App\Pickrush\Models\AuditLog::record($parcel, 'label_printed');
 
         return $labels->parcel($parcel);

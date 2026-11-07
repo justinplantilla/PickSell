@@ -3,6 +3,7 @@
 namespace App\Pickrush\Models;
 
 use App\Pickrush\Enums\ParcelStatus;
+use App\Pickrush\Support\Actor;
 use App\Pickrush\Support\Audited;
 use App\Pickrush\Support\ParcelHubScope;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
@@ -80,6 +81,30 @@ class Parcel extends Model
     public function dropOffBarangayCode(): ?string
     {
         return $this->is_return ? $this->pickup_barangay_code : $this->delivery_barangay_code;
+    }
+
+    /**
+     * A parcel on its way to the viewer's hub. Its full tracking number stays hidden there until
+     * it is scanned in, so it can only be received off the label of the parcel itself.
+     */
+    public function isHiddenFrom(?Staff $staff = null): bool
+    {
+        $staff ??= Actor::staff();
+
+        return $staff && ! $staff->isCompany() && $this->next_hub_id === $staff->hub_id
+            && in_array($this->current_status, [ParcelStatus::InTransitToProvince, ParcelStatus::InTransitToStation], true);
+    }
+
+    /** "PR••••••K7Q2": enough to tell parcels apart, not enough to receive one. */
+    public function maskedTrackingNo(): string
+    {
+        return substr($this->tracking_no, 0, 2).'••••••'.substr($this->tracking_no, -4);
+    }
+
+    /** The tracking number as this viewer may see it. */
+    public function trackingNoFor(?Staff $staff = null): string
+    {
+        return $this->isHiddenFrom($staff) ? $this->maskedTrackingNo() : $this->tracking_no;
     }
 
     public function getRouteKeyName(): string

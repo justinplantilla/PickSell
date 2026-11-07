@@ -21,7 +21,7 @@ trait ManagesTrips
 
     public function show(Manifest $manifest, ManifestService $manifests)
     {
-        $manifest->load('fromHub', 'toHub', 'items.parcel');
+        $manifest->load('fromHub', 'toHub', 'items.parcel', 'items.scanner');
 
         return view('pickrush.trips.show', [
             'prefix' => $this->tripRoutePrefix(),
@@ -63,6 +63,20 @@ trait ManagesTrips
         return $this->attempt(fn () => $manifests->remove($manifest, $item), 'Parcel taken off the trip.');
     }
 
+    public function cancel(Manifest $manifest, ManifestService $manifests)
+    {
+        $this->outboundOnly($manifest);
+        try {
+            $count = $manifests->cancel($manifest, $this->staff());
+        } catch (\DomainException $e) {
+            return back()->withErrors(['operation' => $e->getMessage()]);
+        }
+
+        // The trip page is gone; land on the trips list.
+        return redirect()->route($this->tripRoutePrefix().'.index')->with('success', "Trip {$manifest->manifest_no} cancelled."
+            .($count ? " Its {$count} ".Str::plural('parcel', $count).' went back to ready to leave.' : ''));
+    }
+
     public function dispatch(Request $request, Manifest $manifest, ManifestService $manifests)
     {
         $this->outboundOnly($manifest);
@@ -85,7 +99,7 @@ trait ManagesTrips
 
         return $this->attempt(
             fn () => $manifests->receive($manifest, $data['tracking_no'], $this->staff(), self::scanKey($data)),
-            fn ($parcel) => "{$parcel->tracking_no} received.",
+            fn ($parcel) => "{$parcel->tracking_no} received.".($manifest->fresh()->status === 'closed' ? ' Every parcel is in; the trip is closed.' : ''),
         );
     }
 

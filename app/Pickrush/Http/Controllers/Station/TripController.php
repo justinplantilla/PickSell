@@ -27,7 +27,7 @@ class TripController extends StationController
         return view('pickrush.station.trips', [
             'province' => $province,
             'ready' => $manifests->readyFor($station, $province)->oldest('updated_at')->get(),
-            'drafts' => Manifest::where('from_hub_id', $station->id)->where('status', 'draft')->latest()->get(),
+            'drafts' => Manifest::with('toHub')->where('from_hub_id', $station->id)->where('status', 'draft')->latest()->get(),
             'recent' => Manifest::with('fromHub', 'toHub')->where(fn ($q) => $q->where('from_hub_id', $station->id)->orWhere('to_hub_id', $station->id))
                 ->where('status', '!=', 'draft')->latest('updated_at')->limit(30)->get(),
         ]);

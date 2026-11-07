@@ -39,7 +39,7 @@
         @php $p = $item->parcel; $to = $p->is_return ? $p->originHub : $p->destHub; @endphp
         <tr>
             <td>{{ $loop->iteration }}</td>
-            <td><strong>{{ $p->tracking_no }}</strong>@if($p->is_return) <span class="muted">(return)</span>@endif</td>
+            <td><strong>{{ $p->trackingNoFor() }}</strong>@if($p->is_return) <span class="muted">(return)</span>@endif</td>
             <td>{{ $p->is_return ? $p->shipper_name : $p->consignee_name }}</td>
             <td>{{ $to?->name ?? '—' }}</td>
             <td style="text-align:right">₱{{ number_format((float) $p->cod_amount, 2) }}</td>

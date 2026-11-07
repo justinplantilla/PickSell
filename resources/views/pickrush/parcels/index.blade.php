@@ -18,7 +18,7 @@
         <tbody>
         @forelse($parcels as $parcel)
             <tr>
-                <td><a href="{{ route('pickrush.parcels.show', $parcel) }}">{{ $parcel->tracking_no }}</a>@if($parcel->needs_address_fix) <span class="pr-badge pr-badge-bad">Address to fix</span>@endif</td>
+                <td>@include('pickrush.partials.tracking-no', ['parcel' => $parcel])@if($parcel->needs_address_fix) <span class="pr-badge pr-badge-bad">Address to fix</span>@endif</td>
                 <td><span class="pr-badge">{{ $parcel->current_status?->label() }}</span></td>
                 <td>{{ $parcel->originHub?->name ?? '?' }} → {{ $parcel->destHub?->name ?? '?' }}</td>
                 <td>{{ $parcel->currentHub?->name ?? '—' }}</td>

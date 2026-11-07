@@ -400,6 +400,24 @@ class StationOperationsTest extends TestCase
         $this->expectRefusal(fn () => app(DispatchService::class)->assign($this->parcel(), $rider->fresh(), $this->manager), 'not active');
     }
 
+    public function test_rider_details_are_fixed_and_the_station_only_sets_the_home_zone(): void
+    {
+        $rider = $this->rider($this->tanauan, ['plate_no' => 'ABC 123', 'payout_method' => 'gcash', 'payout_account' => '09170000000']);
+        $zone = Zone::withoutGlobalScopes()->create(['station_hub_id' => $this->tanauan->id, 'name' => 'Poblacion']);
+
+        $this->as($this->manager)->get($this->pickrushUrl("/station/riders/{$rider->id}"))->assertOk()
+            ->assertSee('ABC 123')->assertDontSee('name="plate_no"', false)->assertDontSee('name="mobile_no"', false)->assertSee('name="zone_id"', false);
+
+        $this->as($this->manager)->put($this->pickrushUrl("/station/riders/{$rider->id}"), [
+            'zone_id' => $zone->id, 'first_name' => 'Changed', 'mobile_no' => '09999999999', 'plate_no' => 'XYZ 999', 'payout_account' => 'someone else',
+        ])->assertSessionHas('success', 'Home zone saved.');
+
+        $before = $rider->only('full_name', 'mobile_no', 'plate_no', 'payout_account');
+        $rider->refresh();
+        $this->assertSame($zone->id, $rider->zone_id);
+        $this->assertSame($before, $rider->only('full_name', 'mobile_no', 'plate_no', 'payout_account'));
+    }
+
     public function test_stations_only_see_their_own_riders_and_hq_cannot_use_the_station_portal(): void
     {
         $theirs = $this->rider($this->sanJose);

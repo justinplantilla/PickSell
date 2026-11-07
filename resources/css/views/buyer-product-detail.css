@@ -29,6 +29,8 @@
 .review-summary { display:flex; flex-direction:column; align-items:flex-end; }
 .review-summary strong { color:var(--coral); font-size:1.5rem; }
 .review-summary span { color:#667085; font-size:.78rem; }
+.review-summary .review-summary-label { text-transform:uppercase; letter-spacing:.04em; font-size:.7rem; font-weight:600; }
+.review-summary strong .review-summary-star { color:#e3ae24; font-size:1.25rem; }
     .reviews-empty { display:flex; flex-direction:column; align-items:center; gap:.35rem; padding:2rem 1rem; color:#667085; text-align:center; }
     .reviews-empty-icon { width:34px; height:34px; margin-bottom:.25rem; color:#e3ae24; }
     .reviews-empty strong { color:var(--ink); font-size:.95rem; }

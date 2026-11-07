@@ -101,16 +101,34 @@
     </section>
 </div>
 
-@if($isManager)
-    <section class="pr-card" style="margin-top:1rem">
-        <h2>Details</h2>
-        <form method="POST" action="{{ route('pickrush.station.riders.update', $rider) }}">
+{{-- Fixed: checked against the rider's documents at approval. Only the home zone is the station's to set. --}}
+<section class="pr-card" style="margin-top:1rem">
+    <h2>Details</h2>
+    <dl class="pr-dl">
+        <dt>Name</dt><dd>{{ $rider->full_name }}</dd>
+        <dt>Mobile</dt><dd>{{ $rider->mobile_no ?? '—' }}</dd>
+        <dt>Birthdate</dt><dd>{{ $rider->birthdate?->format('M d, Y') ?? '—' }}</dd>
+        <dt>Home address</dt><dd>{{ $rider->address ?? '—' }}</dd>
+        <dt>Emergency contact</dt><dd>{{ collect([$rider->emergency_contact_name, $rider->emergency_contact_no])->filter()->join(' · ') ?: '—' }}</dd>
+        <dt>Vehicle</dt><dd>{{ \App\Pickrush\Models\Rider::VEHICLE_TYPES[$rider->vehicle_type] ?? ucfirst((string) $rider->vehicle_type) }}@if($rider->vehicle_model) · {{ $rider->vehicle_model }}@endif · plate {{ $rider->plate_no ?? '—' }}</dd>
+        <dt>Driver's license no.</dt><dd>{{ $rider->license_no ?? '—' }}</dd>
+        <dt>Payout</dt><dd>@if($rider->payout_method){{ ['gcash' => 'GCash', 'maya' => 'Maya', 'bank' => 'Bank'][$rider->payout_method] ?? $rider->payout_method }} · {{ $rider->payout_account ?? '—' }}@else — @endif</dd>
+    </dl>
+    <p class="pr-muted">These are fixed once the rider is approved and cannot be changed here.</p>
+    @if($isManager)
+        <form method="POST" action="{{ route('pickrush.station.riders.update', $rider) }}" class="pr-form-grid">
             @csrf @method('PUT')
-            @include('pickrush.station.partials.rider-fields', ['rider' => $rider])
-            <div class="pr-actions"><button type="submit" class="pr-btn pr-btn-outline">Save details</button></div>
+            <div class="pr-field"><label for="zone_id">Home zone</label>
+                <select id="zone_id" name="zone_id" class="pr-select">
+                    <option value="">None yet</option>
+                    @foreach($zones as $zone)<option value="{{ $zone->id }}" @selected((int) old('zone_id', $rider->zone_id) === $zone->id)>{{ $zone->name }}</option>@endforeach
+                </select></div>
+            <div class="pr-field" style="justify-content:flex-end"><button type="submit" class="pr-btn pr-btn-outline">Save zone</button></div>
         </form>
-    </section>
+    @endif
+</section>
 
+@if($isManager)
     <div class="pr-two" style="margin-top:1rem">
         <section class="pr-card">
             <h2>Limits</h2>

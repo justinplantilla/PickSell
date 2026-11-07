@@ -56,6 +56,10 @@ body.pr-hq {
 .pr-hq .pr-nav a.is-active { background: rgba(232, 71, 42, .16); color: var(--pr-ink); font-weight: 600; transform: none; }
 .pr-hq .pr-nav a.is-active svg { color: var(--pr-brand-dark); }
 .pr-hq .pr-nav a.is-active::before { content: ''; position: absolute; left: -.75rem; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--pr-brand); }
+/* Work waiting on that page: inbound trips, parcels to dispatch, open exceptions… */
+.pr-hq .pr-nav-badge { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 22px; height: 22px; margin-left: auto; border-radius: 50%; background: var(--pr-brand); color: #fff; font-size: .7rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; box-shadow: 0 0 0 2px rgba(0, 0, 0, .25); }
+.pr-masked { color: var(--pr-muted, #8f8a82); font-variant-numeric: tabular-nums; letter-spacing: .02em; cursor: help; }   /* tracking no. hidden until scanned in */
+.pr-hq .pr-nav-badge.is-wide { font-size: .58rem; letter-spacing: -.02em; }   /* "99+" still fits the circle */
 .pr-hq .pr-who { display: flex; align-items: center; gap: .65rem; margin-top: auto; padding: .75rem; border-radius: 12px; background: #20242a; color: var(--pr-muted); font-size: .78rem; }
 .pr-hq .pr-avatar { display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: var(--pr-brand); color: #1f2328; font-family: 'Manrope', sans-serif; font-size: .8rem; font-weight: 800; text-transform: uppercase; }
 .pr-hq .pr-who-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
@@ -352,11 +356,6 @@ body.pr-hq {
 .pr-hq .pr-missort h3 { display: flex; align-items: center; gap: .6rem; margin-bottom: .4rem; font-family: 'Manrope', sans-serif; }
 .pr-hq .pr-missort .pr-kpi-icon { width: 32px; height: 32px; margin: 0; }
 .pr-hq .pr-missort .pr-inline { flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
-.pr-hq .pr-loading { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; }
-.pr-hq .pr-loading-list { display: flex; flex-wrap: wrap; gap: .5rem; }
-.pr-hq .pr-loading-trip { display: inline-flex; align-items: center; gap: .35rem; padding: .4rem .8rem; border: 1px solid rgba(245, 181, 68, .35); border-radius: 999px; background: rgba(0, 0, 0, .2); color: var(--pr-ink); font-weight: 600; text-decoration: none; transition: background .2s, transform .2s var(--pr-ease); }
-.pr-hq .pr-loading-trip:hover { background: rgba(245, 181, 68, .16); color: var(--pr-ink); transform: translateY(-2px); }
-.pr-hq .pr-loading-trip b { color: var(--pr-warn); }
 
 @keyframes pr-bin-in { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
 @keyframes pr-bin-flash { 0% { opacity: .9; } 100% { opacity: 0; } }
