@@ -75,6 +75,52 @@
     </div>
 </section>
 
+<section class="card" aria-labelledby="money-heading">
+    <div class="card-header">
+        <div>
+            <span class="card-title" id="money-heading">Money by company</span>
+            <p class="oversight-description">Delivered PickSell parcels and their delivery-fee split, as saved at checkout. COD collected is cash riders took on delivery; confirmed is what the company's HQ has confirmed from its stations.</p>
+        </div>
+        <nav class="oversight-tabs" aria-label="Period">
+            <a href="{{ route('admin.logistics.index') }}" class="oversight-tab {{ $period === 'month' ? 'is-active' : '' }}" @if($period === 'month') aria-current="page" @endif>This month</a>
+            <a href="{{ route('admin.logistics.index', ['period' => 'all']) }}" class="oversight-tab {{ $period === 'all' ? 'is-active' : '' }}" @if($period === 'all') aria-current="page" @endif>All time</a>
+        </nav>
+    </div>
+    @php($peso = fn ($n) => '₱'.number_format((float) $n, 2))
+    <div class="oversight-table-wrap">
+        <table>
+            <thead><tr>
+                <th>Company</th><th>Delivered</th><th>In progress</th><th>Delivery fees</th><th>Rider pay</th>
+                <th>Company share</th><th>PickSell commission</th><th>COD collected</th><th>COD confirmed</th>
+            </tr></thead>
+            <tbody>
+                @foreach($money as $row)
+                    <tr>
+                        <td><a href="{{ route('admin.logistics.companies.show', $row['company']) }}"><strong>{{ $row['company']->name }}</strong></a>
+                            @if($row['company']->status !== 'approved')<span class="oversight-meta">{{ ucfirst($row['company']->status) }}</span>@endif</td>
+                        <td class="oversight-number">{{ number_format($row['delivered']) }}</td>
+                        <td class="oversight-number">{{ number_format($row['in_progress']) }}</td>
+                        <td class="oversight-number">{{ $peso($row['fees']) }}</td>
+                        <td class="oversight-number">{{ $peso($row['rider']) }}</td>
+                        <td class="oversight-number"><strong>{{ $peso($row['logistics']) }}</strong></td>
+                        <td class="oversight-number">{{ $peso($row['picksell']) }}</td>
+                        <td class="oversight-number">{{ $peso($row['cod_collected']) }}</td>
+                        <td class="oversight-number">{{ $peso($row['cod_confirmed']) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+            <tfoot><tr>
+                <th>Total</th>
+                <th class="oversight-number">{{ number_format($money->sum('delivered')) }}</th>
+                <th class="oversight-number">{{ number_format($money->sum('in_progress')) }}</th>
+                @foreach(['fees', 'rider', 'logistics', 'picksell', 'cod_collected', 'cod_confirmed'] as $column)
+                    <th class="oversight-number">{{ $peso($money->sum($column)) }}</th>
+                @endforeach
+            </tr></tfoot>
+        </table>
+    </div>
+</section>
+
 <section class="card">
     <div class="card-header"><span class="card-title">PickSell parcels</span></div>
     <div class="oversight-pipeline">

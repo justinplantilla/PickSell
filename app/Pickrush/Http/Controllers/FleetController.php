@@ -30,7 +30,7 @@ class FleetController extends PortalController
             'vehiclesOut' => $out->pluck('vehicle_id')->flip(),
             'driversOut' => $out->pluck('driver_id')->flip(),
             'limit' => Vehicle::limitFor($hub),
-            'company' => config('pickrush.fleet.company_name'),
+            'company' => $this->staff()->company?->name,
             'licenseCodes' => Driver::LICENSE_CODES,
             'canManage' => $this->staff()->hasRole(StaffRole::HubManager),
         ]);
@@ -47,7 +47,7 @@ class FleetController extends PortalController
             DB::transaction(function () use ($data) {
                 $this->checkLimit();
 
-                return Vehicle::create($data + ['hub_id' => $this->hub()->id, 'registered_owner' => config('pickrush.fleet.company_name'), 'is_active' => true]);
+                return Vehicle::create($data + ['hub_id' => $this->hub()->id, 'registered_owner' => $this->staff()->company?->name, 'is_active' => true]);
             });
         }, "{$data['plate_no']} added to the fleet.");
     }

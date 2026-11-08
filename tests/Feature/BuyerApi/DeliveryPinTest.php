@@ -27,7 +27,7 @@ class DeliveryPinTest extends TestCase
         $this->patchJson('/api/mobile/buyer/delivery-location', ['lat' => 10.3312, 'lng' => 123.8977])->assertOk()
             ->assertJsonPath('parcels_updated', 0)
             ->assertJsonPath('delivery_address.pin', ['lat' => 10.3312, 'lng' => 123.8977])
-            ->assertJsonPath('message', 'Delivery pin saved. Pickrush riders will bring your orders to this spot.');
+            ->assertJsonPath('message', 'Delivery pin saved. Riders will bring your orders to this spot.');
         $this->assertEqualsWithDelta(10.3312, (float) $buyer->fresh()->delivery_lat, 1e-6);
 
         // Every place the app reads the default address now carries the pin and the routing codes.

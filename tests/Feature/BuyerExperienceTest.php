@@ -15,7 +15,7 @@ class BuyerExperienceTest extends TestCase
     public function test_for_couriers_on_the_landing_page_leads_to_the_pickrush_rider_section(): void
     {
         $this->get('/')->assertOk()
-            ->assertSee('href="https://'.config('pickrush.domain').'/#riders"', false);
+            ->assertSee('href="https://'.config('pickrush.domain').'/#partners"', false);
     }
 
     public function test_mistyped_mailbox_providers_are_caught(): void

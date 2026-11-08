@@ -1,6 +1,6 @@
 {{--
     Branded error page. Self-contained (inline CSS, no Vite) so it still renders when the build or the app is broken.
-    Sections: code, title, message. The logistics host gets Pickrush wording and links.
+    Sections: code, title, message. The logistics host gets the logistics portal's wording and links.
 --}}
 @php
     $onPickrush = request()->getHost() === config('pickrush.domain');
@@ -13,7 +13,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
-    <title>@yield('code') · @yield('title') | {{ $onPickrush ? 'Pickrush Logistics' : 'PickSell' }}</title>
+    <title>@yield('code') · @yield('title') | {{ $onPickrush ? config('pickrush.portal_name') : 'PickSell' }}</title>
     <style>
         :root { --ground: #1f2328; --bone: #f6f3ee; --coral: #E8472A; --soft: #c9c3b9; }
         * { box-sizing: border-box; }
@@ -47,10 +47,10 @@
         <h1>@yield('title')</h1>
         <p>@yield('message')</p>
         <div class="actions">
-            <a class="primary" href="{{ $home }}">{{ $onPickrush ? 'Go to Pickrush' : 'Go to PickSell' }}</a>
+            <a class="primary" href="{{ $home }}">{{ $onPickrush ? 'Go to PickSell Logistics' : 'Go to PickSell' }}</a>
             <button type="button" class="ghost" data-go-back data-home="{{ $home }}">Go back</button>
         </div>
-        <div class="brand">{!! $onPickrush ? '<b>Pickrush</b> Logistics' : 'Pick<b>Sell</b>' !!}</div>
+        <div class="brand">{!! $onPickrush ? 'Pick<b>Sell</b> Logistics' : 'Pick<b>Sell</b>' !!}</div>
     </main>
     <script>
         document.querySelector('[data-go-back]').addEventListener('click', event => {

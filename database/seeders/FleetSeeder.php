@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Pickrush\Models\Company;
 use App\Pickrush\Models\Driver;
 use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\Vehicle;
@@ -28,11 +29,11 @@ class FleetSeeder extends Seeder
     public function run(): void
     {
         $hubs = Hub::whereHas('staff', fn ($q) => $q->where('is_sample', false)->where('is_active', true))->orderBy('code')->get();
-        $company = config('pickrush.fleet.company_name');
+        $companies = Company::pluck('name', 'id');   // each truck is registered to its hub's company
         $n = 0;
         $seeded = 0;
 
-        DB::transaction(function () use ($hubs, $company, &$n, &$seeded) {
+        DB::transaction(function () use ($hubs, $companies, &$n, &$seeded) {
             foreach ($hubs as $hub) {
                 $hasFleet = Vehicle::withoutGlobalScopes()->where('hub_id', $hub->id)->exists()
                     || Driver::withoutGlobalScopes()->where('hub_id', $hub->id)->exists();
@@ -59,7 +60,7 @@ class FleetSeeder extends Seeder
                         'hub_id' => $hub->id,
                         'plate_no' => sprintf('PR%s %04d', chr(64 + $i), $hub->id),
                         'vehicle_type' => 'truck',
-                        'registered_owner' => $company,
+                        'registered_owner' => $companies[$hub->company_id] ?? null,
                         'capacity_parcels' => $hub->isProvince() ? 1500 : 500,
                         'default_driver_id' => $driver->id,
                         'is_active' => true,

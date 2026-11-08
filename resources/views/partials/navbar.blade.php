@@ -8,7 +8,7 @@
             <a href="#how-it-works">How It Works</a>
             <a href="/register?role=seller">For Sellers</a>
             {{-- Couriers apply in the Pickrush rider app, not on the buyer/seller form. --}}
-            <a href="https://{{ config('pickrush.domain') }}/#riders">For Couriers</a>
+            <a href="https://{{ config('pickrush.domain') }}/#partners">For Couriers</a>
             <a href="#what-we-stand-for">About</a>
         </nav>
         <a href="/register" class="landing-nav-cta">Join PickSell</a>

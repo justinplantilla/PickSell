@@ -827,7 +827,7 @@ class BuyerController extends Controller
     {
         $pin->save($this->buyer(), $request);
 
-        return back()->with('success', 'Delivery pin saved. Pickrush riders will bring your orders to this spot.');
+        return back()->with('success', 'Delivery pin saved. Riders will bring your orders to this spot.');
     }
 
     public function updatePassword(Request $request)

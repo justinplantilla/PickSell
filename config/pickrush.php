@@ -32,12 +32,11 @@ return [
         'lockout_minutes' => 15,     // after 5 wrong codes, no new code for this long
     ],
 
-    // Tracking numbers look like PR2610200000123X (prefix, yymmdd, sequence, check letter).
-    'tracking_prefix' => 'PR',
+    // Tracking numbers start with each company's own two-letter prefix (pr_companies.tracking_prefix,
+    // given at approval; Pickrush's is PR): prefix, yymmdd, sequence, check letter.
 
-    // Hub-to-hub trucks are company-owned (registered under this name); Pickrush hires the drivers.
+    // Hub-to-hub trucks are owned by the company that registers them; it hires the drivers.
     'fleet' => [
-        'company_name' => env('PICKRUSH_COMPANY_NAME', 'Pickrush Logistics'),
         'max_vehicles' => ['station' => 1, 'province' => 3],
     ],
 

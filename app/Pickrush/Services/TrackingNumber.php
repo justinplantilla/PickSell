@@ -2,6 +2,7 @@
 
 namespace App\Pickrush\Services;
 
+use App\Pickrush\Models\Company;
 use App\Pickrush\Models\Parcel;
 
 /**
@@ -14,7 +15,7 @@ class TrackingNumber
 
     public function generate(?string $prefix = null): string
     {
-        $prefix = strtoupper($prefix ?: config('pickrush.tracking_prefix'));
+        $prefix = strtoupper($prefix ?: (string) Company::whereKey(Company::defaultId())->value('tracking_prefix'));
         do {
             $body = $prefix.now()->format('ymd').str_pad((string) random_int(0, 9_999_999), 7, '0', STR_PAD_LEFT);
             $number = $body.self::checkLetter($body);

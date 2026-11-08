@@ -76,7 +76,7 @@ class ProfileController extends Controller
         $moved = $pin->save($request->user(), $request);
 
         return response()->json([
-            'message'          => 'Delivery pin saved. Pickrush riders will bring your orders to this spot.',
+            'message'          => 'Delivery pin saved. Riders will bring your orders to this spot.',
             'parcels_updated'  => $moved,
             'delivery_address' => BuyerPresenter::deliveryAddress($request->user()->fresh()),
         ]);

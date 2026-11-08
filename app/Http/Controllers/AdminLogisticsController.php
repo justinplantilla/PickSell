@@ -9,15 +9,19 @@ use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\ParcelException;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\Staff;
+use App\Services\Finance\LogisticsSettlement;
+use Illuminate\Http\Request;
 
 /**
  * Admin overview of the logistics companies. Each one runs its hubs, riders and exceptions from the
- * logistics portal; this page reports on them and links to the registration queue.
+ * logistics portal; this page reports on them, on the money with each company, and links to the
+ * registration queue.
  */
 class AdminLogisticsController extends Controller
 {
-    public function index()
+    public function index(Request $request, LogisticsSettlement $settlement)
     {
+        $period = $request->query('period') === 'all' ? 'all' : 'month';
         $parcels = Parcel::query()->where('source', 'picksell');
         $finished = [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost];
 
@@ -46,6 +50,8 @@ class AdminLogisticsController extends Controller
 
         return view('admin.logistics.overview', [
             'companies' => $companies,
+            'period' => $period,
+            'money' => $settlement->byCompany($period === 'month' ? now()->startOfMonth() : null),
             'portalUrl' => 'https://'.config('pickrush.domain'),
             'registrationCounts' => Company::query()->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status'),
             'pendingCompanies' => Company::where('status', 'pending')->with('owner')->orderBy('submitted_at')->take(5)->get(),

@@ -13,6 +13,8 @@ use App\Pickrush\Models\Company;
 use App\Pickrush\Services\Hq\HubCreator;
 use App\Pickrush\Services\Shipping\RateCardCopier;
 use App\Pickrush\Services\Shipping\RouteRateGenerator;
+use App\Services\Finance\LogisticsSettlement;
+use App\Services\Finance\ShipmentSettlement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
@@ -100,6 +102,22 @@ class CarrierChoiceTest extends TestCase
         // A suspended company is not offered either.
         $this->bilis->update(['status' => 'suspended']);
         $this->actingAs($this->buyer)->get($this->url('/buyer/cart/checkout?'.http_build_query(['item_ids' => $items])))->assertDontSee('Bilis Hatid Express');
+    }
+
+    public function test_admins_see_the_money_with_each_company(): void
+    {
+        $this->checkout($this->buyer, $this->cart($this->buyer, [[$this->product(), 1]]), [$this->seller->id => $this->bilis->id])->assertSessionHasNoErrors();
+        $shipment = Order::sole()->shipment;
+        app(ShipmentSettlement::class)->delivered($shipment);
+        $admin = User::where('role', 'admin')->firstOrFail();
+
+        $money = app(LogisticsSettlement::class)->byCompany(now()->startOfMonth())->keyBy(fn ($row) => $row['company']->id);
+        $this->assertSame([1, 60.0, (float) $shipment->logistics_share], [$money[$this->bilis->id]['delivered'], $money[$this->bilis->id]['fees'], $money[$this->bilis->id]['logistics']]);
+        $this->assertSame(0, $money[Company::defaultId()]['delivered']);
+
+        $this->actingAs($admin)->get($this->url('/admin/logistics'))->assertOk()
+            ->assertSeeInOrder(['Money by company', 'Pickrush Logistics', 'Bilis Hatid Express', '₱60.00']);
+        $this->actingAs($admin)->get($this->url('/admin/logistics?period=all'))->assertOk()->assertSee('All time');
     }
 
     public function test_the_app_lists_carriers_and_places_with_the_chosen_one(): void
