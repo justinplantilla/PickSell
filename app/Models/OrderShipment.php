@@ -37,6 +37,12 @@ class OrderShipment extends Model
         return $this->hasMany(Order::class)->where('status', '!=', 'cancelled');
     }
 
+    /** The logistics company the buyer chose for this parcel. */
+    public function logisticsCompany()
+    {
+        return $this->belongsTo(\App\Pickrush\Models\Company::class, 'logistics_company_id');
+    }
+
     public function buyer()
     {
         return $this->belongsTo(User::class, 'buyer_id');

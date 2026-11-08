@@ -3,6 +3,7 @@
 namespace App\Pickrush\Models;
 
 use App\Pickrush\Support\Audited;
+use App\Pickrush\Support\CompanyOwned;
 use App\Pickrush\Support\HubOwned;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Rider extends Model
 {
-    use Audited, HubOwned;
+    use Audited, CompanyOwned, HubOwned;
 
     protected $table = 'pr_riders';
 
@@ -41,6 +42,14 @@ class Rider extends Model
 
     /** Vehicles a rider can apply with. */
     public const VEHICLE_TYPES = ['motorcycle' => 'Motorcycle', 'tricycle' => 'Tricycle'];
+
+    /** "Motorcycle · NBC 1234", as buyers see the rider bringing their parcel; null when neither is known. */
+    public function vehicleLabel(): ?string
+    {
+        $label = collect([self::VEHICLE_TYPES[$this->vehicle_type] ?? null, $this->plate_no])->filter()->join(' · ');
+
+        return $label !== '' ? $label : null;
+    }
 
     protected static function booted(): void
     {
@@ -141,5 +150,13 @@ class Rider extends Model
     public function hasOpenVariance(): bool
     {
         return CodRemittance::where('rider_id', $this->id)->where('status', 'disputed')->exists();
+    }
+
+    /** A new rider without a company in context takes the company of its hub. */
+    protected function inferCompanyId(): ?int
+    {
+        $hubId = $this->station_hub_id;
+
+        return $hubId ? Hub::withoutGlobalScopes()->whereKey($hubId)->value('company_id') : null;
     }
 }

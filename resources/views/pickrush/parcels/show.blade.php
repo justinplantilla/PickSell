@@ -27,6 +27,9 @@
             <dt>COD</dt><dd><strong>₱{{ number_format((float) $parcel->cod_amount, 2) }}</strong></dd>
             <dt>Route</dt><dd>{{ $parcel->originHub?->name ?? '?' }} → {{ $parcel->destHub?->name ?? '?' }}</dd>
             <dt>Now at</dt><dd>{{ $parcel->currentHub?->name ?? '—' }}@if($parcel->nextHub) · next: {{ $parcel->nextHub->name }}@endif</dd>
+            @if($planned)
+                <dt>Hubs ahead</dt><dd>@if($plan){{ collect($plan)->pluck('name')->join(' → ') }}<div class="pr-muted">{{ count($plan) - 1 }} {{ \Illuminate\Support\Str::plural('hop', count($plan) - 1) }} as routing stands now; worked out again at every hub.</div>@else<span class="pr-badge pr-badge-bad">No route</span> <span class="pr-muted">No chain of open province links reaches the destination. See Province links.</span>@endif</dd>
+            @endif
             <dt>Attempts</dt><dd>{{ $parcel->attempt_count }} / {{ config('pickrush.policies.max_delivery_attempts') }}</dd>
             @if($parcel->source === 'picksell')<dt>Source</dt><dd>Picksell order #{{ $parcel->external_ref }}</dd>@endif
         </dl>

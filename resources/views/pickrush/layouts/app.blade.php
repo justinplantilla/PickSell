@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
-    <title>@yield('title', 'Dashboard') | Pickrush Logistics</title>
+    <title>@yield('title', 'Dashboard') | {{ $portalCompanyName }}</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('images/pickrush-logo.svg') }}">
     @php($staff = \App\Pickrush\Support\Actor::staff())
     {{-- Every portal (HQ, province, station) uses the dark console theme; the hub class adds hub-only pieces. --}}
@@ -15,14 +15,14 @@
 </head>
 <body @class(['pr-hq' => $hqTheme, 'pr-station' => $isStation, 'pr-province' => $isProvince])>
 @if(session()->pull('pickrush_welcome'))
-    @include('partials.welcome-splash', ['brand' => 'pickrush', 'name' => \Illuminate\Support\Str::before($staff->full_name, ' '), 'role' => $staff->role->label().($staff->hub ? ' · '.$staff->hub->name : '')])
+    @include('partials.welcome-splash', ['brand' => 'pickrush', 'company' => $portalCompanyName, 'name' => \Illuminate\Support\Str::before($staff->full_name, ' '), 'role' => $staff->role->label().($staff->hub ? ' · '.$staff->hub->name : '')])
 @endif
 <div class="pr-shell">
     @if($hqTheme)
         @include('pickrush.partials.hq-sidebar')
     @else
         <aside class="pr-sidebar">
-            <a href="{{ route('pickrush.dashboard') }}" class="pr-brand">@include('pickrush.partials.logo-mark', ['class' => 'pr-brand-logo', 'size' => 32]) Pickrush</a>
+            <a href="{{ route('pickrush.dashboard') }}" class="pr-brand">@include('pickrush.partials.logo-mark', ['class' => 'pr-brand-logo', 'size' => 32]) {{ $portalCompanyName }}</a>
             <nav class="pr-nav" aria-label="Main">
                 @foreach(\App\Pickrush\Support\Navigation::for($staff) as $item)
                     <a href="{{ route($item['route']) }}" @class(['is-active' => request()->routeIs($item['active'])])>{{ $item['label'] }}</a>
@@ -51,7 +51,7 @@
         <span class="pr-dialog-icon" aria-hidden="true">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
         </span>
-        <h2 id="logoutDialogTitle">Sign out of Pickrush?</h2>
+        <h2 id="logoutDialogTitle">Sign out of {{ $portalCompanyName }}?</h2>
         <p>You will need your email and password to sign in again.</p>
         <div class="pr-dialog-actions">
             <button type="submit" value="cancel" class="pr-btn pr-btn-outline" data-dialog-cancel>Stay signed in</button>

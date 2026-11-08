@@ -4,6 +4,7 @@ namespace App\Pickrush\Models;
 
 use App\Pickrush\Support\Actor;
 use App\Pickrush\Support\Audited;
+use App\Pickrush\Support\CompanyOwned;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -13,9 +14,11 @@ use Illuminate\Database\Eloquent\Model;
  */
 class ParcelException extends Model
 {
-    use Audited;
+    use Audited, CompanyOwned;
 
     protected $table = 'pr_exceptions';
+
+    protected array $companyThrough = ['hub_id' => 'pr_hubs'];
 
     protected $guarded = ['id'];
 

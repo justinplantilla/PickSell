@@ -160,7 +160,7 @@
         <div class="card" id="pickup-location">
             <div class="card-header"><span class="card-title">Shop Pin for Pickups</span></div>
             <div class="card-body">
-                <p class="account-muted-text">Pin where Pickrush riders collect your parcels. Riders can only confirm they arrived when they are near this pin, so place it at your shop's door.</p>
+                <p class="account-muted-text">Pin where riders collect your parcels. Riders can only confirm they arrived when they are near this pin, so place it at your shop's door.</p>
                 @if(auth()->user()->pickup_lat === null)
                     <div class="alert alert-warning">No pin yet. Riders will rely on your typed address until you set one.</div>
                 @endif

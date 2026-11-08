@@ -102,7 +102,7 @@
                             <a href="{{ route('seller.orders.waybill', $order) }}" target="_blank" class="btn btn-outline">Print Waybill</a>
                             <form method="POST" action="{{ route('seller.orders.handover', $order) }}">
                                 @csrf @method('PATCH')
-                                <button type="submit" class="btn btn-success" data-confirm="Is the parcel packed with the waybill attached? Pickrush will send a rider to pick it up.">Hand Over to Pickrush</button>
+                                <button type="submit" class="btn btn-success" data-confirm="Is the parcel packed with the waybill attached? {{ $order->carrierName() }} will send a rider to pick it up.">Hand Over to {{ $order->carrierName() }}</button>
                             </form>
                             @endif
                         </div>
@@ -112,24 +112,18 @@
                     <div class="waybill-generation-note order-detail-note">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
                         @if(! $order->waybill_number)
-                        <span>Pickrush's tracking number becomes your waybill. No rider is called yet, so take your time packing.</span>
+                        <span>{{ $order->carrierName() }}'s tracking number becomes your waybill. No rider is called yet, so take your time packing.</span>
                         @else
-                        <span>Waybill <strong>{{ $order->waybill_number }}</strong> is ready. Print it, attach it to the packed parcel, then hand over to request a Pickrush pickup.</span>
+                        <span>Waybill <strong>{{ $order->waybill_number }}</strong> is ready. Print it, attach it to the packed parcel, then hand over to request a {{ $order->carrierName() }} pickup.</span>
                         @endif
                     </div>
                     @endif
                     @if(in_array($order->status, ['shipped', 'ready_for_pickup'], true))
-                    <div class="alert alert-info order-detail-flush">Handed over: <strong>{{ $order->waybill_number }}</strong>. Waiting for Pickrush to pick it up.</div>
+                    <div class="alert alert-info order-detail-flush">Handed over: <strong>{{ $order->waybill_number }}</strong>. Waiting for {{ $order->carrierName() }} to pick it up.</div>
                     @elseif($order->status === 'delivered')
-                    <div class="alert alert-success order-detail-flush">Pickrush delivered this order. Confirm the delivery to complete the order and release your earnings.</div>
-                    @if(!$order->confirmed_by_seller_at)
-                    <form method="POST" action="/seller/orders/{{ $order->id }}/confirm-delivery" class="order-detail-row">
-                        @csrf @method('PATCH')
-                        <button type="submit" class="btn btn-success">Confirm Delivery</button>
-                    </form>
-                    @else
-                    <div class="alert alert-info order-detail-flush">Delivery confirmed by seller on {{ $order->confirmed_by_seller_at->format('M d, Y h:i A') }}.</div>
-                    @endif
+                    <div class="alert alert-success order-detail-flush">{{ $order->carrierName() }} delivered this order. It completes and your earnings are released once the buyer confirms they received it.</div>
+                    @elseif($order->status === 'completed')
+                    <div class="alert alert-info order-detail-flush">The buyer confirmed they received this order.</div>
                     @endif
                 </div>
             </div>

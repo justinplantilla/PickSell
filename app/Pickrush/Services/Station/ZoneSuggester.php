@@ -47,7 +47,7 @@ class ZoneSuggester
     {
         $code = $parcel->dropOffBarangayCode();
 
-        return $code ? Zone::withoutGlobalScopes()->with('defaultRider', 'backupRider')
+        return $code ? Zone::withoutGlobalScope('hub')->with('defaultRider', 'backupRider')
             ->where('station_hub_id', $station->id)
             ->whereHas('barangayLinks', fn ($q) => $q->where('barangay_code', $code))
             ->first() : null;

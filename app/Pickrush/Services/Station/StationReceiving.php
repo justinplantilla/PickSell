@@ -12,6 +12,7 @@ use App\Pickrush\Services\ManifestService;
 use App\Pickrush\Services\OperationRefused;
 use App\Pickrush\Services\ParcelLedger;
 use App\Pickrush\Services\Rider\RiderBatches;
+use App\Pickrush\Support\ParcelHubScope;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -27,7 +28,7 @@ class StationReceiving
     public function scan(string $trackingNo, Staff $staff, ?string $idempotencyKey = null): string
     {
         $station = $staff->hub;
-        $parcel = Parcel::withoutGlobalScopes()->where('tracking_no', ManifestService::normalize($trackingNo))->first()
+        $parcel = Parcel::withoutGlobalScope(ParcelHubScope::class)->where('tracking_no', ManifestService::normalize($trackingNo))->first()
             ?? throw new OperationRefused('Unknown tracking number. Check the waybill.');
 
         // First mile: seller walk-in, or the pickup rider bringing it in.
@@ -87,7 +88,7 @@ class StationReceiving
         }
 
         // Last mile: arriving from the province hub, with or without the trip list at hand.
-        $manifest = Manifest::withoutGlobalScopes()->where('to_hub_id', $station->id)->whereIn('status', ['dispatched', 'received'])
+        $manifest = Manifest::withoutGlobalScope('hub')->where('to_hub_id', $station->id)->whereIn('status', ['dispatched', 'received'])
             ->whereHas('items', fn ($q) => $q->where('parcel_id', $parcel->id))->first();
         $manifest
             ? $this->manifests->receive($manifest, $parcel->tracking_no, $staff, $idempotencyKey)

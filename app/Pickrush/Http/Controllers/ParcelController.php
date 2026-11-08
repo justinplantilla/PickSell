@@ -3,7 +3,9 @@
 namespace App\Pickrush\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Pickrush\Enums\ParcelStatus;
 use App\Pickrush\Models\Parcel;
+use App\Pickrush\Services\HubRouter;
 use App\Pickrush\Services\Labels;
 use App\Pickrush\Services\ManifestService;
 use Illuminate\Http\Request;
@@ -36,10 +38,19 @@ class ParcelController extends Controller
         return $labels->parcel($parcel);
     }
 
-    public function show(Parcel $parcel)
+    public function show(Parcel $parcel, HubRouter $router)
     {
         $parcel->load('originHub', 'destHub', 'currentHub', 'nextHub', 'events.hub', 'events.toHub', 'assignments.rider');
 
-        return view('pickrush.parcels.show', ['parcel' => $parcel]);
+        // The hubs still ahead, as routing stands now (it is worked out again at every hub).
+        $from = $parcel->currentHub ?? $parcel->nextHub;
+        $target = $parcel->is_return ? $parcel->originHub : $parcel->destHub;
+        $ended = in_array($parcel->current_status, [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost], true);
+
+        return view('pickrush.parcels.show', [
+            'parcel' => $parcel,
+            'plan' => $from && $target && ! $ended ? $router->path($from, $target) : null,
+            'planned' => $from && $target && ! $ended,
+        ]);
     }
 }

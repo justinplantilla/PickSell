@@ -21,7 +21,7 @@ class StaffController extends PortalController
         $q = trim((string) $request->query('q', ''));
 
         return view('pickrush.hq.staff.index', [
-            'staff' => Staff::with('hub')
+            'staff' => Staff::ofCompany($this->staff()->company_id)->with('hub')
                 ->when($role, fn ($query) => $query->where('role', $role))
                 ->when($request->query('samples') !== '1', fn ($query) => $query->where('is_sample', false))
                 ->when($q !== '', fn ($query) => $query->where(fn ($w) => $w->where('full_name', 'like', "%{$q}%")->orWhere('email', 'like', "%{$q}%")
@@ -41,6 +41,8 @@ class StaffController extends PortalController
 
     public function edit(Staff $staff)
     {
+        $this->ownCompany($staff);
+
         return view('pickrush.hq.staff.form', ['member' => $staff, 'roles' => StaffRole::cases(), 'hub' => $staff->hub]);
     }
 
@@ -51,6 +53,8 @@ class StaffController extends PortalController
 
     public function update(Request $request, StaffAdministration $admin, Staff $staff)
     {
+        $this->ownCompany($staff);
+
         return $this->save($request, $admin, $staff);
     }
 
@@ -78,5 +82,11 @@ class StaffController extends PortalController
         }
 
         return redirect()->route('pickrush.hq.staff.index')->with('success', "{$member->full_name} saved.");
+    }
+
+    /** Another company's account is a 404, like every other company-owned record. */
+    private function ownCompany(Staff $staff): void
+    {
+        abort_unless($staff->company_id === $this->staff()->company_id, 404);
     }
 }

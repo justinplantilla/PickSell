@@ -5,7 +5,7 @@
 <div class="pr-page-head">
     <div>
         <h1>Audit log</h1>
-        <p>Every change in Pickrush with who made it, from which hub, and the values before and after. Entries cannot be edited.</p>
+        <p>Every change in {{ $portalCompanyName }} with who made it, from which hub, and the values before and after. Entries cannot be edited.</p>
     </div>
 </div>
 

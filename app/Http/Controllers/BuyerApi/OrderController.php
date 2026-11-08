@@ -14,15 +14,35 @@ use App\Models\ReturnRequestEvent;
 use App\Services\AdminNotificationService;
 use App\Services\Orders\OrderCancellationService;
 use App\Services\Orders\OrderRating;
+use App\Services\Orders\OrderReceipt;
 use App\Support\BuyerApi\BuyerPresenter;
 use App\Support\BuyerApi\OrderStatus;
+use App\Support\OrderDelivery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /** The buyer's orders, read from and written to the website's tables with the website's rules. */
 class OrderController extends Controller
 {
+    /** POST /buyer/orders/{order}/received — the buyer confirms it reached them; the order completes and can be rated. */
+    public function received(Request $request, Order $order, OrderReceipt $receipt)
+    {
+        $receipt->confirm($this->find($request, $order), $request->user());
+
+        return $this->detail($order);
+    }
+
+    /** GET /buyer/orders/{order}/proof-of-delivery — the rider's photo at the door (private; the buyer only). */
+    public function proofOfDelivery(Request $request, Order $order)
+    {
+        $proof = OrderDelivery::proof($this->find($request, $order));
+        abort_unless($proof && Storage::disk('local')->exists($proof->proof_photo_path), 404, 'No delivery photo for this order yet.');
+
+        return Storage::disk('local')->response($proof->proof_photo_path, "delivery-{$order->order_number}.jpg", ['Cache-Control' => 'private, max-age=3600']);
+    }
+
     private function find(Request $request, Order $order): Order
     {
         abort_if($order->buyer_id !== $request->user()->id, 404, 'Order not found.');
@@ -72,26 +92,29 @@ class OrderController extends Controller
     }
 
     /**
-     * POST /buyer/orders/{id}/rate {rating (product), seller_rating?, delivery_rating?, feedback?, photos[]?}
+     * POST /buyer/orders/{id}/rate {rating (product), seller_rating, delivery_rating, feedback?, photos[]?}
      * Photos are multipart, up to 3. Once the seller has confirmed delivery (completed) the
      * product rating is also the product review, as on the website.
      */
     public function rate(Request $request, Order $order, OrderRating $ratings)
     {
         $this->find($request, $order);
-        // seller_rating and delivery_rating stay optional here until the app sends them; the website requires them.
+        // The product, the seller's service and the delivery are all rated, as on the website's rating form.
         $data = $request->validate([
             'rating'          => 'required|integer|min:1|max:5',
-            'seller_rating'   => 'nullable|integer|min:1|max:5',
-            'delivery_rating' => 'nullable|integer|min:1|max:5',
+            'seller_rating'   => 'required|integer|min:1|max:5',
+            'delivery_rating' => 'required|integer|min:1|max:5',
             'feedback'        => 'nullable|string|max:1000',
             'photos'          => 'nullable|array|max:'.ProductReviewPhoto::MAX_PER_REVIEW,
             'photos.*'        => 'image|mimes:jpg,jpeg,png,webp|max:5120',
+        ], [
+            'seller_rating.required'   => 'Rate the seller’s service.',
+            'delivery_rating.required' => 'Rate the delivery.',
         ]);
-        abort_unless(in_array(OrderStatus::of($order), OrderStatus::RATEABLE, true), 422, 'You can rate an order once it has been delivered.');
+        abort_unless(in_array(OrderStatus::of($order), OrderStatus::RATEABLE, true), 422, 'Tap Order Received first, then rate your order.');
         abort_if($order->rating !== null, 422, 'You already rated this order.');
 
-        $ratings->rate($order, $data['rating'], $data['seller_rating'] ?? null, $data['delivery_rating'] ?? null, $data['feedback'] ?? null, $request->file('photos', []));
+        $ratings->rate($order, $data['rating'], $data['seller_rating'], $data['delivery_rating'], $data['feedback'] ?? null, $request->file('photos', []));
 
         return $this->detail($order);
     }

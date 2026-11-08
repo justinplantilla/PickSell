@@ -9,6 +9,7 @@ use App\Pickrush\Models\Manifest;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\ParcelException;
 use App\Pickrush\Models\Staff;
+use App\Pickrush\Support\ParcelHubScope;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -61,7 +62,7 @@ class ExceptionDesk
     public function receiveMisSorted(string $trackingNo, Staff $staff, ?string $note = null): ParcelException
     {
         $hub = $staff->hub;
-        $parcel = Parcel::withoutGlobalScopes()->where('tracking_no', ManifestService::normalize($trackingNo))->first()
+        $parcel = Parcel::withoutGlobalScope(ParcelHubScope::class)->where('tracking_no', ManifestService::normalize($trackingNo))->first()
             ?? throw new OperationRefused('Unknown tracking number.');
         $inTransit = in_array($parcel->current_status, [ParcelStatus::InTransitToProvince, ParcelStatus::InTransitToStation], true);
         if (! $inTransit || $parcel->next_hub_id === $hub->id) {
@@ -70,7 +71,7 @@ class ExceptionDesk
 
         return DB::transaction(function () use ($parcel, $hub, $staff, $note) {
             $intended = $parcel->nextHub;
-            $trip = Manifest::withoutGlobalScopes()->whereIn('status', ['dispatched', 'received'])
+            $trip = Manifest::withoutGlobalScope('hub')->whereIn('status', ['dispatched', 'received'])
                 ->whereHas('items', fn ($q) => $q->where('parcel_id', $parcel->id))->latest('dispatched_at')->first();
 
             $this->ledger->record($parcel, $hub->isProvince() ? ParcelStatus::AtProvinceHub : ParcelStatus::ArrivedAtStation, $hub, [
@@ -116,7 +117,7 @@ class ExceptionDesk
 
     private function onHand(?string $trackingNo, Hub $hub): Parcel
     {
-        $parcel = Parcel::withoutGlobalScopes()->where('tracking_no', ManifestService::normalize((string) $trackingNo))->first()
+        $parcel = Parcel::withoutGlobalScope(ParcelHubScope::class)->where('tracking_no', ManifestService::normalize((string) $trackingNo))->first()
             ?? throw new OperationRefused('Unknown tracking number. Report it as unlabeled instead.');
         if ($parcel->current_hub_id !== $hub->id || ! $parcel->current_status->isAtHub()) {
             throw new OperationRefused("{$parcel->tracking_no} is not on hand here ({$parcel->current_status->label()}).");
@@ -167,7 +168,7 @@ class ExceptionDesk
     /** An unlabeled parcel was identified: receive it under its tracking number. */
     private function link(?string $trackingNo, Hub $hub): Parcel
     {
-        $parcel = Parcel::withoutGlobalScopes()->where('tracking_no', ManifestService::normalize((string) $trackingNo))->first()
+        $parcel = Parcel::withoutGlobalScope(ParcelHubScope::class)->where('tracking_no', ManifestService::normalize((string) $trackingNo))->first()
             ?? throw new OperationRefused('Unknown tracking number.');
         if ($parcel->next_hub_id === $hub->id && in_array($parcel->current_status, [ParcelStatus::InTransitToProvince, ParcelStatus::InTransitToStation], true)) {
             $this->manifests->arrive($parcel, $hub);

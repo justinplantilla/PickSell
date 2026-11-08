@@ -5,6 +5,7 @@ namespace App\Pickrush\Models;
 use App\Pickrush\Enums\ParcelStatus;
 use App\Pickrush\Support\Actor;
 use App\Pickrush\Support\Audited;
+use App\Pickrush\Support\CompanyOwned;
 use App\Pickrush\Support\ParcelHubScope;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Model;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Model;
 #[ScopedBy(ParcelHubScope::class)]
 class Parcel extends Model
 {
-    use Audited;
+    use Audited, CompanyOwned;
 
     protected $table = 'pr_parcels';
 
@@ -110,5 +111,18 @@ class Parcel extends Model
     public function getRouteKeyName(): string
     {
         return 'tracking_no';
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    /** A new parcel without a company in context takes the company of its hub. */
+    protected function inferCompanyId(): ?int
+    {
+        $hubId = $this->origin_hub_id ?? $this->dest_hub_id;
+
+        return $hubId ? Hub::withoutGlobalScopes()->whereKey($hubId)->value('company_id') : null;
     }
 }

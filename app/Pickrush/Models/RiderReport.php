@@ -3,14 +3,17 @@
 namespace App\Pickrush\Models;
 
 use App\Pickrush\Support\Audited;
+use App\Pickrush\Support\CompanyOwned;
 use Illuminate\Database\Eloquent\Model;
 
 /** A problem a rider reported from the app (vehicle, accident...). The station resolves it. */
 class RiderReport extends Model
 {
-    use Audited;
+    use Audited, CompanyOwned;
 
     protected $table = 'pr_rider_reports';
+
+    protected array $companyThrough = ['rider_id' => 'pr_riders'];
 
     protected $guarded = ['id'];
 

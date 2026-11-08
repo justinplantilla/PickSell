@@ -184,13 +184,13 @@ class ProvinceOperationsTest extends TestCase
     public function test_sort_scan_shows_the_bin_and_receives_parcels_straight_off_the_truck(): void
     {
         $local = $this->parcel('041005000');           // San Jose, Batangas: down to a station
-        $interProvince = $this->parcel('137404000');   // Quezon City: across to Metro Manila
+        $interProvince = $this->parcel('137404000');   // Quezon City: relayed towards Metro Manila, first to Laguna
         $this->tripUp($local, $interProvince);
 
         $this->as($this->sorter)->post($this->pickrushUrl('/province/sorting'), ['tracking_no' => $local->tracking_no])
             ->assertSessionHas('sort_result', fn ($r) => $r['bin'] === 'SAN JOSE' && $r['received'] && ! $r['error']);
         $this->as($this->sorter)->post($this->pickrushUrl('/province/sorting'), ['tracking_no' => $interProvince->tracking_no])
-            ->assertSessionHas('sort_result', fn ($r) => $r['bin'] === 'METRO MANILA EASTERN' && $r['destination'] === 'Metro Manila Eastern District Hub');
+            ->assertSessionHas('sort_result', fn ($r) => $r['bin'] === 'LAGUNA' && $r['destination'] === 'Laguna Province Hub');
 
         $this->assertNotNull($local->fresh()->sorted_at);
         $this->as($this->sorter)->get($this->pickrushUrl('/province/sorting'))->assertOk()->assertSee('SAN JOSE')->assertSee('1 sorted of 1');
@@ -230,18 +230,23 @@ class ProvinceOperationsTest extends TestCase
 
         $this->as($this->sorter)->post($this->pickrushUrl('/province/trips'), ['to_hub_id' => $this->station('043405000')->id])
             ->assertSessionHasErrors('operation');   // Calamba is another province's station
+        $eastern = $this->station('137404000')->parent;
+        $this->as($this->sorter)->post($this->pickrushUrl('/province/trips'), ['to_hub_id' => $eastern->id])
+            ->assertSessionHas('errors', fn ($bag) => str_contains($bag->first('operation'), 'not a neighboring province hub'));
+        $this->as($this->sorter)->get($this->pickrushUrl('/province/trips'))->assertOk()
+            ->assertSee('<option value="'.$this->laguna->id.'">', false)->assertDontSee('<option value="'.$eastern->id.'">', false);
         $this->as($this->sorter)->post($this->pickrushUrl('/province/trips'), ['to_hub_id' => $interProvince->fresh()->next_hub_id])->assertRedirect();
         $across = Manifest::where('from_hub_id', $this->batangas->id)->sole();
         $this->as($this->sorter)->get($this->pickrushUrl("/province/trips/{$across->manifest_no}"))->assertOk()->assertSee($truck->plate_no)->assertSee($driver->full_name);
         $this->as($this->sorter)->post($this->pickrushUrl("/province/trips/{$across->manifest_no}/parcels"), ['tracking_no' => $local->tracking_no])
-            ->assertSessionHasErrors('operation');   // San Jose's parcel does not go to Metro Manila
+            ->assertSessionHasErrors('operation');   // San Jose's parcel does not go to Laguna
         $this->as($this->sorter)->post($this->pickrushUrl("/province/trips/{$across->manifest_no}/parcels/all"))->assertSessionHas('success', '1 parcels added.');
         $this->as($this->sorter)->post($this->pickrushUrl("/province/trips/{$across->manifest_no}/dispatch"), ['vehicle_id' => $truck->id, 'driver_id' => $driver->id])
             ->assertSessionHasNoErrors();
         $this->assertSame([$truck->id, $driver->id, $truck->plate_no, $driver->full_name],
             [$across->fresh()->vehicle_id, $across->fresh()->driver_id, $across->fresh()->vehicle_plate, $across->fresh()->driver_name]);
 
-        $this->assertSame([ParcelStatus::InTransitToProvince, 'Metro Manila Eastern District Hub'], [$interProvince->fresh()->current_status, $interProvince->fresh()->nextHub->name]);
+        $this->assertSame([ParcelStatus::InTransitToProvince, 'Laguna Province Hub'], [$interProvince->fresh()->current_status, $interProvince->fresh()->nextHub->name]);
         $this->as($this->sorter)->get($this->pickrushUrl('/fleet'))->assertOk()->assertSee('On a trip');
     }
 

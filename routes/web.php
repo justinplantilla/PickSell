@@ -12,6 +12,7 @@ use App\Http\Controllers\AdminComplianceController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminLogisticsController;
+use App\Http\Controllers\AdminLogisticsCompanyController;
 use App\Http\Controllers\AdminOrderController;
 use App\Http\Controllers\AdminProductController;
 use App\Http\Controllers\AdminRefundController;
@@ -160,7 +161,9 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
     // Orders
     Route::get('/orders', [BuyerController::class, 'orders'])->name('buyer.orders');
     Route::get('/orders/{order}/tracking', [BuyerController::class, 'trackOrder'])->name('buyer.orders.tracking');
+    Route::get('/orders/{order}/proof-of-delivery', [BuyerController::class, 'proofOfDelivery'])->name('buyer.orders.proof-of-delivery');
     Route::patch('/orders/{order}/cancel', [BuyerController::class, 'cancelOrder'])->name('buyer.orders.cancel');
+    Route::patch('/orders/{order}/received', [BuyerController::class, 'confirmReceived'])->name('buyer.orders.received');
     Route::post('/orders/{order}/returns', [BuyerReturnRequestController::class, 'store'])->name('buyer.orders.returns.store');
     Route::post('/orders/{order}/feedback', [BuyerController::class, 'submitFeedback'])->name('buyer.feedback');
     Route::post('/orders/{order}/buy-again', [BuyerController::class, 'buyAgain'])->name('buyer.orders.buy-again');
@@ -344,6 +347,17 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
     Route::patch('/returns/{returnRequest}/approve-refund', [AdminReturnController::class, 'approveRefund'])->middleware($can(Permission::RETURNS_MANAGE))->name('admin.returns.approve-refund');
 
     Route::get('/logistics', [AdminLogisticsController::class, 'index'])->middleware($can(Permission::LOGISTICS_VIEW))->name('admin.logistics.index');
+    Route::middleware($can(Permission::LOGISTICS_VIEW))->prefix('/logistics')->name('admin.logistics.')->group(function () {
+        Route::get('/companies', [AdminLogisticsCompanyController::class, 'index'])->name('companies');
+        Route::get('/companies/{company}', [AdminLogisticsCompanyController::class, 'show'])->name('companies.show');
+        Route::get('/documents/{document}', [AdminLogisticsCompanyController::class, 'document'])->name('documents.show');
+    });
+    Route::middleware($can(Permission::LOGISTICS_MANAGE))->prefix('/logistics/companies/{company}')->name('admin.logistics.companies.')->group(function () {
+        Route::patch('/approve', [AdminLogisticsCompanyController::class, 'approve'])->name('approve');
+        Route::patch('/reject', [AdminLogisticsCompanyController::class, 'reject'])->name('reject');
+        Route::patch('/suspend', [AdminLogisticsCompanyController::class, 'suspend'])->name('suspend');
+        Route::patch('/reinstate', [AdminLogisticsCompanyController::class, 'reinstate'])->name('reinstate');
+    });
 
     Route::middleware($can(Permission::COMPLAINTS_VIEW))->group(function () {
         Route::get('/complaints', [AdminComplaintController::class, 'index'])->name('admin.complaints');

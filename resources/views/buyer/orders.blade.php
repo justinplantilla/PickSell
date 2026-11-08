@@ -57,7 +57,14 @@
                 <button type="button" class="btn btn-outline btn-sm" data-cancel-order>Cancel Order</button>
             </form>
             @endif
-            @if(in_array($order->status, ['delivered', 'completed'], true) && !$order->rating)
+            @if($order->status === 'delivered')
+            <form method="POST" action="{{ route('buyer.orders.received', $order) }}" data-no-confirm>
+                @csrf @method('PATCH')
+                <button type="submit" class="btn btn-coral btn-sm">Order Received</button>
+            </form>
+            <span class="orders-muted-text-4">Got your parcel? Confirm it, then rate it.@if($autoAt = \App\Services\Orders\OrderReceipt::autoConfirmAt($order)) We’ll confirm it for you on {{ $autoAt->format('M d, Y') }}.@endif</span>
+            @endif
+            @if($order->status === 'completed' && !$order->rating)
             <button class="btn btn-coral btn-sm" type="button" data-open-feedback="{{ $order->id }}"
                 data-product="{{ $order->product_name }}" data-option="{{ $order->variation_label }}"
                 data-image="{{ $order->product?->primary_image ? Storage::url($order->product->primary_image) : '' }}"
@@ -113,6 +120,7 @@
     @endif
 
     @include('partials.pickrush-tracking', ['tracking' => $tracking[$order->id] ?? null, 'open' => true])
+    @include('partials.delivery-proof', ['order' => $order])
 
     @php
         $unitPrice = $order->quantity > 0 ? $order->amount / $order->quantity : $order->amount;

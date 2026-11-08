@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Pickrush\Enums\StaffRole;
+use App\Pickrush\Models\Company;
 use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\Staff;
@@ -34,7 +35,7 @@ class PaeteRiderSeeder extends Seeder
             return;
         }
 
-        $station = Hub::where('code', 'S-043418000')->firstOrFail();
+        $station = Hub::ofCompany(Company::defaultId())->where('code', 'S-043418000')->firstOrFail();   // Pickrush's Paete station
         $manager = Staff::where('hub_id', $station->id)->where('role', StaffRole::HubManager)->where('is_active', true)->first()
             ?? throw new RuntimeException('Paete Station needs an active hub manager to approve the rider.');
 

@@ -33,7 +33,7 @@ final class AdminNavigation
                 self::item('users', 'User Accounts', 'admin.users', Permission::USERS_VIEW, ['admin/users*']),
             ]],
             ['label' => 'Operations', 'items' => [
-                self::item('logistics', 'Logistics', 'admin.logistics.index', Permission::LOGISTICS_VIEW, ['admin/logistics']),
+                self::item('logistics', 'Logistics', 'admin.logistics.index', Permission::LOGISTICS_VIEW, ['admin/logistics*']),
             ]],
             ['label' => 'Customer Care', 'items' => [
                 self::item('complaints', 'Complaints & Disputes', 'admin.complaints', Permission::COMPLAINTS_VIEW, ['admin/complaints*', 'admin/disputes*']),

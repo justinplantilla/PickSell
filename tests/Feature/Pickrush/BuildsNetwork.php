@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * A small slice of the real PSGC network: Batangas and Laguna (two provinces, Region IV-A) and
- * Metro Manila's Second District. Codes match the PSA list.
+ * Metro Manila's Second and Fourth Districts. Codes match the PSA list. Province links follow the
+ * real map, so Batangas reaches the Second District by relay: Laguna, then the Fourth District.
  */
 trait BuildsNetwork
 {
@@ -28,6 +29,7 @@ trait BuildsNetwork
             ['code' => '041000000', 'region_code' => '040000000', 'name' => 'Batangas', 'kind' => 'province'],
             ['code' => '043400000', 'region_code' => '040000000', 'name' => 'Laguna', 'kind' => 'province'],
             ['code' => '137400000', 'region_code' => '130000000', 'name' => 'Second District', 'kind' => 'district'],
+            ['code' => '137600000', 'region_code' => '130000000', 'name' => 'Fourth District', 'kind' => 'district'],
         ]);
         DB::table('geo_municipalities')->insert([
             ['code' => '041029000', 'province_code' => '041000000', 'region_code' => '040000000', 'name' => 'City of Tanauan', 'is_city' => 1, 'is_capital' => 0],
@@ -35,6 +37,7 @@ trait BuildsNetwork
             ['code' => '043405000', 'province_code' => '043400000', 'region_code' => '040000000', 'name' => 'City of Calamba', 'is_city' => 1, 'is_capital' => 0],
             ['code' => '043426000', 'province_code' => '043400000', 'region_code' => '040000000', 'name' => 'San Pedro', 'is_city' => 1, 'is_capital' => 0],
             ['code' => '137404000', 'province_code' => '137400000', 'region_code' => '130000000', 'name' => 'Quezon City', 'is_city' => 1, 'is_capital' => 0],
+            ['code' => '137603000', 'province_code' => '137600000', 'region_code' => '130000000', 'name' => 'City of Muntinlupa', 'is_city' => 1, 'is_capital' => 0],
         ]);
         DB::table('geo_barangays')->insert([
             ['code' => '041029001', 'municipality_code' => '041029000', 'name' => 'Altura Bata'],

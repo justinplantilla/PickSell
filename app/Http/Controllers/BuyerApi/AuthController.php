@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Rules\DeliverableEmail;
 use App\Services\AdminNotificationService;
 use App\Services\EmailVerificationService;
+use App\Services\RegistrationResubmission;
 use App\Support\BuyerApi\LoginThrottle;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -338,6 +339,49 @@ class AuthController extends Controller
         return 'password-reset-attempts:'.sha1(mb_strtolower($email));
     }
 
+    // ── Resubmitting a rejected sign-up ─────────────────────────────────
+
+    private const RESUBMIT_MINUTES = 30;
+
+    /** What a rejected buyer needs to fix their sign-up: the reason, what to replace and a single-use token. */
+    private function resubmission(User $user): array
+    {
+        $book = app(RegistrationResubmission::class);
+        $token = Str::random(64);
+        Cache::put('buyer-api-resubmit:'.hash('sha256', $token), $user->id, now()->addMinutes(self::RESUBMIT_MINUTES));
+
+        return [
+            'reason'          => $book->reason($user),
+            'documents'       => collect($book->documents($user))->map(fn ($label, $field) => ['field' => $field, 'label' => $label])->values(),
+            'resubmit_token'  => $token,
+            'expires_in'      => self::RESUBMIT_MINUTES * 60,
+        ];
+    }
+
+    /**
+     * POST /register/resubmit (multipart) {resubmit_token, id_upload} — the same account goes back to
+     * Pending Approval with the corrected ID, as on the website's resubmit page.
+     */
+    public function resubmit(Request $request, RegistrationResubmission $resubmission)
+    {
+        $request->validate(['resubmit_token' => 'required|string|size:64']);
+        $key = 'buyer-api-resubmit:'.hash('sha256', (string) $request->input('resubmit_token'));
+        $user = User::find(Cache::get($key));
+        if ($user?->role !== 'buyer' || ! RegistrationResubmission::canResubmit($user)) {
+            $message = 'This link to fix your sign-up has expired. Log in again to resubmit.';
+
+            return response()->json(['message' => $message, 'errors' => ['resubmit_token' => [$message]]], 422);
+        }
+
+        $resubmission->submit($user, $request);
+        Cache::forget($key);
+
+        return response()->json([
+            'status'  => 'pending',
+            'message' => 'Your application was resubmitted and is pending approval again. You will be notified via email.',
+        ]);
+    }
+
     // ── Login ────────────────────────────────────────────────────────────
 
     public function login(Request $request)
@@ -367,10 +411,14 @@ class AuthController extends Controller
         $refusal = match ($user->status) {
             'approved'    => null,
             'pending'     => 'Your account is still pending approval. Please check your email.',
-            'disapproved' => 'Your registration was disapproved. Please contact support.',
+            'disapproved' => 'Your registration was disapproved. Fix it and resubmit it for review.',
             'suspended'   => 'Your account has been suspended. Please contact support.',
             default       => 'Your account is not active. Please contact support.',
         };
+        if ($refusal && $user->status === 'disapproved') {
+            // Not signed in: a single-use token lets them correct their ID and resubmit (as on the website).
+            return response()->json(['message' => $refusal, 'status' => 'disapproved'] + $this->resubmission($user), 403);
+        }
         if ($refusal) {
             return response()->json(['message' => $refusal, 'status' => $user->status], 403);
         }

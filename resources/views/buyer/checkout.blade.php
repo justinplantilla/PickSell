@@ -10,7 +10,7 @@
 @php
     // Every checkout link keeps the items, address and vouchers picked so far, changing only what it says.
     $keep = fn ($v) => $v !== null && $v !== [];
-    $checkoutQuery = array_filter(['item_ids' => $itemIds, 'address_id' => $addressId, 'store_voucher' => $vouchers['picked']['stores'], 'platform_voucher' => $vouchers['picked']['platform']], $keep);
+    $checkoutQuery = array_filter(['item_ids' => $itemIds, 'address_id' => $addressId, 'store_voucher' => $vouchers['picked']['stores'], 'platform_voucher' => $vouchers['picked']['platform'], 'carrier' => $carriers], $keep);
     $checkoutLink = fn (array $changes) => route('buyer.checkout.start', array_filter(array_replace($checkoutQuery, $changes), $keep));
 @endphp
 
@@ -120,22 +120,38 @@
             </div>
         </div>
 
-        {{-- Shipping: one parcel and one delivery fee per seller --}}
-        <div class="card checkout-voucher-card">
+        {{-- Shipping: one parcel and one delivery fee per seller, with the logistics company the buyer picks (Pickrush pre-selected). --}}
+        <div class="card checkout-voucher-card" id="shipping">
             <div class="card-header"><span class="card-title">🚚 Shipping</span></div>
             <div class="card-body">
-                @foreach($shipping as $parcel)
+                @foreach($shipping as $sellerId => $parcel)
                     <div class="checkout-summary-row">
                         <span>
                             {{ $parcel['seller']->business_name ?? $parcel['seller']->full_name }}
                             @if($parcel['ok'])
-                                <small class="cart-muted-text">· Pickrush{{ $parcel['estimated_delivery'] ? ' · arrives '.$parcel['estimated_delivery']['label'] : '' }} · {{ $parcel['chargeable_weight_kg'] }} kg{{ $parcel['parcel_class'] !== 'STANDARD' ? ' · '.ucfirst(strtolower($parcel['parcel_class'])).' parcel' : '' }}</small>
+                                <small class="cart-muted-text">· {{ $parcel['carrier_name'] }}{{ $parcel['estimated_delivery'] ? ' · arrives '.$parcel['estimated_delivery']['label'] : '' }} · {{ $parcel['chargeable_weight_kg'] }} kg{{ $parcel['parcel_class'] !== 'STANDARD' ? ' · '.ucfirst(strtolower($parcel['parcel_class'])).' parcel' : '' }}</small>
                             @endif
                         </span>
                         @if($parcel['ok'])
                             <span>₱{{ number_format((float) $parcel['delivery_fee'], 2) }}</span>
                         @endif
                     </div>
+                    @if(count($parcel['carriers']) > 1)
+                        <p class="checkout-voucher-hint">Ship with</p>
+                        <div class="checkout-voucher-list" role="radiogroup" aria-label="Logistics company for {{ $parcel['seller']->business_name ?? $parcel['seller']->full_name }}">
+                            @foreach($parcel['carriers'] as $option)
+                                <a class="checkout-voucher-option {{ $option['selected'] ? 'selected' : '' }} {{ $option['ok'] ? '' : 'is-unavailable' }}"
+                                   href="{{ $option['ok'] && ! $option['selected'] ? $checkoutLink(['carrier' => array_replace($carriers, [$sellerId => (int) $option['id']])]).'#shipping' : '#shipping' }}"
+                                   role="radio" aria-checked="{{ $option['selected'] ? 'true' : 'false' }}">
+                                    <div class="checkout-voucher-info">
+                                        <span class="checkout-voucher-label">{{ $option['name'] }}@if($option['is_default']) <small class="cart-muted-text">· recommended</small>@endif</span>
+                                        <span class="checkout-voucher-desc">{{ $option['ok'] ? ($option['estimated_delivery'] ? 'Arrives '.$option['estimated_delivery']['label'] : 'Delivery date shown after ordering') : $option['message'] }}</span>
+                                    </div>
+                                    <span class="checkout-voucher-savings">{{ $option['ok'] ? '₱'.number_format((float) $option['delivery_fee'], 2) : '' }}</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    @endif
                     @unless($parcel['ok'])
                         <p class="checkout-voucher-empty" role="alert" style="color:#c0392b">{{ $parcel['message'] }}</p>
                     @endunless
@@ -260,10 +276,13 @@
                         <input type="hidden" name="store_vouchers[{{ $sellerId }}]" value="{{ $voucherId }}">
                     @endforeach
                     @if($vouchers['picked']['platform'])<input type="hidden" name="platform_voucher" value="{{ $vouchers['picked']['platform'] }}">@endif
+                    @foreach($carriers as $sellerId => $companyId)
+                        <input type="hidden" name="carriers[{{ $sellerId }}]" value="{{ $companyId }}">
+                    @endforeach
 
                     <div class="checkout-defaults">
                         <div><strong>Payment</strong><span>Cash on Delivery</span></div>
-                        <div><strong>Delivery</strong><span>Pickrush</span></div>
+                        <div><strong>Delivery</strong><span>{{ $shipping->pluck('carrier_name')->unique()->join(', ') ?: 'Pickrush' }}</span></div>
                         <div><strong>Ship to</strong><span><a href="#delivery-address">{{ $deliverTo->municipality ?: 'Set an address' }}</a></span></div>
                     </div>
 

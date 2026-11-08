@@ -34,7 +34,7 @@
 <div class="label">
     <div class="row">
         <table class="grid"><tr>
-            <td><div class="brand">Pickrush</div><div class="brand-sub">Logistics</div></td>
+            <td><div class="brand">{{ $parcel->company?->name ?? $portalCompanyName }}</div><div class="brand-sub">PickSell Logistics</div></td>
             <td class="cod"><div class="cod-label">Collect on delivery</div><div class="cod-amount">₱{{ number_format((float) $parcel->cod_amount, 2) }}</div></td>
         </tr></table>
     </div>

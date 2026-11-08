@@ -3,13 +3,18 @@
 namespace App\Pickrush\Models;
 
 use App\Pickrush\Enums\ParcelStatus;
+use App\Pickrush\Support\CompanyOwned;
 use Illuminate\Database\Eloquent\Model;
 use LogicException;
 
 /** Append-only scan history: the audit trail and the tracking timeline. */
 class ParcelEvent extends Model
 {
+    use CompanyOwned;
+
     protected $table = 'pr_parcel_events';
+
+    protected array $companyThrough = ['parcel_id' => 'pr_parcels'];
 
     public const UPDATED_AT = null;
 

@@ -58,6 +58,12 @@ final class Actor
         return $user instanceof Staff ? $user : null;
     }
 
+    /** The company the signed-in staff member or rider works for; null for the system. */
+    public static function companyId(): ?int
+    {
+        return self::staff()?->company_id ?? self::rider()?->company_id;
+    }
+
     public static function system(): self
     {
         return new self('system');

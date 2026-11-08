@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\RegistrationResubmission;
 use App\Models\User;
 use App\Rules\DeliverableEmail;
 use App\Services\EmailVerificationService;
@@ -58,8 +59,8 @@ class AuthController extends Controller
         }
 
         if ($user->status === 'disapproved') {
-            if ($user->role === 'seller') {
-                // A rejected seller is not signed in; they may only correct their documents and resubmit.
+            if (RegistrationResubmission::canResubmit($user)) {
+                // A rejected seller or buyer is not signed in; they may only correct their documents and resubmit.
                 $request->session()->put('resubmission_user_id', $user->id);
 
                 return redirect()->route('registration.resubmit');

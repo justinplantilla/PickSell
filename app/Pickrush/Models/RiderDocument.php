@@ -3,14 +3,17 @@
 namespace App\Pickrush\Models;
 
 use App\Pickrush\Support\Audited;
+use App\Pickrush\Support\CompanyOwned;
 use Illuminate\Database\Eloquent\Model;
 
 /** A rider's ID or clearance. Files live on the private disk and are served through a signed, short-lived link. */
 class RiderDocument extends Model
 {
-    use Audited;
+    use Audited, CompanyOwned;
 
     protected $table = 'pr_rider_documents';
+
+    protected array $companyThrough = ['rider_id' => 'pr_riders'];
 
     protected $guarded = ['id'];
 

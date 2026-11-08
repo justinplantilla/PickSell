@@ -30,9 +30,10 @@ use Illuminate\Validation\ValidationException;
  * discount and, if the code matches, the product's own voucher; Cash on Delivery to the buyer's
  * profile address. Keep the two in step.
  *
- * Each seller's lines ship together as one order shipment (one Pickrush parcel). Its delivery
- * fee is priced here by Pickrush, never taken from the browser or app, and saved with its
- * split so later rate or commission changes leave the order as it was.
+ * Each seller's lines ship together as one order shipment (one parcel) with the logistics company
+ * the buyer chose for it (Pickrush pre-selected). Its delivery fee is priced here from that
+ * company's rates, never taken from the browser or app, and saved with its split so later rate
+ * or commission changes leave the order as it was.
  */
 class OrderPlacement
 {
@@ -44,16 +45,35 @@ class OrderPlacement
     ) {}
 
     /**
-     * Delivery fee per seller for these cart lines, priced as the order will be.
+     * Delivery fee per seller for these cart lines, priced as the order will be, by the carrier the
+     * buyer chose for that seller's parcel (Pickrush unless they picked another).
      *
      * @param  Collection<int, CartItem>  $items  lines with product.seller loaded
+     * @param  array<int|string, int|string>  $carriers  logistics company id per seller id
      * @return Collection<int, ShippingQuote>  keyed by seller id
      */
-    public function shippingQuotes(User $buyer, Collection $items, ?DeliveryAddress $to = null): Collection
+    public function shippingQuotes(User $buyer, Collection $items, ?DeliveryAddress $to = null, array $carriers = []): Collection
     {
-        return $items->groupBy(fn (CartItem $item) => $item->product->seller_id)
-            ->map(fn (Collection $lines) => $this->pickrush->quote($buyer, $lines->first()->product->seller,
-                $lines->map(fn (CartItem $item) => ['product' => $item->product, 'quantity' => (int) $item->quantity]), $to));
+        return $this->carrierChoices($buyer, $items, $to, $carriers)->map(fn (array $choice) => $choice['quote']);
+    }
+
+    /**
+     * Each seller's parcel: the logistics companies the buyer can choose from (Pickrush first) and
+     * the one chosen. A choice that is not on offer, or none, falls back to the first (Pickrush).
+     *
+     * @param  array<int|string, int|string>  $carriers  logistics company id per seller id
+     * @return Collection<int, array{options: Collection, company_id: int, quote: ShippingQuote}>  keyed by seller id
+     */
+    public function carrierChoices(User $buyer, Collection $items, ?DeliveryAddress $to = null, array $carriers = []): Collection
+    {
+        return $items->groupBy(fn (CartItem $item) => $item->product->seller_id)->map(function (Collection $lines, $sellerId) use ($buyer, $to, $carriers) {
+            $options = $this->pickrush->carriers($buyer, $lines->first()->product->seller,
+                $lines->map(fn (CartItem $item) => ['product' => $item->product, 'quantity' => (int) $item->quantity]), $to);
+            $wanted = (int) ($carriers[$sellerId] ?? 0);
+            $companyId = $options->has($wanted) ? $wanted : (int) $options->keys()->first();
+
+            return ['options' => $options, 'company_id' => $companyId, 'quote' => $options[$companyId]['quote']];
+        });
     }
 
     /** What the buyer is told when a seller's items cannot be priced. */
@@ -94,11 +114,12 @@ class OrderPlacement
      * @param  DeliveryAddress|null  $to  where to ship; the buyer's profile (default) address when null
      * @param  array<int|string, string|null>  $notes  the buyer's note to each seller, keyed by seller id
      * @param  array{stores?: array<int|string, int>, platform?: ?int}  $vouchers  voucher ids: one per store (keyed by seller id) and one platform voucher
+     * @param  array<int|string, int|string>  $carriers  the logistics company chosen per seller id (Pickrush when absent)
      * @return Collection<int, Order>
      *
      * @throws ValidationException (field item_ids, address or vouchers) when the checkout cannot go ahead
      */
-    public function place(User $buyer, array $itemIds, ?string $voucherCode, ?DeliveryAddress $to = null, array $notes = [], array $vouchers = []): Collection
+    public function place(User $buyer, array $itemIds, ?string $voucherCode, ?DeliveryAddress $to = null, array $notes = [], array $vouchers = [], array $carriers = []): Collection
     {
         $to ??= DeliveryAddress::fromProfile($buyer);
         if (! $to->isComplete()) {
@@ -118,7 +139,7 @@ class OrderPlacement
         if ($unchosen->isNotEmpty()) {
             throw ValidationException::withMessages(['item_ids' => self::missingOptionMessage($unchosen)]);
         }
-        $shipping = $this->priceShipping($buyer, $items, $to);
+        $shipping = $this->priceShipping($buyer, $items, $to, $carriers);
 
         $placed = DB::transaction(function () use ($buyer, $items, $voucherCode, $shipping, $to, $notes, $vouchers) {
             // Lock the products so moderation, other buyers and stock changes cannot interleave.
@@ -151,6 +172,7 @@ class OrderPlacement
                 'reference' => 'SHP-'.strtoupper(Str::random(10)),
                 'buyer_id' => $buyer->id,
                 'seller_id' => $sellerId,
+                'logistics_company_id' => $priced['company_id'],
                 'origin_province' => $priced['seller']?->province,
                 'origin_region' => $priced['quote']->originRegion,
                 'destination_region' => $priced['quote']->destinationRegion,
@@ -290,13 +312,14 @@ class OrderPlacement
     /**
      * Price every seller's parcel and split its fee, or refuse the whole checkout.
      *
-     * @return Collection<int, array{quote: ShippingQuote, split: array, seller: ?User}>  keyed by seller id
+     * @return Collection<int, array{quote: ShippingQuote, split: array, seller: ?User, company_id: int}>  keyed by seller id
      */
-    private function priceShipping(User $buyer, Collection $items, DeliveryAddress $to): Collection
+    private function priceShipping(User $buyer, Collection $items, DeliveryAddress $to, array $carriers = []): Collection
     {
         $groups = $items->groupBy(fn (CartItem $item) => $item->product->seller_id);
 
-        return $this->shippingQuotes($buyer, $items, $to)->map(function (ShippingQuote $quote, $sellerId) use ($groups) {
+        return $this->carrierChoices($buyer, $items, $to, $carriers)->map(function (array $choice, $sellerId) use ($groups) {
+            $quote = $choice['quote'];
             $lines = $groups[$sellerId];
             if (! $quote->ok()) {
                 throw ValidationException::withMessages(['item_ids' => self::shippingProblem($quote, $lines)]);
@@ -311,7 +334,7 @@ class OrderPlacement
                 throw ValidationException::withMessages(['item_ids' => 'We could not calculate shipping for these items. Our team has been alerted; please try again later.']);
             }
 
-            return ['quote' => $quote, 'split' => $split, 'seller' => $lines->first()->product->seller];
+            return ['quote' => $quote, 'split' => $split, 'seller' => $lines->first()->product->seller, 'company_id' => $choice['company_id']];
         });
     }
 

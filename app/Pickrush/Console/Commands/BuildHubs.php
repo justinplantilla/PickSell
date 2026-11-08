@@ -18,7 +18,7 @@ class BuildHubs extends Command
         }
 
         $result = $builder->build();
-        $this->info("Hub network ready: {$result['provinces']} province hubs, {$result['stations']} station hubs ({$result['created']} new).");
+        $this->info("Hub network ready: {$result['provinces']} province hubs, {$result['stations']} station hubs ({$result['created']} new), {$result['links']} new province links.");
 
         return self::SUCCESS;
     }

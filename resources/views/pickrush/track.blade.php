@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Track a Parcel | Pickrush Logistics</title>
+    <title>Track a Parcel | {{ config('pickrush.portal_name') }}</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('images/pickrush-logo.svg') }}">
     @vite('resources/css/pickrush/public.css')
 </head>
@@ -12,7 +12,7 @@
     <div class="prp-wrap prp-header-inner">
         <a class="prp-brand" href="{{ route('pickrush.dashboard') }}">
             @include('pickrush.partials.logo-mark', ['class' => 'prp-mark', 'size' => 40])
-            <span>Pickrush <span class="prp-accent">Logistics</span></span>
+            <span>PickSell <span class="prp-accent">Logistics</span></span>
         </a>
         <nav class="prp-nav" aria-label="Main">
             <a href="{{ route('pickrush.dashboard') }}#how">How it works</a>
@@ -51,6 +51,12 @@
                     <span class="prt-label">Status</span>
                     <span class="prt-status">{{ $parcel->current_status->label() }}</span>
                 </div>
+                @if($parcel->company)
+                    <div>
+                        <span class="prt-label">Carrier</span>
+                        <strong>{{ $parcel->company->name }}</strong>
+                    </div>
+                @endif
                 @if($parcel->destHub)
                     <div>
                         <span class="prt-label">Delivering to</span>
@@ -73,12 +79,12 @@
 
 <footer class="prp-footer">
     <div class="prp-wrap prp-footer-inner">
-        <span class="prp-footer-brand">@include('pickrush.partials.logo-mark', ['class' => 'prp-mark', 'size' => 28])Pickrush Logistics · Delivery partner of PickSell</span>
+        <span class="prp-footer-brand">@include('pickrush.partials.logo-mark', ['class' => 'prp-mark', 'size' => 28]){{ config('pickrush.portal_name') }} · Delivery partners of PickSell</span>
         <nav aria-label="Footer">
             <a href="{{ route('pickrush.login') }}">Staff sign-in</a>
             <a href="{{ config('app.url') }}">PickSell shop</a>
         </nav>
-        <span>&copy; {{ now()->year }} Pickrush Logistics</span>
+        <span>&copy; {{ now()->year }} PickSell</span>
     </div>
 </footer>
 </body>

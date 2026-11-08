@@ -80,16 +80,16 @@
 <!-- Handover Modal -->
 <div class="modal-overlay" id="handoverModal">
     <div class="modal">
-        <div class="modal-title">Hand Over to Pickrush</div>
+        <div class="modal-title">Hand Over to the Courier</div>
         <form method="POST" id="handoverForm" data-no-confirm>
             @csrf @method('PATCH')
             <div class="waybill-generation-note">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-                <span>Is the parcel packed with its waybill attached? Pickrush will send a rider to pick it up, and the buyer and admin are notified.</span>
+                <span>Is the parcel packed with its waybill attached? The order's logistics company will send a rider to pick it up, and the buyer and admin are notified.</span>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" data-close-handover>Cancel</button>
-                <button type="submit" class="btn btn-coral">Hand Over to Pickrush</button>
+                <button type="submit" class="btn btn-coral">Hand Over</button>
             </div>
         </form>
     </div>

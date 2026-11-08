@@ -5,14 +5,14 @@
 <div class="pr-page-head">
     <div>
         <h1>Outbound trips</h1>
-        <p>One trip per destination: down to a station in this province, or across to another province hub.</p>
+        <p>One trip per destination: down to a station in this province, or across to a neighboring province hub. Parcels for farther provinces relay hub by hub along the route.</p>
     </div>
     <form method="POST" action="{{ route('pickrush.province.trips.store') }}" class="pr-inline">
         @csrf
         <select name="to_hub_id" class="pr-select" required aria-label="Destination">
             <option value="">Destination…</option>
             <optgroup label="Stations">@foreach($allDestinations->where('type', \App\Pickrush\Enums\HubType::Station) as $to)<option value="{{ $to->id }}">{{ $to->name }}</option>@endforeach</optgroup>
-            <optgroup label="Other province hubs">@foreach($allDestinations->where('type', \App\Pickrush\Enums\HubType::Province) as $to)<option value="{{ $to->id }}">{{ $to->name }}</option>@endforeach</optgroup>
+            <optgroup label="Neighboring province hubs">@foreach($allDestinations->where('type', \App\Pickrush\Enums\HubType::Province) as $to)<option value="{{ $to->id }}">{{ $to->name }}</option>@endforeach</optgroup>
         </select>
         <button type="submit" class="pr-btn pr-btn-primary">Start trip</button>
     </form>

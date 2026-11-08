@@ -64,6 +64,14 @@ class BuyerExperienceTest extends TestCase
         $lamp = $this->product($seller);
         $order = $this->order($buyer, $lamp, 'delivered');
 
+        // Delivered by Pickrush: the buyer confirms receipt first ("Order Received"), then rates.
+        $this->actingAs($buyer)->get(route('buyer.orders'))->assertOk()
+            ->assertSee('Order Received')->assertDontSee('data-product="Desk Lamp"', false);
+        $this->actingAs($buyer)->post(route('buyer.feedback', $order), ['rating' => 5, 'seller_rating' => 4, 'delivery_rating' => 3])->assertStatus(422);
+        $this->actingAs($buyer)->patch(route('buyer.orders.received', $order))->assertRedirect()
+            ->assertSessionHas('success', 'Thanks for confirming! You can now rate your order.');
+        $this->assertSame('completed', $order->fresh()->status);
+
         $this->actingAs($buyer)->get(route('buyer.orders'))->assertOk()
             ->assertSee('data-product="Desk Lamp"', false)
             ->assertSee('Seller service')->assertSee('Delivery');
@@ -79,9 +87,7 @@ class BuyerExperienceTest extends TestCase
         $this->assertSame([5, 4, 3], [$order->rating, $order->seller_rating, $order->delivery_rating]);
         // No Pickrush parcel here, so no rider to credit.
         $this->assertNull($order->delivery_rider_id);
-        // The product review goes public once the seller confirms the delivery.
-        $this->assertSame(0, ProductReview::count());
-        $this->actingAs($seller)->patch(route('seller.orders.confirm-delivery', $order))->assertRedirect();
+        // The product review is public straight away: the buyer already confirmed receipt.
         $this->assertSame([5, 'Bright lamp'], [ProductReview::sole()->rating, ProductReview::sole()->body]);
         $this->assertSame(['average' => 4.0, 'count' => 1], $seller->sellerRating());
 
@@ -106,7 +112,7 @@ class BuyerExperienceTest extends TestCase
     {
         $seller = $this->seller();
         $buyer = $this->actingAsBuyer();
-        $order = $this->order($buyer, $this->product($seller), 'delivered');
+        $order = $this->order($buyer, $this->product($seller), 'completed');
 
         $this->postJson("/api/mobile/buyer/orders/{$order->id}/rate", ['rating' => 4, 'seller_rating' => 5, 'delivery_rating' => 2])
             ->assertOk()

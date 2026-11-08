@@ -4,15 +4,19 @@ namespace App\Pickrush\Services;
 
 use App\Pickrush\Models\Parcel;
 
-/** Tracking numbers: PR + yymmdd + 7 random digits + a check letter, e.g. PR2610200483921K. */
+/**
+ * Tracking numbers: the carrier's two-letter prefix + yymmdd + 7 random digits + a check letter,
+ * e.g. PR2610200483921K for Pickrush.
+ */
 class TrackingNumber
 {
     private const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 
-    public function generate(): string
+    public function generate(?string $prefix = null): string
     {
+        $prefix = strtoupper($prefix ?: config('pickrush.tracking_prefix'));
         do {
-            $body = config('pickrush.tracking_prefix').now()->format('ymd').str_pad((string) random_int(0, 9_999_999), 7, '0', STR_PAD_LEFT);
+            $body = $prefix.now()->format('ymd').str_pad((string) random_int(0, 9_999_999), 7, '0', STR_PAD_LEFT);
             $number = $body.self::checkLetter($body);
         } while (Parcel::withoutGlobalScopes()->where('tracking_no', $number)->exists());
 

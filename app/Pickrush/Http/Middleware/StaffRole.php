@@ -10,7 +10,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Route guard by staff role, e.g. ->middleware('pickrush.role:super_admin,finance').
- * Also signs out accounts that were deactivated while their session was open.
+ * Also signs out accounts that were deactivated while their session was open, and keeps staff of
+ * a company that is not approved on their application status page.
  */
 class StaffRole
 {
@@ -25,6 +26,10 @@ class StaffRole
             $request->session()->invalidate();
 
             return redirect()->route('pickrush.login')->withErrors(['email' => 'Your account is inactive. Ask HQ to reactivate it.']);
+        }
+        // A company still under review (or rejected) sees only its application status on "/".
+        if (! $staff->company?->isApproved() && ! $request->routeIs('pickrush.logout')) {
+            return redirect()->route('pickrush.dashboard');
         }
         if ($roles !== [] && ! in_array($staff->role, array_map(fn ($role) => Role::from($role), $roles), true)) {
             abort(403, 'Your role does not have access to this page.');

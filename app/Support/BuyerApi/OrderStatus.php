@@ -24,8 +24,8 @@ final class OrderStatus
         'sorted'            => ['Arrived at your local station', 'Your parcel reached the delivery station for your area.'],
         'assigned_to_rider' => ['Rider assigned', 'A rider has been assigned to deliver your parcel.'],
         'out_for_delivery'  => ['Out for delivery', 'Your parcel is on its way to you.'],
-        'delivered'         => ['Delivered', 'Your parcel has been delivered. Enjoy!'],
-        'completed'         => ['Order completed', 'The seller confirmed the delivery. Thank you!'],
+        'delivered'         => ['Delivered', 'Pickrush delivered your parcel. Tap Order Received once you have it.'],
+        'completed'         => ['Order completed', 'You confirmed you received your order. Thank you!'],
         'delivery_failed'   => ['Delivery attempt failed', 'We couldn’t deliver your parcel. Pickrush will try again.'],
         'returned'          => ['Returned to seller', 'We couldn’t deliver your parcel, so it went back to the seller.'],
         'cancelled'         => ['Order cancelled', 'This order was cancelled.'],
@@ -35,8 +35,8 @@ final class OrderStatus
     public const TABS = [
         'to_ship'          => ['placed', 'confirmed', 'preparing', 'ready_for_pickup'],
         'in_transit'       => ['picked_up', 'at_sorting_center', 'sorted', 'assigned_to_rider'],
-        'out_for_delivery' => ['out_for_delivery', 'delivery_failed'],
-        'to_rate'          => [], // delivered/completed and not yet rated; see tab()
+        'out_for_delivery' => ['out_for_delivery', 'delivery_failed', 'delivered'], // the app's "To Receive": delivered waits for Order Received
+        'to_rate'          => [], // completed and not yet rated; see tab()
         'completed'        => ['returned'],
         'cancelled'        => ['cancelled'],
     ];
@@ -44,7 +44,14 @@ final class OrderStatus
     /** Same steps the website's OrderCancellationService allows a buyer to cancel in. */
     public const CANCELLABLE = ['placed', 'confirmed', 'preparing'];
 
-    public const RATEABLE = ['delivered', 'completed'];
+    /** The buyer rates once they confirmed they received it (Order Received completes the order). */
+    public const RATEABLE = ['completed'];
+
+    /** Pickrush delivered it; the buyer confirms receipt (OrderReceipt). */
+    public const RECEIVABLE = ['delivered'];
+
+    /** A return can be asked for once it arrived, confirmed or not (website rule). */
+    public const RETURNABLE = ['delivered', 'completed'];
 
     public static function of(Order $order): string
     {

@@ -6,6 +6,7 @@ use App\Pickrush\Enums\ParcelStatus;
 use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\ParcelEvent;
+use App\Pickrush\Support\ParcelHubScope;
 use Illuminate\Support\Collection;
 
 /** What is physically in a hub and for how long (dwell time from its arrival scan). */
@@ -20,7 +21,7 @@ class Inventory
     /** @return Collection<int, Parcel> each with arrived_at and dwell_hours */
     public function onHand(Hub $hub): Collection
     {
-        $parcels = Parcel::withoutGlobalScopes()->with('nextHub')
+        $parcels = Parcel::withoutGlobalScope(ParcelHubScope::class)->with('nextHub')
             ->where('current_hub_id', $hub->id)
             ->whereIn('current_status', [ParcelStatus::AtOriginHub, ParcelStatus::AtProvinceHub, ParcelStatus::ArrivedAtStation, ParcelStatus::OnHold, ParcelStatus::ReturningToSender, ParcelStatus::DeliveryFailed])
             ->get();

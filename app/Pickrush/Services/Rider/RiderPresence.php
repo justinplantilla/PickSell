@@ -26,7 +26,7 @@ class RiderPresence
     public function expireIdle(): int
     {
         $count = 0;
-        Rider::withoutGlobalScopes()->where('shift_status', 'on_shift')
+        Rider::withoutGlobalScope('hub')->where('shift_status', 'on_shift')
             ->where(fn ($q) => $q->whereNull('last_seen_at')->orWhere('last_seen_at', '<', now()->subMinutes(Rider::IDLE_MINUTES)))
             ->each(function (Rider $rider) use (&$count): void {
                 $this->goOffline($rider);

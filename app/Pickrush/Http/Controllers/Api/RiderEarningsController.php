@@ -91,12 +91,12 @@ class RiderEarningsController extends Controller
     /** COD still with the rider, and what they handed over to the station. */
     private function cod(Rider $rider, RiderAvailability $availability): array
     {
-        $last = CodRemittance::withoutGlobalScopes()->where('rider_id', $rider->id)->latest('id')->first();
+        $last = CodRemittance::withoutGlobalScope('hub')->where('rider_id', $rider->id)->latest('id')->first();
 
         return [
             'in_hand' => round($availability->codInHand($rider), 2),
             'limit' => (float) $rider->cod_limit,
-            'remitted_this_month' => round((float) CodRemittance::withoutGlobalScopes()->where('rider_id', $rider->id)
+            'remitted_this_month' => round((float) CodRemittance::withoutGlobalScope('hub')->where('rider_id', $rider->id)
                 ->where('created_at', '>=', now()->startOfMonth())->sum('received_amount'), 2),
             'last_remittance' => $last ? [
                 'amount' => (float) $last->received_amount,

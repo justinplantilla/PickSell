@@ -20,11 +20,11 @@
 <div class="wrap">
     <div class="top-bar"></div>
     <div class="card">
-        <div class="brand">Pickrush</div>
+        <div class="brand">{{ $companyName }}</div>
         @if($approved)
             <h1>You're approved, {{ $name }}!</h1>
-            <p>Your rider application{{ $station ? ' at '.$station : '' }} has been approved. Your Pickrush rider account is now active.</p>
-            <div class="note">Log in to the Pickrush rider app with your email and password, then go online to start receiving pickups.</div>
+            <p>Your rider application{{ $station ? ' at '.$station : '' }} has been approved. Your {{ $companyName }} rider account is now active.</p>
+            <div class="note">Log in to the rider app with your email and password, then go online to start receiving pickups.</div>
             <p>New riders start on probation with lower cash and parcel limits. Your station raises them as you complete deliveries.</p>
         @else
             <h1>Your rider application was not approved</h1>
@@ -35,7 +35,7 @@
             <p>If you have questions, contact the station.</p>
         @endif
     </div>
-    <div class="footer">Pickrush Logistics · a PickSell company</div>
+    <div class="footer">{{ $companyName }} · a PickSell logistics partner</div>
 </div>
 </body>
 </html>

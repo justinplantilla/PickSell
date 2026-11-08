@@ -23,6 +23,15 @@ return [
     // Where the landing page's "Get the rider app" button points. Unset hides the button.
     'rider_app_url' => env('PICKRUSH_RIDER_APP_URL'),
 
+    // The portal itself serves every logistics company, so its public pages carry this name.
+    'portal_name' => env('PICKRUSH_PORTAL_NAME', 'PickSell Logistics'),
+
+    // Company registration: the Terms and Privacy Policy version an applicant accepts.
+    'registration' => [
+        'terms_version' => '2026-11-09',
+        'lockout_minutes' => 15,     // after 5 wrong codes, no new code for this long
+    ],
+
     // Tracking numbers look like PR2610200000123X (prefix, yymmdd, sequence, check letter).
     'tracking_prefix' => 'PR',
 

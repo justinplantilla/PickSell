@@ -4,15 +4,18 @@ namespace App\Pickrush\Models;
 
 use App\Pickrush\Support\Actor;
 use App\Pickrush\Support\Audited;
+use App\Pickrush\Support\CompanyOwned;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /** A trip batch between two hubs. The receiving hub verifies every parcel against it. */
 class Manifest extends Model
 {
-    use Audited;
+    use Audited, CompanyOwned;
 
     protected $table = 'pr_manifests';
+
+    protected array $companyThrough = ['from_hub_id' => 'pr_hubs'];
 
     protected $guarded = ['id'];
 

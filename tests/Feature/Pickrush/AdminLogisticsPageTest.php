@@ -31,7 +31,7 @@ class AdminLogisticsPageTest extends TestCase
         ]);
 
         $this->actingAs($admin)->get('/admin/logistics')->assertOk()
-            ->assertSeeInOrder(['Logistics company', 'Open Pickrush portal', '<strong>Pickrush</strong>'], false)
+            ->assertSeeInOrder(['Logistics companies', 'Open logistics portal', '<strong>Pickrush Logistics</strong>', 'Default carrier'], false)
             ->assertSee('https://'.config('pickrush.domain'), false)
             ->assertSee('Open logistics exceptions (1)')
             ->assertSee($parcel->tracking_no)

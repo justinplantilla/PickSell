@@ -1,13 +1,16 @@
 <?php
 
+use App\Http\Controllers\BuyerApi\AddressController;
 use App\Http\Controllers\BuyerApi\AuthController;
 use App\Http\Controllers\BuyerApi\CartController;
 use App\Http\Controllers\BuyerApi\CatalogController;
 use App\Http\Controllers\BuyerApi\ChatController;
 use App\Http\Controllers\BuyerApi\CheckoutController;
+use App\Http\Controllers\BuyerApi\FollowController;
 use App\Http\Controllers\BuyerApi\NotificationController;
 use App\Http\Controllers\BuyerApi\OrderController;
 use App\Http\Controllers\BuyerApi\ProfileController;
+use App\Http\Controllers\BuyerApi\ReviewController;
 use App\Http\Controllers\BuyerApi\WishlistController;
 use App\Models\Product;
 use Illuminate\Http\Request;
@@ -27,6 +30,7 @@ Route::prefix('mobile')->name('buyer-api.')->group(function () {
     Route::post('/register/check-contact', [AuthController::class, 'checkContact'])->middleware('throttle:20,1,buyer-api-check-contact')->name('register.check-contact');
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:10,1,buyer-api-register')->name('register');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1,buyer-api-login')->name('login');
+    Route::post('/register/resubmit', [AuthController::class, 'resubmit'])->middleware('throttle:10,1,buyer-api-resubmit')->name('register.resubmit');
     Route::post('/password/forgot', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1,buyer-api-password-forgot')->name('password.forgot');
     Route::post('/password/reset', [AuthController::class, 'resetPassword'])->middleware('throttle:10,1,buyer-api-password-reset')->name('password.reset');
 
@@ -47,7 +51,22 @@ Route::prefix('mobile')->name('buyer-api.')->group(function () {
             Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');
             Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
             Route::patch('/password', [ProfileController::class, 'password'])->name('password.update');
+            Route::patch('/delivery-location', [ProfileController::class, 'deliveryLocation'])->middleware('throttle:30,1,buyer-api-delivery-location')->name('delivery-location.update');
             Route::post('/logout', [ProfileController::class, 'logout'])->name('logout');
+
+            Route::get('/addresses', [AddressController::class, 'index'])->name('addresses.index');
+            Route::post('/addresses', [AddressController::class, 'store'])->name('addresses.store');
+            Route::patch('/addresses/{address}', [AddressController::class, 'update'])->whereNumber('address')->name('addresses.update');
+            Route::delete('/addresses/{address}', [AddressController::class, 'destroy'])->whereNumber('address')->name('addresses.destroy');
+            Route::post('/addresses/{address}/default', [AddressController::class, 'makeDefault'])->whereNumber('address')->name('addresses.default');
+
+            Route::post('/reviews/{review}/helpful', [ReviewController::class, 'helpful'])->whereNumber('review')->name('reviews.helpful');
+            Route::delete('/reviews/{review}/helpful', [ReviewController::class, 'notHelpful'])->whereNumber('review')->name('reviews.not-helpful');
+            Route::post('/reviews/{review}/report', [ReviewController::class, 'report'])->whereNumber('review')->middleware('throttle:10,1,buyer-api-review-report')->name('reviews.report');
+
+            Route::get('/following', [FollowController::class, 'index'])->name('following.index');
+            Route::post('/sellers/{seller}/follow', [FollowController::class, 'store'])->whereNumber('seller')->name('sellers.follow');
+            Route::delete('/sellers/{seller}/follow', [FollowController::class, 'destroy'])->whereNumber('seller')->name('sellers.unfollow');
 
             Route::get('/wishlist', [WishlistController::class, 'index'])->name('wishlist.index');
             Route::post('/wishlist/{product}', [WishlistController::class, 'store'])->name('wishlist.store');
@@ -68,7 +87,9 @@ Route::prefix('mobile')->name('buyer-api.')->group(function () {
             Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
             Route::get('/orders/options', [OrderController::class, 'options'])->name('orders.options');
             Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+            Route::get('/orders/{order}/proof-of-delivery', [OrderController::class, 'proofOfDelivery'])->name('orders.proof-of-delivery');
             Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel'])->name('orders.cancel');
+            Route::post('/orders/{order}/received', [OrderController::class, 'received'])->name('orders.received');
             Route::post('/orders/{order}/rate', [OrderController::class, 'rate'])->name('orders.rate');
             Route::post('/orders/{order}/report', [OrderController::class, 'report'])->middleware('throttle:10,1,buyer-api-report')->name('orders.report');
             Route::post('/orders/{order}/return', [OrderController::class, 'requestReturn'])->middleware('throttle:10,1,buyer-api-return')->name('orders.return');

@@ -127,6 +127,12 @@ class Order extends Model
         return $this->belongsTo(OrderShipment::class, 'order_shipment_id');
     }
 
+    /** The logistics company carrying this order (chosen at checkout); Pickrush for older orders. */
+    public function carrierName(): string
+    {
+        return $this->shipment?->logisticsCompany?->name ?? 'Pickrush';
+    }
+
     /**
      * Who and where the parcel goes: the address chosen at checkout, copied onto the shipment, or
      * for orders from before the address book, the buyer's profile.

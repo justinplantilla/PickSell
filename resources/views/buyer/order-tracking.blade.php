@@ -76,6 +76,15 @@
         @endif
     </section>
 
+    @include('partials.delivery-proof', ['order' => $order])
+    @if($order->status === 'delivered')
+        <form method="POST" action="{{ route('buyer.orders.received', $order) }}" style="margin:12px 0" data-no-confirm>
+            @csrf @method('PATCH')
+            <button type="submit" class="btn btn-coral btn-sm">Order Received</button>
+            <span style="font-size:.82rem;color:#777;margin-left:8px">Got your parcel? Confirm it, then rate it.@if($autoAt = \App\Services\Orders\OrderReceipt::autoConfirmAt($order)) We’ll confirm it for you on {{ $autoAt->format('M d, Y') }}.@endif</span>
+        </form>
+    @endif
+
     <section class="order-card tracking-events" aria-labelledby="tracking-events-heading">
         <div class="order-card-header">
             <h2 id="tracking-events-heading">Delivery updates</h2>
@@ -92,7 +101,7 @@
                                 <strong>{{ $event['headline'] }}</strong>
                                 <time datetime="{{ $event['at']->toIso8601String() }}">{{ $event['at']->format('M d, Y h:i A') }}</time>
                             </div>
-                            <span class="tracking-event-actor">Pickrush</span>
+                            <span class="tracking-event-actor">{{ $order->carrierName() }}</span>
                         </div>
                     </li>
                 @endforeach

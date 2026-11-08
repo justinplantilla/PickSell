@@ -17,13 +17,14 @@ class SettingsController extends PortalController
                 'key' => $key, 'group' => $f[0], 'label' => $f[1], 'help' => $f[3], 'value' => PolicySettings::value($key),
                 'select' => str_starts_with($f[2], 'required|in:') ? explode(',', substr($f[2], strlen('required|in:'))) : null,
             ])->groupBy('group'),
-            'canEdit' => $this->staff()->role->value === 'super_admin',
+            'canEdit' => $this->canEdit(),
+            'shared' => ! $this->staff()->company?->is_default,
         ]);
     }
 
     public function update(Request $request, PolicySettings $settings)
     {
-        abort_unless($this->staff()->role->value === 'super_admin', 403, 'Only a super admin changes rates and policies.');
+        abort_unless($this->canEdit(), 403, 'Only the default company super admin changes the network policies.');
         // Field names use "__" for dots so they survive the request parser.
         $rules = collect(PolicySettings::FIELDS)->mapWithKeys(fn ($f, $key) => [str_replace('.', '__', $key) => $f[2]])->all();
         $values = collect($request->validate($rules))->mapWithKeys(fn ($v, $key) => [str_replace('__', '.', $key) => $v])->all();
@@ -38,5 +39,11 @@ class SettingsController extends PortalController
         $changed = $settings->save($values, $this->staff());
 
         return back()->with('success', $changed ? "{$changed} setting(s) changed." : 'Nothing changed.');
+    }
+
+    /** The policies apply to every logistics company, so the default company's super admin keeps them. */
+    private function canEdit(): bool
+    {
+        return $this->staff()->role->value === 'super_admin' && (bool) $this->staff()->company?->is_default;
     }
 }

@@ -11,6 +11,7 @@ use App\Pickrush\Models\RiderBatch;
 use App\Pickrush\Models\RiderNotification;
 use App\Pickrush\Services\Rider\RiderBatches;
 use App\Pickrush\Support\Actor;
+use App\Pickrush\Support\ParcelHubScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -154,7 +155,7 @@ class RiderHomeController extends Controller
         };
         $pickedUp = Assignment::select('parcel_id')->where('rider_id', $rider->id)->where('type', 'pickup')->where('status', 'completed');
 
-        $query = ParcelEvent::with(['parcel' => fn ($q) => $q->withoutGlobalScopes(), 'hub'])
+        $query = ParcelEvent::with(['parcel' => fn ($q) => $q->withoutGlobalScope(ParcelHubScope::class), 'hub'])
             ->where(function ($q) use ($rider, $riderStatuses, $kind, $pickedUp) {
                 $q->where(fn ($r) => $r->where('rider_id', $rider->id)->whereIn('status', $riderStatuses));
                 if ($kind !== 'delivery') {

@@ -75,10 +75,20 @@ class ParcelLedgerTest extends TestCase
         $this->ledger->record($parcel, ParcelStatus::InTransitToProvince, $tanauan, ['to_hub' => $batangas]);
         $this->assertSame([null, $batangas->id], [$parcel->current_hub_id, $parcel->next_hub_id]);
 
+        // Different province: relay through neighboring province hubs, Laguna then Metro Manila South.
+        $laguna = $this->station('043405000')->parent;
+        $southern = $this->station('137603000')->parent;
         $this->ledger->record($parcel, ParcelStatus::AtProvinceHub, $batangas);
-        $this->assertSame($eastern->id, $parcel->next_hub_id, 'different province: hand over to the destination hub');
+        $this->assertSame($laguna->id, $parcel->next_hub_id, 'not a neighbor of Batangas: the first hop is Laguna');
 
-        $this->ledger->record($parcel, ParcelStatus::InTransitToProvince, $batangas, ['to_hub' => $eastern]);
+        $this->ledger->record($parcel, ParcelStatus::InTransitToProvince, $batangas, ['to_hub' => $laguna]);
+        $this->ledger->record($parcel, ParcelStatus::AtProvinceHub, $laguna);
+        $this->assertSame($southern->id, $parcel->next_hub_id);
+        $this->ledger->record($parcel, ParcelStatus::InTransitToProvince, $laguna, ['to_hub' => $southern]);
+        $this->ledger->record($parcel, ParcelStatus::AtProvinceHub, $southern);
+        $this->assertSame($eastern->id, $parcel->next_hub_id);
+
+        $this->ledger->record($parcel, ParcelStatus::InTransitToProvince, $southern, ['to_hub' => $eastern]);
         $this->ledger->record($parcel, ParcelStatus::AtProvinceHub, $eastern);
         $this->assertSame($qc->id, $parcel->next_hub_id);
 
@@ -103,7 +113,11 @@ class ParcelLedgerTest extends TestCase
             'Arrived at Tanauan City Station',
             'Departed Tanauan City Station → Batangas Province Hub',
             'Arrived at Batangas Province Hub',
-            'Departed Batangas Province Hub → Metro Manila Eastern District Hub',
+            'Departed Batangas Province Hub → Laguna Province Hub',
+            'Arrived at Laguna Province Hub',
+            'Departed Laguna Province Hub → Metro Manila Southern District Hub',
+            'Arrived at Metro Manila Southern District Hub',
+            'Departed Metro Manila Southern District Hub → Metro Manila Eastern District Hub',
             'Arrived at Metro Manila Eastern District Hub',
             'Departed Metro Manila Eastern District Hub → Quezon City Station',
             'Arrived at Quezon City Station',

@@ -31,7 +31,7 @@ trait ManagesTrips
             'readyCount' => $manifest->status === 'draft' ? $manifests->readyFor($manifest->fromHub, $manifest->toHub)->count() : 0,
             'vehicles' => Vehicle::where('is_active', true)->orderBy('plate_no')->get(),
             'drivers' => Driver::where('is_active', true)->orderBy('full_name')->get(),
-            'onTrip' => Manifest::withoutGlobalScopes()->where('status', 'dispatched')->get(['vehicle_id', 'driver_id']),
+            'onTrip' => Manifest::withoutGlobalScope('hub')->where('status', 'dispatched')->get(['vehicle_id', 'driver_id']),
         ]);
     }
 

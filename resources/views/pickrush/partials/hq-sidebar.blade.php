@@ -17,7 +17,7 @@
         'Money' => ['pickrush.station.cash'],
     ] : [
         'Overview' => ['pickrush.hq.dashboard', 'pickrush.hq.alerts', 'pickrush.hq.reports'],
-        'Operations' => ['pickrush.parcels.index', 'pickrush.hq.address-fix', 'pickrush.exceptions.index', 'pickrush.hubs.index'],
+        'Operations' => ['pickrush.parcels.index', 'pickrush.hq.address-fix', 'pickrush.exceptions.index', 'pickrush.hubs.index', 'pickrush.links.index'],
         'Money & admin' => ['pickrush.hq.finance', 'pickrush.hq.staff.index', 'pickrush.hq.settings', 'pickrush.hq.audit'],
     ]);
     $icons = [
@@ -28,6 +28,7 @@
         'pickrush.hq.address-fix' => 'M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11zM12 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
         'pickrush.exceptions.index' => 'M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
         'pickrush.hubs.index' => 'M3 21V9l9-6 9 6v12M9 21v-6h6v6',
+        'pickrush.links.index' => 'M5 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM19 22a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM19 9a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6.7 5.3l10.6 1.4M18.5 9l-1 9',
         'pickrush.hq.finance' => 'M2 6h20v13H2zM12 10a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z',
         'pickrush.hq.staff.index' => 'M9 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM2 21a7 7 0 0 1 14 0M17 11l2 2 4-4',
         'pickrush.hq.settings' => 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
@@ -60,7 +61,7 @@
 <aside class="pr-sidebar">
     <a href="{{ route('pickrush.dashboard') }}" class="pr-brand">
         @include('pickrush.partials.logo-mark', ['class' => 'pr-brand-logo', 'size' => 34])
-        <span class="pr-brand-text">Pickrush<small>{{ $isProvince ? 'Province console' : ($isStation ? 'Station console' : 'HQ console') }}</small></span>
+        <span class="pr-brand-text">{{ $portalCompanyName }}<small>{{ $isProvince ? 'Province console' : ($isStation ? 'Station console' : 'HQ console') }}</small></span>
     </a>
     <nav class="pr-nav" aria-label="Main">
         @foreach($grouped as $title => $links)

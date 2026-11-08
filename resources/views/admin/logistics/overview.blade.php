@@ -1,29 +1,75 @@
 @extends('admin.layout')
 @section('title', 'Logistics')
 @section('styles')
-@vite('resources/css/views/admin-oversight.css')
+@vite(['resources/css/views/admin-oversight.css', 'resources/css/views/admin-list.css'])
 @endsection
 
 @section('content')
-<p class="oversight-description">Pickrush delivers every PickSell order. Hubs, riders and parcel exceptions are managed in the Pickrush portal.</p>
+<p class="oversight-description">Logistics companies deliver PickSell orders. They register on the logistics portal and run their hubs, riders and parcel exceptions there.</p>
+
+<section class="card" aria-labelledby="registrations-heading">
+    <div class="card-header">
+        <div>
+            <span class="card-title" id="registrations-heading">Company registrations</span>
+            <p class="oversight-description">Logistics companies that registered on the logistics portal. Review each one before it can deliver PickSell orders.</p>
+        </div>
+        <a class="btn btn-coral btn-sm" href="{{ route('admin.logistics.companies') }}">Review registrations</a>
+    </div>
+    <div class="oversight-pipeline">
+        @foreach(['pending' => 'Waiting for review', 'approved' => 'Approved', 'rejected' => 'Rejected', 'suspended' => 'Suspended'] as $status => $label)
+            <a class="oversight-stage {{ $status === 'pending' && ($registrationCounts[$status] ?? 0) > 0 ? 'is-alert' : '' }}" href="{{ route('admin.logistics.companies', $status === 'pending' ? [] : ['status' => $status]) }}">
+                <strong>{{ number_format($registrationCounts[$status] ?? 0) }}</strong><span>{{ $label }}</span>
+            </a>
+        @endforeach
+    </div>
+    @if($pendingCompanies->isEmpty())
+        <div class="oversight-empty"><strong>No registration is waiting</strong>New logistics companies appear here as soon as they submit.</div>
+    @else
+        <div class="oversight-table-wrap">
+            <table class="list-table">
+                <thead><tr><th>Waiting for review</th><th>Owner</th><th>Submitted</th><th class="list-chevron"><span class="sr-only">Open</span></th></tr></thead>
+                <tbody>
+                @foreach($pendingCompanies as $pending)
+                    <tr class="list-row" data-row-href="{{ route('admin.logistics.companies.show', $pending) }}">
+                        <td class="list-cell-main" data-label="Company"><a href="{{ route('admin.logistics.companies.show', $pending) }}" class="list-title">{{ $pending->name }}</a></td>
+                        <td data-label="Owner">{{ $pending->owner?->full_name }}<span class="oversight-meta">{{ $pending->owner?->email }}</span></td>
+                        <td data-label="Submitted"><time datetime="{{ $pending->submitted_at?->toIso8601String() }}">{{ $pending->submitted_at?->diffForHumans() }}</time></td>
+                        <td class="list-chevron" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg></td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+        @if(($registrationCounts['pending'] ?? 0) > $pendingCompanies->count())
+            <p class="oversight-description"><a href="{{ route('admin.logistics.companies') }}">See all {{ number_format($registrationCounts['pending']) }} waiting registrations</a></p>
+        @endif
+    @endif
+</section>
 
 <section class="card">
     <div class="card-header">
-        <span class="card-title">Logistics company</span>
-        <a class="btn btn-outline" href="{{ $company['portal_url'] }}" target="_blank" rel="noopener">Open Pickrush portal</a>
+        <span class="card-title">Logistics companies</span>
+        <span>
+            <a class="btn btn-outline" href="{{ $portalUrl }}" target="_blank" rel="noopener">Open logistics portal</a>
+        </span>
     </div>
     <div class="oversight-table-wrap">
         <table>
             <thead><tr><th>Company</th><th>Province hubs</th><th>Station hubs</th><th>Staff</th><th>Active riders</th><th>Status</th></tr></thead>
             <tbody>
-                <tr>
-                    <td><strong>{{ $company['name'] }}</strong><span class="oversight-meta">{{ parse_url($company['portal_url'], PHP_URL_HOST) }}</span></td>
-                    <td class="oversight-number">{{ number_format($company['province_hubs']) }}</td>
-                    <td class="oversight-number">{{ number_format($company['station_hubs']) }}</td>
-                    <td class="oversight-number">{{ number_format($company['staff']) }}</td>
-                    <td class="oversight-number">{{ number_format($company['riders']) }}</td>
-                    <td><span class="badge badge-approved">Active</span></td>
-                </tr>
+                @foreach($companies as $row)
+                    <tr>
+                        <td>
+                            <a href="{{ route('admin.logistics.companies.show', $row['model']) }}"><strong>{{ $row['model']->name }}</strong></a>
+                            <span class="oversight-meta">{{ $row['model']->is_default ? 'Default carrier · ' : '' }}Tracking prefix {{ $row['model']->tracking_prefix }}</span>
+                        </td>
+                        <td class="oversight-number">{{ number_format($row['province_hubs']) }}</td>
+                        <td class="oversight-number">{{ number_format($row['station_hubs']) }}</td>
+                        <td class="oversight-number">{{ number_format($row['staff']) }}</td>
+                        <td class="oversight-number">{{ number_format($row['riders']) }}</td>
+                        <td><span class="badge badge-{{ $row['model']->status }}">{{ $row['model']->status === 'approved' ? 'Active' : 'Suspended' }}</span></td>
+                    </tr>
+                @endforeach
             </tbody>
         </table>
     </div>
@@ -42,7 +88,7 @@
 <section class="card">
     <div class="card-header"><span class="card-title">Open logistics exceptions ({{ number_format($openExceptionCount) }})</span></div>
     @if($openExceptions->isEmpty())
-        <div class="oversight-empty"><strong>No open logistics exceptions</strong>Missing, damaged or mis-sorted parcels reported by Pickrush hubs are shown here.</div>
+        <div class="oversight-empty"><strong>No open logistics exceptions</strong>Missing, damaged or mis-sorted parcels reported by logistics hubs are shown here.</div>
     @else
         <div class="oversight-table-wrap">
             <table>
@@ -61,4 +107,8 @@
         </div>
     @endif
 </section>
+@endsection
+
+@section('scripts')
+@vite('resources/js/components/admin-row-links.js')
 @endsection

@@ -138,7 +138,7 @@
         <div class="buyer-account-section-heading compact-heading">
             <div>
                 <h2>Delivery Pin</h2>
-                <p>Pin your door so the Pickrush rider can find you. Your typed address is still printed on the label.</p>
+                <p>Pin your door so the rider can find you. Your typed address is still printed on the label.</p>
             </div>
         </div>
         @if(auth()->user()->delivery_lat === null)

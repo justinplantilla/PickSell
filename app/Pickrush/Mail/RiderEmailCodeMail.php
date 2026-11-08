@@ -15,8 +15,8 @@ class RiderEmailCodeMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(subject: $this->purpose === 'reset'
-            ? "{$this->code} is your Pickrush password reset code"
-            : "{$this->code} is your Pickrush rider verification code");
+            ? "{$this->code} is your rider app password reset code"
+            : "{$this->code} is your rider verification code");
     }
 
     public function content(): Content

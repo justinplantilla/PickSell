@@ -84,21 +84,28 @@ class OrderFollowUpTest extends TestCase
             ->assertDontSee('<option value="sorted"', false);
     }
 
-    public function test_buyers_rate_delivered_orders_and_the_seller_confirmation_publishes_the_review(): void
+    public function test_buyers_confirm_receipt_then_rate_and_the_review_is_published(): void
     {
         $buyer = $this->user('buyer');
         $seller = $this->user('seller');
         $product = Product::create(['seller_id' => $seller->id, 'name' => 'Rated mug', 'category' => 'Home', 'price' => 100, 'stock' => 5, 'status' => 'active']);
         $order = $this->order($buyer, $seller, 'delivered', ['product_id' => $product->id]);
 
+        $this->actingAs($buyer)->get(route('buyer.orders'))->assertOk()->assertSee('Order Received')->assertDontSee('Rate & Review', false);
+        $this->actingAs($buyer)->patch(route('buyer.orders.received', $order))->assertRedirect();
+        $this->assertSame('completed', $order->fresh()->status);
+        $this->assertTrue($seller->notifications()->exists(), 'the seller hears the buyer received it');
+
         $this->actingAs($buyer)->get(route('buyer.orders'))->assertOk()->assertSee('Rate & Review', false);
         $this->post(route('buyer.feedback', $order), ['rating' => 4, 'seller_rating' => 5, 'delivery_rating' => 5, 'feedback' => 'Sturdy mug'])->assertRedirect();
-        $this->assertSame(4, (int) $order->fresh()->rating);
-        $this->assertSame('delivered', $order->fresh()->status);
-
-        $this->actingAs($seller)->patch(route('seller.orders.confirm-delivery', $order))->assertRedirect();
-        $this->assertSame('completed', $order->fresh()->status);
         $this->assertDatabaseHas('product_reviews', ['order_id' => $order->id, 'product_id' => $product->id, 'rating' => 4, 'body' => 'Sturdy mug']);
+
+        // Sellers no longer confirm deliveries.
+        $other = $this->order($buyer, $seller, 'delivered', ['product_id' => $product->id]);
+        $this->actingAs($seller)->patch(route('seller.orders.confirm-delivery', $other))->assertSessionHasErrors('order');
+        $this->assertSame('delivered', $other->fresh()->status);
+        $this->actingAs($seller)->get(route('seller.orders.show', $other))->assertOk()
+            ->assertSee('once the buyer confirms they received it')->assertDontSee('Confirm Delivery');
     }
 
     public function test_orders_still_on_the_way_cannot_be_rated(): void

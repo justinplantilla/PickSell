@@ -25,7 +25,7 @@ class AddressFixer
     {
         $barangay = Barangay::with('municipality.province')->find($barangayCode)
             ?? throw new OperationRefused('Pick a barangay from the list.');
-        $station = $this->router->stationFor($barangay->municipality_code)
+        $station = $this->router->stationFor($barangay->municipality_code, $parcel->company_id)
             ?? throw new OperationRefused("No station covers {$barangay->municipality->name} yet.");
         if (in_array($parcel->current_status, [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost], true)) {
             throw new OperationRefused('This parcel has finished its journey.');
@@ -53,7 +53,7 @@ class AddressFixer
 
             // A parcel held for no route can move again.
             if (! $parcel->needs_address_fix) {
-                ParcelException::withoutGlobalScopes()->where('parcel_id', $parcel->id)->where('type', 'no_route')->where('status', 'open')->get()
+                ParcelException::withoutGlobalScope('hub')->where('parcel_id', $parcel->id)->where('type', 'no_route')->where('status', 'open')->get()
                     ->each(fn (ParcelException $e) => $this->desk->resolve($e, 'continue', $staff, 'Address fixed by HQ'));
             }
         });

@@ -11,6 +11,7 @@ use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\ManifestService;
 use App\Pickrush\Services\OperationRefused;
 use App\Pickrush\Services\ParcelLedger;
+use App\Pickrush\Support\ParcelHubScope;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -28,14 +29,14 @@ class Sorting
     public function sort(string $trackingNo, Staff $staff): array
     {
         $hub = $staff->hub;
-        $parcel = Parcel::withoutGlobalScopes()->where('tracking_no', ManifestService::normalize($trackingNo))->first()
+        $parcel = Parcel::withoutGlobalScope(ParcelHubScope::class)->where('tracking_no', ManifestService::normalize($trackingNo))->first()
             ?? throw new OperationRefused('Unknown tracking number. Put it in the exception bin and report it as unlabeled.');
 
         return DB::transaction(function () use ($parcel, $hub, $staff) {
             $received = false;
             if (in_array($parcel->current_status, [ParcelStatus::InTransitToProvince, ParcelStatus::InTransitToStation], true)) {
                 // Ticked off its trip like a scan on the trip page; refuses (with the mis-sort hint) if it was not coming here.
-                $trip = Manifest::withoutGlobalScopes()->where('to_hub_id', $hub->id)->whereIn('status', ['dispatched', 'received'])
+                $trip = Manifest::withoutGlobalScope('hub')->where('to_hub_id', $hub->id)->whereIn('status', ['dispatched', 'received'])
                     ->whereHas('items', fn ($q) => $q->where('parcel_id', $parcel->id))->first();
                 $trip ? $this->manifests->receive($trip, $parcel->tracking_no, $staff) : $this->manifests->arrive($parcel, $hub);
                 $parcel->refresh();
@@ -55,7 +56,7 @@ class Sorting
 
             if ($problem) {
                 $this->ledger->record($parcel, ParcelStatus::OnHold, $hub, ['note' => $problem]);
-                if (! ParcelException::withoutGlobalScopes()->where('parcel_id', $parcel->id)->where('status', 'open')->exists()) {
+                if (! ParcelException::withoutGlobalScope('hub')->where('parcel_id', $parcel->id)->where('status', 'open')->exists()) {
                     ParcelException::create(['hub_id' => $hub->id, 'parcel_id' => $parcel->id, 'type' => 'no_route', 'note' => $problem, 'opened_by' => $staff->id]);
                 }
 

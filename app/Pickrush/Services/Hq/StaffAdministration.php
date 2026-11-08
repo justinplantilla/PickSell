@@ -58,6 +58,6 @@ class StaffAdministration
 
     private function lastSuperAdmin(Staff $staff): bool
     {
-        return ! Staff::where('role', StaffRole::SuperAdmin)->where('is_active', true)->whereKeyNot($staff->id)->exists();
+        return ! Staff::ofCompany($staff->company_id)->where('role', StaffRole::SuperAdmin)->where('is_active', true)->whereKeyNot($staff->id)->exists();
     }
 }

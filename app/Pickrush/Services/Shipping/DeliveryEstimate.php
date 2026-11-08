@@ -2,6 +2,7 @@
 
 namespace App\Pickrush\Services\Shipping;
 
+use App\Pickrush\Models\Company;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -12,13 +13,17 @@ use Illuminate\Support\Facades\DB;
  */
 class DeliveryEstimate
 {
-    /** @return array{level: int, from: CarbonImmutable, to: CarbonImmutable, label: string}|null */
-    public function for(ShippingQuote $quote, ?CarbonImmutable $today = null): ?array
+    /**
+     * @param  int|null  $companyId  the carrier whose route grid applies (default: Pickrush)
+     * @return array{level: int, from: CarbonImmutable, to: CarbonImmutable, label: string}|null
+     */
+    public function for(ShippingQuote $quote, ?CarbonImmutable $today = null, ?int $companyId = null): ?array
     {
         if (! $quote->ok() || ! $quote->destinationRegion) {
             return null;
         }
-        $levels = DB::table('pr_shipping_route_levels')->where('destination_region', $quote->destinationRegion);
+        $levels = DB::table('pr_shipping_route_levels')->where('company_id', $companyId ?? Company::defaultId())
+            ->where('destination_region', $quote->destinationRegion);
         $level = $quote->originRegion
             ? (clone $levels)->where('origin_region', $quote->originRegion)->value('level')
             : null;

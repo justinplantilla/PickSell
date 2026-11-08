@@ -3,13 +3,18 @@
 namespace App\Pickrush\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Geo\Municipality;
+use App\Models\Geo\Province;
 use App\Pickrush\Enums\HubType;
 use App\Pickrush\Enums\StaffRole;
 use App\Pickrush\Models\Hub;
+use App\Pickrush\Services\Hq\HubCreator;
+use App\Pickrush\Services\OperationRefused;
+use App\Pickrush\Support\Actor;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
-/** HQ hub directory: every province and station hub, with who runs it. Editing comes with the HQ portal. */
+/** HQ hub directory: every province and station hub of the company, with who runs it. Super admins open new hubs. */
 class HubController extends Controller
 {
     public function index(Request $request)
@@ -33,6 +38,54 @@ class HubController extends Controller
             ->paginate(50)->withQueryString();
 
         return view('pickrush.hubs.index', compact('hubs', 'filters'));
+    }
+
+    public function create()
+    {
+        $this->authorizeSuperAdmin();
+        $provinceHubs = Hub::provinces()->orderBy('name')->get();
+        $taken = Hub::stations()->pluck('psgc_code')->flip();
+
+        return view('pickrush.hubs.create', [
+            // Provinces (and Metro Manila districts) without a province hub of this company yet.
+            'provinces' => Province::whereNotIn('code', $provinceHubs->pluck('psgc_code'))->orderBy('name')->get(),
+            // Cities and municipalities under the company's province hubs, without a station yet.
+            'stationChoices' => $provinceHubs->mapWithKeys(fn (Hub $hub) => [$hub->name => Municipality::with('province')->where('province_code', $hub->psgc_code)
+                ->orderBy('name')->get()->reject(fn ($m) => $taken->has($m->code))]),
+            'isDefault' => (bool) Actor::staff()->company?->is_default,
+        ]);
+    }
+
+    public function store(Request $request, HubCreator $hubs)
+    {
+        $this->authorizeSuperAdmin();
+        $data = $request->validate([
+            'type' => 'required|in:province,station',
+            'province_code' => 'required_if:type,province|nullable|string',
+            'municipality_code' => 'required_if:type,station|nullable|string',
+            'name' => 'nullable|string|max:120',
+            'address' => 'nullable|string|max:255',
+            'lat' => 'nullable|numeric|between:4,22|required_with:lng',     // the Philippines
+            'lng' => 'nullable|numeric|between:116,127|required_with:lat',
+        ], ['lat.between' => 'Drop the pin inside the Philippines.', 'lng.between' => 'Drop the pin inside the Philippines.', 'province_code.required_if' => 'Pick the province.', 'municipality_code.required_if' => 'Pick the city or municipality.']);
+        $companyId = Actor::staff()->company_id;
+
+        try {
+            $details = array_intersect_key($data, array_flip(['name', 'address', 'lat', 'lng']));
+            $hub = $data['type'] === 'province'
+                ? $hubs->province($companyId, $data['province_code'], $details)
+                : $hubs->station($companyId, $data['municipality_code'], $details);
+        } catch (OperationRefused $e) {
+            return back()->withInput()->withErrors(['hub' => $e->getMessage()]);
+        }
+
+        return redirect()->route('pickrush.hubs.show', $hub)->with('success', "{$hub->name} is open. Post a hub manager to it next"
+            .($hub->isProvince() ? ', and link it to neighboring province hubs.' : '.'));
+    }
+
+    private function authorizeSuperAdmin(): void
+    {
+        abort_unless(Actor::staff()->role === StaffRole::SuperAdmin, 403, 'Only a super admin opens hubs.');
     }
 
     public function update(\Illuminate\Http\Request $request, Hub $hub)

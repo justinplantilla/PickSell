@@ -83,7 +83,7 @@ class CashHandling
     /** Cash the station holds for the company: counted rider remittances not yet sent on. */
     public function stationCashOnHand(Hub $station): float
     {
-        return round((float) CodRemittance::withoutGlobalScopes()->where('station_hub_id', $station->id)
+        return round((float) CodRemittance::withoutGlobalScope('hub')->where('station_hub_id', $station->id)
             ->where('status', 'reconciled')->whereNull('hub_remittance_id')->sum('received_amount'), 2);
     }
 
@@ -94,7 +94,7 @@ class CashHandling
         }
 
         return DB::transaction(function () use ($manager, $amount, $reference, $note) {
-            $riderRemittances = CodRemittance::withoutGlobalScopes()->where('station_hub_id', $manager->hub_id)
+            $riderRemittances = CodRemittance::withoutGlobalScope('hub')->where('station_hub_id', $manager->hub_id)
                 ->where('status', 'reconciled')->whereNull('hub_remittance_id')->lockForUpdate()->get();
             if ($riderRemittances->isEmpty()) {
                 throw new OperationRefused('There is no reconciled cash to remit. Resolve open variances first.');
@@ -110,7 +110,7 @@ class CashHandling
                 'submitted_by' => $manager->id,
                 'note' => $note,
             ]);
-            CodRemittance::withoutGlobalScopes()->whereIn('id', $riderRemittances->pluck('id'))->update(['hub_remittance_id' => $remittance->id]);
+            CodRemittance::withoutGlobalScope('hub')->whereIn('id', $riderRemittances->pluck('id'))->update(['hub_remittance_id' => $remittance->id]);
 
             return $remittance;
         });

@@ -3,6 +3,7 @@
 namespace App\Pickrush\Models;
 
 use App\Pickrush\Support\Audited;
+use App\Pickrush\Support\CompanyOwned;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -11,9 +12,11 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Assignment extends Model
 {
-    use Audited;
+    use Audited, CompanyOwned;
 
     protected $table = 'pr_assignments';
+
+    protected array $companyThrough = ['parcel_id' => 'pr_parcels'];
 
     protected $guarded = ['id'];
 

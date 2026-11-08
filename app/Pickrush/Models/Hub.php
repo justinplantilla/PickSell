@@ -6,13 +6,14 @@ use App\Models\Geo\Municipality;
 use App\Pickrush\Enums\HubType;
 use App\Pickrush\Enums\StaffRole;
 use App\Pickrush\Support\Audited;
+use App\Pickrush\Support\CompanyOwned;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /** A province hub (sorting center) or a station hub (one city/municipality). */
 class Hub extends Model
 {
-    use Audited;
+    use Audited, CompanyOwned;
 
     protected $table = 'pr_hubs';
 
@@ -97,5 +98,13 @@ class Hub extends Model
         }
 
         return $gaps;
+    }
+
+    /** A new hub without a company in context takes the company of its hub. */
+    protected function inferCompanyId(): ?int
+    {
+        $hubId = $this->parent_hub_id;
+
+        return $hubId ? Hub::withoutGlobalScopes()->whereKey($hubId)->value('company_id') : null;
     }
 }

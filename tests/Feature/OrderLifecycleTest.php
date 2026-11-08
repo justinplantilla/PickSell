@@ -108,8 +108,9 @@ class OrderLifecycleTest extends TestCase
         }
         $this->assertNotNull($order->fresh()->delivered_at);
 
-        $this->actingAs($seller)
-            ->patch('/seller/orders/' . $order->id . '/confirm-delivery')
+        // The buyer confirms receipt; the seller no longer does.
+        $this->actingAs($buyer)
+            ->patch(route('buyer.orders.received', $order))
             ->assertRedirect();
         $this->assertSame('completed', $order->fresh()->status);
         $this->assertSame(

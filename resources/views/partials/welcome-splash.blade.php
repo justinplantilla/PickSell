@@ -2,7 +2,7 @@
     Full-screen welcome shown once, on the first page after a successful log in (the login controllers set a session flag
     and the layout pulls it). The exit is a CSS animation, so the dashboard is revealed even if the script never runs;
     welcome-splash.js only lets the user skip it and removes the node afterwards.
-    brand: picksell | pickrush. name: first name. role: short label under the greeting.
+    brand: picksell | pickrush (company: the logistics company's name). name: first name. role: short label under the greeting.
 --}}
 @vite(['resources/css/components/welcome-splash.css', 'resources/js/components/welcome-splash.js'])
 <div class="welcome-splash welcome-splash--{{ $brand }}" data-welcome-splash role="status" aria-live="polite">
@@ -18,7 +18,7 @@
     <div class="ws-body">
         @if($brand === 'pickrush')
             @include('pickrush.partials.logo-mark', ['class' => 'ws-logo', 'tone' => 'coral', 'size' => 96])
-            <div class="ws-brand">Pickrush <span>Logistics</span></div>
+            <div class="ws-brand">@isset($company){{ $company }}@else Pickrush <span>Logistics</span>@endisset</div>
         @else
             <img class="ws-logo" src="{{ asset('images/transparent logo.png') }}" alt="">
             <div class="ws-brand">Pick<span>Sell</span></div>

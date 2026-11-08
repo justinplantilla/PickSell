@@ -3,15 +3,18 @@
 namespace App\Pickrush\Models;
 
 use App\Pickrush\Support\Audited;
+use App\Pickrush\Support\CompanyOwned;
 use App\Pickrush\Support\HubOwned;
 use Illuminate\Database\Eloquent\Model;
 
 /** A company truck or van kept at a hub for trips, with the driver who usually takes it. */
 class Vehicle extends Model
 {
-    use Audited, HubOwned;
+    use Audited, CompanyOwned, HubOwned;
 
     protected $table = 'pr_vehicles';
+
+    protected array $companyThrough = ['hub_id' => 'pr_hubs'];
 
     protected $guarded = ['id'];
 

@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Pickrush\Support\Actor;
 
 /**
- * "/" on the logistics host: the public landing page for guests, and for signed-in staff a redirect to
- * their own portal (whose routes check the role and sign out deactivated accounts).
+ * "/" on the logistics host: the public landing page for guests, the application status for staff of
+ * a company that is not approved yet, and for other signed-in staff a redirect to their own portal (whose routes check the role and sign out deactivated accounts).
  */
 class DashboardController extends Controller
 {
@@ -16,6 +16,10 @@ class DashboardController extends Controller
         $staff = Actor::staff();
         if (! $staff) {
             return view('pickrush.landing');
+        }
+
+        if (! $staff->company?->isApproved()) {
+            return view('pickrush.auth.application-status', ['company' => $staff->company, 'staff' => $staff]);
         }
 
         $hub = $staff->hub;

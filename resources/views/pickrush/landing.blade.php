@@ -3,9 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Pickrush Logistics | PickSell's delivery network</title>
+    <title>{{ config('pickrush.portal_name') }} | Delivery partners of PickSell</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('images/pickrush-logo.svg') }}">
-    <meta name="description" content="Pickrush moves every PickSell order through province and station hubs, then a local rider brings it home.">
+    <meta name="description" content="Logistics companies deliver PickSell orders through their province and station hubs, then a local rider brings each one home.">
     @vite(['resources/css/pickrush/public.css', 'resources/js/pickrush/landing.js'])
 </head>
 <body class="prp">
@@ -13,12 +13,13 @@
     <div class="prp-wrap prp-header-inner">
         <a class="prp-brand" href="{{ route('pickrush.dashboard') }}">
             @include('pickrush.partials.logo-mark', ['class' => 'prp-mark', 'size' => 40])
-            <span>Pickrush <span class="prp-accent">Logistics</span></span>
+            <span>PickSell <span class="prp-accent">Logistics</span></span>
         </a>
         <nav class="prp-nav" aria-label="Main">
             <a href="#how">How it works</a>
             <a href="#track">Track a parcel</a>
-            <a href="#riders">Riders</a>
+            <a href="#partners">Partners</a>
+            <a href="{{ route('pickrush.register') }}">Register</a>
             <a class="prp-btn prp-btn-sm" href="{{ route('pickrush.login') }}">Staff sign-in <svg class="prp-btn-arrow" aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></a>
         </nav>
     </div>
@@ -27,9 +28,9 @@
 <main>
     <section class="prp-wrap prp-hero">
         <div class="prp-hero-copy">
-            <span class="prp-pill"><span aria-hidden="true"></span>PickSell's delivery network</span>
+            <span class="prp-pill"><span aria-hidden="true"></span>PickSell's logistics partners</span>
             <h1>From the seller's shelf to <span class="prp-accent">your doorstep.</span></h1>
-            <p class="prp-lead">Pickrush moves every PickSell order through our province and station hubs, then a local rider brings it home.</p>
+            <p class="prp-lead">Every PickSell order travels with a logistics partner, through its province and station hubs, until a local rider brings it home.</p>
             <form class="prp-track-form" method="GET" action="{{ route('pickrush.track') }}" role="search">
                 <label for="heroTrack">Tracking number</label>
                 <div class="prp-track-row">
@@ -37,7 +38,7 @@
                     <button class="prp-btn" type="submit">Track parcel <svg class="prp-btn-arrow" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></button>
                 </div>
             </form>
-            <p class="prp-hint">Hub staff? <a href="{{ route('pickrush.login') }}">Sign in to the staff portal</a></p>
+            <p class="prp-hint">Logistics staff? <a href="{{ route('pickrush.login') }}">Sign in</a> · Run a logistics company? <a href="{{ route('pickrush.register') }}">Register it here</a></p>
         </div>
 
         <div class="prp-hero-art">
@@ -89,34 +90,37 @@
         </div>
     </section>
 
-    <section class="prp-wrap prp-riders" id="riders">
+    <section class="prp-wrap prp-riders" id="partners">
         <div class="prp-riders-copy" data-reveal>
-            <h2>Ride with Pickrush</h2>
-            <p>Apply in the Pickrush rider app. Your station manager reviews your application before your first trip.</p>
+            <h2>Deliver for PickSell</h2>
+            <p>Register your logistics company. Once a PickSell administrator approves it, you run your own hubs, staff and riders, set your own rates, and buyers can choose you at checkout.</p>
             <div class="prp-actions">
+                <a class="prp-btn" href="{{ route('pickrush.register') }}">Register your company</a>
                 @if(config('pickrush.rider_app_url'))
-                    <a class="prp-btn" href="{{ config('pickrush.rider_app_url') }}" rel="noopener">Get the rider app</a>
+                    <a class="prp-btn-ghost" href="{{ config('pickrush.rider_app_url') }}" rel="noopener">Get the rider app</a>
+                @else
+                    <a class="prp-btn-ghost" href="#how">See how it works</a>
                 @endif
-                <a class="prp-btn-ghost" href="#how">See how it works</a>
             </div>
         </div>
         <ul class="prp-perks" data-reveal style="--reveal-delay: .15s">
-            <li><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>Trips assigned by your station hub</li>
-            <li><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M10 17h4"/></svg>Scan and confirm deliveries in the app</li>
-            <li><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Every rider reviewed by a station manager</li>
+            <li><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>Every company reviewed by a PickSell administrator</li>
+            <li><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l9-6 9 6v12M9 21v-6h6v6"/></svg>Your own hubs, staff and riders</li>
+            <li><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M10 17h4"/></svg>Riders apply to your company in the rider app</li>
         </ul>
     </section>
 </main>
 
 <footer class="prp-footer">
     <div class="prp-wrap prp-footer-inner">
-        <span class="prp-footer-brand">@include('pickrush.partials.logo-mark', ['class' => 'prp-mark', 'size' => 28])Pickrush Logistics · Delivery partner of PickSell</span>
+        <span class="prp-footer-brand">@include('pickrush.partials.logo-mark', ['class' => 'prp-mark', 'size' => 28]){{ config('pickrush.portal_name') }} · Delivery partners of PickSell</span>
         <nav aria-label="Footer">
             <a href="#track">Track a parcel</a>
+            <a href="{{ route('pickrush.register') }}">Register your company</a>
             <a href="{{ route('pickrush.login') }}">Staff sign-in</a>
             <a href="{{ config('app.url') }}">PickSell shop</a>
         </nav>
-        <span>&copy; {{ now()->year }} Pickrush Logistics</span>
+        <span>&copy; {{ now()->year }} PickSell</span>
     </div>
 </footer>
 </body>

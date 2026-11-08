@@ -2,12 +2,17 @@
 
 namespace App\Pickrush\Models;
 
+use App\Pickrush\Support\CompanyOwned;
 use Illuminate\Database\Eloquent\Model;
 
 /** Something the rider app shows under the bell, e.g. a new pickup batch to accept. */
 class RiderNotification extends Model
 {
+    use CompanyOwned;
+
     protected $table = 'pr_rider_notifications';
+
+    protected array $companyThrough = ['rider_id' => 'pr_riders'];
 
     protected $guarded = ['id'];
 

@@ -3,6 +3,7 @@
 namespace App\Pickrush\Models;
 
 use App\Pickrush\Support\Audited;
+use App\Pickrush\Support\CompanyOwned;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -12,9 +13,11 @@ use Illuminate\Database\Eloquent\Model;
  */
 class RiderBatch extends Model
 {
-    use Audited;
+    use Audited, CompanyOwned;
 
     protected $table = 'pr_rider_batches';
+
+    protected array $companyThrough = ['station_hub_id' => 'pr_hubs'];
 
     protected $guarded = ['id'];
 

@@ -21,6 +21,7 @@ Route::prefix('rider')->name('pickrush.api.rider.')->group(function () {
         Route::post('/password/reset', [RiderAuthController::class, 'resetPassword'])->name('password.reset');
     });
 
+    Route::get('/companies', [RiderApplicationController::class, 'companies'])->middleware('throttle:pickrush-rider-read')->name('companies');
     Route::get('/stations', [RiderApplicationController::class, 'stations'])->middleware('throttle:pickrush-rider-read')->name('stations');
     Route::post('/apply', [RiderApplicationController::class, 'register'])->middleware('throttle:pickrush-rider-apply')->name('apply');
 

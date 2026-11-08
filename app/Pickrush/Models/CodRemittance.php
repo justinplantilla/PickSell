@@ -3,15 +3,18 @@
 namespace App\Pickrush\Models;
 
 use App\Pickrush\Support\Audited;
+use App\Pickrush\Support\CompanyOwned;
 use App\Pickrush\Support\HubOwned;
 use Illuminate\Database\Eloquent\Model;
 
 /** End-of-day cash handed from a rider to the station: system-expected against counted. */
 class CodRemittance extends Model
 {
-    use Audited, HubOwned;
+    use Audited, CompanyOwned, HubOwned;
 
     protected $table = 'pr_cod_remittances';
+
+    protected array $companyThrough = ['station_hub_id' => 'pr_hubs'];
 
     protected $guarded = ['id'];
 

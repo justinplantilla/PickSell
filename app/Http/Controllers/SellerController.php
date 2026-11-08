@@ -749,38 +749,12 @@ class SellerController extends Controller
         return $pdf->stream('waybill-'.$order->order_number.'.pdf');
     }
 
-    public function confirmDelivery(Order $order, FinancialLedgerService $ledger, OrderLifecycleService $lifecycle)
+    /** Sellers no longer confirm deliveries: the buyer taps "Order Received" (OrderReceipt), which completes the order. */
+    public function confirmDelivery(Order $order)
     {
-        DB::transaction(function () use ($order, $ledger, $lifecycle): void {
-            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
-            abort_if($locked->seller_id !== $this->seller()->id, 403);
-            abort_unless(in_array($locked->status, ['delivered', 'completed'], true), 422, 'Only delivered orders can be confirmed.');
+        abort_if($order->seller_id !== $this->seller()->id, 403);
 
-            if ($locked->status === 'delivered') {
-                $lifecycle->transition($locked, 'completed', $this->seller()->id, 'seller', null, [
-                    'tracking_status' => 'Seller confirmed delivery',
-                    'confirmed_by_seller_at' => now(),
-                ]);
-            } else {
-                $locked->update([
-                    'tracking_status' => 'Seller confirmed delivery',
-                    'confirmed_by_seller_at' => now(),
-                ]);
-            }
-            $ledger->postCompletedOrder($locked, $this->seller());
-            // A rating the buyer left while the order was delivered becomes the product review now, as in the buyer app.
-            if ($locked->rating && $locked->product_id) {
-                ProductReview::firstOrCreate(
-                    ['product_id' => $locked->product_id, 'buyer_id' => $locked->buyer_id, 'order_id' => $locked->id],
-                    ['rating' => $locked->rating, 'body' => $locked->feedback],
-                );
-            }
-            $order->setRawAttributes($locked->getAttributes(), true);
-        });
-
-        $this->seller()->notify(new SellerDeliveryReceived($order));
-
-        return back()->with('success', 'Delivery confirmed.');
+        return back()->withErrors(['order' => 'The buyer confirms they received the order; it completes and your earnings are released then.']);
     }
 
     public function notifications()

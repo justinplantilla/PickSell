@@ -241,7 +241,9 @@ class EndToEndTest extends TestCase
             ->assertJsonPath('today.delivered', 1)
             ->assertJsonCount(0, 'batches');
 
-        // 11. Ben rates: the delivery is credited to Jay, who delivered, not Xtian, whose attempt failed.
+        // 11. Ben confirms he received it, then rates: the delivery is credited to Jay, who delivered, not Xtian, whose attempt failed.
+        $this->actingAs($ben)->patch(config('app.url')."/buyer/orders/{$benOrder->id}/received")->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertSame('completed', $benOrder->fresh()->status);
         $this->actingAs($ben)->post(config('app.url')."/buyer/orders/{$benOrder->id}/feedback", ['rating' => 5, 'seller_rating' => 4, 'delivery_rating' => 3])
             ->assertSessionHasNoErrors()->assertRedirect();
         $this->assertSame($jay->id, $benOrder->fresh()->delivery_rider_id);

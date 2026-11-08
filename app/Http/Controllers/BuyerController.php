@@ -17,6 +17,8 @@ use App\Services\Vouchers\VoucherPricing;
 use App\Models\User;
 use App\Models\WishlistItem;
 use App\Pickrush\Bridge\PicksellBridge;
+use App\Services\SellerFollows;
+use App\Services\Vouchers\CheckoutVouchers;
 use App\Services\CartQuote;
 use App\Services\OrderPlacement;
 use App\Services\Orders\OrderRating;
@@ -280,9 +282,7 @@ class BuyerController extends Controller
     /** The stores this buyer follows, most recently followed first. */
     public function following()
     {
-        $stores = $this->buyer()->followedSellers()
-            ->withCount(['products as active_products_count' => fn ($q) => $q->where('status', 'active')])
-            ->orderByPivot('created_at', 'desc')->paginate(20);
+        $stores = app(SellerFollows::class)->followedBy($this->buyer());
         $cartCount = CartItem::whereHas('cart', fn ($q) => $q->where('buyer_id', $this->buyer()->id))->count();
 
         return view('buyer.following', compact('stores', 'cartCount'));
@@ -291,12 +291,10 @@ class BuyerController extends Controller
     /** Follow a store, or unfollow it if already following. */
     public function toggleFollow(Request $request, User $seller)
     {
-        abort_unless($seller->role === 'seller' && $seller->status === 'approved', 404);
-        $result = $this->buyer()->followedSellers()->toggle($seller->id);
-        $following = ! empty($result['attached']);
+        ['following' => $following, 'followers' => $followers] = app(SellerFollows::class)->toggle($this->buyer(), $seller);
 
         return $request->expectsJson()
-            ? response()->json(['following' => $following, 'followers' => $seller->followers()->count()])
+            ? response()->json(['following' => $following, 'followers' => $followers])
             : back()->with('success', $following ? 'You are now following this store.' : 'You unfollowed this store.');
     }
 
@@ -379,71 +377,33 @@ class BuyerController extends Controller
         $addressId = $addresses->contains('id', (int) $request->query('address_id')) ? (int) $request->query('address_id') : null;
         $deliverTo = DeliveryAddress::forBuyer($this->buyer(), $addressId);
 
-        // One parcel and one delivery fee per seller, priced the way the order will be.
-        $shipping = $placement->shippingQuotes($this->buyer(), $items, $deliverTo)->map(fn ($quote, $sellerId) => [
-            'seller' => $items->firstWhere('product.seller_id', $sellerId)->product->seller,
-        ] + CartQuote::shipping($quote, $items->filter(fn ($item) => $item->product->seller_id == $sellerId)));
+        // One parcel and one delivery fee per seller, priced the way the order will be, by the
+        // logistics company the buyer picked for it (?carrier[seller]=company; Pickrush pre-selected).
+        $carriers = array_filter((array) $request->query('carrier', []), 'is_numeric');
+        $shipping = $placement->carrierChoices($this->buyer(), $items, $deliverTo, $carriers)->map(function (array $choice, $sellerId) use ($items) {
+            $lines = $items->filter(fn ($item) => $item->product->seller_id == $sellerId);
+
+            return [
+                'seller' => $items->firstWhere('product.seller_id', $sellerId)->product->seller,
+                'carrier' => $choice['company_id'],
+                'carrier_name' => $choice['options'][$choice['company_id']]['company']->name,
+                'carriers' => CartQuote::carriers($choice, $lines),
+            ] + CartQuote::shipping($choice['quote'], $lines, $choice['company_id']);
+        });
+        $carriers = $shipping->map(fn ($parcel) => $parcel['carrier'])->all();
         $shippingTotal = $shipping->where('ok', true)->sum(fn ($parcel) => (float) $parcel['delivery_fee']);
         $canPlace = $deliverTo->isComplete() && $shipping->every(fn ($parcel) => $parcel['ok']);
         $vouchers = $this->checkoutVouchers($request, $items, $shippingTotal);
 
-        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount', 'shipping', 'shippingTotal', 'canPlace', 'addresses', 'addressId', 'deliverTo', 'vouchers'));
+        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount', 'shipping', 'shippingTotal', 'canPlace', 'addresses', 'addressId', 'deliverTo', 'vouchers', 'carriers'));
     }
 
-    /**
-     * The store and PickSell vouchers on offer at checkout, which ones are picked (store_voucher[seller],
-     * platform_voucher, or a typed code) and what they save. Placing the order checks them again.
-     */
+    /** The checkout's vouchers from the page's store_voucher[seller], platform_voucher and code (CheckoutVouchers). */
     private function checkoutVouchers(Request $request, $items, float $shippingTotal): array
     {
-        $pricing = app(VoucherPricing::class);
-        $buyer = $this->buyer();
-        $subtotals = $items->groupBy(fn ($item) => $item->product->seller_id)->map(fn ($lines) => $lines->sum(fn ($item) => $item->subtotal));
-        $picked = ['stores' => array_map('intval', (array) $request->query('store_voucher', [])), 'platform' => (int) $request->query('platform_voucher') ?: null];
-        $error = null;
-
-        // A typed code picks the store or PickSell voucher it belongs to (codes are not case-sensitive).
-        $code = strtoupper(trim((string) $request->query('code', '')));
-        if ($code !== '') {
-            $typed = Voucher::live()->whereRaw('UPPER(code) = ?', [$code])
-                ->where(fn ($q) => $q->whereNull('seller_id')->orWhereIn('seller_id', $subtotals->keys()))->first();
-            if (! $typed) {
-                $error = "{$code} is not a voucher for these items.";
-            } elseif ($typed->isPlatform()) {
-                $picked['platform'] = $typed->id;
-            } else {
-                $picked['stores'][$typed->seller_id] = $typed->id;
-            }
-        }
-
-        $stores = $subtotals->map(fn ($subtotal, $sellerId) => $pricing->options($pricing->storeVouchers($sellerId), $buyer, $subtotal));
-        $storeSavings = [];
-        foreach ($stores as $sellerId => $options) {
-            $choice = $options->first(fn ($o) => $o['voucher']->id === ($picked['stores'][$sellerId] ?? null));
-            if ($choice && $choice['problem']) {
-                $error ??= "{$choice['voucher']->code}: {$choice['problem']}";
-            }
-            $storeSavings[$sellerId] = $choice && ! $choice['problem'] ? $choice['discount'] : 0;
-            if (! $storeSavings[$sellerId]) {
-                unset($picked['stores'][$sellerId]);
-            }
-        }
-
-        $platformOptions = $pricing->options($pricing->platformVouchers(), $buyer, $subtotals->sum() - array_sum($storeSavings), $shippingTotal);
-        $platformChoice = $platformOptions->first(fn ($o) => $o['voucher']->id === $picked['platform']);
-        if ($platformChoice && $platformChoice['problem']) {
-            $error ??= "{$platformChoice['voucher']->code}: {$platformChoice['problem']}";
-        }
-        $platformSaving = $platformChoice && ! $platformChoice['problem'] ? $platformChoice['discount'] : 0;
-        if (! $platformSaving) {
-            $picked['platform'] = null;
-        }
-
-        return [
-            'stores' => $stores, 'platform' => $platformOptions, 'picked' => $picked, 'error' => $error,
-            'storeSavings' => $storeSavings, 'platformSaving' => $platformSaving,
-            'total' => round(array_sum($storeSavings) + $platformSaving, 2),
-        ];
+        return app(CheckoutVouchers::class)->pick($this->buyer(), $items, $shippingTotal,
+            ['stores' => (array) $request->query('store_voucher', []), 'platform' => $request->query('platform_voucher')],
+            (string) $request->query('code', ''));
     }
 
     public function updateCart(Request $request, CartItem $item)
@@ -480,6 +440,8 @@ class BuyerController extends Controller
             'store_vouchers' => 'nullable|array',
             'store_vouchers.*' => 'integer',
             'platform_voucher' => 'nullable|integer',
+            'carriers' => 'nullable|array',
+            'carriers.*' => 'nullable|integer',
         ], ['notes.*.max' => 'Keep each note to the seller under 300 characters.']);
 
         if ($placement->items($this->buyer(), $data['item_ids'])->isEmpty()) {
@@ -489,7 +451,7 @@ class BuyerController extends Controller
         try {
             $placement->place($this->buyer(), $data['item_ids'], $data['voucher_code'] ?? null,
                 DeliveryAddress::forBuyer($this->buyer(), $data['address_id'] ?? null), $data['notes'] ?? [],
-                ['stores' => $data['store_vouchers'] ?? [], 'platform' => $data['platform_voucher'] ?? null]);
+                ['stores' => $data['store_vouchers'] ?? [], 'platform' => $data['platform_voucher'] ?? null], $data['carriers'] ?? []);
         } catch (ValidationException $exception) {
             return redirect()->route('buyer.cart')->withErrors($exception->errors());
         }
@@ -534,6 +496,24 @@ class BuyerController extends Controller
         return view('buyer.order-tracking', compact('order', 'tracking'));
     }
 
+    /** The rider's photo at the door, for the buyer of the order only (stored privately). */
+    public function proofOfDelivery(Order $order)
+    {
+        abort_if($order->buyer_id !== $this->buyer()->id, 404);
+        $proof = \App\Support\OrderDelivery::proof($order);
+        abort_unless($proof && \Illuminate\Support\Facades\Storage::disk('local')->exists($proof->proof_photo_path), 404);
+
+        return \Illuminate\Support\Facades\Storage::disk('local')->response($proof->proof_photo_path, "delivery-{$order->order_number}.jpg", ['Cache-Control' => 'private, max-age=3600']);
+    }
+
+    /** "Order Received": the buyer confirms the delivered parcel reached them; then they can rate it. */
+    public function confirmReceived(Order $order, \App\Services\Orders\OrderReceipt $receipt)
+    {
+        $receipt->confirm($order, $this->buyer());
+
+        return back()->with('success', 'Thanks for confirming! You can now rate your order.');
+    }
+
     public function cancelOrder(Request $request, Order $order, OrderCancellationService $cancellations)
     {
         $data = $request->validate(['reason' => ['nullable', 'string', 'max:1000']]);
@@ -549,7 +529,7 @@ class BuyerController extends Controller
     public function submitFeedback(Request $request, Order $order, OrderRating $ratings)
     {
         abort_if($order->buyer_id !== $this->buyer()->id, 403);
-        abort_unless(in_array($order->status, ['delivered', 'completed', 'cancelled'], true), 422, 'You can rate an order once it has been delivered.');
+        abort_unless(in_array($order->status, ['completed', 'cancelled'], true), 422, 'Confirm you received your order first, then rate it.');
         abort_if($order->rating !== null, 422, 'You already rated this order.');
 
         // A cancelled order is one experience rating; a delivered one rates the product, the seller and the delivery.
@@ -610,12 +590,10 @@ class BuyerController extends Controller
     /** Mark a review helpful, or take the mark back. Buyers cannot vote on their own review. */
     public function toggleHelpful(Request $request, ProductReview $review)
     {
-        abort_if($review->buyer_id === $this->buyer()->id, 422, 'You cannot vote on your own review.');
-        $vote = ProductReviewVote::where(['product_review_id' => $review->id, 'user_id' => $this->buyer()->id])->first();
-        $vote ? $vote->delete() : ProductReviewVote::create(['product_review_id' => $review->id, 'user_id' => $this->buyer()->id]);
+        $vote = app(\App\Services\ReviewVotes::class)->toggle($this->buyer(), $review);
 
         return $request->expectsJson()
-            ? response()->json(['helpful' => ! $vote, 'count' => $review->votes()->count()])
+            ? response()->json($vote)
             : redirect()->to(route('buyer.product', $review->product_id).'#review-'.$review->id);
     }
 
@@ -845,15 +823,9 @@ class BuyerController extends Controller
     }
 
     /** The door Pickrush riders navigate to for this buyer's deliveries. */
-    public function updateDeliveryLocation(Request $request)
+    public function updateDeliveryLocation(Request $request, \App\Services\DeliveryPin $pin)
     {
-        $data = $request->validate([
-            'lat' => 'required|numeric|between:4,22',      // the Philippines
-            'lng' => 'required|numeric|between:116,127',
-        ], ['lat.required' => 'Drop a pin on the map first.', 'lat.between' => 'Pin a spot inside the Philippines.', 'lng.between' => 'Pin a spot inside the Philippines.']);
-        $buyer = $this->buyer();
-        $buyer->update(['delivery_lat' => $data['lat'], 'delivery_lng' => $data['lng']]);
-        PicksellBridge::buyerPinned($buyer);
+        $pin->save($this->buyer(), $request);
 
         return back()->with('success', 'Delivery pin saved. Pickrush riders will bring your orders to this spot.');
     }

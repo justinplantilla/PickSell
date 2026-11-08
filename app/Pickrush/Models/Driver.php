@@ -3,18 +3,21 @@
 namespace App\Pickrush\Models;
 
 use App\Pickrush\Support\Audited;
+use App\Pickrush\Support\CompanyOwned;
 use App\Pickrush\Support\HubOwned;
 use Illuminate\Database\Eloquent\Model;
 
 /** A truck driver Pickrush hired, registered to the hub that dispatches them. */
 class Driver extends Model
 {
-    use Audited, HubOwned;
+    use Audited, CompanyOwned, HubOwned;
 
     /** LTO driver's license restriction codes, as offered on the form. */
     public const LICENSE_CODES = ['A', 'A1', 'B', 'B1', 'B2', 'BE', 'C', 'CE', 'D'];
 
     protected $table = 'pr_drivers';
+
+    protected array $companyThrough = ['hub_id' => 'pr_hubs'];
 
     protected $guarded = ['id'];
 

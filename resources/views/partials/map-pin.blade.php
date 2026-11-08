@@ -1,14 +1,16 @@
 {{--
     Map pin picker: free OpenStreetMap tiles through Leaflet, no API key. Click the map or drag
     the pin; "Use my current location" asks the browser. Writes into the two hidden inputs.
-    Params: $id (unique), $lat, $lng (current pin or null), optional $center [lat, lng] to open at.
+    Params: $id (unique), $lat, $lng (current pin or null), optional $center [lat, lng] to open at,
+    optional $place ("City, Province") and $placeZoom for pickrush.partials.map-centering to open at.
 --}}
 @php
     $hasPin = $lat !== null && $lng !== null;
     $start = $hasPin ? [(float) $lat, (float) $lng] : ($center ?? [12.8797, 121.7740]);   // the Philippines
 @endphp
 <div class="map-pin" data-map-pin="{{ $id }}" data-lat="{{ $hasPin ? $lat : '' }}" data-lng="{{ $hasPin ? $lng : '' }}"
-     data-start="{{ json_encode($start) }}" data-zoom="{{ $hasPin ? 17 : ($center ?? null ? 14 : 6) }}">
+     data-start="{{ json_encode($start) }}" data-zoom="{{ $hasPin ? 17 : ($center ?? null ? 14 : 6) }}"
+     @isset($place) data-place="{{ $place }}" data-place-zoom="{{ $placeZoom ?? 13 }}" @endisset>
     <div id="{{ $id }}-map" class="map-pin-canvas"></div>
     <div class="map-pin-bar">
         <button type="button" data-map-pin-locate class="map-pin-locate">📍 Use my current location</button>
@@ -20,6 +22,13 @@
 
 @once
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+    {{-- Base size here, so the map shows on pages that do not load ui-feedback.css (the logistics portal). --}}
+    <style>
+        .map-pin-canvas { height: 320px; border-radius: 10px; border: 1px solid #e3e6ec; z-index: 0; }
+        .map-pin-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin-top: .6rem; }
+        .map-pin-locate { padding: .45rem .8rem; border: 1px solid #d0d5dd; border-radius: 8px; background: #fff; color: inherit; font: inherit; cursor: pointer; }
+        .map-pin-label { color: #6b7280; font-size: .9em; }
+    </style>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {

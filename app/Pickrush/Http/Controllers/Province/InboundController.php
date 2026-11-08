@@ -8,6 +8,7 @@ use App\Pickrush\Models\Manifest;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Services\ExceptionDesk;
 use App\Pickrush\Services\ManifestService;
+use App\Pickrush\Support\ParcelHubScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -35,9 +36,9 @@ class InboundController extends PortalController
         }
 
         return $this->attempt(function () use ($data, $manifests, $hub) {
-            $parcel = Parcel::withoutGlobalScopes()->where('tracking_no', ManifestService::normalize($data['tracking_no']))->first()
+            $parcel = Parcel::withoutGlobalScope(ParcelHubScope::class)->where('tracking_no', ManifestService::normalize($data['tracking_no']))->first()
                 ?? throw new \App\Pickrush\Services\OperationRefused('Unknown tracking number. Report it as unlabeled.');
-            $trip = Manifest::withoutGlobalScopes()->where('to_hub_id', $hub->id)->whereIn('status', ['dispatched', 'received'])
+            $trip = Manifest::withoutGlobalScope('hub')->where('to_hub_id', $hub->id)->whereIn('status', ['dispatched', 'received'])
                 ->whereHas('items', fn ($q) => $q->where('parcel_id', $parcel->id))->first();
             $trip ? $manifests->receive($trip, $parcel->tracking_no, $this->staff(), self::scanKey($data))
                 : $manifests->arrive($parcel, $hub, self::scanKey($data));

@@ -1,6 +1,7 @@
 <?php
 
 use App\Pickrush\Http\Controllers\AccountController;
+use App\Pickrush\Http\Controllers\ApplicationController;
 use App\Pickrush\Http\Controllers\AuthController;
 use App\Pickrush\Http\Controllers\DashboardController;
 use App\Pickrush\Http\Controllers\ExceptionController;
@@ -9,6 +10,7 @@ use App\Pickrush\Http\Controllers\Province;
 use App\Pickrush\Http\Controllers\HubController;
 use App\Pickrush\Http\Controllers\Hq;
 use App\Pickrush\Http\Controllers\ParcelController;
+use App\Pickrush\Http\Controllers\RegistrationController;
 use App\Pickrush\Http\Controllers\Station;
 use App\Pickrush\Http\Controllers\TrackingController;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +34,26 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
     Route::middleware('guest:pickrush')->group(function () {
         Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
         Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login.attempt');
+
+        // Logistics companies register here; a PickSell administrator approves them.
+        Route::get('/register', [RegistrationController::class, 'show'])->name('register');
+        Route::post('/register', [RegistrationController::class, 'store'])->middleware('throttle:10,1')->name('register.store');
+        Route::get('/register/submitted', [RegistrationController::class, 'submitted'])->name('register.submitted');
+        Route::post('/register/email-code', [RegistrationController::class, 'sendCode'])->middleware('throttle:6,1')->name('register.email-code');
+        Route::post('/register/email-code/verify', [RegistrationController::class, 'verifyCode'])->middleware('throttle:20,1')->name('register.email-code.verify');
+    });
+
+    // Address dropdowns for registering and for resubmitting after a rejection (signed in).
+    Route::middleware('throttle:120,1')->prefix('/register/address')->name('register.address.')->group(function () {
+        Route::get('/provinces', [RegistrationController::class, 'provinces'])->name('provinces');
+        Route::get('/municipalities', [RegistrationController::class, 'municipalities'])->name('municipalities');
+        Route::get('/barangays', [RegistrationController::class, 'barangays'])->name('barangays');
+    });
+
+    // A rejected company corrects its registration. Outside pickrush.role, which only lets approved companies in.
+    Route::middleware('auth:pickrush')->group(function () {
+        Route::get('/application', [ApplicationController::class, 'edit'])->name('application.edit');
+        Route::put('/application', [ApplicationController::class, 'update'])->middleware('throttle:10,1')->name('application.update');
     });
 
     Route::middleware(['auth:pickrush', 'pickrush.role'])->group(function () {
@@ -51,8 +73,13 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
         // Company (HQ) portal: monitor, govern, settle money. It does not scan parcels or assign riders.
         Route::middleware('pickrush.role:super_admin,finance,support')->group(function () {
             Route::get('/hubs', [HubController::class, 'index'])->name('hubs.index');
+            Route::get('/hubs/create', [HubController::class, 'create'])->name('hubs.create');
+            Route::post('/hubs', [HubController::class, 'store'])->name('hubs.store');
             Route::get('/hubs/{hub}', [HubController::class, 'show'])->name('hubs.show');
             Route::put('/hubs/{hub}', [HubController::class, 'update'])->name('hubs.update');
+            Route::get('/province-links', [Hq\HubLinkController::class, 'index'])->name('links.index');
+            Route::post('/province-links', [Hq\HubLinkController::class, 'store'])->name('links.store');
+            Route::put('/province-links/{link}', [Hq\HubLinkController::class, 'update'])->name('links.update');
 
             Route::prefix('hq')->name('hq.')->group(function () {
                 Route::get('/', Hq\DashboardController::class)->name('dashboard');

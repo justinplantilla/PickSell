@@ -5,7 +5,7 @@
 <div class="pr-page-head">
     <div>
         <h1>Rates &amp; policies</h1>
-        <p>Rules every hub follows. Changes apply to new actions straight away and are recorded in the audit log.{{ $canEdit ? '' : ' Only a super admin can change them.' }}</p>
+        <p>Rules every hub follows. Changes apply to new actions straight away and are recorded in the audit log.{{ $canEdit ? '' : ($shared ? ' These policies apply to every logistics company on PickSell and are kept by PickSell.' : ' Only a super admin can change them.') }}</p>
     </div>
 </div>
 

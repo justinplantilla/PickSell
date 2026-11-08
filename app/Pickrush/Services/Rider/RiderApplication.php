@@ -3,6 +3,7 @@
 namespace App\Pickrush\Services\Rider;
 
 use App\Pickrush\Enums\StaffRole;
+use App\Pickrush\Models\Company;
 use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\RiderDocument;
@@ -15,9 +16,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * A rider's application from the rider app. It lands in the chosen station as pending; nothing
- * is unlocked until that station's hub manager approves it (RiderOnboarding::approve). A rejected
- * rider can fix the application and resubmit, which puts it back to pending.
+ * A rider's application from the rider app. The rider picks one logistics company, then one of
+ * its stations; the application lands there as pending and nothing is unlocked until that
+ * station's hub manager approves it (RiderOnboarding::approve). A rejected rider can fix the
+ * application and resubmit, to the same company or another one, which puts it back to pending.
  */
 class RiderApplication
 {
@@ -26,11 +28,31 @@ class RiderApplication
 
     private const NCR_REGION_CODE = '130000000';
 
-    /** Active stations with an active hub manager to review applications. */
-    public static function acceptingStations(): Builder
+    /**
+     * Active stations with an active hub manager to review applications, of an approved company
+     * (one company when given).
+     */
+    public static function acceptingStations(?int $companyId = null): Builder
     {
-        return Hub::stations()->where('is_active', true)->whereHas('staff', fn ($q) => $q
-            ->where('role', StaffRole::HubManager)->where('is_active', true));
+        // Any approved company: a rejected rider resubmitting may move to another company.
+        return Hub::withoutGlobalScope('company')->stations()->where('is_active', true)
+            ->when($companyId, fn ($q, $id) => $q->where('pr_hubs.company_id', $id))
+            ->whereIn('pr_hubs.company_id', Company::approved()->select('id'))
+            ->whereHas('staff', fn ($q) => $q->where('role', StaffRole::HubManager)->where('is_active', true));
+    }
+
+    /**
+     * Approved companies with a station accepting riders near the address (the city first, else
+     * the province), the default company first. A rider works for one of them only.
+     *
+     * @return Collection<int, Company>
+     */
+    public function companiesNear(?string $cityCode, ?string $provinceCode): Collection
+    {
+        $ids = collect([$cityCode ? $this->stationsNear($cityCode, null)['stations'] : collect(),
+            $this->stationsNear(null, $provinceCode)['stations']])->flatten()->pluck('company_id')->unique();
+
+        return Company::approved()->whereIn('id', $ids)->orderByDesc('is_default')->orderBy('name')->get();
     }
 
     /**
@@ -38,16 +60,16 @@ class RiderApplication
      *
      * @return array{scope: 'city'|'province'|'none', stations: Collection<int, Hub>}
      */
-    public function stationsNear(?string $cityCode, ?string $provinceCode): array
+    public function stationsNear(?string $cityCode, ?string $provinceCode, ?int $companyId = null): array
     {
         if ($cityCode) {
-            $inCity = self::acceptingStations()->where('psgc_code', $cityCode)->orderBy('name')->get();
+            $inCity = self::acceptingStations($companyId)->where('psgc_code', $cityCode)->orderBy('name')->get();
             if ($inCity->isNotEmpty()) {
                 return ['scope' => 'city', 'stations' => $inCity];
             }
         }
         if ($provinceCode) {
-            $inProvince = self::acceptingStations()
+            $inProvince = self::acceptingStations($companyId)
                 ->when($provinceCode === self::METRO_MANILA,
                     fn ($q) => $q->where('region_code', self::NCR_REGION_CODE),
                     fn ($q) => $q->whereHas('parent', fn ($p) => $p->where('psgc_code', $provinceCode)))
@@ -109,6 +131,8 @@ class RiderApplication
 
         return [
             'station_hub_id' => (int) $data['hub_id'],
+            // The station decides the company: a rider works for one company only.
+            'company_id' => Hub::withoutGlobalScopes()->whereKey($data['hub_id'])->value('company_id'),
             'first_name' => trim($data['first_name']),
             'last_name' => trim($data['last_name']),
             'birthdate' => $data['birth_date'],

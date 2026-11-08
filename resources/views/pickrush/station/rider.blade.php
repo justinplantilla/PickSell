@@ -149,7 +149,7 @@
                         @if(in_array($rider->status, ['pending', 'under_review'], true))<option value="reject">Reject application</option>@endif
                         @if($rider->status === 'active')<option value="suspend">Suspend</option>@endif
                         @if($rider->status === 'suspended')<option value="reactivate">Reactivate</option>@endif
-                        @unless(in_array($rider->status, ['deactivated', 'rejected'], true))<option value="deactivate">Deactivate (left Pickrush)</option>@endunless
+                        @unless(in_array($rider->status, ['deactivated', 'rejected'], true))<option value="deactivate">Deactivate (left the company)</option>@endunless
                     </select></div>
                 <div class="pr-field"><label for="reason">Reason</label><input id="reason" name="reason" class="pr-input"></div>
                 <div class="pr-field" style="justify-content:flex-end"><button class="pr-btn pr-btn-danger" type="submit">Apply</button></div>

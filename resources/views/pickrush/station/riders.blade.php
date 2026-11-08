@@ -5,7 +5,7 @@
 <div class="pr-page-head">
     <div>
         <h1>Riders</h1>
-        <p>Riders apply in the Pickrush rider app and choose this station. Nobody gets parcels until the hub manager approves the application.</p>
+        <p>Riders apply in the rider app and choose this station. Nobody gets parcels until the hub manager approves the application.</p>
     </div>
 </div>
 

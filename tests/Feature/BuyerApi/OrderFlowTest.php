@@ -3,10 +3,12 @@
 namespace Tests\Feature\BuyerApi;
 
 use App\Models\Complaint;
+use App\Models\FinancialTransaction;
 use App\Models\OrderStatusHistory;
 use App\Models\ProductReview;
 use App\Models\ReturnRequest;
 use App\Models\ReturnRequestEvent;
+use App\Pickrush\Models\Company;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -28,10 +30,11 @@ class OrderFlowTest extends TestCase
         $this->order($buyer, $lamp, 'completed', ['rating' => 5]);
         $this->order($buyer, $lamp, 'completed');
 
+        // Delivered waits for "Order Received" with out-for-delivery (the app's To Receive); only completed is rated.
         $this->getJson('/api/mobile/buyer/orders')->assertOk()->assertJsonPath('counts', [
-            'to_ship' => 4, 'in_transit' => 1, 'out_for_delivery' => 1, 'to_rate' => 2, 'completed' => 2, 'cancelled' => 1,
+            'to_ship' => 4, 'in_transit' => 1, 'out_for_delivery' => 2, 'to_rate' => 1, 'completed' => 2, 'cancelled' => 1,
         ]);
-        $this->assertCount(2, $this->getJson('/api/mobile/buyer/orders?tab=to_rate')->json('orders'));
+        $this->assertCount(1, $this->getJson('/api/mobile/buyer/orders?tab=to_rate')->json('orders'));
         // Legacy "pending" shows as the step it stands for.
         $this->assertContains('placed', collect($this->getJson('/api/mobile/buyer/orders?tab=to_ship')->json('orders'))->pluck('status'));
     }
@@ -58,23 +61,55 @@ class OrderFlowTest extends TestCase
         $this->assertSame('ready_for_pickup', $handedOver->fresh()->status);
     }
 
-    public function test_rating_after_delivery_and_the_product_review_once_completed(): void
+    public function test_the_buyer_confirms_receipt_then_rates_and_the_review_is_published(): void
     {
         $lamp = $this->product($this->seller());
         $buyer = $this->actingAsBuyer();
         $shipping = $this->order($buyer, $lamp, 'out_for_delivery');
         $delivered = $this->order($buyer, $lamp, 'delivered');
-        $completed = $this->order($buyer, $lamp, 'completed');
+        $full = ['rating' => 5, 'seller_rating' => 5, 'delivery_rating' => 4, 'feedback' => 'Bright and sturdy'];
 
-        $this->postJson("/api/mobile/buyer/orders/{$shipping->id}/rate", ['rating' => 5])->assertUnprocessable();
-        $this->postJson("/api/mobile/buyer/orders/{$delivered->id}/rate", ['rating' => 4, 'feedback' => 'Nice'])->assertOk()->assertJsonPath('order.tab', 'completed');
-        $this->assertSame(0, ProductReview::count()); // the website reviews products only after the seller confirms
+        // Not before Pickrush delivers it, and not before the buyer confirms receipt.
+        $this->postJson("/api/mobile/buyer/orders/{$shipping->id}/received")->assertUnprocessable();
+        $this->postJson("/api/mobile/buyer/orders/{$shipping->id}/rate", $full)->assertUnprocessable();
+        $this->getJson("/api/mobile/buyer/orders/{$delivered->id}")->assertOk()
+            ->assertJsonPath('order.tab', 'out_for_delivery')
+            ->assertJsonPath('order.actions.can_confirm_received', true)
+            ->assertJsonPath('order.actions.can_rate', false);
+        $this->postJson("/api/mobile/buyer/orders/{$delivered->id}/rate", $full)->assertUnprocessable()
+            ->assertJsonPath('message', 'Tap Order Received first, then rate your order.');
 
-        $this->postJson("/api/mobile/buyer/orders/{$completed->id}/rate", ['rating' => 5, 'feedback' => 'Bright and sturdy'])->assertOk();
-        $this->postJson("/api/mobile/buyer/orders/{$completed->id}/rate", ['rating' => 1])->assertUnprocessable();
+        // "Order Received" completes it (the seller's earnings are posted) and opens it for rating.
+        $this->postJson("/api/mobile/buyer/orders/{$delivered->id}/received")->assertOk()
+            ->assertJsonPath('order.status', 'completed')->assertJsonPath('order.tab', 'to_rate')
+            ->assertJsonPath('order.actions.can_confirm_received', false)->assertJsonPath('order.actions.can_rate', true);
+        $this->postJson("/api/mobile/buyer/orders/{$delivered->id}/received")->assertOk(); // a second tap changes nothing
+        $this->assertSame(3, FinancialTransaction::where('reference_type', 'order')->where('reference_id', $delivered->id)->count());
+        $history = OrderStatusHistory::where('order_id', $delivered->id)->where('to_status', 'completed')->sole();
+        $this->assertSame(['buyer', $buyer->id], [$history->source, $history->changed_by]);
+
+        // Like the website's rating form, the seller's service and the delivery are rated too.
+        $this->postJson("/api/mobile/buyer/orders/{$delivered->id}/rate", ['rating' => 4, 'feedback' => 'Nice'])->assertUnprocessable()
+            ->assertJsonPath('errors.seller_rating.0', 'Rate the seller’s service.')->assertJsonPath('errors.delivery_rating.0', 'Rate the delivery.');
+        $this->postJson("/api/mobile/buyer/orders/{$delivered->id}/rate", $full)->assertOk()->assertJsonPath('order.tab', 'completed');
+        $this->postJson("/api/mobile/buyer/orders/{$delivered->id}/rate", $full)->assertUnprocessable();
+
+        // Published straight away.
         $review = ProductReview::sole();
-        $this->assertSame([$lamp->id, $completed->id, 5, 'Bright and sturdy'], [$review->product_id, $review->order_id, $review->rating, $review->body]);
+        $this->assertSame([$lamp->id, $delivered->id, 5, 'Bright and sturdy'], [$review->product_id, $review->order_id, $review->rating, $review->body]);
         $this->getJson("/api/mobile/products/{$lamp->id}/reviews")->assertJsonPath('reviews.0.comment', 'Bright and sturdy');
+    }
+
+    public function test_an_older_rating_left_before_confirming_is_published_on_order_received(): void
+    {
+        $lamp = $this->product($this->seller());
+        $buyer = $this->actingAsBuyer();
+        $order = $this->order($buyer, $lamp, 'delivered', ['rating' => 4, 'seller_rating' => 5, 'delivery_rating' => 5, 'feedback' => 'Rated early']);
+
+        $this->postJson("/api/mobile/buyer/orders/{$order->id}/received")->assertOk()->assertJsonPath('order.tab', 'completed');
+
+        $this->assertSame([4, 'Rated early'], [ProductReview::sole()->rating, ProductReview::sole()->body]);
+        $this->postJson("/api/mobile/buyer/orders/{$this->order($this->buyer(), $lamp, 'delivered')->id}/received")->assertNotFound();
     }
 
     public function test_return_requests_follow_the_website_workflow(): void
@@ -135,10 +170,10 @@ class OrderFlowTest extends TestCase
         $buyer = $this->actingAsBuyer();
         $order = $this->order($buyer, $lamp, 'sorted');
         $parcel = DB::table('pr_parcels')->insertGetId([
-            'tracking_no' => 'PR-123456', 'source' => 'picksell', 'external_ref' => (string) $order->id, 'current_status' => 'arrived_at_station',
+            'company_id' => Company::defaultId(), 'tracking_no' => 'PR-123456', 'source' => 'picksell', 'external_ref' => (string) $order->id, 'current_status' => 'arrived_at_station',
             'shipper_name' => 'Lamp Shop', 'consignee_name' => $buyer->full_name, 'cod_amount' => 2000, 'created_at' => now(), 'updated_at' => now(),
         ]);
-        $hub = DB::table('pr_hubs')->insertGetId(['code' => 'CEB-1', 'name' => 'Cebu City Station', 'type' => 'station', 'psgc_code' => '072217000', 'region_code' => '070000000', 'province_name' => 'Cebu']);
+        $hub = DB::table('pr_hubs')->insertGetId(['company_id' => Company::defaultId(), 'code' => 'CEB-1', 'name' => 'Cebu City Station', 'type' => 'station', 'psgc_code' => '072217000', 'region_code' => '070000000', 'province_name' => 'Cebu']);
         DB::table('pr_parcel_events')->insert([
             ['parcel_id' => $parcel, 'status' => 'picked_up', 'hub_id' => null, 'actor_type' => 'rider', 'occurred_at' => now()->subHours(5)],
             ['parcel_id' => $parcel, 'status' => 'arrived_at_station', 'hub_id' => $hub, 'actor_type' => 'staff', 'occurred_at' => now()],

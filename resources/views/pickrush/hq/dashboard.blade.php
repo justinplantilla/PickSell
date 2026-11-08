@@ -11,7 +11,7 @@
 <div class="pr-page-head">
     <div>
         <span class="pr-eyebrow">Welcome back, {{ $firstName }}</span>
-        <h1>Pickrush network</h1>
+        <h1>{{ $portalCompanyName }} network</h1>
         <p>{{ $network['provinces'] }} province hubs · {{ number_format($network['stations']) }} station hubs</p>
     </div>
     <div class="pr-head-tools">

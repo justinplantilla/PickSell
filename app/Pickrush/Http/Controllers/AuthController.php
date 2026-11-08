@@ -29,8 +29,8 @@ class AuthController extends Controller
             $inactive = Staff::where('email', $credentials['email'])->where('is_active', false)->exists();
 
             return back()->withErrors(['email' => $inactive
-                ? 'This account is inactive. Ask HQ to activate it.'
-                : 'These credentials do not match a Pickrush account.'])->onlyInput('email');
+                ? 'This account is inactive. Ask your company administrator to activate it.'
+                : 'These credentials do not match a logistics account.'])->onlyInput('email');
         }
 
         $request->session()->regenerate();

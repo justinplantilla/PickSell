@@ -20,7 +20,7 @@ class ReviewPhotosAndHelpfulTest extends TestCase
         $seller = $this->seller();
         $buyer = $this->buyer();
         $lamp = $this->product($seller);
-        $order = $this->order($buyer, $lamp, 'delivered');
+        $order = $this->order($buyer, $lamp, 'completed');   // the buyer confirmed receipt, so it can be rated
 
         $this->actingAs($buyer)->post(route('buyer.feedback', $order), [
             'rating' => 5, 'seller_rating' => 5, 'delivery_rating' => 5, 'feedback' => 'Bright',
@@ -30,7 +30,6 @@ class ReviewPhotosAndHelpfulTest extends TestCase
         $this->assertSame(2, ProductReviewPhoto::where('order_id', $order->id)->count());
         Storage::disk('public')->assertExists(ProductReviewPhoto::first()->path);
 
-        $this->actingAs($seller)->patch(route('seller.orders.confirm-delivery', $order))->assertRedirect();
         $this->actingAs($this->buyer())->get(route('buyer.product', $lamp))->assertOk()
             ->assertSee(Storage::url(ProductReviewPhoto::first()->path), false);
         $this->getJson("/api/mobile/products/{$lamp->id}/reviews")->assertOk()->assertJsonCount(2, 'reviews.0.photos');
@@ -40,7 +39,7 @@ class ReviewPhotosAndHelpfulTest extends TestCase
     {
         Storage::fake('public');
         $buyer = $this->buyer();
-        $order = $this->order($buyer, $this->product($this->seller()), 'delivered');
+        $order = $this->order($buyer, $this->product($this->seller()), 'completed');
         $stars = ['rating' => 5, 'seller_rating' => 5, 'delivery_rating' => 5];
 
         $this->actingAs($buyer)->post(route('buyer.feedback', $order), $stars + ['photos' => array_fill(0, 4, UploadedFile::fake()->image('x.jpg'))])

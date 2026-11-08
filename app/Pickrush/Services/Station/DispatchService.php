@@ -12,6 +12,7 @@ use App\Pickrush\Services\OperationRefused;
 use App\Pickrush\Services\ParcelLedger;
 use App\Pickrush\Services\Rider\RiderBatches;
 use App\Pickrush\Support\Actor;
+use App\Pickrush\Support\ParcelHubScope;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -55,7 +56,7 @@ class DispatchService
     public function assign(Parcel $parcel, Rider $rider, Staff $staff): Assignment
     {
         return DB::transaction(function () use ($parcel, $rider, $staff) {
-            $parcel = Parcel::withoutGlobalScopes()->whereKey($parcel->id)->lockForUpdate()->firstOrFail();
+            $parcel = Parcel::withoutGlobalScope(ParcelHubScope::class)->whereKey($parcel->id)->lockForUpdate()->firstOrFail();
             $station = $staff->hub;
             $type = self::taskFor($parcel, $station)
                 ?? throw new OperationRefused("{$parcel->tracking_no} is not waiting for a rider at {$station->name} ({$parcel->current_status->label()}).");

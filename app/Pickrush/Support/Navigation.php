@@ -56,6 +56,7 @@ final class Navigation
         }
         $items[] = ['label' => 'Exceptions', 'route' => 'pickrush.exceptions.index', 'active' => 'pickrush.exceptions.*'];
         $items[] = ['label' => 'Hubs', 'route' => 'pickrush.hubs.index', 'active' => 'pickrush.hubs.*'];
+        $items[] = ['label' => 'Province links', 'route' => 'pickrush.links.index', 'active' => 'pickrush.links.*'];
         if ($is(StaffRole::SuperAdmin)) {
             $items[] = ['label' => 'Staff & roles', 'route' => 'pickrush.hq.staff.index', 'active' => 'pickrush.hq.staff.*'];
         }

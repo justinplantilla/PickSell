@@ -3,9 +3,12 @@
 namespace App\Pickrush\Services\Shipping;
 
 use App\Pickrush\Models\AuditLog;
+use App\Pickrush\Models\Company;
 use App\Pickrush\Services\OperationRefused;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Turns the five price levels and the 5 × 5 route grid into dated rate rows for every
@@ -18,10 +21,22 @@ use Illuminate\Support\Facades\DB;
  */
 class RouteRateGenerator
 {
+    /** The company whose rate card this generator reads and writes (null: resolved on first use). */
+    private ?int $companyId = null;
+
     /** When the first route prices took effect. */
     public const FIRST_ROUTE_DATE = '2026-11-05';
 
     public const ORIGIN_OF_GENERIC = 'NCR';
+
+    /** This generator, working on one company's rate card. */
+    public function forCompany(int $companyId): static
+    {
+        $generator = clone $this;
+        $generator->companyId = $companyId;
+
+        return $generator;
+    }
 
     /**
      * @param  bool  $updateGeneric  also move the generic rows to the NCR-origin prices (HQ edits);
@@ -80,7 +95,7 @@ class RouteRateGenerator
             $before = $this->grid();
             foreach ($grid as $origin => $row) {
                 foreach ($row as $destination => $level) {
-                    DB::table('pr_shipping_route_levels')->updateOrInsert(['origin_region' => $origin, 'destination_region' => $destination],
+                    $this->table('pr_shipping_route_levels')->updateOrInsert($this->companyColumn() + ['origin_region' => $origin, 'destination_region' => $destination],
                         ['level' => $level, 'updated_at' => now()]);
                 }
             }
@@ -104,9 +119,9 @@ class RouteRateGenerator
                 $merged = ['fees' => array_replace($before[$level]['fees'], array_map(fn ($fee) => self::money($fee), $prices['fees'] ?? [])),
                     'per_kg' => self::money($prices['per_kg'] ?? $before[$level]['per_kg']), 'over_kg' => $before[$level]['over_kg']];
                 self::validateLevels([$level => $merged]);
-                DB::table('pr_shipping_levels')->where('level', $level)->update(['per_kg_fee' => $merged['per_kg'], 'updated_at' => now()]);
+                $this->table('pr_shipping_levels')->where('level', $level)->update(['per_kg_fee' => $merged['per_kg'], 'updated_at' => now()]);
                 foreach ($merged['fees'] as $kg => $fee) {
-                    DB::table('pr_shipping_level_fees')->where('level', $level)->where('max_weight_kg', $kg)->update(['fee' => $fee]);
+                    $this->table('pr_shipping_level_fees')->where('level', $level)->where('max_weight_kg', $kg)->update(['fee' => $fee]);
                 }
             }
             AuditLog::record(null, 'shipping_levels.updated', ['levels' => $before], ['levels' => $this->levels(), 'from' => $from]);
@@ -118,9 +133,9 @@ class RouteRateGenerator
     /** @return array<int, array{name: string, fees: array<string, string>, per_kg: string, over_kg: string}> level => prices */
     public function levels(): array
     {
-        $fees = DB::table('pr_shipping_level_fees')->orderBy('max_weight_kg')->get()->groupBy('level');
+        $fees = $this->table('pr_shipping_level_fees')->orderBy('max_weight_kg')->get()->groupBy('level');
 
-        return DB::table('pr_shipping_levels')->orderBy('level')->get()->mapWithKeys(fn ($row) => [(int) $row->level => [
+        return $this->table('pr_shipping_levels')->orderBy('level')->get()->mapWithKeys(fn ($row) => [(int) $row->level => [
             'name' => $row->name,
             'fees' => ($fees[$row->level] ?? collect())->mapWithKeys(fn ($fee) => [self::money($fee->max_weight_kg) => self::money($fee->fee)])->all(),
             'per_kg' => self::money($row->per_kg_fee),
@@ -132,7 +147,7 @@ class RouteRateGenerator
     public function grid(): array
     {
         $grid = [];
-        foreach (DB::table('pr_shipping_route_levels')->get() as $row) {
+        foreach ($this->table('pr_shipping_route_levels')->get() as $row) {
             $grid[$row->origin_region][$row->destination_region] = (int) $row->level;
         }
 
@@ -190,10 +205,10 @@ class RouteRateGenerator
     {
         foreach ($regions as $destination) {
             $expected = $levels[$grid[self::ORIGIN_OF_GENERIC][$destination]];
-            $generic = DB::table('pr_shipping_rates')->whereNull('origin_region')->where('destination_region', $destination)
+            $generic = $this->table('pr_shipping_rates')->whereNull('origin_region')->where('destination_region', $destination)
                 ->whereDate('effective_from', '<=', $from)->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $from))
                 ->get()->mapWithKeys(fn ($row) => [self::money($row->max_weight_kg) => self::money($row->fee)])->all();
-            $perKg = DB::table('pr_shipping_overweight_rates')->whereNull('origin_region')->where('destination_region', $destination)
+            $perKg = $this->table('pr_shipping_overweight_rates')->whereNull('origin_region')->where('destination_region', $destination)
                 ->whereDate('effective_from', '<=', $from)->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $from))
                 ->value('per_kg_fee');
 
@@ -219,7 +234,7 @@ class RouteRateGenerator
     private function sync(string $table, array $key, string $column, ?string $origin, string $destination, string $value,
         string $from, array &$counts, array $extra = []): void
     {
-        $rows = DB::table($table)->where($key)->where('destination_region', $destination)
+        $rows = $this->table($table)->where($key)->where('destination_region', $destination)
             ->when($origin, fn ($q) => $q->where('origin_region', $origin), fn ($q) => $q->whereNull('origin_region'))
             ->where(fn ($q) => $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $from))
             ->orderBy('effective_from')->get();
@@ -245,11 +260,30 @@ class RouteRateGenerator
             DB::table($table)->where('id', $current->id)->update(['effective_to' => Carbon::parse($from)->subDay()->toDateString(), 'updated_at' => now()]);
             $counts['ended']++;
         }
-        DB::table($table)->insert($key + $extra + [
+        DB::table($table)->insert($key + $extra + $this->companyColumn() + [
             'origin_region' => $origin, 'destination_region' => $destination, $column => $value,
             'effective_from' => $from, 'effective_to' => null, 'created_at' => now(), 'updated_at' => now(),
         ]);
         $counts['created']++;
+    }
+
+    /** A rate-card table limited to this generator's company. */
+    private function table(string $name): Builder
+    {
+        return DB::table($name)->where($this->companyColumn());
+    }
+
+    /**
+     * ['company_id' => id] for queries and new rows. Pickrush when no company was chosen; nothing
+     * while the shipping migration seeds the card, before the tables have a company column.
+     */
+    private function companyColumn(): array
+    {
+        if ($this->companyId === null && Schema::hasColumn('pr_shipping_levels', 'company_id')) {
+            $this->companyId = Company::defaultId();
+        }
+
+        return $this->companyId === null ? [] : ['company_id' => $this->companyId];
     }
 
     /** A 2-decimal string (database decimals and form input are already decimal strings). */

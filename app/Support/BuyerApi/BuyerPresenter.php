@@ -2,7 +2,11 @@
 
 namespace App\Support\BuyerApi;
 
+use App\Models\BuyerAddress;
 use App\Models\Order;
+use App\Support\DeliveryAddress;
+use App\Support\OrderDelivery;
+use App\Services\Orders\OrderReceipt;
 use App\Pickrush\Bridge\PicksellBridge;
 use App\Pickrush\Models\Parcel;
 use App\Models\Product;
@@ -92,9 +96,11 @@ final class BuyerPresenter
         ])->values()->all();
     }
 
-    public static function review(ProductReview $r): array
+    /** [$viewer] (the signed-in buyer, if any) adds their own vote, report and whether it is theirs. */
+    public static function review(ProductReview $r, ?User $viewer = null): array
     {
         $buyer = $r->buyer;
+        $viewerId = $viewer?->role === 'buyer' ? $viewer->id : null;
 
         return [
             'id'         => $r->id,
@@ -105,7 +111,17 @@ final class BuyerPresenter
             'helpful_count' => (int) ($r->votes_count ?? $r->votes()->count()),
             'seller_reply' => $r->seller_reply,
             'created_at' => self::date($r->created_at),
+            // The signed-in buyer's own vote and report (website: Helpful and Report on the product page).
+            'is_helpful' => $viewerId !== null && $r->votes()->where('user_id', $viewerId)->exists(),
+            'is_mine'    => $viewerId !== null && $r->buyer_id === $viewerId,
+            'reported'   => $viewerId !== null && $r->reports()->where('user_id', $viewerId)->exists(),
         ];
+    }
+
+    /** Why a buyer can report a review, for the report sheet. */
+    public static function reviewReportReasons(): array
+    {
+        return collect(\App\Models\ProductReviewReport::REASONS)->map(fn ($label, $code) => ['code' => $code, 'label' => $label])->values()->all();
     }
 
     /** The buyer's profile address, where the website books every parcel. */
@@ -121,6 +137,109 @@ final class BuyerPresenter
             'house_no'       => $u->house_no,
             'full_address'   => collect([$u->house_no, $u->street, $u->barangay, $u->municipality, $u->province])->filter(fn ($part) => filled($part))->join(', '),
             'complete'       => filled($u->province) && filled($u->municipality) && filled($u->barangay),
+            // The door riders navigate to, and the PSGC codes Pickrush routes by (null until matched).
+            'pin'               => self::pin(DeliveryAddress::fromProfile($u)),
+            'municipality_code' => $u->municipality_code,
+            'barangay_code'     => $u->barangay_code,
+        ];
+    }
+
+    /**
+     * Where an order ships, in the delivery_address shape. Orders to the default address show the
+     * profile address, as before. Orders to an address-book entry show the copy their shipment
+     * keeps (as the website's order page does), so editing or removing the entry later, or a
+     * different profile address, never changes where an order says it is going.
+     */
+    public static function orderShipTo(Order $o): ?array
+    {
+        $shipment = $o->shipment;
+        if (! $shipment?->buyer_address_id || ! $shipment->delivery_province) {
+            return $o->buyer ? self::deliveryAddress($o->buyer) : null;
+        }
+        $pin = $shipment->delivery_lat !== null && $shipment->delivery_lng !== null
+            ? ['lat' => (float) $shipment->delivery_lat, 'lng' => (float) $shipment->delivery_lng] : null;
+
+        return [
+            'recipient_name'    => $shipment->recipient_name,
+            'phone'             => $shipment->recipient_phone,
+            'province'          => $shipment->delivery_province,
+            'municipality'      => $shipment->delivery_municipality,
+            'barangay'          => $shipment->delivery_barangay,
+            'street'            => null,   // kept only within full_address on the shipment
+            'house_no'          => null,
+            'full_address'      => (string) $shipment->delivery_address,
+            'complete'          => filled($shipment->delivery_province) && filled($shipment->delivery_municipality) && filled($shipment->delivery_barangay),
+            'pin'               => $pin,
+            'municipality_code' => $shipment->delivery_municipality_code,
+            'barangay_code'     => $shipment->delivery_barangay_code,
+        ];
+    }
+
+    /** An address-book entry (the profile address is the default, see deliveryAddress). */
+    public static function addressEntry(BuyerAddress $a): array
+    {
+        $to = DeliveryAddress::fromBook($a);
+
+        return [
+            'id'             => $a->id,
+            'label'          => $a->label,
+            'recipient_name' => $a->recipient_name,
+            'phone'          => $a->contact_no,
+            'province'       => $a->province,
+            'municipality'   => $a->municipality,
+            'barangay'       => $a->barangay,
+            'street'         => $a->street,
+            'house_no'       => $a->house_no,
+            'full_address'   => $to->line(),
+            'complete'       => $to->isComplete(),
+            'pin'            => self::pin($to),
+        ];
+    }
+
+    /** Where a checkout ships: the profile address (address_id null) or an address-book entry. */
+    public static function shipTo(DeliveryAddress $to): array
+    {
+        return [
+            'address_id'     => $to->buyerAddressId,
+            'label'          => $to->label,
+            'recipient_name' => $to->recipientName,
+            'phone'          => $to->phone,
+            'full_address'   => $to->line(),
+            'complete'       => $to->isComplete(),
+            'pin'            => self::pin($to),
+        ];
+    }
+
+    private static function pin(DeliveryAddress $to): ?array
+    {
+        return $to->lat !== null && $to->lng !== null ? ['lat' => (float) $to->lat, 'lng' => (float) $to->lng] : null;
+    }
+
+    /**
+     * The checkout's vouchers (CheckoutVouchers::pick) for the app: each store's options, PickSell's
+     * options, which are picked and what they save. An option with a problem cannot be picked.
+     */
+    public static function checkoutVouchers(array $v): array
+    {
+        $option = fn (array $o) => [
+            'id'       => $o['voucher']->id,
+            'code'     => $o['voucher']->code,
+            'title'    => $o['voucher']->title,
+            'summary'  => $o['voucher']->summary,
+            'type'     => $o['voucher']->type,
+            'discount' => self::money($o['discount']),
+            'problem'  => $o['problem'],
+            'ends_at'  => $o['voucher']->ends_at?->toIso8601String(),
+        ];
+
+        return [
+            'stores'         => collect($v['stores'])->map(fn ($options, $sellerId) => ['seller_id' => (int) $sellerId, 'options' => $options->map($option)->values()])->values(),
+            'platform'       => $v['platform']->map($option)->values(),
+            'picked'         => ['stores' => (object) $v['picked']['stores'], 'platform' => $v['picked']['platform']],
+            'store_savings'  => (object) array_map(fn ($amount) => self::money($amount), $v['storeSavings']),
+            'platform_saving' => self::money($v['platformSaving']),
+            'total'          => self::money($v['total']),
+            'error'          => $v['error'],
         ];
     }
 
@@ -157,6 +276,7 @@ final class BuyerPresenter
 
         // The delivery fee belongs to the parcel, which may carry the seller's other items from the same checkout.
         $shipment = $o->shipment;
+        $parcelOrders = $shipment ? $shipment->activeOrders()->get(['id', 'amount']) : collect([$o]);
 
         return self::orderCard($o) + [
             'subtotal'          => self::money($o->amount),
@@ -164,6 +284,13 @@ final class BuyerPresenter
             'discount'          => self::money((float) $o->store_discount + ($shipment ? (float) $shipment->platform_discount + (float) $shipment->shipping_discount : 0)),
             'shipping_fee'      => $shipment ? self::money($shipment->delivery_fee) : 0.0,
             'service_fee'       => 0.0,
+            // The website's order-page breakdown: the store voucher (already in subtotal) and, when the
+            // parcel carries the seller's other items too, the whole parcel's items and COD total.
+            'store_discount'    => self::money($o->store_discount),
+            'platform_discount' => $shipment ? self::money((float) $shipment->platform_discount + (float) $shipment->shipping_discount) : 0.0,
+            'parcel_items'      => $parcelOrders->count(),
+            'parcel_subtotal'   => self::money($parcelOrders->sum('amount')),
+            'parcel_total'      => self::money(max(0, $parcelOrders->sum('amount') + ($shipment ? (float) $shipment->delivery_fee - (float) $shipment->platform_discount - (float) $shipment->shipping_discount : 0))),
             'payment_method'    => 'Cash on Delivery',
             'cod_amount'        => $parcel ? self::money($parcel->cod_amount) : self::money(max(0, $o->amount + ($shipment ? (float) $shipment->delivery_fee - (float) $shipment->platform_discount - (float) $shipment->shipping_discount : 0))),
             'shipment'          => $shipment ? [
@@ -174,9 +301,9 @@ final class BuyerPresenter
                 'failure_reason' => $shipment->failure_reason,
                 'order_numbers'  => $shipment->activeOrders()->pluck('order_number'),
             ] : null,
-            'ship_to'           => $o->buyer ? self::deliveryAddress($o->buyer) : null,
+            'ship_to'           => self::orderShipTo($o),
             'waybill_number'    => $parcel?->tracking_no ?? $o->waybill_number,
-            'logistics'         => $parcel ? ['name' => 'Pickrush'] : null,
+            'logistics'         => $parcel ? ['name' => $o->carrierName()] : null,
             'tracking_status'   => $o->tracking_status,
             'events'            => self::timeline($o),
             'tracking'          => $parcel ? self::tracking($parcel) : null,
@@ -184,11 +311,19 @@ final class BuyerPresenter
             'cancel_reason'     => $cancellation?->reason,
             'cancelled_at'      => self::date($cancellation?->created_at),
             'delivered_at'      => self::date($o->delivered_at),
+            // The last mile (website: order page): who is bringing it, the rider's photo at the door
+            // (GET /buyer/orders/{id}/proof-of-delivery) and whether the cash on delivery was paid.
+            'courier'               => OrderDelivery::courier($o),
+            'has_proof_of_delivery' => OrderDelivery::proof($o) !== null,
+            'payment_status'        => OrderDelivery::paymentStatus($o),
+            // Delivered and not yet "Order Received": confirmed for the buyer at this time.
+            'auto_confirm_at'       => self::date(OrderReceipt::autoConfirmAt($o)),
             'return_request'    => $return ? self::returnRequest($return) : null,
             'actions'           => [
                 'can_cancel'  => in_array($status, OrderStatus::CANCELLABLE, true),
+                'can_confirm_received' => in_array($status, OrderStatus::RECEIVABLE, true),
                 'can_rate'    => in_array($status, OrderStatus::RATEABLE, true) && ! $o->rating,
-                'can_return'  => in_array($status, OrderStatus::RATEABLE, true) && ! $return,
+                'can_return'  => in_array($status, OrderStatus::RETURNABLE, true) && ! $return,
                 'can_report'  => ! in_array($status, ['placed', 'cancelled'], true),
                 'can_reorder' => in_array($status, ['delivered', 'completed', 'cancelled', 'returned'], true),
                 'can_track'   => $status !== 'cancelled',

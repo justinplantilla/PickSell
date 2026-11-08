@@ -5,9 +5,11 @@ namespace Tests\Feature\Pickrush;
 use App\Pickrush\Enums\StaffRole;
 use App\Pickrush\Mail\RiderApplicationDecidedMail;
 use App\Pickrush\Mail\RiderEmailCodeMail;
+use App\Pickrush\Models\Company;
 use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\Staff;
+use App\Pickrush\Services\Hq\HubCreator;
 use App\Pickrush\Services\Station\RiderOnboarding;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -155,14 +157,14 @@ class RiderApplicationTest extends TestCase
         app(RiderOnboarding::class)->reject($rider, $this->manager, 'OR/CR plate does not match');
 
         Mail::assertSent(RiderApplicationDecidedMail::class, fn (RiderApplicationDecidedMail $mail) => $mail->hasTo('juan@example.com')
-            && $mail->envelope()->subject === 'Update on your Pickrush rider application'
+            && $mail->envelope()->subject === 'Update on your Pickrush Logistics rider application'
             && str_contains($mail->render(), 'OR/CR plate does not match'));
 
         $rider->update(['status' => 'pending', 'status_reason' => null]);   // resubmitted
         app(RiderOnboarding::class)->approve($rider, $this->manager);
 
         Mail::assertSent(RiderApplicationDecidedMail::class, fn (RiderApplicationDecidedMail $mail) => $mail->hasTo('juan@example.com')
-            && $mail->envelope()->subject === 'Your Pickrush rider account is approved'
+            && $mail->envelope()->subject === 'Your Pickrush Logistics rider account is approved'
             && str_contains($mail->render(), 'Tanauan City Station'));
         Mail::assertSent(RiderApplicationDecidedMail::class, 2);
     }
@@ -261,5 +263,83 @@ class RiderApplicationTest extends TestCase
         foreach ($oldFiles as $path) {
             Storage::disk('local')->assertMissing($path);
         }
+    }
+
+    // Choosing a company ----------------------------------------------------------------------
+
+    /** Another approved company with its own Tanauan station and hub manager. */
+    private function otherCompany(string $status = 'approved'): array
+    {
+        $company = Company::create(['name' => 'Bilis Hatid Express', 'slug' => 'bilis-hatid', 'tracking_prefix' => 'BH', 'status' => $status]);
+        $hubs = app(HubCreator::class);
+        $hubs->province($company->id, '041000000');
+        $station = $hubs->station($company->id, '041029000');
+        $manager = $this->staff(StaffRole::HubManager, $station, ['email' => 'manager@bilishatid.test']);
+
+        return [$company, $station, $manager];
+    }
+
+    public function test_the_applicant_picks_a_company_then_one_of_its_stations(): void
+    {
+        [$company, $station] = $this->otherCompany();
+        Company::create(['name' => 'Pending Cargo', 'slug' => 'pending-cargo', 'status' => 'pending']);
+
+        $this->getJson($this->api('companies?city_code=041029000&province_code=041000000'))->assertOk()
+            ->assertJsonPath('companies.0.name', 'Pickrush Logistics')->assertJsonPath('companies.0.is_default', true)
+            ->assertJsonPath('companies.1.name', 'Bilis Hatid Express')
+            ->assertJsonCount(2, 'companies');
+
+        $this->getJson($this->api("stations?city_code=041029000&company_id={$company->id}"))->assertOk()
+            ->assertJsonCount(1, 'hubs')->assertJsonPath('hubs.0.id', (string) $station->id);
+        $this->getJson($this->api('stations?city_code=041029000'))->assertOk()
+            ->assertJsonPath('hubs.0.id', (string) $this->tanauan->id, 'older apps get the default company');
+    }
+
+    public function test_the_application_goes_to_the_chosen_companys_station_only(): void
+    {
+        [$company, $station, $manager] = $this->otherCompany();
+
+        $this->apply(['company_id' => $company->id, 'hub_id' => $this->tanauan->id])->assertStatus(422)->assertJsonValidationErrors('hub_id');
+        $this->apply(['company_id' => $company->id, 'hub_id' => $station->id])->assertCreated()
+            ->assertJsonPath('rider.company.name', 'Bilis Hatid Express');
+
+        $rider = Rider::withoutGlobalScopes()->sole();
+        $this->assertSame($company->id, $rider->company_id);
+
+        // Their manager sees the applicant; Pickrush's does not.
+        $this->actingAs($manager, 'pickrush')->get($this->pickrushUrl('/station/riders'))->assertOk()->assertSee('Juan');
+        $this->app['auth']->forgetGuards();
+        $this->actingAs($this->manager, 'pickrush')->get($this->pickrushUrl('/station/riders'))->assertOk()->assertDontSee('Dela Cruz');
+    }
+
+    public function test_a_rejected_rider_may_resubmit_to_another_company(): void
+    {
+        [$company, $station] = $this->otherCompany();
+        $this->apply()->assertCreated();
+        $rider = Rider::withoutGlobalScopes()->sole();
+        $this->assertSame(Company::defaultId(), $rider->company_id);
+        app(RiderOnboarding::class)->reject($rider, $this->manager, 'No slots at this station');
+
+        $headers = ['Authorization' => 'Bearer '.$this->login(), 'Accept' => 'application/json'];
+        $fields = collect($this->application(['company_id' => $company->id, 'hub_id' => $station->id]))->except(['email', 'password'])->all();
+        $this->post($this->api('application'), $fields, $headers)->assertOk()->assertJsonPath('rider.company.name', 'Bilis Hatid Express');
+
+        $this->assertSame([$company->id, $station->id, 'pending'], [$rider->fresh()->company_id, $rider->fresh()->station_hub_id, $rider->fresh()->status]);
+    }
+
+    public function test_a_suspended_company_cannot_take_riders_or_send_them_parcels(): void
+    {
+        [$company, $station, $manager] = $this->otherCompany();
+        $this->apply(['company_id' => $company->id, 'hub_id' => $station->id])->assertCreated();
+        $rider = Rider::withoutGlobalScopes()->sole();
+        app(RiderOnboarding::class)->approve($rider, $manager);
+        $headers = ['Authorization' => 'Bearer '.$this->login(), 'Accept' => 'application/json'];
+        $this->getJson($this->api('dashboard'), $headers)->assertOk();
+
+        $company->update(['status' => 'suspended']);
+        $this->app->forgetInstance('pickrush.rider');
+        $this->getJson($this->api('dashboard'), $headers)->assertForbidden()->assertJsonPath('status', 'company_suspended');
+        $this->getJson($this->api('me'), $headers)->assertOk();
+        $this->getJson($this->api('companies?city_code=041029000'))->assertJsonMissing(['name' => 'Bilis Hatid Express']);
     }
 }

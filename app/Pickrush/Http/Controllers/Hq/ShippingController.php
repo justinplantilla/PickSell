@@ -25,7 +25,8 @@ use Illuminate\Validation\ValidationException;
  * that generate a price for every (seller region → buyer region) pair, the generic destination
  * prices used as fallback, parcel classes (rider pay) and the province map. A price is never
  * edited in place: a dated row is added and the old one ends the day before, so orders keep the
- * price they were quoted. Super admins edit; finance and support read.
+ * price they were quoted. Each company keeps its own rate card; parcel classes and the province map
+ * are shared by the network. Super admins edit; finance and support read.
  */
 class ShippingController extends PortalController
 {
@@ -33,14 +34,15 @@ class ShippingController extends PortalController
 
     public function index(Request $request, RouteRateGenerator $routes)
     {
+        $routes = $routes->forCompany($this->staff()->company_id);
         $today = today()->toDateString();
         $regions = DB::table('pr_shipping_regions')->orderByRaw(self::REGION_ORDER)->pluck('name', 'code');
         $from = $request->query('from', 'GENERIC');
         $levels = $routes->levels();
         $tiers = array_keys(reset($levels)['fees'] ?? []);
         $tier = in_array($request->query('tier'), $tiers, true) ? $request->query('tier') : ($tiers[1] ?? $tiers[0] ?? null);
-        $delivered = Parcel::withoutGlobalScopes()->where('current_status', ParcelStatus::Delivered)->whereNotNull('logistics_share');
-        $marketplace = Parcel::withoutGlobalScopes()->where('source', PicksellBridge::SOURCE)->whereNotNull('price_source');
+        $delivered = Parcel::withoutGlobalScopes()->where('company_id', $this->staff()->company_id)->where('current_status', ParcelStatus::Delivered)->whereNotNull('logistics_share');
+        $marketplace = Parcel::withoutGlobalScopes()->where('company_id', $this->staff()->company_id)->where('source', PicksellBridge::SOURCE)->whereNotNull('price_source');
 
         return view('pickrush.hq.shipping', [
             'regions' => $regions,
@@ -73,6 +75,7 @@ class ShippingController extends PortalController
                 'sellers' => PicksellBridge::sellersWithoutShippingRegion(),
             ],
             'canEdit' => $this->canEdit(),
+            'canEditNetwork' => $this->canEditNetwork(),
         ]);
     }
 
@@ -87,7 +90,7 @@ class ShippingController extends PortalController
             'effective_from' => ['required', 'date', 'after_or_equal:today'],
         ]);
 
-        return $this->regenerate(fn () => $routes->updateGrid($data['levels'], $data['effective_from']), 'Route levels saved', 'levels');
+        return $this->regenerate(fn () => $routes->forCompany($this->staff()->company_id)->updateGrid($data['levels'], $data['effective_from']), 'Route levels saved', 'levels');
     }
 
     /** Save the price levels (tier fees and per-kg rate); route prices change from the date given. */
@@ -107,7 +110,7 @@ class ShippingController extends PortalController
             'per_kg' => (string) $level['per_kg'],
         ])->all();
 
-        return $this->regenerate(fn () => $routes->updateLevels($prices, $data['effective_from']), 'Price levels saved', 'prices');
+        return $this->regenerate(fn () => $routes->forCompany($this->staff()->company_id)->updateLevels($prices, $data['effective_from']), 'Price levels saved', 'prices');
     }
 
     /** A new tier fee from a date; the tier's open row (if any) ends the day before. */
@@ -164,7 +167,7 @@ class ShippingController extends PortalController
 
     public function updateClass(Request $request, ParcelClass $class)
     {
-        $this->authorizeEdit();
+        $this->authorizeNetworkEdit();
         $data = $request->validate([
             'min_kg_exclusive' => ['required', 'numeric', 'min:0', 'max:1000'],
             'max_kg_inclusive' => ['required', 'numeric', 'gt:min_kg_exclusive', 'max:1000'],
@@ -188,7 +191,7 @@ class ShippingController extends PortalController
     /** Map a province, city or alias to a region (adds it, or moves it to another region). */
     public function storeProvince(Request $request)
     {
-        $this->authorizeEdit();
+        $this->authorizeNetworkEdit();
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'region_code' => ['required', Rule::exists('pr_shipping_regions', 'code')],
@@ -204,7 +207,7 @@ class ShippingController extends PortalController
 
     public function destroyProvince(Request $request)
     {
-        $this->authorizeEdit();
+        $this->authorizeNetworkEdit();
         $name = (string) $request->validate(['name' => ['required', 'string', 'max:100']])['name'];
         $row = DB::table('pr_shipping_region_provinces')->where('name', $name)->first();
         abort_unless($row, 404);
@@ -279,5 +282,19 @@ class ShippingController extends PortalController
     private function authorizeEdit(): void
     {
         abort_unless($this->canEdit(), 403, 'Only a super admin changes shipping prices.');
+    }
+
+    /**
+     * Parcel classes (rider pay) and the province-to-region map are shared by every company, so
+     * only the default company's super admin keeps them.
+     */
+    private function canEditNetwork(): bool
+    {
+        return $this->canEdit() && (bool) $this->staff()->company?->is_default;
+    }
+
+    private function authorizeNetworkEdit(): void
+    {
+        abort_unless($this->canEditNetwork(), 403, 'Parcel classes and the province map are shared by every logistics company.');
     }
 }

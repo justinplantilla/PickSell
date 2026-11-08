@@ -3,13 +3,14 @@
 namespace App\Pickrush\Models;
 
 use App\Pickrush\Support\Audited;
+use App\Pickrush\Support\CompanyOwned;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /** The per-kg charge above over_kg (the heaviest tier) to a destination region, valid between two dates. */
 class ShippingOverweightRate extends Model
 {
-    use Audited;
+    use Audited, CompanyOwned;
 
     protected $table = 'pr_shipping_overweight_rates';
 

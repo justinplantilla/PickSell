@@ -107,8 +107,9 @@ class CheckoutTest extends TestCase
 
         $this->assertDatabaseCount('financial_transactions', 0);
         \Illuminate\Support\Facades\DB::table('orders')->where('id', $orderId)->update(['status' => 'delivered']);
-        $this->actingAs($seller)
-            ->patch(route('seller.orders.confirm-delivery', $orderId))
+        // The buyer confirms receipt ("Order Received"); that completes the order and posts the earnings.
+        $this->actingAs($buyer)
+            ->patch(route('buyer.orders.received', $orderId))
             ->assertRedirect();
 
         $this->assertDatabaseHas('financial_transactions', [

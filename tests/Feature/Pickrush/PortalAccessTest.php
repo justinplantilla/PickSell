@@ -15,9 +15,9 @@ class PortalAccessTest extends TestCase
     public function test_the_logistics_host_serves_only_pickrush(): void
     {
         $this->get($this->pickrushUrl('/'))->assertOk()->assertSee('From the seller');
-        $this->get($this->pickrushUrl('/login'))->assertOk()->assertSee('Staff sign-in')->assertSee('Pickrush Logistics');
+        $this->get($this->pickrushUrl('/login'))->assertOk()->assertSee('Staff sign-in')->assertSee('PickSell Logistics');
 
-        foreach (['/shop', '/about', '/register', '/buyer/dashboard', '/admin/dashboard'] as $marketplacePage) {
+        foreach (['/shop', '/about', '/buyer/dashboard', '/admin/dashboard'] as $marketplacePage) {
             $this->get($this->pickrushUrl($marketplacePage))->assertNotFound();
         }
 
@@ -76,9 +76,9 @@ class PortalAccessTest extends TestCase
         ]);
 
         $this->post($this->pickrushUrl('/login'), ['email' => $inactive->email, 'password' => 'secret-password'])
-            ->assertSessionHasErrors(['email' => 'This account is inactive. Ask HQ to activate it.']);
+            ->assertSessionHasErrors(['email' => 'This account is inactive. Ask your company administrator to activate it.']);
         $this->post($this->pickrushUrl('/login'), ['email' => $marketplaceAdmin->email, 'password' => 'secret-password'])
-            ->assertSessionHasErrors(['email' => 'These credentials do not match a Pickrush account.']);
+            ->assertSessionHasErrors(['email' => 'These credentials do not match a logistics account.']);
         $this->assertGuest('pickrush');
     }
 
@@ -111,6 +111,6 @@ class PortalAccessTest extends TestCase
         $this->actingAs($admin, 'pickrush')->get($this->pickrushUrl('/hubs/'.$tanauan->parent_hub_id))->assertOk()
             ->assertSee('Stations sorting through this hub (2)')->assertSee('San Jose Station');
         $this->actingAs($admin, 'pickrush')->get($this->pickrushUrl('/'))->assertRedirect(route('pickrush.hq.dashboard'));
-        $this->actingAs($admin, 'pickrush')->get(route('pickrush.hq.dashboard'))->assertOk()->assertSee('3 province hubs');
+        $this->actingAs($admin, 'pickrush')->get(route('pickrush.hq.dashboard'))->assertOk()->assertSee('4 province hubs');
     }
 }

@@ -190,6 +190,13 @@ class PicksellBridgeTest extends TestCase
         $this->actingAs($this->buyer)->patch(config('app.url').'/buyer/account/delivery-location', ['lat' => 40.7, 'lng' => -74.0])
             ->assertSessionHasErrors('lat');
         $this->actingAs($this->buyer)->get(config('app.url').'/buyer/account')->assertOk()->assertSee('Delivery Pin')->assertSee('data-map-pin="buyer-pin"', false);
+
+        // The buyer app saves it the same way and says how many parcels moved.
+        \Laravel\Sanctum\Sanctum::actingAs($this->buyer->fresh());
+        $this->patchJson('/api/mobile/buyer/delivery-location', ['lat' => 14.6700, 'lng' => 121.0500])->assertOk()
+            ->assertJsonPath('parcels_updated', 1)->assertJsonPath('delivery_address.pin', ['lat' => 14.67, 'lng' => 121.05]);
+        $this->assertEqualsWithDelta(14.67, (float) $onTheWay->fresh()->delivery_lat, 1e-6);
+        $this->assertEqualsWithDelta(14.65, (float) $delivered->fresh()->delivery_lat, 1e-6);
     }
 
     public function test_a_parcel_goes_to_the_address_chosen_at_checkout_and_keeps_its_own_pin(): void
@@ -251,8 +258,8 @@ class PicksellBridgeTest extends TestCase
         );
         Notification::assertSentToTimes($this->buyer, BuyerOrderUpdate::class, 4); // picked up, at your station, out for delivery, delivered
 
-        // The seller still confirms receipt in the marketplace.
-        $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$order->id}/confirm-delivery")->assertRedirect();
+        // The buyer confirms receipt in the marketplace ("Order Received").
+        $this->actingAs($this->buyer)->patch(config('app.url')."/buyer/orders/{$order->id}/received")->assertRedirect();
         $this->assertSame('completed', $order->fresh()->status);
     }
 

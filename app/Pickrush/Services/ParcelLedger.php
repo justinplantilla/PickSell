@@ -7,6 +7,7 @@ use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\ParcelEvent;
 use App\Pickrush\Support\Actor;
+use App\Pickrush\Support\ParcelHubScope;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 
@@ -36,7 +37,7 @@ class ParcelLedger
         $actor = $options['actor'] ?? Actor::current();
 
         [$locked, $event] = DB::transaction(function () use ($parcel, $status, $hub, $options, $key, $actor) {
-            $locked = Parcel::withoutGlobalScopes()->whereKey($parcel->id)->lockForUpdate()->firstOrFail();
+            $locked = Parcel::withoutGlobalScope(ParcelHubScope::class)->whereKey($parcel->id)->lockForUpdate()->firstOrFail();
             $from = $locked->current_status;
             if ($from !== null && ! $from->canMoveTo($status)) {
                 throw new InvalidParcelTransition("Parcel {$locked->tracking_no} cannot go from \"{$from->label()}\" to \"{$status->label()}\".");

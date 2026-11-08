@@ -11,6 +11,7 @@ use App\Pickrush\Services\OperationRefused;
 use App\Pickrush\Services\ParcelLedger;
 use App\Pickrush\Services\Station\RiderTaskService;
 use App\Pickrush\Support\Actor;
+use App\Pickrush\Support\ParcelHubScope;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
@@ -143,7 +144,7 @@ class DeliveryRoutes
     {
         $no = ManifestService::normalize($trackingNo);
         $task = $batch->assignments()->with('parcel', 'rider.station')
-            ->whereHas('parcel', fn ($q) => $q->withoutGlobalScopes()->where('tracking_no', $no))
+            ->whereHas('parcel', fn ($q) => $q->withoutGlobalScope(ParcelHubScope::class)->where('tracking_no', $no))
             ->whereIn('status', ['assigned', 'out_for_delivery', 'completed', 'failed'])->first();
         if (! $task) {
             throw new OperationRefused("{$no} is not part of this batch. Check the waybill.");

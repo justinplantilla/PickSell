@@ -9,6 +9,7 @@ use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\HubRemittance;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\ParcelEvent;
+use App\Pickrush\Support\ParcelHubScope;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
@@ -24,21 +25,21 @@ class NetworkMetrics
         $finished = fn (ParcelStatus $status) => ParcelEvent::where('status', $status)->whereBetween('occurred_at', [$from, $to])->distinct()->count('parcel_id');
         $delivered = $finished(ParcelStatus::Delivered);
         $returned = $finished(ParcelStatus::ReturnedToSender);
-        $deliveredParcels = Parcel::withoutGlobalScopes()->whereBetween('delivered_at', [$from, $to])->get(['created_at', 'delivered_at', 'attempt_count']);
+        $deliveredParcels = Parcel::withoutGlobalScope(ParcelHubScope::class)->whereBetween('delivered_at', [$from, $to])->get(['created_at', 'delivered_at', 'attempt_count']);
 
         return [
-            'booked' => Parcel::withoutGlobalScopes()->whereBetween('created_at', [$from, $to])->count(),
+            'booked' => Parcel::withoutGlobalScope(ParcelHubScope::class)->whereBetween('created_at', [$from, $to])->count(),
             'delivered' => $delivered,
             'returned' => $returned,
             'failed_attempts' => $finished(ParcelStatus::DeliveryFailed),
-            'in_transit' => Parcel::withoutGlobalScopes()->whereIn('current_status', [ParcelStatus::InTransitToProvince, ParcelStatus::InTransitToStation])->count(),
-            'in_network' => Parcel::withoutGlobalScopes()->whereNotIn('current_status', [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost])->count(),
+            'in_transit' => Parcel::withoutGlobalScope(ParcelHubScope::class)->whereIn('current_status', [ParcelStatus::InTransitToProvince, ParcelStatus::InTransitToStation])->count(),
+            'in_network' => Parcel::withoutGlobalScope(ParcelHubScope::class)->whereNotIn('current_status', [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost])->count(),
             'success_rate' => self::rate($delivered, $delivered + $returned),
             'first_attempt_rate' => self::rate($deliveredParcels->where('attempt_count', 0)->count(), $deliveredParcels->count()),
             'avg_delivery_hours' => $deliveredParcels->isEmpty() ? null
                 : round($deliveredParcels->avg(fn ($p) => $p->created_at->diffInMinutes($p->delivered_at) / 60), 1),
             'cod_collected' => (float) Assignment::where('type', 'delivery')->where('status', 'completed')->whereBetween('completed_at', [$from, $to])->sum('cod_collected'),
-            'cod_remitted' => (float) HubRemittance::withoutGlobalScopes()->where('status', 'confirmed')->whereBetween('confirmed_at', [$from, $to])->sum('remitted_amount'),
+            'cod_remitted' => (float) HubRemittance::withoutGlobalScope('hub')->where('status', 'confirmed')->whereBetween('confirmed_at', [$from, $to])->sum('remitted_amount'),
         ];
     }
 
@@ -76,7 +77,7 @@ class NetworkMetrics
     public function failureReasons(CarbonInterface $from, CarbonInterface $to, ?int $stationId = null): Collection
     {
         return Assignment::where('status', 'failed')->whereBetween('completed_at', [$from, $to])
-            ->when($stationId, fn ($q) => $q->whereIn('rider_id', \App\Pickrush\Models\Rider::withoutGlobalScopes()->where('station_hub_id', $stationId)->select('id')))
+            ->when($stationId, fn ($q) => $q->whereIn('rider_id', \App\Pickrush\Models\Rider::withoutGlobalScope('hub')->where('station_hub_id', $stationId)->select('id')))
             ->selectRaw('fail_reason, count(*) as total')->groupBy('fail_reason')->orderByDesc('total')
             ->toBase()->pluck('total', 'fail_reason')->map(fn ($n) => (int) $n);
     }
@@ -85,9 +86,9 @@ class NetworkMetrics
     public function cashOutstanding(): array
     {
         return [
-            'at_stations' => (float) CodRemittance::withoutGlobalScopes()->where('status', 'reconciled')->whereNull('hub_remittance_id')->sum('received_amount'),
+            'at_stations' => (float) CodRemittance::withoutGlobalScope('hub')->where('status', 'reconciled')->whereNull('hub_remittance_id')->sum('received_amount'),
             'with_riders' => (float) Assignment::where('type', 'delivery')->where('status', 'completed')->whereNull('cod_remittance_id')->sum('cod_collected'),
-            'submitted_unconfirmed' => (float) HubRemittance::withoutGlobalScopes()->where('status', 'submitted')->sum('remitted_amount'),
+            'submitted_unconfirmed' => (float) HubRemittance::withoutGlobalScope('hub')->where('status', 'submitted')->sum('remitted_amount'),
         ];
     }
 

@@ -73,3 +73,15 @@ Schedule::command('riders:expire-idle')
     ->everyMinute()
     ->name('expire-idle-riders')
     ->withoutOverlapping();
+
+// Delivered orders the buyer didn't confirm ("Order Received") within 5 days are confirmed for them:
+// the order completes, the seller's earnings are posted and the buyer can rate it.
+Artisan::command('orders:auto-confirm-received', function () {
+    $confirmed = app(\App\Services\Orders\OrderReceipt::class)->autoConfirmDue();
+    $this->info("Confirmed {$confirmed} delivered orders.");
+})->purpose('Confirm receipt of orders delivered '.\App\Services\Orders\OrderReceipt::AUTO_CONFIRM_DAYS.' days ago that the buyer did not confirm');
+
+Schedule::command('orders:auto-confirm-received')
+    ->hourly()
+    ->name('auto-confirm-received-orders')
+    ->withoutOverlapping();

@@ -3,6 +3,7 @@
 namespace App\Pickrush\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Pickrush\Models\Company;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Services\OperationRefused;
 use App\Pickrush\Services\Rider\EmailVerification;
@@ -18,11 +19,30 @@ class RiderApplicationController extends Controller
 {
     public function __construct(private RiderApplication $applications) {}
 
-    /** Stations the applicant can choose: their city first, otherwise their province. */
-    public function stations(Request $request): JsonResponse
+    /** Logistics companies taking riders near the applicant's address; the default company first. */
+    public function companies(Request $request): JsonResponse
     {
         $data = $request->validate(['city_code' => 'nullable|string|max:10', 'province_code' => 'nullable|string|max:10']);
-        $near = $this->applications->stationsNear($data['city_code'] ?? null, $data['province_code'] ?? null);
+
+        return response()->json([
+            'companies' => $this->applications->companiesNear($data['city_code'] ?? null, $data['province_code'] ?? null)
+                ->map(fn (Company $company) => RiderProfile::company($company))->values(),
+        ]);
+    }
+
+    /**
+     * Stations of one company the applicant can choose: their city first, otherwise their
+     * province. Without company_id (older app versions) the default company's stations.
+     */
+    public function stations(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'city_code' => 'nullable|string|max:10',
+            'province_code' => 'nullable|string|max:10',
+            'company_id' => 'nullable|integer',
+        ]);
+        $near = $this->applications->stationsNear($data['city_code'] ?? null, $data['province_code'] ?? null,
+            (int) ($data['company_id'] ?? Company::defaultId()));
 
         return response()->json([
             'scope' => $near['scope'],
@@ -94,9 +114,16 @@ class RiderApplicationController extends Controller
             'barangay_name' => 'required|string|max:100',
             'street' => 'required|string|max:150',
             'vehicle_type' => ['required', Rule::in(array_keys(Rider::VEHICLE_TYPES))],
+            'company_id' => ['nullable', 'integer', function ($attribute, $value, $fail) {
+                if (! Company::approved()->whereKey($value)->exists()) {
+                    $fail('This logistics company is not taking riders. Choose another company.');
+                }
+            }],
             'hub_id' => ['required', 'integer', function ($attribute, $value, $fail) {
-                if (! RiderApplication::acceptingStations()->whereKey($value)->exists()) {
-                    $fail('This station is not accepting riders. Choose another station.');
+                $companyId = request()->integer('company_id') ?: null;
+                if (! RiderApplication::acceptingStations($companyId)->whereKey($value)->exists()) {
+                    $fail($companyId ? 'This station is not accepting riders for the chosen company. Choose another station.'
+                        : 'This station is not accepting riders. Choose another station.');
                 }
             }],
             'plate_number' => 'required|string|max:20',

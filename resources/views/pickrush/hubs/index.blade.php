@@ -5,9 +5,15 @@
 <div class="pr-page-head">
     <div>
         <h1>Hubs</h1>
-        <p>Every province hub and station hub in the network. All hubs are active; the readiness column shows which still need a manager.</p>
+        <p>Every province hub and station hub of {{ $portalCompanyName }}. The readiness column shows which still need a manager.</p>
     </div>
+    @if(\App\Pickrush\Support\Actor::staff()->role === \App\Pickrush\Enums\StaffRole::SuperAdmin)
+        <a href="{{ route('pickrush.hubs.create') }}" class="pr-btn pr-btn-primary">Open a hub</a>
+    @endif
 </div>
+@if($hubs->isEmpty() && $filters['q'] === '' && $filters['type'] === 'all')
+    <div class="pr-alert">You have no hubs yet. Open a province hub first, then the station hubs under it.</div>
+@endif
 
 <form method="GET" class="pr-filters" role="search">
     <input type="search" name="q" value="{{ $filters['q'] }}" class="pr-input" placeholder="Hub, province or code" aria-label="Search hubs">

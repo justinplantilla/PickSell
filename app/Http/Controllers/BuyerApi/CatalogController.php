@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\WishlistItem;
 use App\Services\ProductStats;
 use App\Services\RecentlyViewed;
+use App\Services\SellerFollows;
 use App\Support\BuyerApi\BuyerPresenter;
 use Illuminate\Http\Request;
 
@@ -165,7 +166,7 @@ class CatalogController extends Controller
                     'distribution' => collect([5, 4, 3, 2, 1])->mapWithKeys(fn ($r) => [$r => (int) ($distribution[$r] ?? 0)]),
                 ],
                 'top_reviews'      => $product->reviews()->with('buyer')->latest()->take(2)->get()
-                    ->map(fn ($r) => BuyerPresenter::review($r))->values(),
+                    ->map(fn ($r) => BuyerPresenter::review($r, $buyer))->values(),
                 'shipping'         => null,
                 'vouchers'         => $vouchers,
             ],
@@ -193,8 +194,9 @@ class CatalogController extends Controller
                 'count'        => (int) $distribution->sum(),
                 'distribution' => collect([5, 4, 3, 2, 1])->mapWithKeys(fn ($r) => [$r => (int) ($distribution[$r] ?? 0)]),
             ],
-            'reviews' => $page->getCollection()->map(fn ($r) => BuyerPresenter::review($r))->values(),
+            'reviews' => $page->getCollection()->map(fn ($r) => BuyerPresenter::review($r, auth('sanctum')->user()))->values(),
             'meta'    => ['current_page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'total' => $page->total()],
+            'report_reasons' => BuyerPresenter::reviewReportReasons(),
         ]);
     }
 
@@ -218,12 +220,17 @@ class CatalogController extends Controller
         $rated = Order::where('seller_id', $seller->id)->whereNotNull('rating');
         $count = (clone $rated)->count();
 
+        $viewer = auth('sanctum')->user();
+
         return BuyerPresenter::sellerBrief($seller) + [
             'rating'        => ($avg = (clone $rated)->avg('rating')) ? round((float) $avg, 1) : null,
             'review_count'  => $count,
             'positive_rate' => $count ? (int) round((clone $rated)->where('rating', '>=', 4)->count() * 100 / $count) : null,
             'product_count' => Product::showcased()->where('stock', '>', 0)->where('seller_id', $seller->id)->count(),
             'joined_at'     => BuyerPresenter::date($seller->created_at),
+            // Following (website: the store page's Follow button); false when not signed in.
+            'followers'     => $seller->followers()->count(),
+            'is_following'  => $viewer?->role === 'buyer' && app(SellerFollows::class)->follows($viewer, $seller),
         ];
     }
 }

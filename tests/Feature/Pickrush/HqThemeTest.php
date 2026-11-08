@@ -77,7 +77,7 @@ class HqThemeTest extends TestCase
             $this->actingAs($staff, 'pickrush')->get(route($route))->assertOk()
                 ->assertSee($logoutForm, false)
                 ->assertSee('id="logoutDialog"', false)
-                ->assertSee('Sign out of Pickrush?');
+                ->assertSee('Sign out of Pickrush Logistics?');
         }
 
         // The confirmation is client-side only: the logout route still works on a plain POST.

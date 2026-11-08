@@ -3,15 +3,18 @@
 namespace App\Pickrush\Models;
 
 use App\Pickrush\Support\Audited;
+use App\Pickrush\Support\CompanyOwned;
 use App\Pickrush\Support\HubOwned;
 use Illuminate\Database\Eloquent\Model;
 
 /** Cash the station sends on to the company, confirmed by HQ finance. */
 class HubRemittance extends Model
 {
-    use Audited, HubOwned;
+    use Audited, CompanyOwned, HubOwned;
 
     protected $table = 'pr_hub_remittances';
+
+    protected array $companyThrough = ['station_hub_id' => 'pr_hubs'];
 
     protected $guarded = ['id'];
 

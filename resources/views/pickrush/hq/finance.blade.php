@@ -57,7 +57,7 @@
         @include('pickrush.hq.partials.period-tabs')
         <div class="pr-table-scroll">
         <table class="pr-table">
-            <thead><tr><th>Shipper</th><th class="pr-num">Parcels</th><th class="pr-num">COD collected</th><th class="pr-num">Pickrush fees</th><th class="pr-num">Owed to shipper</th></tr></thead>
+            <thead><tr><th>Shipper</th><th class="pr-num">Parcels</th><th class="pr-num">COD collected</th><th class="pr-num">Logistics fees</th><th class="pr-num">Owed to shipper</th></tr></thead>
             <tbody>
             @foreach(['picksell' => 'Picksell marketplace', 'direct' => 'Direct shippers'] as $source => $label)
                 <tr>

@@ -7,6 +7,7 @@ use App\Pickrush\Models\HubRemittance;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\OperationRefused;
+use App\Pickrush\Support\ParcelHubScope;
 use Carbon\CarbonInterface;
 
 /**
@@ -37,7 +38,7 @@ class Finance
     /** Delivered COD and fees in the period, split by shipper source (Picksell or direct). */
     public function settlement(CarbonInterface $from, CarbonInterface $to): array
     {
-        $delivered = Parcel::withoutGlobalScopes()->where('current_status', ParcelStatus::Delivered)
+        $delivered = Parcel::withoutGlobalScope(ParcelHubScope::class)->where('current_status', ParcelStatus::Delivered)
             ->whereBetween('delivered_at', [$from, $to])
             ->selectRaw('source, count(*) as parcels, sum(cod_amount) as cod, sum(shipping_fee) as fees')
             ->groupBy('source')->get()->keyBy('source');

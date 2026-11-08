@@ -10,7 +10,7 @@ use Illuminate\Http\UploadedFile;
 
 /**
  * A buyer's rating of a delivered order, the same from the website and the buyer app: the product
- * (orders.rating, published as the product's review once the order is completed), the seller's
+ * (orders.rating, published as the product's review; the order is completed by "Order Received"), the seller's
  * service, and the delivery, which is credited to the Pickrush rider who delivered the parcel.
  * Photos are kept with the order and shown with its product review.
  */
@@ -36,7 +36,7 @@ class OrderRating
             $order->reviewPhotos()->create(['path' => $photo->store('review-photos', 'public')]);
         }
 
-        // A delivered order's review is published when the seller confirms it (SellerController::confirmDelivery).
+        // Rated once the buyer confirmed receipt (OrderReceipt), so the review is published straight away.
         if ($order->status === 'completed' && $order->product_id) {
             ProductReview::updateOrCreate(
                 ['product_id' => $order->product_id, 'buyer_id' => $order->buyer_id, 'order_id' => $order->id],

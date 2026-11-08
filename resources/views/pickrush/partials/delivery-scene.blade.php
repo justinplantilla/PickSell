@@ -21,7 +21,7 @@
     <span class="prs-chip prs-c3"><i></i>Out for delivery</span>
     <span class="prs-chip prs-c4 is-done"><i></i>Delivered</span>
 </div>
-<svg class="prs" viewBox="0 0 800 460" role="img" aria-label="A Pickrush rider picks up a parcel at a PickSell shop, rides across town and delivers it to a house">
+<svg class="prs" viewBox="0 0 800 460" role="img" aria-label="A rider picks up a parcel at a PickSell shop, rides across town and delivers it to a house">
     <defs>
         <radialGradient id="prs-sun" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(130 40) scale(420)">
             <stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>

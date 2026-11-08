@@ -2,11 +2,16 @@
 
 namespace App\Pickrush\Models;
 
+use App\Pickrush\Support\CompanyOwned;
 use Illuminate\Database\Eloquent\Model;
 
 class ManifestParcel extends Model
 {
+    use CompanyOwned;
+
     protected $table = 'pr_manifest_parcels';
+
+    protected array $companyThrough = ['parcel_id' => 'pr_parcels'];
 
     protected $guarded = ['id'];
 

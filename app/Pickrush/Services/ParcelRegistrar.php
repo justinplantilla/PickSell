@@ -3,6 +3,7 @@
 namespace App\Pickrush\Services;
 
 use App\Pickrush\Enums\ParcelStatus;
+use App\Pickrush\Models\Company;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Support\Actor;
 use Illuminate\Support\Facades\DB;
@@ -27,13 +28,16 @@ class ParcelRegistrar
     public function register(array $data, ?Actor $actor = null, ParcelStatus $opening = ParcelStatus::WaitingPickup): Parcel
     {
         return DB::transaction(function () use ($data, $actor, $opening) {
-            $origin = $this->router->stationFor($data['pickup_municipality_code'] ?? null);
-            $dest = $this->router->stationFor($data['delivery_municipality_code'] ?? null);
+            // The carrier: the one the order names, else whoever is acting, else Pickrush.
+            $company = Company::findOrFail($data['company_id'] ?? Actor::companyId() ?? Company::defaultId());
+            $data['company_id'] = $company->id;
+            $origin = $this->router->stationFor($data['pickup_municipality_code'] ?? null, $company->id);
+            $dest = $this->router->stationFor($data['delivery_municipality_code'] ?? null, $company->id);
 
             // The fee comes with the booking (priced by PickSell at checkout); orders from before had none.
             $parcel = Parcel::create($data + [
                 'shipping_fee' => 0,
-                'tracking_no' => $this->trackingNumbers->generate(),
+                'tracking_no' => $this->trackingNumbers->generate($company->tracking_prefix),
                 'origin_hub_id' => $origin?->id,
                 'dest_hub_id' => $dest?->id,
                 'next_hub_id' => $origin?->id,

@@ -3,6 +3,7 @@
 namespace App\Pickrush\Http\Controllers\Api;
 
 use App\Pickrush\Enums\StaffRole;
+use App\Pickrush\Models\Company;
 use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\Staff;
@@ -36,6 +37,7 @@ final class RiderProfile
             'license_no' => $rider->license_no,
             'license_expiry' => $license?->expiry_date?->toDateString(),
             'hub' => $rider->station ? self::hub($rider->station) : null,
+            'company' => ($company = Company::find($rider->company_id)) ? self::company($company) : null,
             'on_probation' => $rider->on_probation,
             'applied_at' => $rider->applied_at?->toIso8601String(),
             'approved_at' => $rider->approved_at?->toIso8601String(),
@@ -78,6 +80,16 @@ final class RiderProfile
             ->where('is_active', true)->where('is_sample', false)->orderBy('id')->first();
 
         return $manager ? ['name' => $manager->full_name, 'mobile' => $manager->mobile_no] : null;
+    }
+
+    /** A logistics company as the rider app lists it. */
+    public static function company(Company $company): array
+    {
+        return [
+            'id' => (string) $company->id,
+            'name' => $company->name,
+            'is_default' => $company->is_default,
+        ];
     }
 
     public static function hub(Hub $hub): array

@@ -5,17 +5,21 @@ namespace App\Pickrush\Services;
 use App\Models\Geo\Municipality;
 use App\Models\Geo\Province;
 use App\Pickrush\Enums\HubType;
+use App\Pickrush\Models\Company;
 use App\Pickrush\Models\Hub;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Builds the hub network from the geo tables: one province hub per province (Metro Manila: one
+ * Builds Pickrush's hub network from the geo tables (other companies add their own hubs): one province hub per province (Metro Manila: one
  * per district) and one station hub per city or municipality, under its province hub. Every hub
  * starts active. Re-running only adds missing hubs and refreshes names; addresses, coordinates
- * and the active flag set by HQ are left alone.
+ * and the active flag set by HQ are left alone. Then the starting links between neighboring
+ * province hubs are added (HubLinkBuilder).
  */
 class HubNetworkBuilder
 {
+    public function __construct(private HubLinkBuilder $links) {}
+
     /** Metro Manila districts as they are known in operations. */
     private const DISTRICT_NAMES = [
         'First District' => 'Metro Manila Capital District Hub',
@@ -24,7 +28,7 @@ class HubNetworkBuilder
         'Fourth District' => 'Metro Manila Southern District Hub',
     ];
 
-    /** @return array{provinces: int, stations: int, created: int} */
+    /** @return array{provinces: int, stations: int, created: int, links: int} */
     public function build(): array
     {
         $created = 0;
@@ -34,7 +38,7 @@ class HubNetworkBuilder
             foreach (Province::orderBy('code')->get() as $province) {
                 $hub = $this->upsert(HubType::Province, $province->code, [
                     'code' => 'P-'.$province->code,
-                    'name' => $this->provinceHubName($province),
+                    'name' => self::provinceHubName($province),
                     'type' => HubType::Province,
                     'parent_hub_id' => null,
                     'region_code' => $province->region_code,
@@ -45,14 +49,14 @@ class HubNetworkBuilder
             }
 
             $municipalities = Municipality::with('province')->orderBy('code')->get();
-            $duplicateNames = $municipalities->countBy(fn ($m) => $this->stationLabel($m->name))->filter(fn ($n) => $n > 1);
+            $duplicateNames = $municipalities->countBy(fn ($m) => self::stationLabel($m->name))->filter(fn ($n) => $n > 1);
 
             foreach ($municipalities as $municipality) {
                 $parent = $provinceHubs[$municipality->province_code] ?? null;
                 if (! $parent) {
                     continue;
                 }
-                $label = $this->stationLabel($municipality->name);
+                $label = self::stationLabel($municipality->name);
                 $provinceName = $municipality->province->isDistrict() ? 'Metro Manila' : $municipality->province->name;
 
                 $this->upsert(HubType::Station, $municipality->code, [
@@ -68,15 +72,16 @@ class HubNetworkBuilder
         });
 
         return [
-            'provinces' => Hub::provinces()->count(),
-            'stations' => Hub::stations()->count(),
+            'provinces' => Hub::ofCompany(Company::defaultId())->provinces()->count(),
+            'stations' => Hub::ofCompany(Company::defaultId())->stations()->count(),
             'created' => $created,
+            'links' => $this->links->build(),
         ];
     }
 
     private function upsert(HubType $type, string $psgcCode, array $attributes, int &$created): Hub
     {
-        $hub = Hub::firstOrNew(['type' => $type, 'psgc_code' => $psgcCode]);
+        $hub = Hub::ofCompany(Company::defaultId())->firstOrNew(['type' => $type, 'psgc_code' => $psgcCode]);
         $hub->fill($attributes);
         if (! $hub->exists) {
             $hub->is_active = true;
@@ -89,13 +94,13 @@ class HubNetworkBuilder
         return $hub;
     }
 
-    private function provinceHubName(Province $province): string
+    public static function provinceHubName(Province $province): string
     {
         return self::DISTRICT_NAMES[$province->name] ?? "{$province->name} Province Hub";
     }
 
     /** "City of Tanauan" reads as "Tanauan City"; municipalities keep their name. */
-    private function stationLabel(string $name): string
+    public static function stationLabel(string $name): string
     {
         return preg_match('/^City of (.+)$/', $name, $m) ? "{$m[1]} City" : $name;
     }

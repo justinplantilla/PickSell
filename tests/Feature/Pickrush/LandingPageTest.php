@@ -13,12 +13,13 @@ class LandingPageTest extends TestCase
     public function test_guests_get_the_landing_page_with_tracking_and_staff_sign_in(): void
     {
         $this->get($this->pickrushUrl('/'))->assertOk()
-            ->assertSee("PickSell's delivery network", false)
+            ->assertSee("PickSell's logistics partners", false)
+            ->assertSee('href="'.route('pickrush.register').'"', false)
             ->assertSee('How a parcel gets to you')
             ->assertSee('action="'.route('pickrush.track').'"', false)
             ->assertSee('name="no"', false)
             ->assertSee('href="'.route('pickrush.login').'"', false)
-            ->assertSee('aria-label="A Pickrush rider picks up a parcel at a PickSell shop, rides across town and delivers it to a house"', false)
+            ->assertSee('aria-label="A rider picks up a parcel at a PickSell shop, rides across town and delivers it to a house"', false)
             ->assertSeeInOrder(['Picked up', 'In transit', 'Out for delivery', 'Delivered'])
             ->assertSee('id="prk-bowl-dark"', false)
             ->assertSee('images/pickrush-logo.svg', false)

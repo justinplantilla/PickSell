@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\WishlistItem;
+use App\Services\DeliveryPin;
 use App\Support\BuyerApi\BuyerPresenter;
 use App\Support\BuyerApi\OrderStatus;
 use Illuminate\Http\Request;
@@ -67,6 +68,18 @@ class ProfileController extends Controller
         $user->update($data + ['age' => \Carbon\Carbon::parse($data['birthday'])->age]);
 
         return response()->json(['message' => 'Profile updated.', 'user' => $this->userPayload($user->fresh())]);
+    }
+
+    /** PATCH /buyer/delivery-location {lat, lng} — the default address's door pin, as on the website's account page. */
+    public function deliveryLocation(Request $request, DeliveryPin $pin)
+    {
+        $moved = $pin->save($request->user(), $request);
+
+        return response()->json([
+            'message'          => 'Delivery pin saved. Pickrush riders will bring your orders to this spot.',
+            'parcels_updated'  => $moved,
+            'delivery_address' => BuyerPresenter::deliveryAddress($request->user()->fresh()),
+        ]);
     }
 
     public function password(Request $request)

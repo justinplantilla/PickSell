@@ -13,6 +13,8 @@ export default defineConfig({
                 'resources/css/pickrush/public.css',
                 'resources/css/pickrush/hq.css',
                 'resources/js/pickrush/login.js',
+                'resources/js/pickrush/register.js',
+                'resources/js/components/admin-row-links.js',
                 'resources/js/pickrush/landing.js',
                 'resources/js/pickrush/portal.js',
                 'resources/css/pages/auth.css',

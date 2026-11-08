@@ -7,11 +7,13 @@ use App\Models\User;
 use App\Pickrush\Services\Shipping\DeliveryEstimate;
 use App\Pickrush\Services\Shipping\ShippingQuote;
 use App\Support\BuyerApi\BuyerPresenter;
+use App\Support\DeliveryAddress;
 use Illuminate\Support\Collection;
 
 /**
  * Prices cart lines for the app with the website's checkout rules (see OrderPlacement): a
- * delivery fee per seller (one parcel each, priced by Pickrush), no service fee, and a voucher
+ * delivery fee per seller (one parcel each, priced by the logistics company the buyer chose for
+ * it, Pickrush pre-selected), no service fee, and a voucher
  * is a product's own code. Every number the app shows before placing an order comes from here
  * and equals what the order will store. Without a buyer (the cart page) shipping is not priced.
  */
@@ -20,9 +22,12 @@ class CartQuote
     public function __construct(private OrderPlacement $placement) {}
 
     /** @param Collection<int, CartItem> $items lines with product.seller and variation loaded */
-    public function quote(Collection $items, ?string $voucherCode = null, array $wishlistIds = [], ?User $buyer = null): array
+    /** $to: where it ships (an address-book entry); the buyer's profile address when null. */
+    /** $carriers: the logistics company chosen per seller id; Pickrush (pre-selected) when absent. */
+    public function quote(Collection $items, ?string $voucherCode = null, array $wishlistIds = [], ?User $buyer = null, ?DeliveryAddress $to = null, array $carriers = []): array
     {
-        $shipping = $buyer ? $this->placement->shippingQuotes($buyer, $items->filter(fn (CartItem $item) => $item->product)) : collect();
+        $choices = $buyer ? $this->placement->carrierChoices($buyer, $items->filter(fn (CartItem $item) => $item->product), $to, $carriers) : collect();
+        $shipping = $choices->map(fn (array $choice) => $choice['quote']);
 
         $voucherCode = $voucherCode !== null ? trim($voucherCode) : null;
         // Several lines (variations) can draw on the same product's stock, as on the website.
@@ -59,8 +64,10 @@ class CartQuote
             ];
         });
 
-        $groups = $lines->groupBy(fn ($line) => $line['seller']?->id)->map(function (Collection $sellerLines, $sellerId) use ($shipping, $items) {
+        $groups = $lines->groupBy(fn ($line) => $line['seller']?->id)->map(function (Collection $sellerLines, $sellerId) use ($shipping, $items, $choices) {
             $quote = $shipping->get($sellerId);
+            $choice = $choices->get($sellerId);
+            $sellerItems = $items->filter(fn (CartItem $item) => $item->product?->seller_id == $sellerId);
 
             return [
                 'seller'       => $sellerLines->first()['seller'] ? BuyerPresenter::sellerBrief($sellerLines->first()['seller']) : null,
@@ -68,7 +75,10 @@ class CartQuote
                 'subtotal'     => round($sellerLines->sum('line_total'), 2),
                 'discount'     => round($sellerLines->sum('discount'), 2),
                 'shipping_fee' => $quote?->ok() ? (float) $quote->deliveryFee : 0.0,
-                'shipping'     => $quote ? self::shipping($quote, $items->filter(fn (CartItem $item) => $item->product?->seller_id == $sellerId)) : null,
+                'shipping'     => $quote ? self::shipping($quote, $sellerItems, $choice['company_id']) : null,
+                // The logistics companies this parcel can go with (Pickrush first); 'carrier' is the chosen one.
+                'carrier'      => $choice ? (string) $choice['company_id'] : null,
+                'carriers'     => $choice ? self::carriers($choice, $sellerItems) : [],
             ];
         })->values();
 
@@ -95,14 +105,29 @@ class CartQuote
         ];
     }
 
+    /**
+     * The carrier options of one seller's parcel, as checkout lists them.
+     *
+     * @param  array{options: Collection, company_id: int}  $choice  OrderPlacement::carrierChoices
+     */
+    public static function carriers(array $choice, Collection $lines): array
+    {
+        return $choice['options']->map(fn (array $option, $companyId) => [
+            'id' => (string) $companyId,
+            'name' => $option['company']->name,
+            'is_default' => $option['company']->is_default,
+            'selected' => (int) $companyId === $choice['company_id'],
+        ] + self::shipping($option['quote'], $lines, (int) $companyId))->values()->all();
+    }
+
     /** One seller's parcel as checkout shows it: the fee (money as 2-decimal strings) or why it cannot ship. */
-    public static function shipping(ShippingQuote $quote, Collection $lines): array
+    public static function shipping(ShippingQuote $quote, Collection $lines, ?int $companyId = null): array
     {
         if (! $quote->ok()) {
             return ['ok' => false, 'reason' => $quote->failure->value, 'message' => OrderPlacement::shippingProblem($quote, $lines->values())];
         }
 
-        $eta = app(DeliveryEstimate::class)->for($quote);
+        $eta = app(DeliveryEstimate::class)->for($quote, companyId: $companyId);
 
         return [
             'ok' => true,

@@ -13,6 +13,7 @@ use App\Pickrush\Models\Staff;
 use App\Pickrush\Models\Vehicle;
 use App\Pickrush\Services\Station\DispatchService;
 use App\Pickrush\Support\Actor;
+use App\Pickrush\Support\ParcelHubScope;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -25,12 +26,16 @@ use Illuminate\Support\Str;
  */
 class ManifestService
 {
-    public function __construct(private ParcelLedger $ledger) {}
+    public function __construct(private ParcelLedger $ledger, private HubRouter $router) {}
 
     public function create(Hub $from, Hub $to, Staff $staff): Manifest
     {
         if ($from->is($to)) {
             throw new OperationRefused('A trip must go to another hub.');
+        }
+        // Between provinces, trips only run to a neighboring province hub; parcels relay from there.
+        if ($from->isProvince() && $to->isProvince() && ! $this->router->linked($from, $to)) {
+            throw new OperationRefused("{$to->name} is not a neighboring province hub. Trips go to the next hub on the route.");
         }
 
         return Manifest::create([
@@ -45,7 +50,7 @@ class ManifestService
     /** Parcels at $from that are due next at $to and not already on an open trip. */
     public function readyFor(Hub $from, Hub $to)
     {
-        return Parcel::withoutGlobalScopes()
+        return Parcel::withoutGlobalScope(ParcelHubScope::class)
             ->where('current_hub_id', $from->id)->where('next_hub_id', $to->id)
             ->whereIn('current_status', array_map(fn ($s) => $s->value, [
                 ParcelStatus::AtOriginHub, ParcelStatus::AtProvinceHub, ParcelStatus::ArrivedAtStation,
@@ -102,7 +107,7 @@ class ManifestService
     public function cancel(Manifest $manifest, Staff $staff): int
     {
         return DB::transaction(function () use ($manifest, $staff) {
-            $manifest = Manifest::withoutGlobalScopes()->whereKey($manifest->id)->lockForUpdate()->firstOrFail();
+            $manifest = Manifest::withoutGlobalScope('hub')->whereKey($manifest->id)->lockForUpdate()->firstOrFail();
             if ($manifest->status !== 'draft' || $manifest->from_hub_id !== $staff->hub_id) {
                 throw new OperationRefused('Only a trip still being loaded can be cancelled, by the hub sending it.');
             }
@@ -122,7 +127,7 @@ class ManifestService
     {
         $original = $manifest;
         DB::transaction(function () use ($manifest, $vehicle, $driver, $staff, $original) {
-            $manifest = Manifest::withoutGlobalScopes()->whereKey($manifest->id)->lockForUpdate()->firstOrFail();
+            $manifest = Manifest::withoutGlobalScope('hub')->whereKey($manifest->id)->lockForUpdate()->firstOrFail();
             if ($manifest->status !== 'draft') {
                 throw new OperationRefused('This trip was already dispatched.');
             }
@@ -141,7 +146,7 @@ class ManifestService
             if ($driver->isLicenseExpired()) {
                 throw new OperationRefused("{$driver->full_name}'s license expired on {$driver->license_expiry->format('M d, Y')}. Update it under Trucks & drivers.");
             }
-            $out = Manifest::withoutGlobalScopes()->where('status', 'dispatched');
+            $out = Manifest::withoutGlobalScope('hub')->where('status', 'dispatched');
             if ((clone $out)->where('vehicle_id', $vehicle->id)->exists()) {
                 throw new OperationRefused("{$vehicle->plate_no} is still out on a trip.");
             }
@@ -175,11 +180,11 @@ class ManifestService
     public function receive(Manifest $manifest, string $trackingNo, Staff $staff, ?string $idempotencyKey = null): Parcel
     {
         return DB::transaction(function () use ($manifest, $trackingNo, $staff, $idempotencyKey) {
-            $manifest = Manifest::withoutGlobalScopes()->whereKey($manifest->id)->lockForUpdate()->firstOrFail();
+            $manifest = Manifest::withoutGlobalScope('hub')->whereKey($manifest->id)->lockForUpdate()->firstOrFail();
             if (! in_array($manifest->status, ['dispatched', 'received'], true) || $manifest->to_hub_id !== $staff->hub_id) {
                 throw new OperationRefused('This trip is not arriving at your hub.');
             }
-            $parcel = Parcel::withoutGlobalScopes()->where('tracking_no', self::normalize($trackingNo))->first()
+            $parcel = Parcel::withoutGlobalScope(ParcelHubScope::class)->where('tracking_no', self::normalize($trackingNo))->first()
                 ?? throw new OperationRefused('Unknown tracking number.');
             $item = $manifest->items()->where('parcel_id', $parcel->id)->first();
 
@@ -247,7 +252,7 @@ class ManifestService
         ]);
 
         // A parcel reported missing has turned up.
-        ParcelException::withoutGlobalScopes()->where('parcel_id', $parcel->id)->where('type', 'missing')->where('status', 'open')
+        ParcelException::withoutGlobalScope('hub')->where('parcel_id', $parcel->id)->where('type', 'missing')->where('status', 'open')
             ->update(['status' => 'resolved', 'resolution' => 'found', 'resolution_note' => "Scanned in at {$hub->name}.", 'resolved_at' => now()]);
     }
 
@@ -258,7 +263,7 @@ class ManifestService
 
     private function whyNotReady(string $trackingNo, Manifest $manifest): string
     {
-        $parcel = Parcel::withoutGlobalScopes()->where('tracking_no', self::normalize($trackingNo))->first();
+        $parcel = Parcel::withoutGlobalScope(ParcelHubScope::class)->where('tracking_no', self::normalize($trackingNo))->first();
         if (! $parcel) {
             return 'Unknown tracking number.';
         }

@@ -69,7 +69,7 @@ class SellerWorkflowTest extends TestCase
             ->assertHeader('Content-Type', 'application/pdf');
     }
 
-    public function test_seller_can_confirm_delivery(): void
+    public function test_the_buyer_not_the_seller_confirms_delivery(): void
     {
         $seller = User::create([
             'first_name' => 'Seller',
@@ -111,19 +111,21 @@ class SellerWorkflowTest extends TestCase
             'quantity' => 2,
             'amount' => 800,
             'commission' => 80,
-            'status' => 'completed',
+            'status' => 'delivered',
             'waybill_number' => 'WB-0002',
             'tracking_status' => 'Delivered',
             'delivered_at' => now(),
         ]);
 
+        // Sellers no longer confirm; the buyer's "Order Received" completes the order.
         $this->actingAs($seller)
             ->patch('/seller/orders/'.$order->id.'/confirm-delivery')
-            ->assertRedirect();
+            ->assertSessionHasErrors('order');
+        $this->assertSame('delivered', $order->fresh()->status);
 
+        $this->actingAs($buyer)->patch(route('buyer.orders.received', $order))->assertRedirect();
         $order->refresh();
-        $this->assertSame('Seller confirmed delivery', $order->tracking_status);
-        $this->assertNotNull($order->confirmed_by_seller_at);
+        $this->assertSame(['completed', 'Buyer confirmed receipt'], [$order->status, $order->tracking_status]);
     }
 
     public function test_new_order_notifies_seller(): void

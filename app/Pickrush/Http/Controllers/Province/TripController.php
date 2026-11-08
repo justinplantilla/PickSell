@@ -6,13 +6,16 @@ use App\Pickrush\Http\Controllers\ManagesTrips;
 use App\Pickrush\Http\Controllers\PortalController;
 use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\Manifest;
+use App\Pickrush\Services\HubRouter;
 use App\Pickrush\Services\ManifestService;
 use App\Pickrush\Services\Province\Sorting;
+use App\Pickrush\Support\ParcelHubScope;
 use Illuminate\Http\Request;
 
 /**
  * Outbound from the sorting center: one trip per destination, down to this province's stations
- * or across to another province hub (inter-province transfer). Also checks inbound trips.
+ * or across to a neighboring province hub (parcels for farther provinces relay from there).
+ * Also checks inbound trips.
  */
 class TripController extends PortalController
 {
@@ -23,10 +26,10 @@ class TripController extends PortalController
         return 'pickrush.province.trips';
     }
 
-    public function index(ManifestService $manifests)
+    public function index(ManifestService $manifests, HubRouter $router)
     {
         $hub = $this->hub();
-        $readyByDestination = \App\Pickrush\Models\Parcel::withoutGlobalScopes()->where('current_hub_id', $hub->id)
+        $readyByDestination = \App\Pickrush\Models\Parcel::withoutGlobalScope(ParcelHubScope::class)->where('current_hub_id', $hub->id)
             ->where('current_status', \App\Pickrush\Enums\ParcelStatus::AtProvinceHub)->whereNotNull('next_hub_id')
             ->selectRaw('next_hub_id, count(*) as total, sum(case when sorted_at is not null then 1 else 0 end) as sorted')
             ->groupBy('next_hub_id')->get()->keyBy('next_hub_id');
@@ -40,8 +43,7 @@ class TripController extends PortalController
 
         return view('pickrush.province.trips', [
             'destinations' => $destinations,
-            'allDestinations' => $hub->childStations()->orderBy('name')->get()
-                ->concat(Hub::provinces()->where('id', '!=', $hub->id)->orderBy('name')->get()),
+            'allDestinations' => $hub->childStations()->orderBy('name')->get()->concat($router->neighbors($hub)),
             'drafts' => Manifest::with('toHub')->where('from_hub_id', $hub->id)->where('status', 'draft')->latest()->get(),
             'recent' => Manifest::with('fromHub', 'toHub')->where(fn ($q) => $q->where('from_hub_id', $hub->id)->orWhere('to_hub_id', $hub->id))
                 ->where('status', '!=', 'draft')->latest('updated_at')->limit(40)->get(),
@@ -53,12 +55,15 @@ class TripController extends PortalController
         $data = $request->validate(['to_hub_id' => 'required|integer|exists:pr_hubs,id']);
         $to = Hub::findOrFail($data['to_hub_id']);
         $hub = $this->hub();
-        $allowed = ($to->isStation() && $to->parent_hub_id === $hub->id) || ($to->isProvince() && ! $to->is($hub));
-        if (! $allowed) {
-            return back()->withErrors(['operation' => 'Trips go to this province\'s stations or to another province hub.']);
+        if ($to->isStation() && $to->parent_hub_id !== $hub->id) {
+            return back()->withErrors(['operation' => 'Trips go to this province\'s stations or to a neighboring province hub.']);
         }
 
-        $manifest = $manifests->create($hub, $to, $this->staff());
+        try {
+            $manifest = $manifests->create($hub, $to, $this->staff());   // refuses a province hub that is not a neighbor
+        } catch (\DomainException $e) {
+            return back()->withErrors(['operation' => $e->getMessage()]);
+        }
 
         return redirect()->route('pickrush.province.trips.show', $manifest)->with('success', "Trip {$manifest->manifest_no} to {$to->name} started.");
     }

@@ -7,9 +7,11 @@ use App\Models\Order;
 use App\Models\OrderShipment;
 use App\Models\User;
 use App\Pickrush\Enums\ParcelStatus;
+use App\Pickrush\Models\Company;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\RiderReport;
+use App\Pickrush\Services\HubRouter;
 use App\Pickrush\Services\ParcelLedger;
 use App\Pickrush\Services\ParcelRegistrar;
 use App\Pickrush\Services\Shipping\QuoteFailure;
@@ -42,27 +44,69 @@ class PicksellBridge
         private ParcelLedger $ledger,
         private AddressResolver $addresses,
         private ShippingCalculator $shipping,
+        private HubRouter $router,
     ) {}
 
     /**
-     * The delivery fee for one seller's items to the buyer's address (or [$to], one they chose), priced by Pickrush.
+     * The delivery fee for one seller's items to the buyer's address (or [$to], one they chose),
+     * from one logistics company's rates (Pickrush when none is given).
      *
      * @param  iterable<array{product: \App\Models\Product, quantity: int}>  $lines
      */
-    public function quote(?User $buyer, ?User $seller, iterable $lines, ?DeliveryAddress $to = null): ShippingQuote
+    public function quote(?User $buyer, ?User $seller, iterable $lines, ?DeliveryAddress $to = null, ?int $companyId = null): ShippingQuote
     {
-        $items = collect($lines)->map(fn (array $line) => [
-            'weight_kg' => $line['product']->weight_kg,
-            'quantity' => (int) $line['quantity'],
-        ])->values()->all();
-
         try {
-            return $this->shipping->quote($items, $to ? $to->province : $buyer?->province, $seller?->province, buyerCity: $to ? $to->municipality : $buyer?->municipality);
+            return $this->shipping->quote(self::weights($lines), $to ? $to->province : $buyer?->province, $seller?->province,
+                buyerCity: $to ? $to->municipality : $buyer?->municipality, companyId: $companyId);
         } catch (Throwable $e) {
             report($e);
 
             return ShippingQuote::failed(QuoteFailure::Unavailable);
         }
+    }
+
+    /**
+     * The logistics companies the buyer can choose for one seller's parcel, each priced from its
+     * own rates, the default company (Pickrush) first. Pickrush is always listed, as before buyers
+     * could choose; another approved company only when it has active stations at the seller's and
+     * the buyer's city with a route between them, and its price could be worked out.
+     *
+     * @param  iterable<array{product: \App\Models\Product, quantity: int}>  $lines
+     * @return Collection<int, array{company: Company, quote: ShippingQuote}>  keyed by company id
+     */
+    public function carriers(?User $buyer, ?User $seller, iterable $lines, ?DeliveryAddress $to = null): Collection
+    {
+        $lines = collect($lines);
+        $origin = $this->codes($seller)['municipality_code'];
+        $destination = $to
+            ? ($to->municipalityCode ?? $this->addresses->resolve($to->province, $to->municipality, $to->barangay)['municipality_code'])
+            : $this->codes($buyer)['municipality_code'];
+
+        return Company::approved()->orderByDesc('is_default')->orderBy('name')->get()
+            ->filter(fn (Company $company) => $company->is_default || $this->serves($company->id, $origin, $destination))
+            ->mapWithKeys(fn (Company $company) => [$company->id => [
+                'company' => $company,
+                'quote' => $this->quote($buyer, $seller, $lines, $to, $company->id),
+            ]])
+            ->filter(fn (array $option) => $option['company']->is_default || $option['quote']->ok());
+    }
+
+    /** Whether a company can carry a parcel between two cities: active stations at both and a route. */
+    private function serves(int $companyId, ?string $origin, ?string $destination): bool
+    {
+        $from = $this->router->stationFor($origin, $companyId);
+        $to = $this->router->stationFor($destination, $companyId);
+
+        return $from?->is_active && $to?->is_active && $this->router->path($from, $to) !== null;
+    }
+
+    /** @return list<array{weight_kg: mixed, quantity: int}> */
+    private static function weights(iterable $lines): array
+    {
+        return collect($lines)->map(fn (array $line) => [
+            'weight_kg' => $line['product']->weight_kg,
+            'quantity' => (int) $line['quantity'],
+        ])->values()->all();
     }
 
     /**
@@ -88,6 +132,8 @@ class PicksellBridge
         $orders = $shipment ? $shipment->activeOrders()->orderBy('id')->get() : collect([$order]);
 
         return $this->registrar->register([
+            // The carrier the buyer chose at checkout; orders from before then were Pickrush's.
+            'company_id' => $shipment?->logistics_company_id,
             'source' => self::SOURCE,
             'external_ref' => self::ref($order),
             'shipper_name' => $seller?->business_name ?: $seller?->full_name ?: 'Picksell seller',

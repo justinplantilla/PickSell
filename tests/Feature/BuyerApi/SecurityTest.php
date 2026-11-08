@@ -115,7 +115,6 @@ class SecurityTest extends TestCase
     public function test_old_app_endpoints_are_gone(): void
     {
         $this->actingAsBuyer();
-        $this->postJson('/api/mobile/buyer/addresses', [])->assertNotFound();
         $this->getJson('/api/mobile/buyer/vouchers')->assertNotFound();
     }
 }

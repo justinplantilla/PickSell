@@ -3,13 +3,14 @@
 namespace App\Pickrush\Models;
 
 use App\Pickrush\Support\Audited;
+use App\Pickrush\Support\CompanyOwned;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /** Pickrush's fee for parcels up to max_weight_kg on a route (or, without an origin, to a destination), valid between two dates. */
 class ShippingRate extends Model
 {
-    use Audited;
+    use Audited, CompanyOwned;
 
     protected $table = 'pr_shipping_rates';
 

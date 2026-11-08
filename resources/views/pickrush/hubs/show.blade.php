@@ -48,8 +48,14 @@
         <form method="POST" action="{{ route('pickrush.hubs.update', $hub) }}" class="pr-form-grid">
             @csrf @method('PUT')
             <div class="pr-field" style="grid-column:1/-1"><label for="address">Address</label><input id="address" name="address" class="pr-input" value="{{ old('address', $hub->address) }}"></div>
-            <div class="pr-field"><label for="lat">Latitude</label><input id="lat" name="lat" type="number" step="any" class="pr-input" value="{{ old('lat', $hub->lat) }}"></div>
-            <div class="pr-field"><label for="lng">Longitude</label><input id="lng" name="lng" type="number" step="any" class="pr-input" value="{{ old('lng', $hub->lng) }}"></div>
+            <div class="pr-field" style="grid-column:1/-1">
+                <label>Location on the map</label>
+                @include('partials.map-pin', ['id' => 'hub-pin', 'lat' => old('lat', $hub->lat), 'lng' => old('lng', $hub->lng),
+                    'place' => collect([$hub->municipality_name, $hub->province_name])->filter()->join(', '), 'placeZoom' => $hub->isStation() ? 14 : 10])
+                @include('pickrush.partials.map-centering')
+                <small class="pr-muted">Click the hub's entrance to drop the pin, or drag it. Riders and trips navigate to this spot.</small>
+                @error('lat')<span class="pr-field-error">{{ $message }}</span>@enderror
+            </div>
             <label class="pr-check"><input type="checkbox" name="is_active" value="1" @checked($hub->is_active)> Active (parcels can be routed here)</label>
             <div class="pr-field"><button type="submit" class="pr-btn pr-btn-primary">Save hub</button></div>
         </form>

@@ -2,12 +2,14 @@
 
 namespace App\Pickrush\Services\Shipping;
 
+use App\Pickrush\Models\Company;
 use App\Pickrush\Models\ParcelClass;
 use App\Pickrush\Models\ShippingOverweightRate;
 use App\Pickrush\Models\ShippingRate;
 
 /**
- * Prices one seller's parcel for the marketplace from Pickrush's dated rate card:
+ * Prices one seller's parcel for the marketplace from a logistics company's dated rate card
+ * (Pickrush's when no company is given):
  *  1. chargeable kg = the items' actual weight × quantity, rounded to 2 decimals (box size is
  *     not charged for now);
  *  2. destination region from the buyer's province, origin region from the seller's province;
@@ -27,10 +29,12 @@ class ShippingCalculator
     /**
      * @param  array<int, array{weight_kg: mixed, quantity: mixed}>  $items
      * @param  string|null  $asOf  Y-m-d; rates in force on this day (default today)
+     * @param  int|null  $companyId  the carrier whose rates apply (default: Pickrush)
      */
     public function quote(array $items, ?string $buyerProvince, ?string $sellerProvince = null,
-        ?string $asOf = null, ?string $buyerCity = null): ShippingQuote
+        ?string $asOf = null, ?string $buyerCity = null, ?int $companyId = null): ShippingQuote
     {
+        $companyId ??= Company::defaultId();
         $kg = self::chargeableWeight($items);
         if ($kg === null) {
             return ShippingQuote::failed(QuoteFailure::InvalidWeight);
@@ -54,7 +58,7 @@ class ShippingCalculator
 
         $asOf ??= now()->toDateString();
         $origin = $this->regions->resolve($sellerProvince);
-        $tiers = $this->tiers($destination, $origin, $asOf);
+        $tiers = $this->tiers($companyId, $destination, $origin, $asOf);
         if ($tiers === []) {
             return ShippingQuote::failed(QuoteFailure::NoRate, $kg, $destination);
         }
@@ -66,7 +70,7 @@ class ShippingCalculator
             $version = "rate:{$tier->id}";
             $fromRoute = $tier->origin_region !== null;
         } else {
-            $overweight = ShippingOverweightRate::effectiveOn($asOf)->where('destination_region', $destination)
+            $overweight = ShippingOverweightRate::ofCompany($companyId)->effectiveOn($asOf)->where('destination_region', $destination)
                 ->where(fn ($q) => $q->whereNull('origin_region')->when($origin, fn ($q) => $q->orWhere('origin_region', $origin)))
                 ->get()
                 ->sortBy([
@@ -130,9 +134,9 @@ class ShippingCalculator
      *
      * @return array<int, ShippingRate>
      */
-    private function tiers(string $destination, ?string $origin, string $asOf): array
+    private function tiers(int $companyId, string $destination, ?string $origin, string $asOf): array
     {
-        return ShippingRate::effectiveOn($asOf)->where('destination_region', $destination)
+        return ShippingRate::ofCompany($companyId)->effectiveOn($asOf)->where('destination_region', $destination)
             ->where(fn ($q) => $q->whereNull('origin_region')->when($origin, fn ($q) => $q->orWhere('origin_region', $origin)))
             ->get()
             ->sortBy([

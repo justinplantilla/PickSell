@@ -20,7 +20,7 @@
 <body>
 <table class="head"><tr>
     <td>
-        <h1>Pickrush trip manifest</h1>
+        <h1>{{ $portalCompanyName }} trip manifest</h1>
         <div><strong>{{ $manifest->fromHub->name }}</strong> → <strong>{{ $manifest->toHub->name }}</strong></div>
         <div class="muted">{{ $manifest->parcel_count }} parcels · {{ ucfirst($manifest->status) }}
             @if($manifest->vehicle_plate) · {{ $manifest->vehicle_plate }} · {{ $manifest->driver_name }}@endif
