@@ -4,7 +4,7 @@
 .earnings-eyebrow { color:#777; font-size:.68rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
 .earnings-intro h1 { margin:.25rem 0; color:var(--ink); font-size:1.35rem; }
 .earnings-intro p,.earnings-panel-header p { margin:0; color:#777; font-size:.78rem; line-height:1.5; }
-.earnings-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; }
+.earnings-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; }
 .earnings-summary-card { display:grid; align-content:start; gap:.35rem; padding:1rem 1.15rem; }
 .earnings-summary-card > strong { color:var(--ink); font-size:1.45rem; line-height:1.2; overflow-wrap:anywhere; }
 .earnings-summary-card > small { color:#888; font-size:.7rem; }
@@ -91,3 +91,4 @@ body.dark .review-reply-form { background:#161616; border-left-color:#3a2a25; }
 .analytics-table th { font-size:.72rem; text-transform:uppercase; letter-spacing:.04em; color:#667085; }
 body.dark .analytics-table th, body.dark .analytics-table td { border-color:#2a2a2a; }
 @media (max-width:760px) { .analytics-summary { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+.earnings-discount-note { display:block; font-size:.72rem; color:#b45309; font-weight:600; }

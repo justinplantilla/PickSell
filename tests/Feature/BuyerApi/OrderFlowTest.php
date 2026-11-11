@@ -44,16 +44,22 @@ class OrderFlowTest extends TestCase
         $lamp = $this->product($this->seller(), ['stock' => 3]);
         $buyer = $this->actingAsBuyer();
 
-        foreach (['placed', 'confirmed', 'preparing'] as $status) {
+        foreach (['placed', 'confirmed'] as $status) {
             $order = $this->order($buyer, $lamp, $status);
             $this->getJson("/api/mobile/buyer/orders/{$order->id}")->assertJsonPath('order.actions.can_cancel', true);
             $this->postJson("/api/mobile/buyer/orders/{$order->id}/cancel", ['reason' => 'Ordered by mistake'])
                 ->assertOk()->assertJsonPath('order.status', 'cancelled')->assertJsonPath('order.cancel_reason', 'Ordered by mistake');
         }
         // Each cancel puts the 2 units back, like the website's lifecycle does.
-        $this->assertSame(9, $lamp->fresh()->stock);
+        $this->assertSame(7, $lamp->fresh()->stock);
         $history = OrderStatusHistory::where('to_status', 'cancelled')->latest('id')->first();
         $this->assertSame(['buyer', $buyer->id, 'Ordered by mistake'], [$history->source, $history->changed_by, $history->reason]);
+
+        // Once the seller is preparing it, the buyer can no longer cancel.
+        $preparing = $this->order($buyer, $lamp, 'preparing');
+        $this->getJson("/api/mobile/buyer/orders/{$preparing->id}")->assertJsonPath('order.actions.can_cancel', false);
+        $this->postJson("/api/mobile/buyer/orders/{$preparing->id}/cancel")->assertStatus(409);
+        $this->assertSame('preparing', $preparing->fresh()->status);
 
         $handedOver = $this->order($buyer, $lamp, 'ready_for_pickup');
         $this->getJson("/api/mobile/buyer/orders/{$handedOver->id}")->assertJsonPath('order.actions.can_cancel', false);

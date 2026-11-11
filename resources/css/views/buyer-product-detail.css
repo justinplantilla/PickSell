@@ -135,3 +135,4 @@ body.dark .seller-panel { background: #1a1a1a; border-color: #2a2a2a; box-shadow
 body.dark .review-item { border-color: #2a2a2a; }
 body.dark .review-item p { color: #d1d5db; }
 body.dark .review-photos img { border-color: #2a2a2a; }
+.product-preorder { color:#b45309; }

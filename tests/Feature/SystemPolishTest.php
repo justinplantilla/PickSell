@@ -66,6 +66,20 @@ class SystemPolishTest extends TestCase
             ->assertDontSee('src="/storage/"', false);
     }
 
+    public function test_admin_featured_products_lead_the_homepage_and_shop(): void
+    {
+        $seller = $this->user('seller', 'featured-seller@example.test', ['business_name' => 'Featured Shop']);
+        $featured = Product::create(['seller_id' => $seller->id, 'name' => 'Old Featured Lamp', 'category' => 'Home', 'price' => 500, 'stock' => 3, 'status' => 'active', 'is_featured' => true]);
+        $featured->forceFill(['created_at' => now()->subYear()])->save();
+        foreach (range(1, 9) as $i) {
+            Product::create(['seller_id' => $seller->id, 'name' => "Newer Mug {$i}", 'category' => 'Home', 'price' => 100, 'stock' => 3, 'status' => 'active']);
+        }
+
+        // Only 8 fit on the homepage; the year-old featured item must still make the cut and lead the shop.
+        $this->get('/')->assertOk()->assertSeeInOrder(['Old Featured Lamp', 'Newer Mug']);
+        $this->get('/shop')->assertOk();
+    }
+
     public function test_buyer_order_badges_use_a_styled_tone_and_a_readable_label(): void
     {
         $buyer = $this->user('buyer', 'polish-buyer@example.test');

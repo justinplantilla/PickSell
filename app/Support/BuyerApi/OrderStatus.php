@@ -42,7 +42,7 @@ final class OrderStatus
     ];
 
     /** Same steps the website's OrderCancellationService allows a buyer to cancel in. */
-    public const CANCELLABLE = ['placed', 'confirmed', 'preparing'];
+    public const CANCELLABLE = \App\Services\Orders\OrderCancellationService::BUYER_CANCELLABLE;
 
     /** The buyer rates once they confirmed they received it (Order Received completes the order). */
     public const RATEABLE = ['completed'];

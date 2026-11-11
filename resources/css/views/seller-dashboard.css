@@ -868,3 +868,10 @@ body.dark .kpi-link:hover {
 }
 .inventory-item-options { display:block; color:#b91c1c; font-size:.75rem; font-weight:600; }
 body.dark .inventory-item-options { color:#fca5a5; }
+
+/* Custom date-to-date range (analytics and dashboard) */
+.analytics-range-controls { display:flex; flex-wrap:wrap; align-items:flex-end; gap:.75rem; }
+.seller-date-range { display:flex; flex-wrap:wrap; align-items:flex-end; gap:.5rem; }
+.seller-date-range label { display:flex; flex-direction:column; gap:.2rem; font-size:.72rem; font-weight:700; color:#667085; }
+.seller-date-range .form-control { padding:.35rem .5rem; font-size:.82rem; width:auto; }
+@media (max-width: 600px) { .seller-date-range { width:100%; } .seller-date-range label { flex:1 1 40%; } .seller-date-range .form-control { width:100%; } }

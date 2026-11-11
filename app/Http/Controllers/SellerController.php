@@ -14,6 +14,7 @@ use App\Notifications\SellerRepliedToReview;
 use App\Support\ReviewReports;
 use App\Notifications\SellerDeliveryReceived;
 use App\Pickrush\Bridge\PicksellBridge;
+use App\Pickrush\Models\Company;
 use App\Services\CommissionService;
 use App\Services\Finance\FinancialLedgerService;
 use App\Services\Orders\OrderLifecycleService;
@@ -103,6 +104,10 @@ class SellerController extends Controller
         $seller = $this->seller();
         $storeName = $seller->business_name ?: trim(($seller->first_name ?? '').' '.($seller->last_name ?? '')) ?: 'Your Store';
         $range = in_array($request->query('range', '30D'), ['7D', '30D', '6M'], true) ? $request->query('range', '30D') : '30D';
+        // A date-to-date range replaces the preset when given.
+        if ($this->customWindow = $this->customRange($request)) {
+            $range = 'custom';
+        }
         $metric = in_array($request->query('metric', 'sales'), ['sales', 'orders'], true) ? $request->query('metric', 'sales') : 'sales';
 
         $totalOrders = Order::where('seller_id', $seller->id)->count();
@@ -224,8 +229,22 @@ class SellerController extends Controller
             ->sum('amount');
     }
 
+    /** The dashboard's custom date range, when one was asked for. */
+    private ?array $customWindow = null;
+
     private function dateWindow(string $range, bool $previous = false): array
     {
+        if ($range === 'custom' && $this->customWindow) {
+            [$start, $end] = $this->customWindow;
+            if (! $previous) {
+                return [$start, $end];
+            }
+            // The same number of days just before it.
+            $days = (int) $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()) + 1;
+
+            return [$start->copy()->subDays($days), $start->copy()->subSecond()];
+        }
+
         if ($range === '7D') {
             $days = 7;
         } elseif ($range === '6M') {
@@ -255,6 +274,25 @@ class SellerController extends Controller
 
     private function chartData(int $sellerId, string $range, string $metric): array
     {
+        if ($range === 'custom' && $this->customWindow) {
+            [$start, $end] = $this->customWindow;
+            $daily = $start->diffInDays($end) <= 62;
+            $period = \Carbon\CarbonPeriod::create($start->copy()->startOfDay(), $daily ? '1 day' : '1 month', $end);
+            $rows = Order::where('seller_id', $sellerId)->whereBetween('created_at', [$start, $end])
+                ->when($metric === 'sales', fn ($q) => $q->where('status', 'completed'))->get(['created_at', 'amount']);
+            $key = fn ($date) => $daily ? $date->format('Y-m-d') : $date->format('Y-m');
+            $grouped = $rows->groupBy(fn ($order) => $key($order->created_at));
+            $labels = [];
+            $values = [];
+            foreach ($period as $date) {
+                $labels[] = $daily ? $date->format('M d') : $date->format('M Y');
+                $bucket = $grouped->get($key($date), collect());
+                $values[] = $metric === 'sales' ? (float) $bucket->sum('amount') : $bucket->count();
+            }
+
+            return ['labels' => $labels, 'values' => $values];
+        }
+
         if ($range === '7D') {
             $labels = [];
             $values = [];
@@ -368,6 +406,8 @@ class SellerController extends Controller
         'stock' => 'required|integer|min:0',
         // Shipping is priced on the packed weight of one unit.
         'weight_kg' => 'required|numeric|min:0.01|max:1000',
+        // A pre-order gets its own hand-over limit instead of Order::SHIP_WITHIN_HOURS.
+        'preorder_days' => 'nullable|integer|min:'.Order::PREORDER_MIN_DAYS.'|max:'.Order::PREORDER_MAX_DAYS,
         'gallery' => 'nullable|array',
         'gallery.*' => 'string|max:64',
         'gallery_cover' => 'nullable|string|max:64',
@@ -789,7 +829,7 @@ class SellerController extends Controller
             }
 
             try {
-                if (fputcsv($handle, ['Order Number', 'Date', 'Gross Sales (PHP)', 'Commission Rate (%)', 'Commission (PHP)', 'Net Earnings (PHP)', 'Status']) === false) {
+                if (fputcsv($handle, ['Order Number', 'Date', 'Product Discount (PHP)', 'Store Voucher (PHP)', 'Gross Sales (PHP)', 'Commission Rate (%)', 'Commission (PHP)', 'Net Earnings (PHP)', 'Status']) === false) {
                     throw new \RuntimeException('Unable to write the CSV header.');
                 }
 
@@ -797,6 +837,8 @@ class SellerController extends Controller
                     $written = fputcsv($handle, [
                         $order['order_number'],
                         $order['created_at']->format('Y-m-d'),
+                        number_format($order['product_discount'] ?? 0, 2, '.', ''),
+                        number_format($order['store_discount'] ?? 0, 2, '.', ''),
                         number_format($order['amount'], 2, '.', ''),
                         number_format($order['commission_rate'], 2, '.', ''),
                         number_format($order['commission'], 2, '.', ''),
@@ -861,6 +903,8 @@ class SellerController extends Controller
             'totalCommission' => $finance['commission'],
             'totalNetEarnings' => $finance['seller_net'],
             'averageCommissionRate' => $finance['average_commission_rate'],
+            'totalProductDiscounts' => round($finance['orders']->sum('product_discount'), 2),
+            'totalStoreDiscounts' => round($finance['orders']->sum('store_discount'), 2),
         ];
     }
 
@@ -873,13 +917,14 @@ class SellerController extends Controller
      */
     public function productAnalytics(Request $request)
     {
-        $days = array_key_exists((int) $request->query('days'), self::ANALYTICS_RANGES) ? (int) $request->query('days') : 30;
-        $from = today()->subDays($days - 1);
+        $custom = $this->customRange($request);
+        $days = $custom ? null : (array_key_exists((int) $request->query('days'), self::ANALYTICS_RANGES) ? (int) $request->query('days') : 30);
+        [$from, $to] = $custom ?? [today()->subDays($days - 1), now()->endOfDay()];
         $sellerId = $this->seller()->id;
-        $stats = DB::table('product_daily_stats')->where('date', '>=', $from->toDateString())
+        $stats = DB::table('product_daily_stats')->whereBetween('date', [$from->toDateString(), $to->toDateString()])
             ->whereIn('product_id', Product::where('seller_id', $sellerId)->select('id'))
             ->groupBy('product_id')->selectRaw('product_id, SUM(views) as views, SUM(cart_adds) as cart_adds')->get()->keyBy('product_id');
-        $sales = Order::where('seller_id', $sellerId)->where('created_at', '>=', $from)->where('status', '!=', 'cancelled')
+        $sales = Order::where('seller_id', $sellerId)->whereBetween('created_at', [$from, $to])->where('status', '!=', 'cancelled')
             ->groupBy('product_id')->selectRaw('product_id, COUNT(*) as orders, SUM(quantity) as units, SUM(amount) as revenue')->get()->keyBy('product_id');
 
         $rows = Product::where('seller_id', $sellerId)->get()->map(function (Product $product) use ($stats, $sales) {
@@ -902,7 +947,36 @@ class SellerController extends Controller
             'units' => $rows->sum('units'), 'revenue' => $rows->sum('revenue'),
         ];
 
-        return view('seller.analytics', compact('rows', 'totals', 'days'));
+        return view('seller.analytics', compact('rows', 'totals', 'days', 'from', 'to'));
+    }
+
+    /** Most days a custom date range may span. */
+    public const MAX_RANGE_DAYS = 366;
+
+    /**
+     * A custom ?from=Y-m-d&to=Y-m-d range, when both are valid dates in order, not in the future
+     * and at most a year apart; otherwise null and the page uses its preset.
+     *
+     * @return array{0: Carbon, 1: Carbon}|null
+     */
+    private function customRange(Request $request): ?array
+    {
+        $from = $request->query('from');
+        $to = $request->query('to');
+        if (! is_string($from) || ! is_string($to)) {
+            return null;
+        }
+        try {
+            $start = Carbon::createFromFormat('!Y-m-d', $from)->startOfDay();
+            $end = Carbon::createFromFormat('!Y-m-d', $to)->endOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
+        if ($end->lt($start) || $start->isFuture() || $start->diffInDays($end) > self::MAX_RANGE_DAYS) {
+            return null;
+        }
+
+        return [$start, $end->min(now()->endOfDay())];
     }
 
     /** Buyers' ratings of this seller's orders: product, service and delivery, newest first. */
@@ -1146,10 +1220,34 @@ class SellerController extends Controller
         $seller = $this->seller();
         $current = $vacations->current($seller);
 
+        $chosen = $seller->logisticsCompanies()->pluck('pr_companies.id');
+
         return view('seller.account', [
             'vacationDaysLeft' => $vacations->daysLeft($seller, now()),
             'latestReturn' => $vacations->latestReturn($seller, $current?->starts_at ?? now(), $current),
+            'deliveryPartners' => Company::approved()->orderByDesc('is_default')->orderBy('name')->get(),
+            'chosenPartners' => $chosen->all(),
+            'partnersChosen' => $chosen->isNotEmpty(),
         ]);
+    }
+
+    /** The registered logistics companies buyers may choose for this seller's parcels. */
+    public function updateDeliveryPartners(Request $request)
+    {
+        $seller = $this->seller();
+        $approved = Company::approved()->pluck('id')->all();
+        $data = $request->validate([
+            'partners' => ['required', 'array', 'min:1'],
+            'partners.*' => ['integer', 'in:'.implode(',', $approved)],
+        ], [
+            'partners.required' => 'Pick at least one delivery partner.',
+            'partners.min' => 'Pick at least one delivery partner.',
+            'partners.*.in' => 'That delivery partner is not available. Only logistics companies registered with PickSell can carry your orders.',
+        ]);
+
+        $seller->logisticsCompanies()->sync(array_map('intval', $data['partners']));
+
+        return redirect()->to(route('seller.account').'#delivery-partners')->with('success', 'Delivery partners saved. Buyers will choose from these at checkout.');
     }
 
     public function updateAccount(Request $request)

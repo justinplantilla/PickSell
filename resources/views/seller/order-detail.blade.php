@@ -79,6 +79,14 @@
                 @php($canConfirm = in_array($order->status, ['placed', 'confirmed', 'pending'], true))
                 @php($isPreparing = in_array($order->status, ['preparing', 'processing'], true))
                 <div class="order-detail-spaced-2">
+                    @if($isPreparing && $order->ship_by)
+                        <div class="alert {{ $order->ship_by->lt(now()->addHours(\App\Services\Orders\ShippingDeadlines::REMINDER_HOURS)) ? 'alert-warning' : 'alert-info' }} order-detail-flush" role="status">
+                            <strong>Hand over by {{ $order->ship_by->format('M d, Y h:i A') }}</strong> ({{ $order->ship_by->diffForHumans() }}).
+                            If it is not handed to {{ $order->carrierName() }} by then, the order is cancelled automatically and counts against your seller performance.
+                        </div>
+                    @elseif($canConfirm)
+                        <p class="order-detail-muted-label">Once you confirm, you have {{ $order->product?->preorder_days ? $order->product->preorder_days.' days (pre-order)' : \App\Models\Order::SHIP_WITHIN_HOURS.' hours' }} to hand the parcel to the courier.</p>
+                    @endif
                     @if($canCancel || $canConfirm || $isPreparing)
                     <div class="order-detail-actions">
                         @if($canCancel)
@@ -125,6 +133,7 @@
                     @elseif($order->status === 'completed')
                     <div class="alert alert-info order-detail-flush">The buyer confirmed they received this order.</div>
                     @endif
+                    @include('partials.delivery-problem', ['order' => $order, 'role' => 'seller'])
                 </div>
             </div>
         </div>

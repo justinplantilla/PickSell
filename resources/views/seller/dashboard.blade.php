@@ -6,7 +6,9 @@
 
 @section('content')
 @php
-    $periodLabel = ['7D' => '7 days', '30D' => '30 days', '6M' => '6 months'][$range];
+    $custom = $range === 'custom';
+    $periodLabel = $custom ? \Carbon\Carbon::parse(request('from'))->format('M d, Y').' – '.\Carbon\Carbon::parse(request('to'))->format('M d, Y') : ['7D' => '7 days', '30D' => '30 days', '6M' => '6 months'][$range];
+    $rangeQuery = $custom ? ['from' => request('from'), 'to' => request('to')] : ['range' => $range];
     $rangeLabels = ['7D' => '7 Days', '30D' => '30 Days', '6M' => '6 Months'];
 @endphp
 <div class="seller-dashboard-shell">
@@ -96,12 +98,12 @@
                 <a href="{{ route('seller.orders', ['status' => 'completed']) }}" class="kpi-item kpi-link">
                     <span>Total sales</span>
                     <strong>₱{{ number_format($totalSales, 2) }}</strong>
-                    <small>{{ $salesDelta > 0 ? '↑' : ($salesDelta < 0 ? '↓' : '→') }} {{ number_format(abs($salesDelta), 1) }}% vs previous {{ $periodLabel }}</small>
+                    <small>{{ $salesDelta > 0 ? '↑' : ($salesDelta < 0 ? '↓' : '→') }} {{ number_format(abs($salesDelta), 1) }}% {{ $custom ? 'vs the same number of days before' : 'vs previous '.$periodLabel }}</small>
                 </a>
                 <a href="{{ route('seller.orders') }}" class="kpi-item kpi-link">
                     <span>Total orders</span>
                     <strong>{{ $totalOrders }}</strong>
-                    <small>{{ $ordersDelta > 0 ? '↑' : ($ordersDelta < 0 ? '↓' : '→') }} {{ number_format(abs($ordersDelta), 1) }}% vs previous {{ $periodLabel }}</small>
+                    <small>{{ $ordersDelta > 0 ? '↑' : ($ordersDelta < 0 ? '↓' : '→') }} {{ number_format(abs($ordersDelta), 1) }}% {{ $custom ? 'vs the same number of days before' : 'vs previous '.$periodLabel }}</small>
                 </a>
                 @php $sellerRating = auth()->user()->sellerRating(); $standing = app(\App\Services\SellerPerformance::class)->for(auth()->user()); @endphp
                 <a href="{{ route('seller.reviews') }}" class="kpi-item kpi-link">
@@ -134,7 +136,7 @@
             <div class="panel-header">
                 <div>
                     <span class="panel-title">Sales and order trends</span>
-                    <p class="panel-description">{{ $metric === 'sales' ? 'Completed sales' : 'Order count' }} across the last {{ $periodLabel }}.</p>
+                    <p class="panel-description">{{ $metric === 'sales' ? 'Completed sales' : 'Order count' }} {{ $custom ? 'from' : 'across the last' }} {{ $periodLabel }}.</p>
                 </div>
                 <div class="segmented-control">
                     @foreach(['7D', '30D', '6M'] as $option)
@@ -144,9 +146,16 @@
             </div>
             <div class="chart-toolbar">
                 <div class="toolbar-group">
-                    <a href="{{ route('seller.dashboard', ['range' => $range, 'metric' => 'sales']) }}" class="metric-pill {{ $metric === 'sales' ? 'active' : '' }}" aria-current="{{ $metric === 'sales' ? 'true' : 'false' }}">Sales (PHP)</a>
-                    <a href="{{ route('seller.dashboard', ['range' => $range, 'metric' => 'orders']) }}" class="metric-pill {{ $metric === 'orders' ? 'active' : '' }}" aria-current="{{ $metric === 'orders' ? 'true' : 'false' }}">Orders (count)</a>
+                    <a href="{{ route('seller.dashboard', $rangeQuery + ['metric' => 'sales']) }}" class="metric-pill {{ $metric === 'sales' ? 'active' : '' }}" aria-current="{{ $metric === 'sales' ? 'true' : 'false' }}">Sales (PHP)</a>
+                    <a href="{{ route('seller.dashboard', $rangeQuery + ['metric' => 'orders']) }}" class="metric-pill {{ $metric === 'orders' ? 'active' : '' }}" aria-current="{{ $metric === 'orders' ? 'true' : 'false' }}">Orders (count)</a>
                 </div>
+                @include('seller.partials.date-range', [
+                    'action' => route('seller.dashboard'),
+                    'from' => $custom ? \Carbon\Carbon::parse(request('from')) : today()->subDays(29),
+                    'to' => $custom ? \Carbon\Carbon::parse(request('to')) : today(),
+                    'active' => $custom,
+                    'keep' => ['metric' => $metric],
+                ])
             </div>
             @if(array_sum($chartData['values']) > 0)
                 <div class="chart-visual" data-chart-visual data-chart-state="loading">

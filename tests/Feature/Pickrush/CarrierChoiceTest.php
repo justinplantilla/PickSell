@@ -104,6 +104,53 @@ class CarrierChoiceTest extends TestCase
         $this->actingAs($this->buyer)->get($this->url('/buyer/cart/checkout?'.http_build_query(['item_ids' => $items])))->assertDontSee('Bilis Hatid Express');
     }
 
+    public function test_a_seller_who_picks_one_partner_gets_only_that_one_at_checkout(): void
+    {
+        $this->actingAs($this->seller)->get($this->url('/seller/account'))->assertOk()
+            ->assertSee('Delivery Partners')->assertSee("You haven't chosen yet", false)->assertSee('Bilis Hatid Express');
+
+        $this->actingAs($this->seller)->patch($this->url('/seller/account/delivery-partners'), ['partners' => [$this->bilis->id]])
+            ->assertSessionHasNoErrors();
+        $this->assertSame([$this->bilis->id], $this->seller->logisticsCompanies()->pluck('pr_companies.id')->all());
+
+        $items = $this->cart($this->buyer, [[$this->product(), 1]]);
+        $this->actingAs($this->buyer)->get($this->url('/buyer/cart/checkout?'.http_build_query(['item_ids' => $items])))->assertOk()
+            ->assertSee('Bilis Hatid Express')
+            ->assertSee('<input type="hidden" name="carriers['.$this->seller->id.']" value="'.$this->bilis->id.'">', false);
+
+        // Asking for Pickrush anyway does not get around the seller's choice.
+        $this->checkout($this->buyer, $items, [$this->seller->id => Company::defaultId()])->assertSessionHasNoErrors();
+        $this->assertSame($this->bilis->id, Order::sole()->shipment->logistics_company_id);
+    }
+
+    public function test_pickrush_carries_the_order_when_none_of_the_sellers_partners_serve_the_buyer(): void
+    {
+        $this->seller->logisticsCompanies()->sync([$this->bilis->id]);
+        // Bilis has no station in San Jose.
+        $sanJose = $this->user('buyer', 'Batangas', 'San Jose', ['municipality_code' => '041005000']);
+
+        $this->checkout($sanJose, $this->cart($sanJose, [[$this->product(), 1]]))->assertSessionHasNoErrors();
+        $this->assertSame(Company::defaultId(), Order::sole()->shipment->logistics_company_id);
+    }
+
+    public function test_sellers_can_only_pick_registered_approved_companies(): void
+    {
+        $outside = Company::create(['name' => 'Outside Courier', 'slug' => 'outside', 'tracking_prefix' => 'OC', 'status' => 'pending']);
+
+        $this->actingAs($this->seller)->get($this->url('/seller/account'))->assertDontSee('Outside Courier');
+        $this->actingAs($this->seller)->patch($this->url('/seller/account/delivery-partners'), ['partners' => [$outside->id]])
+            ->assertSessionHasErrors('partners.0');
+        $this->actingAs($this->seller)->patch($this->url('/seller/account/delivery-partners'), ['partners' => []])
+            ->assertSessionHasErrors('partners');
+        $this->assertSame(0, $this->seller->logisticsCompanies()->count());
+
+        // A partner suspended later stops being offered; Pickrush takes over.
+        $this->seller->logisticsCompanies()->sync([$this->bilis->id]);
+        $this->bilis->update(['status' => 'suspended']);
+        $this->checkout($this->buyer, $this->cart($this->buyer, [[$this->product(), 1]]))->assertSessionHasNoErrors();
+        $this->assertSame(Company::defaultId(), Order::sole()->shipment->logistics_company_id);
+    }
+
     public function test_admins_see_the_money_with_each_company(): void
     {
         $this->checkout($this->buyer, $this->cart($this->buyer, [[$this->product(), 1]]), [$this->seller->id => $this->bilis->id])->assertSessionHasNoErrors();

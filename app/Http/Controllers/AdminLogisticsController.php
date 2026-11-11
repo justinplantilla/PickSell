@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LogisticsIssue;
 use App\Pickrush\Enums\ParcelStatus;
 use App\Pickrush\Models\Company;
 use App\Pickrush\Models\Hub;
@@ -58,6 +59,11 @@ class AdminLogisticsController extends Controller
             'parcelCounts' => $parcelCounts,
             'openExceptions' => $openExceptions,
             'openExceptionCount' => ParcelException::where('status', 'open')->count(),
+            'issueCounts' => [
+                'open' => LogisticsIssue::where('status', 'open')->count(),
+                'escalated' => LogisticsIssue::where('status', 'escalated')->count(),
+                'overdue' => LogisticsIssue::overdue()->count(),
+            ],
         ]);
     }
 }

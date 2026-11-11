@@ -46,25 +46,15 @@
                 <div class="chat-presence"><span></span>{{ $activeUser->role === 'admin' ? 'Support team' : 'Verified seller' }}</div>
             </div>
         </div>
-        @if(isset($product) && $product)
-        <div class="chat-product-context">
-            @if($product->primary_image)
-            <img src="{{ Storage::url($product->primary_image) }}" alt="{{ $product->name }}">
-            @endif
-            <div class="chat-product-copy">
-                <span class="chat-product-kicker">Product inquiry</span>
-                <strong>{{ $product->name }}</strong>
-                <span class="chat-product-price">₱{{ number_format($product->effective_price, 2) }}</span>
-            </div>
-            <a href="/buyer/product/{{ $product->id }}" class="chat-product-link">View details</a>
-        </div>
-        @endif
         <div class="chat-messages" id="chatMessages">
+            @php($lastProductId = null)
             @forelse($messages as $msg)
+            {{-- The product card sits in the conversation where each inquiry starts. --}}
+            @if($msg->product && $msg->product_id !== $lastProductId)
+                @include('partials.chat-product-card', ['product' => $msg->product, 'link' => '/buyer/product/'.$msg->product_id, 'mine' => $msg->sender_id === auth()->id()])
+            @endif
+            @php($lastProductId = $msg->product_id ?? $lastProductId)
             <div class="msg {{ $msg->sender_id === auth()->id() ? 'sent' : 'received' }}">
-                @if($msg->product)
-                <div class="msg-product-tag">Re: {{ $msg->product->name }}</div>
-                @endif
                 <div class="msg-bubble">{{ $msg->body }}</div>
                 <div class="msg-time">{{ $msg->created_at->format('M d, h:i A') }}</div>
             </div>
@@ -88,7 +78,7 @@
                 @if(isset($product) && $product)
                 <input type="hidden" name="product_id" value="{{ $product->id }}">
                 @endif
-                <input type="text" name="body" class="chat-input" placeholder="Type a message..." required autocomplete="off">
+                <input type="text" name="body" class="chat-input" placeholder="Type a message… (phone numbers, links &amp; payment details are hidden: keep deals on PickSell)" title="For your protection, contact details are hidden. Orders, payments and delivery stay on PickSell." required autocomplete="off">
                 <button type="submit" class="btn btn-coral chat-send-btn"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 3 18 9-18 9 3-9Zm0 0 3 9h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Send</span></button>
             </form>
         </div>

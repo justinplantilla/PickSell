@@ -27,6 +27,7 @@ function openEditModal(id, p) {
     f.querySelector('[name=voucher_discount]').value = p.voucher_discount || 0;
     f.querySelector('[name=stock]').value = p.stock;
     f.querySelector('[name=weight_kg]').value = p.weight_kg ?? '';
+    f.querySelector('[name=preorder_days]').value = p.preorder_days ?? '';
     f.querySelector('[data-product-variations]').productVariations?.load(p.variations || []);
     f.querySelector('[data-product-gallery]').productGallery?.load(p.images || [], p.name);
     openModal('editModal');

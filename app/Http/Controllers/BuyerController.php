@@ -82,7 +82,7 @@ class BuyerController extends Controller
             $query->onSale();
         }
 
-        $products = $query->latest()->paginate(12);
+        $products = $query->orderByDesc('is_featured')->latest()->paginate(12);
 
         // 14 deal products shown on home (no pagination) — only when not filtering
         $dealProducts = null;

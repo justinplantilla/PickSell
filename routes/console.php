@@ -85,3 +85,20 @@ Schedule::command('orders:auto-confirm-received')
     ->hourly()
     ->name('auto-confirm-received-orders')
     ->withoutOverlapping();
+
+// Orders cancelled right after contact details were shared, waybills never handed over, high cancellation rates.
+Schedule::command('off-platform:scan-orders')
+    ->hourly()
+    ->name('scan-off-platform-orders')
+    ->withoutOverlapping();
+
+// Hand-over time limit: remind sellers, cancel late orders (counts against the seller), flag couriers late to pick up.
+Artisan::command('orders:enforce-shipping-deadlines', function () {
+    $result = app(\App\Services\Orders\ShippingDeadlines::class)->run();
+    $this->info("Reminded {$result['reminded']}, cancelled {$result['cancelled']} late order(s), opened {$result['pickup_issues']} pickup issue(s).");
+})->purpose('Enforce the time sellers have to hand orders to the courier');
+
+Schedule::command('orders:enforce-shipping-deadlines')
+    ->everyFifteenMinutes()
+    ->name('enforce-shipping-deadlines')
+    ->withoutOverlapping();

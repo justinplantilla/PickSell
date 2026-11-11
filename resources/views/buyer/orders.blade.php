@@ -51,11 +51,13 @@
             @if($tracking[$order->id] ?? null)
             <a class="btn btn-outline btn-sm" href="{{ route('buyer.orders.tracking', $order) }}">View delivery tracking</a>
             @endif
-            @if(in_array($order->status, ['placed', 'confirmed', 'preparing'], true))
+            @if(in_array($order->status, \App\Services\Orders\OrderCancellationService::BUYER_CANCELLABLE, true))
             <form method="POST" action="{{ route('buyer.orders.cancel', $order) }}" class="cancel-order-form">
                 @csrf @method('PATCH')
                 <button type="button" class="btn btn-outline btn-sm" data-cancel-order>Cancel Order</button>
             </form>
+            @elseif($order->status === 'preparing' && $order->ship_by)
+            <span class="orders-muted-text" title="The seller is packing your order, so it can no longer be cancelled. If it is not shipped by then, it is cancelled for you.">Ships by {{ $order->ship_by->format('M d, h:i A') }}</span>
             @endif
             @if($order->status === 'delivered')
             <form method="POST" action="{{ route('buyer.orders.received', $order) }}" data-no-confirm>

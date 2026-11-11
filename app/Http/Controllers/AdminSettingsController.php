@@ -38,6 +38,8 @@ class AdminSettingsController extends Controller
             'commissionRate' => PlatformSetting::get('commission_rate', '10'),
             'deliveryCommissionRate' => PlatformSetting::get('delivery_commission_rate', (string) config('app.delivery_commission_rate')),
             'maxFileUploadMb' => PlatformSetting::get('max_file_upload_mb', '5'),
+            'logisticsClaimCap' => \App\Models\LogisticsClaim::cap(),
+            'offPlatformKeywords' => PlatformSetting::get(\App\Services\OffPlatform\OffPlatformDetector::KEYWORDS_SETTING),
         ]);
     }
 
@@ -84,6 +86,23 @@ class AdminSettingsController extends Controller
             if (! in_array('Financial settings', $saved, true)) {
                 $saved[] = 'Financial settings';
             }
+        }
+
+        if (isset($values['logistics_claim_cap'])) {
+            Gate::authorize('manageFinancial', PlatformSetting::class);
+            $cap = number_format((float) $values['logistics_claim_cap'], 2, '.', '');
+            if ((float) $cap !== \App\Models\LogisticsClaim::cap()) {
+                $settings->save([\App\Models\LogisticsClaim::CAP_SETTING => $cap], 'settings.logistics_claim_cap_changed', Permission::COMMISSION_MANAGE, $actorId);
+            }
+            if (! in_array('Financial settings', $saved, true)) {
+                $saved[] = 'Financial settings';
+            }
+        }
+
+        if (array_key_exists('off_platform_keywords', $values)) {
+            $settings->save([\App\Services\OffPlatform\OffPlatformDetector::KEYWORDS_SETTING => trim((string) $values['off_platform_keywords'])],
+                'settings.off_platform_keywords_updated', Permission::SETTINGS_MANAGE, $actorId);
+            $saved[] = 'Watched keywords';
         }
 
         if (isset($values['max_file_upload_mb'])) {

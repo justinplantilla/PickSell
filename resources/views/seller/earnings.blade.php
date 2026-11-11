@@ -21,6 +21,11 @@
             <small>{{ $totalOrders }} completed {{ $totalOrders === 1 ? 'order' : 'orders' }}</small>
         </article>
         <article class="kpi-block earnings-summary-card earnings-summary-card--commission">
+            <div class="kpi-title">Given away in discounts</div>
+            <strong>-₱{{ number_format($totalProductDiscounts + $totalStoreDiscounts, 2) }}</strong>
+            <small>₱{{ number_format($totalProductDiscounts, 2) }} product discounts &amp; sales · ₱{{ number_format($totalStoreDiscounts, 2) }} store vouchers. Already taken off gross sales.</small>
+        </article>
+        <article class="kpi-block earnings-summary-card earnings-summary-card--commission">
             <div class="kpi-title">Total commission deducted</div>
             <strong>-₱{{ number_format($totalCommission, 2) }}</strong>
             <small>{{ number_format($averageCommissionRate, 2) }}% platform rate</small>
@@ -94,7 +99,7 @@
                         <tr>
                             <td><a href="{{ route('seller.orders.show', $order['id']) }}">#{{ $order['order_number'] }}</a></td>
                             <td><time datetime="{{ $order['created_at']->toDateString() }}">{{ $order['created_at']->format('M d, Y') }}</time></td>
-                            <td>₱{{ number_format($order['amount'], 2) }}</td>
+                            <td>₱{{ number_format($order['amount'], 2) }}@if($order['product_discount'] + $order['store_discount'] > 0)<small class="earnings-discount-note">-₱{{ number_format($order['product_discount'] + $order['store_discount'], 2) }} discounts</small>@endif</td>
                             <td class="earnings-amount--deduction">-₱{{ number_format($order['commission'], 2) }} ({{ number_format($order['commission_rate'], 2) }}%)</td>
                             <td class="earnings-amount--net">₱{{ number_format($order['net_earnings'], 2) }}</td>
                             <td><x-order-status-badge :status="$order['status']" /></td>
@@ -103,6 +108,11 @@
                         <tr id="earnings-details-{{ $order['id'] }}" class="earnings-details-row" hidden>
                             <td colspan="7">
                                 <dl class="earnings-disclosure-card">
+                                    @if($order['product_discount'] > 0 || $order['store_discount'] > 0)
+                                    <div><dt>List price</dt><dd>₱{{ number_format($order['amount'] + $order['product_discount'] + $order['store_discount'], 2) }}</dd></div>
+                                    @if($order['product_discount'] > 0)<div><dt>Product discount / sale</dt><dd>-₱{{ number_format($order['product_discount'], 2) }}</dd></div>@endif
+                                    @if($order['store_discount'] > 0)<div><dt>Store voucher</dt><dd>-₱{{ number_format($order['store_discount'], 2) }}</dd></div>@endif
+                                    @endif
                                     <div><dt>Order gross sale amount</dt><dd>₱{{ number_format($order['amount'], 2) }}</dd></div>
                                     <div><dt>Platform commission ({{ number_format($order['commission_rate'], 2) }}%)</dt><dd>-₱{{ number_format($order['commission'], 2) }}</dd></div>
                                     <div class="earnings-order-net"><dt>Net calculated earnings</dt><dd>₱{{ number_format($order['net_earnings'], 2) }}</dd></div>

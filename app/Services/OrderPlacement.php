@@ -200,6 +200,8 @@ class OrderPlacement
                 // The store voucher is the seller's: the order is saved at the lower amount, so commission follows.
                 $storeDiscount = $discounts['lineShares'][$item->id] ?? 0;
                 $amount = round($lineAmounts[$item->id] - $storeDiscount, 2);
+                // The list price before the product's discount, sale or product voucher, so sellers see what discounts cost them.
+                $listAmount = round(($variation?->price !== null ? (float) $variation->price : (float) $product->price) * $item->quantity, 2);
                 $commission = $this->commission->calculate((string) $amount);
 
                 $order = Order::create([
@@ -214,6 +216,7 @@ class OrderPlacement
                     'quantity' => $item->quantity,
                     'amount' => $amount,
                     'store_discount' => $storeDiscount,
+                    'product_discount' => max(0, round($listAmount - $lineAmounts[$item->id], 2)),
                     'commission' => $commission['commission'],
                     'commission_rate' => $commission['rate'],
                     'status' => 'placed',

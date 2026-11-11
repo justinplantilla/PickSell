@@ -69,7 +69,9 @@ class PicksellBridge
      * The logistics companies the buyer can choose for one seller's parcel, each priced from its
      * own rates, the default company (Pickrush) first. Pickrush is always listed, as before buyers
      * could choose; another approved company only when it has active stations at the seller's and
-     * the buyer's city with a route between them, and its price could be worked out.
+     * the buyer's city with a route between them, and its price could be worked out. When the seller
+     * has chosen their delivery partners only those are offered, and Pickrush only as the fallback
+     * when none of them can carry this parcel (so the buyer can still order).
      *
      * @param  iterable<array{product: \App\Models\Product, quantity: int}>  $lines
      * @return Collection<int, array{company: Company, quote: ShippingQuote}>  keyed by company id
@@ -82,13 +84,23 @@ class PicksellBridge
             ? ($to->municipalityCode ?? $this->addresses->resolve($to->province, $to->municipality, $to->barangay)['municipality_code'])
             : $this->codes($buyer)['municipality_code'];
 
-        return Company::approved()->orderByDesc('is_default')->orderBy('name')->get()
+        $chosen = $seller ? $seller->logisticsCompanies()->pluck('pr_companies.id')->all() : [];
+
+        $options = Company::approved()->orderByDesc('is_default')->orderBy('name')->get()
+            ->filter(fn (Company $company) => $company->is_default || $chosen === [] || in_array($company->id, $chosen))
             ->filter(fn (Company $company) => $company->is_default || $this->serves($company->id, $origin, $destination))
             ->mapWithKeys(fn (Company $company) => [$company->id => [
                 'company' => $company,
                 'quote' => $this->quote($buyer, $seller, $lines, $to, $company->id),
             ]])
             ->filter(fn (array $option) => $option['company']->is_default || $option['quote']->ok());
+
+        if ($chosen === []) {
+            return $options;
+        }
+        $theirs = $options->only($chosen);
+
+        return $theirs->isNotEmpty() ? $theirs : $options->filter(fn (array $option) => $option['company']->is_default);
     }
 
     /** Whether a company can carry a parcel between two cities: active stations at both and a route. */

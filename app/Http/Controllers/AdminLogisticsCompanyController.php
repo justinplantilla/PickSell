@@ -62,6 +62,7 @@ class AdminLogisticsCompanyController extends Controller
             'address' => $this->address($company),
             'documents' => $company->documents->groupBy('type'),
             'canDecide' => auth()->user()->can(Permission::LOGISTICS_MANAGE),
+            'scorecard' => $company->approved_at ? app(\App\Services\Logistics\LogisticsScorecard::class)->for($company) : null,
         ]);
     }
 

@@ -82,7 +82,7 @@ class OrderController extends Controller
         return $this->detail($this->find($request, $order));
     }
 
-    /** POST /buyer/orders/{id}/cancel {reason?} — website rule: Placed, Confirmed or Preparing only. */
+    /** POST /buyer/orders/{id}/cancel {reason?} — website rule: Placed or Confirmed only (not once the seller is preparing). */
     public function cancel(Request $request, Order $order, OrderCancellationService $cancellations)
     {
         $data = $request->validate(['reason' => ['nullable', 'string', 'max:1000']]);

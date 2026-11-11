@@ -12,12 +12,16 @@
             <h1>Product performance</h1>
             <p>Views and add-to-carts from buyers on the website and app, and sales from orders that were not cancelled.</p>
         </div>
-        <nav class="analytics-ranges" aria-label="Date range">
-            @foreach(\App\Http\Controllers\SellerController::ANALYTICS_RANGES as $value => $label)
-            <a href="{{ route('seller.analytics', ['days' => $value]) }}" class="btn btn-sm {{ $days === $value ? 'btn-coral' : 'btn-outline' }}" @if($days === $value) aria-current="page" @endif>{{ $label }}</a>
-            @endforeach
-        </nav>
+        <div class="analytics-range-controls">
+            <nav class="analytics-ranges" aria-label="Date range">
+                @foreach(\App\Http\Controllers\SellerController::ANALYTICS_RANGES as $value => $label)
+                <a href="{{ route('seller.analytics', ['days' => $value]) }}" class="btn btn-sm {{ $days === $value ? 'btn-coral' : 'btn-outline' }}" @if($days === $value) aria-current="page" @endif>{{ $label }}</a>
+                @endforeach
+            </nav>
+            @include('seller.partials.date-range', ['action' => route('seller.analytics'), 'from' => $from, 'to' => $to, 'active' => $days === null])
+        </div>
     </section>
+    <p class="earnings-period">Showing {{ $from->format('M d, Y') }} – {{ $to->format('M d, Y') }}</p>
 
     <section class="earnings-summary analytics-summary" aria-label="Totals">
         <article class="kpi-block earnings-summary-card"><div class="kpi-title">Views</div><strong>{{ number_format($totals['views']) }}</strong></article>

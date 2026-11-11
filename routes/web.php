@@ -13,6 +13,10 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminLogisticsController;
 use App\Http\Controllers\AdminLogisticsCompanyController;
+use App\Http\Controllers\AdminLogisticsIssueController;
+use App\Http\Controllers\DeliveryProblemController;
+use App\Http\Controllers\AdminOffPlatformController;
+use App\Http\Controllers\OffPlatformReportController;
 use App\Http\Controllers\AdminOrderController;
 use App\Http\Controllers\AdminProductController;
 use App\Http\Controllers\AdminRefundController;
@@ -54,7 +58,7 @@ Route::get('/', function () {
     }
 
     $featuredProducts = Product::showcased()->where('stock', '>', 0)
-        ->with('seller')->latest()->take(8)->get();
+        ->with('seller')->orderByDesc('is_featured')->latest()->take(8)->get();
 
     return view('welcome', compact('featuredProducts'));
 });
@@ -83,7 +87,7 @@ Route::get('/shop', function (Request $request) {
     match ($sort) {
         'price_asc' => $query->orderBy('price'),
         'price_desc' => $query->orderByDesc('price'),
-        default => $query->latest(),
+        default => $query->orderByDesc('is_featured')->latest(),
     };
     $products = $query->paginate(30)->withQueryString();
     $categoryCounts = Product::showcased()
@@ -166,6 +170,8 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
     Route::patch('/orders/{order}/cancel', [BuyerController::class, 'cancelOrder'])->name('buyer.orders.cancel');
     Route::patch('/orders/{order}/received', [BuyerController::class, 'confirmReceived'])->name('buyer.orders.received');
     Route::post('/orders/{order}/returns', [BuyerReturnRequestController::class, 'store'])->name('buyer.orders.returns.store');
+    Route::post('/orders/{order}/delivery-problem', [DeliveryProblemController::class, 'store'])->middleware('throttle:10,1')->name('buyer.orders.delivery-problem');
+    Route::post('/orders/{order}/report-off-platform', [OffPlatformReportController::class, 'store'])->middleware('throttle:10,1')->name('buyer.orders.report-off-platform');
     Route::post('/orders/{order}/feedback', [BuyerController::class, 'submitFeedback'])->name('buyer.feedback');
     Route::post('/orders/{order}/buy-again', [BuyerController::class, 'buyAgain'])->name('buyer.orders.buy-again');
     Route::get('/notifications', [BuyerController::class, 'notifications'])->name('buyer.notifications');
@@ -212,6 +218,7 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     Route::post('/orders/{order}/waybill', [SellerController::class, 'generateWaybill'])->name('seller.orders.waybill.generate');
     Route::patch('/orders/{order}/handover',[SellerController::class, 'handoverOrder'])->name('seller.orders.handover');
     Route::patch('/orders/{order}/confirm-delivery', [SellerController::class, 'confirmDelivery'])->name('seller.orders.confirm-delivery');
+    Route::post('/orders/{order}/delivery-problem', [DeliveryProblemController::class, 'store'])->middleware('throttle:10,1')->name('seller.orders.delivery-problem');
 
     // Returns and refunds
     Route::get('/returns/count', [SellerReturnRequestController::class, 'pendingCount'])->name('seller.returns.count');
@@ -249,6 +256,7 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     Route::patch('/account/password', [SellerController::class, 'updatePassword'])->name('seller.account.password');
     Route::patch('/account/pickup-location', [SellerController::class, 'updatePickupLocation'])->name('seller.account.pickup-location');
     Route::patch('/account/vacation', [SellerController::class, 'updateVacation'])->name('seller.account.vacation');
+    Route::patch('/account/delivery-partners', [SellerController::class, 'updateDeliveryPartners'])->name('seller.account.delivery-partners');
     Route::post('/account/store-profile', [SellerController::class, 'updateStoreProfile'])->name('seller.account.store-profile');
 });
 
@@ -352,6 +360,24 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
         Route::get('/companies', [AdminLogisticsCompanyController::class, 'index'])->name('companies');
         Route::get('/companies/{company}', [AdminLogisticsCompanyController::class, 'show'])->name('companies.show');
         Route::get('/documents/{document}', [AdminLogisticsCompanyController::class, 'document'])->name('documents.show');
+        Route::get('/issues', [AdminLogisticsIssueController::class, 'index'])->name('issues');
+        Route::get('/issues/{issue}', [AdminLogisticsIssueController::class, 'show'])->name('issues.show');
+        Route::get('/issues/{issue}/evidence', [AdminLogisticsIssueController::class, 'evidence'])->name('issues.evidence');
+    });
+    Route::middleware($can(Permission::SELLER_COMPLIANCE_VIEW))->prefix('/off-platform')->name('admin.off-platform')->group(function () {
+        Route::get('/', [AdminOffPlatformController::class, 'index']);
+        Route::get('/sellers/{user}', [AdminOffPlatformController::class, 'seller'])->name('.seller');
+    });
+    Route::middleware($can(Permission::SELLER_COMPLIANCE_MANAGE))->prefix('/off-platform')->name('admin.off-platform.')->group(function () {
+        Route::patch('/flags/{flag}/dismiss', [AdminOffPlatformController::class, 'dismiss'])->name('dismiss');
+        Route::patch('/flags/{flag}/restore-listing', [AdminOffPlatformController::class, 'restoreListing'])->name('restore-listing');
+        Route::post('/sellers/{user}/action', [AdminOffPlatformController::class, 'act'])->name('act');
+    });
+    Route::middleware($can(Permission::LOGISTICS_MANAGE))->prefix('/logistics')->name('admin.logistics.')->group(function () {
+        Route::post('/issues/{issue}/notes', [AdminLogisticsIssueController::class, 'note'])->name('issues.note');
+        Route::patch('/issues/{issue}/escalate', [AdminLogisticsIssueController::class, 'escalate'])->name('issues.escalate');
+        Route::patch('/issues/{issue}/resolve', [AdminLogisticsIssueController::class, 'resolve'])->name('issues.resolve');
+        Route::patch('/claims/{claim}/waive', [AdminLogisticsIssueController::class, 'waive'])->name('claims.waive');
     });
     Route::middleware($can(Permission::LOGISTICS_MANAGE))->prefix('/logistics/companies/{company}')->name('admin.logistics.companies.')->group(function () {
         Route::patch('/approve', [AdminLogisticsCompanyController::class, 'approve'])->name('approve');

@@ -18,6 +18,9 @@ class SellerPerformance
     public const MAX_CANCEL_RATE = 10.0;
     public const WINDOW_DAYS = 90;
 
+    /** Preferred Seller allows at most this % of orders cancelled for shipping late. */
+    public const MAX_LATE_RATE = 5.0;
+
     /** @return array{rating: ?float, ratings: int, completed: int, orders: int, cancel_rate: ?float, ship_hours: ?float, preferred: bool, warnings: string[]} */
     public function for(User $seller): array
     {
@@ -46,8 +49,14 @@ class SellerPerformance
         $handedOver = (clone $recent)->whereNotNull('handed_over_at')->get(['created_at', 'handed_over_at']);
         $shipHours = $handedOver->isNotEmpty() ? round($handedOver->avg(fn ($o) => $o->created_at->diffInMinutes($o->handed_over_at) / 60), 1) : null;
         $cancelRate = $orders ? round($cancelled / $orders * 100, 1) : null;
+        // Orders auto-cancelled because the seller did not hand them to the courier in time.
+        $late = (clone $recent)->whereNotNull('late_cancelled_at')->count();
+        $lateRate = $orders ? round($late / $orders * 100, 1) : null;
 
         $warnings = [];
+        if ($late > 0) {
+            $warnings[] = "{$late} order(s) cancelled for shipping late";
+        }
         if ($cancelRate !== null && $orders >= 5 && $cancelRate > self::MAX_CANCEL_RATE) {
             $warnings[] = "Cancels {$cancelRate}% of orders";
         }
@@ -60,9 +69,9 @@ class SellerPerformance
 
         return [
             'rating' => $rating, 'ratings' => $ratings, 'completed' => $completed, 'orders' => $orders,
-            'cancel_rate' => $cancelRate, 'ship_hours' => $shipHours,
+            'cancel_rate' => $cancelRate, 'ship_hours' => $shipHours, 'late' => $late, 'late_rate' => $lateRate,
             'preferred' => $rating !== null && $rating >= self::MIN_RATING && $completed >= self::MIN_COMPLETED
-                && ($cancelRate ?? 0) <= self::MAX_CANCEL_RATE,
+                && ($cancelRate ?? 0) <= self::MAX_CANCEL_RATE && ($lateRate ?? 0) <= self::MAX_LATE_RATE,
             'warnings' => $warnings,
         ];
     }

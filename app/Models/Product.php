@@ -14,13 +14,14 @@ class Product extends Model
         'seller_id', 'name', 'description', 'category',
         'price', 'discount', 'voucher_code', 'voucher_discount',
         'stock', 'is_featured', 'status',
-        'weight_kg',
+        'weight_kg', 'preorder_days',
         'sale_discount', 'sale_starts_at', 'sale_ends_at',
     ];
 
     protected $casts = [
         'is_featured' => 'boolean',
         'weight_kg' => 'decimal:2',
+        'preorder_days' => 'integer',
         'sale_starts_at' => 'datetime',
         'sale_ends_at' => 'datetime',
     ];

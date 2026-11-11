@@ -64,6 +64,36 @@
         @endif
     </section>
 
+    @if($scorecard)
+    {{-- Performance on PickSell parcels --}}
+    <section class="card" aria-labelledby="scorecard-heading">
+        <div class="card-header">
+            <span class="card-title" id="scorecard-heading">Scorecard · last {{ $scorecard['days'] }} days</span>
+            <a href="{{ route('admin.logistics.issues', ['company' => $company->id, 'tab' => 'all']) }}" class="btn btn-outline btn-sm">See its issues</a>
+        </div>
+        @php($rate = fn ($v) => $v === null ? '—' : $v.'%')
+        <div class="oversight-pipeline">
+            <div class="oversight-stage"><strong>{{ number_format($scorecard['delivered']) }}</strong><span>Delivered</span></div>
+            <div class="oversight-stage"><strong>{{ $rate($scorecard['on_time_rate']) }}</strong><span>On time (≤ {{ \App\Services\Logistics\LogisticsScorecard::ON_TIME_DAYS }} days)</span></div>
+            <div class="oversight-stage"><strong>{{ $rate($scorecard['failed_rate']) }}</strong><span>Failed / returned</span></div>
+            <div class="oversight-stage {{ $scorecard['lost'] > 0 ? 'is-alert' : '' }}"><strong>{{ $rate($scorecard['lost_rate']) }}</strong><span>Lost ({{ $scorecard['lost'] }})</span></div>
+            <div class="oversight-stage"><strong>{{ $scorecard['damaged'] }}</strong><span>Damaged</span></div>
+            <div class="oversight-stage"><strong>{{ $scorecard['rating'] ?? '—' }}</strong><span>Delivery rating ({{ $scorecard['ratings'] }})</span></div>
+            <div class="oversight-stage {{ $scorecard['overdue_issues'] > 0 ? 'is-alert' : '' }}"><strong>{{ $scorecard['open_issues'] }}</strong><span>Open issues ({{ $scorecard['overdue_issues'] }} overdue)</span></div>
+            <div class="oversight-stage"><strong>₱{{ number_format($scorecard['claims'], 2) }}</strong><span>Claims charged</span></div>
+        </div>
+        @if($scorecard['warnings'])
+            <div class="card-body">
+                <div class="alert alert-warning" role="status">
+                    <strong>Needs attention</strong>
+                    <ul>@foreach($scorecard['warnings'] as $warning)<li>{{ $warning }}</li>@endforeach</ul>
+                    Suspending is your call: use the decision below if it is warranted.
+                </div>
+            </div>
+        @endif
+    </section>
+    @endif
+
     {{-- 3. Decision --}}
     <section class="card review-decision" aria-labelledby="decision-heading">
         <div class="card-header"><span class="card-title" id="decision-heading">Decision</span></div>

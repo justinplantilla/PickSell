@@ -1,0 +1,15 @@
+.issues-toolbar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.issues-toolbar select.form-control { width: auto; min-width: 160px; }
+.oversight-tab.is-alert .oversight-tab-count { background: #dc2626; color: #fff; }
+.issue-description { white-space: pre-line; }
+.issue-links { display: flex; flex-wrap: wrap; gap: .5rem; }
+.issue-actions { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.issue-form h3 { font-size: .95rem; margin: 0 0 .75rem; }
+.issue-inline-form { display: flex; gap: .5rem; flex-wrap: wrap; }
+.issue-inline-form .form-control { flex: 1 1 220px; }
+.issue-history { list-style: none; margin: 0; padding: 0 1.25rem 1rem; }
+.issue-history li { padding: .65rem 0; border-bottom: 1px solid rgba(0, 0, 0, .07); }
+.issue-history li:last-child { border-bottom: 0; }
+.issue-history p { margin: .3rem 0 0; white-space: pre-line; }
+.issue-response { border-left: 4px solid #e8472a; }
+body.dark .issue-history li { border-color: rgba(255, 255, 255, .1); }

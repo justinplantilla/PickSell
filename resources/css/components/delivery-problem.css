@@ -1,0 +1,7 @@
+.delivery-problem { margin-top: 1rem; border: 1px solid rgba(0, 0, 0, .1); border-radius: 10px; padding: .75rem 1rem; }
+.delivery-problem summary { cursor: pointer; font-weight: 600; color: #e8472a; }
+.delivery-problem[open] summary { margin-bottom: .75rem; }
+.delivery-problem-help { font-size: .85rem; opacity: .8; margin-bottom: .75rem; }
+.delivery-problem-status { font-size: .85rem; padding: .5rem .65rem; border-radius: 8px; background: rgba(232, 71, 42, .07); margin-bottom: .5rem; }
+.delivery-problem-status span { opacity: .8; }
+body.dark .delivery-problem, :root[data-theme="dark"] .delivery-problem { border-color: rgba(255, 255, 255, .15); }

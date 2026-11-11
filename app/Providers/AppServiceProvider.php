@@ -48,6 +48,11 @@ class AppServiceProvider extends ServiceProvider
         // PickSell's own pagination markup (admin, seller, buyer); Pickrush pages pass 'pagination::tailwind'.
         Paginator::defaultView('vendor.pagination.picksell');
 
+        // Keep sales on PickSell: mask contact details in buyer–seller chat, hold listings that carry them.
+        Message::creating(fn (Message $message) => app(\App\Services\OffPlatform\OffPlatformMonitor::class)->masking($message));
+        Message::created(fn (Message $message) => app(\App\Services\OffPlatform\OffPlatformMonitor::class)->messageSaved($message));
+        \App\Models\Product::saved(fn (\App\Models\Product $product) => app(\App\Services\OffPlatform\OffPlatformMonitor::class)->productSaved($product));
+
         // One Gate per explicit permission; roles map to permissions in config/permissions.php.
         foreach (Permission::ALL as $permission) {
             Gate::define($permission, fn (User $user) => $user->hasPermission($permission));

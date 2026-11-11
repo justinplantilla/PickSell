@@ -148,7 +148,7 @@ class OrderFollowUpTest extends TestCase
         // After the buyer clears the context and sends a plain message, it does not come back.
         $this->post('/buyer/chat/send', ['receiver_id' => $seller->id, 'body' => 'Also, do you ship to Cebu?'])
             ->assertRedirect('/buyer/chat?user='.$seller->id);
-        $this->get('/buyer/chat?user='.$seller->id)->assertOk()->assertDontSee('Asking about');
+        $this->get('/buyer/chat?user='.$seller->id)->assertOk()->assertDontSee('data-clear-product-context', false)->assertSee('chat-thread-product', false); // the earlier inquiry stays in the history
     }
 
     public function test_signed_in_users_reopening_the_site_land_on_their_dashboard(): void

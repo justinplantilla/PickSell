@@ -84,6 +84,8 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
             Route::prefix('hq')->name('hq.')->group(function () {
                 Route::get('/', Hq\DashboardController::class)->name('dashboard');
                 Route::get('/alerts', [Hq\AuditController::class, 'alerts'])->name('alerts');
+                Route::get('/marketplace-issues', [Hq\MarketplaceIssueController::class, 'index'])->name('issues');
+                Route::post('/marketplace-issues/{issue}/respond', [Hq\MarketplaceIssueController::class, 'respond'])->middleware('pickrush.role:super_admin,support')->name('issues.respond');
                 Route::get('/reports', [Hq\ReportController::class, 'index'])->name('reports');
                 Route::get('/reports/export', [Hq\ReportController::class, 'export'])->name('reports.export');
                 Route::get('/settings', [Hq\SettingsController::class, 'index'])->name('settings');

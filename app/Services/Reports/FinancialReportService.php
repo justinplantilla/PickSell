@@ -130,6 +130,9 @@ class FinancialReportService
                 'commission' => $commission,
                 'net_earnings' => $netEarnings,
                 'status' => $order->status,
+                // What discounts took off this sale: the product's own discount / sale / voucher, and the store voucher.
+                'product_discount' => (float) ($order->product_discount ?? 0),
+                'store_discount' => (float) ($order->store_discount ?? 0),
             ];
         })->filter()->values();
 

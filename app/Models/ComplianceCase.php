@@ -13,6 +13,7 @@ class ComplianceCase extends Model
         'misleading_listing' => 'Misleading listing',
         'fulfillment' => 'Fulfillment failures',
         'customer_complaints' => 'Repeated customer complaints',
+        'off_platform' => 'Off-platform transaction',
         'other' => 'Other',
     ];
 

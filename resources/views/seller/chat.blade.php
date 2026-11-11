@@ -40,19 +40,13 @@
             </div>
         </div>
         <div class="chat-messages" id="chatMessages">
-            @if(isset($product) && $product)
-            <div class="seller-chat-row">
-                @if($product->primary_image)
-                <img src="{{ Storage::url($product->primary_image) }}" class="seller-chat-thumb">
-                @endif
-                <div class="seller-chat-grow">
-                    <div class="seller-chat-warning-text">Inquiring about</div>
-                    <div class="seller-chat-warning-text-2">{{ $product->name }}</div>
-                    <div class="seller-chat-accent-text">₱{{ number_format($product->effective_price, 2) }}</div>
-                </div>
-            </div>
-            @endif
+            @php($lastProductId = null)
             @forelse($messages as $msg)
+            {{-- The product the buyer asks about sits in the conversation where each inquiry starts. --}}
+            @if($msg->product && $msg->product_id !== $lastProductId)
+                @include('partials.chat-product-card', ['product' => $msg->product, 'link' => null, 'mine' => $msg->sender_id === auth()->id()])
+            @endif
+            @php($lastProductId = $msg->product_id ?? $lastProductId)
             <div class="msg {{ $msg->sender_id === auth()->id() ? 'sent' : 'received' }}">
                 <div class="msg-bubble">{{ $msg->body }}</div>
                 <div class="msg-time">{{ $msg->created_at->format('M d, h:i A') }}</div>
@@ -65,7 +59,7 @@
             <form method="POST" action="/seller/chat/send" class="seller-chat-row-2">
                 @csrf
                 <input type="hidden" name="receiver_id" value="{{ $activeUser->id }}">
-                <input type="text" name="body" class="chat-input" placeholder="Type a message..." required autocomplete="off">
+                <input type="text" name="body" class="chat-input" placeholder="Type a message… (phone numbers, links &amp; payment details are hidden: keep deals on PickSell)" title="For your protection, contact details are hidden. Orders, payments and delivery stay on PickSell." required autocomplete="off">
                 <button type="submit" class="btn btn-coral">Send</button>
             </form>
         </div>

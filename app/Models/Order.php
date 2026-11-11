@@ -8,6 +8,28 @@ use Illuminate\Database\Eloquent\Model;
 
 class Order extends Model
 {
+    /** Once preparing starts, the seller must hand the parcel to the courier within this many hours. */
+    public const SHIP_WITHIN_HOURS = 48;
+
+    /** Pre-orders: the seller sets how many days they need, within this range. */
+    public const PREORDER_MIN_DAYS = 3;
+
+    public const PREORDER_MAX_DAYS = 30;
+
+    /** The hand-over deadline for an order starting preparation now (a pre-order gets its own days). */
+    public static function shipByFrom(\DateTimeInterface $start, ?Product $product): \Illuminate\Support\Carbon
+    {
+        $start = \Illuminate\Support\Carbon::instance($start);
+
+        return $product?->preorder_days ? $start->copy()->addDays($product->preorder_days) : $start->copy()->addHours(self::SHIP_WITHIN_HOURS);
+    }
+
+    /** Still to be handed over and past the deadline. */
+    public function isLate(): bool
+    {
+        return in_array($this->status, ['preparing', 'processing'], true) && $this->ship_by?->isPast();
+    }
+
     public const STATUS_LIFECYCLE = [
         'placed',
         'confirmed',
@@ -27,11 +49,11 @@ class Order extends Model
 
     protected $fillable = [
         'order_number', 'product_id', 'variation_id', 'buyer_id', 'seller_id', 'order_shipment_id',
-        'product_name', 'variation_label', 'quantity', 'amount', 'store_discount', 'commission', 'commission_rate', 'status',
+        'product_name', 'variation_label', 'quantity', 'amount', 'store_discount', 'product_discount', 'commission', 'commission_rate', 'status',
         'waybill_number', 'tracking_status',
         'packed_at', 'handed_over_at', 'delivered_at', 'confirmed_by_seller_at',
         'confirmed_at', 'preparing_at', 'ready_for_pickup_at', 'picked_up_at', 'sorting_received_at',
-        'sorted_at', 'assigned_to_rider_at', 'out_for_delivery_at', 'completed_at',
+        'sorted_at', 'assigned_to_rider_at', 'out_for_delivery_at', 'completed_at', 'ship_by', 'late_cancelled_at',
         'rating', 'seller_rating', 'delivery_rating', 'delivery_rider_id', 'feedback',
     ];
 
@@ -50,6 +72,9 @@ class Order extends Model
         'assigned_to_rider_at' => 'datetime',
         'out_for_delivery_at' => 'datetime',
         'completed_at' => 'datetime',
+        'ship_by' => 'datetime',
+        'late_cancelled_at' => 'datetime',
+        'ship_reminded_at' => 'datetime',
     ];
 
     /** Context for the next status change (not persisted on orders); see OrderLifecycleService. */

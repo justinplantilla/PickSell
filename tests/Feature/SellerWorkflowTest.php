@@ -461,7 +461,7 @@ class SellerWorkflowTest extends TestCase
         $csvResponse->assertOk()
             ->assertDownload('seller-earnings-2026-10-01-to-2026-10-04.csv');
         $csv = $csvResponse->streamedContent();
-        $this->assertStringContainsString('ORD-EARNINGS-1,2026-10-04,1500.00,10.00,150.00,1350.00,completed', $csv);
+        $this->assertStringContainsString('ORD-EARNINGS-1,2026-10-04,0.00,0.00,1500.00,10.00,150.00,1350.00,completed', $csv);
         $this->assertStringContainsString('ORD-EARNINGS-1', $csv);
         $this->assertStringContainsString('ORD-EARNINGS-2', $csv);
         $this->assertStringNotContainsString('ORD-EARNINGS-CANCELLED', $csv);

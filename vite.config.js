@@ -24,6 +24,8 @@ export default defineConfig({
                 'resources/css/components/pickrush-tracking.css',
                 'resources/css/components/vouchers.css',
                 'resources/css/components/review-moderation.css',
+                'resources/css/components/delivery-problem.css',
+                'resources/css/views/admin-logistics-issues.css',
                 'resources/js/app.js',
                 'resources/js/pages/auth.js',
                 'resources/js/components/dashboard-clock.js',

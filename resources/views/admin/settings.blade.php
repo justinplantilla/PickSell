@@ -60,6 +60,11 @@
                 <input id="delivery-commission-rate" type="number" name="delivery_commission_rate" class="form-control" value="{{ old('delivery_commission_rate', $deliveryCommissionRate) }}" min="0" max="100" step="0.01" @cannot(\App\Auth\Permission::COMMISSION_MANAGE) disabled @endcannot>
                 <small class="form-hint">Applies to orders placed after saving; the logistics company keeps the rest.</small>
             </div>
+            <div class="form-group settings-single-field">
+                <label class="form-label" for="logistics-claim-cap">Logistics claim cap (₱ per parcel)</label>
+                <input id="logistics-claim-cap" type="number" name="logistics_claim_cap" class="form-control" value="{{ old('logistics_claim_cap', $logisticsClaimCap) }}" min="1" max="1000000" step="0.01" @cannot(\App\Auth\Permission::COMMISSION_MANAGE) disabled @endcannot>
+                <small class="form-hint">The most a logistics company is charged for one parcel it lost or damaged (item value + delivery fee).</small>
+            </div>
             @can(\App\Auth\Permission::COMMISSION_MANAGE)
                 <button type="submit" class="btn btn-coral">Save financial settings</button>
             @endcan
@@ -81,6 +86,24 @@
                 <small class="form-hint">Allowed range: 1–500 MB.</small>
             </div>
             <button type="submit" class="btn btn-coral">Save upload settings</button>
+            </fieldset>
+        </form>
+    </div>
+</section>
+
+<section class="card" id="off-platform">
+    <div class="card-header"><span class="card-title">Off-Platform Monitoring</span></div>
+    <div class="card-body">
+        <form method="POST" action="{{ route('admin.settings.save') }}">
+            @csrf
+            <input type="hidden" name="section" value="off_platform">
+            <fieldset class="settings-fieldset" @disabled(! $settingHistoryAvailable)>
+            <div class="form-group">
+                <label class="form-label" for="off-platform-keywords">Extra watched keywords (one per line)</label>
+                <textarea id="off-platform-keywords" name="off_platform_keywords" class="form-control" rows="5" maxlength="5000" placeholder="e.g. shopee&#10;carousell&#10;cash pickup">{{ old('off_platform_keywords', $offPlatformKeywords) }}</textarea>
+                <small class="form-hint">Phone numbers, emails, links, GCash/bank details, outside couriers (LBC, J&amp;T, Lalamove…) and phrases like "meet up" are already watched. Words here are flagged for review in chat; they are not hidden.</small>
+            </div>
+            <button type="submit" class="btn btn-coral">Save watched keywords</button>
             </fieldset>
         </form>
     </div>

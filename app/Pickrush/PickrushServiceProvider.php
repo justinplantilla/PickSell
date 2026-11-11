@@ -2,7 +2,9 @@
 
 namespace App\Pickrush;
 
+use App\Pickrush\Bridge\RecordLogisticsIssue;
 use App\Pickrush\Bridge\SyncOrderWithParcel;
+use App\Pickrush\Models\ParcelException;
 use App\Pickrush\Services\Hq\PolicySettings;
 use App\Pickrush\Support\Actor;
 use App\Pickrush\Services\ParcelStatusChanged;
@@ -19,6 +21,9 @@ class PickrushServiceProvider extends ServiceProvider
     {
         PolicySettings::load();
         Event::listen(ParcelStatusChanged::class, SyncOrderWithParcel::class);
+        Event::listen(ParcelStatusChanged::class, RecordLogisticsIssue::class);
+        ParcelException::created(fn (ParcelException $exception) => app(RecordLogisticsIssue::class)->exceptionCreated($exception));
+        ParcelException::updated(fn (ParcelException $exception) => app(RecordLogisticsIssue::class)->exceptionUpdated($exception));
 
         // Rider app API: email codes and passwords are guessable, so those are the tightest.
         RateLimiter::for('pickrush-rider-auth', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));

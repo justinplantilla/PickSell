@@ -157,6 +157,32 @@
             </div>
         </div>
 
+        <div class="card" id="delivery-partners">
+            <div class="card-header"><span class="card-title">Delivery Partners</span></div>
+            <div class="card-body">
+                <p class="account-muted-text">Choose the logistics companies that carry your orders. Buyers pick one of these at checkout, wherever it serves both your shop and their address. Only companies registered with PickSell can carry orders; shipping through an outside courier is not allowed.</p>
+                @unless($partnersChosen)
+                    <div class="alert alert-warning">You haven't chosen yet, so buyers see every registered company that serves their area, including new ones as they join.</div>
+                @endunless
+                @error('partners')<div class="alert alert-error">{{ $message }}</div>@enderror
+                @error('partners.*')<div class="alert alert-error">{{ $message }}</div>@enderror
+                <form method="POST" action="{{ route('seller.account.delivery-partners') }}">
+                    @csrf @method('PATCH')
+                    <div class="form-group">
+                        @foreach($deliveryPartners as $partner)
+                            <label class="delivery-partner-option">
+                                <input type="checkbox" name="partners[]" value="{{ $partner->id }}"
+                                    @checked(in_array($partner->id, old('partners', $partnersChosen ? $chosenPartners : $deliveryPartners->pluck('id')->all())))>
+                                <span>{{ $partner->name }}@if($partner->is_default) <small class="account-muted-text">(default)</small>@endif</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    <p class="account-muted-text">If none of your partners serves a buyer's area, {{ $deliveryPartners->firstWhere('is_default', true)?->name ?? 'the default carrier' }} carries the order so the buyer can still check out.</p>
+                    <button type="submit" class="btn btn-coral btn-sm">Save delivery partners</button>
+                </form>
+            </div>
+        </div>
+
         <div class="card" id="pickup-location">
             <div class="card-header"><span class="card-title">Shop Pin for Pickups</span></div>
             <div class="card-body">

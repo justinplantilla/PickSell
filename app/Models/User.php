@@ -247,6 +247,12 @@ class User extends Authenticatable
         return $this->belongsToMany(User::class, 'seller_follows', 'seller_id', 'buyer_id')->withTimestamps();
     }
 
+    /** Registered logistics companies this seller ships with; none chosen means every approved one. */
+    public function logisticsCompanies()
+    {
+        return $this->belongsToMany(\App\Pickrush\Models\Company::class, 'seller_logistics_companies', 'seller_id', 'company_id')->withTimestamps();
+    }
+
     /** A buyer's extra delivery addresses; the profile address is the default. */
     public function addresses()
     {

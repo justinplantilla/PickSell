@@ -90,6 +90,10 @@ class OrderLifecycleService
         $order->statusChangeReason = $reason;
         unset($extra['status']);
         $extra['status'] = $to;
+        // The hand-over clock starts when the seller starts preparing (pre-orders get their own days).
+        if ($to === 'preparing' && ! $order->ship_by && ! array_key_exists('ship_by', $extra)) {
+            $extra['ship_by'] = Order::shipByFrom(now(), $order->product);
+        }
         $extra['tracking_status'] ??= self::label($to);
         $order->update($extra);
 

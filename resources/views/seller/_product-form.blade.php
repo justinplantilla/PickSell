@@ -75,6 +75,11 @@
         <input type="number" name="weight_kg" class="form-control" step="0.01" min="0.01" max="1000" required placeholder="e.g. 0.75">
         <small class="form-hint">One unit in its packaging. Shipping is priced on this.</small>
     </div>
+    <div class="form-group">
+        <label class="form-label">Pre-order (days to ship)</label>
+        <input type="number" name="preorder_days" class="form-control" min="{{ \App\Models\Order::PREORDER_MIN_DAYS }}" max="{{ \App\Models\Order::PREORDER_MAX_DAYS }}" step="1" placeholder="Leave empty if in stock">
+        <small class="form-hint">Only for made-to-order or incoming stock: buyers see it is a pre-order. Otherwise you have {{ \App\Models\Order::SHIP_WITHIN_HOURS }} hours from preparing to hand the parcel to the courier, or the order is cancelled automatically.</small>
+    </div>
 </div>
 
 <div class="form-group product-variations" data-product-variations>

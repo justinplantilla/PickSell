@@ -94,7 +94,7 @@
         background: #fff8f5; border: 1px solid #f3c3b8;
         border-radius: 10px; font-size: 0.85rem; color: #555; font-weight: 500;
     }
-    .tracking-assurance-icon { font-size: 1.2rem; flex-shrink: 0; }
+    .tracking-assurance-icon { display: inline-flex; flex-shrink: 0; width: 36px; height: 36px; align-items: center; justify-content: center; border-radius: 50%; background: rgba(232, 71, 42, .12); color: #e8472a; }
 
     /* Cancel confirm modal */
     .cancel-confirm-overlay {

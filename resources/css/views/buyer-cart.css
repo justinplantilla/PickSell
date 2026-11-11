@@ -80,7 +80,8 @@
     align-items: start;
 }
 .checkout-left { display: flex; flex-direction: column; gap: 1.2rem; }
-.checkout-right { position: sticky; top: 1.5rem; }
+/* Below the sticky 60px navbar, and scrollable when taller than the screen so nothing is cut off. */
+.checkout-right { position: sticky; top: calc(60px + 1rem); align-self: start; max-height: calc(100vh - 60px - 2rem); overflow-y: auto; overscroll-behavior: contain; }
 .checkout-table { width: 100%; }
 .checkout-summary-row {
     display: flex;
@@ -152,7 +153,7 @@ body.dark .checkout-voucher-error { color: #fca5a5; }
 }
 @media (max-width: 768px) {
     .checkout-layout { grid-template-columns: 1fr; }
-    .checkout-right { position: static; }
+    .checkout-right { position: static; max-height: none; overflow: visible; }
 }
 
 /* Recommended section on cart page */
