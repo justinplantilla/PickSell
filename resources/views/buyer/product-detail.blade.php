@@ -35,7 +35,7 @@
             <span class="product-category-label">{{ $product->category ?? 'Product' }}</span>
             <h1>{{ $product->name }}</h1>
             <div class="product-seller-line">Sold by <a href="{{ route('buyer.seller', $product->seller) }}"><strong>{{ $product->seller->business_name ?? $product->seller->full_name }}</strong></a><span class="seller-verified">Verified seller</span></div>
-            <a href="#reviews" class="product-rating-link"><span aria-hidden="true">★★★★★</span> {{ $reviewAverage ?: 'New' }} · {{ $reviewCount }} {{ $reviewCount === 1 ? 'review' : 'reviews' }}</a>
+            <a href="#reviews" class="product-rating-link"><x-star-rating :value="$reviewAverage" /> {{ $reviewAverage ?: 'New' }} · {{ $reviewCount }} {{ $reviewCount === 1 ? 'review' : 'reviews' }}</a>
             <form method="POST" action="{{ $wishlisted ? route('buyer.wishlist.destroy', $product) : route('buyer.wishlist.store', $product) }}" class="wishlist-toggle-form">
                 @csrf
                 @if($wishlisted) @method('DELETE') @endif
@@ -72,7 +72,7 @@
 
 <section class="product-reviews" id="reviews"><div class="reviews-header"><div><span class="detail-eyebrow">Customer feedback</span><h2>Product reviews</h2></div><div class="review-summary"><span class="review-summary-label">Avg. rating</span><strong>@if($reviewAverage)<span class="review-summary-star" aria-hidden="true">★</span> {{ number_format($reviewAverage, 1) }}@else — @endif</strong><span>{{ $reviewCount }} {{ $reviewCount === 1 ? 'review' : 'reviews' }}</span></div></div>@if($product->reviews->isEmpty())<div class="reviews-empty"><svg class="reviews-empty-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-2.9-5.6 2.9 1.1-6.2L3 9.6l6.2-.9Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><strong>No reviews yet</strong><span>Completed buyers will be able to share their experience here.</span></div>@else<div class="review-list">@foreach($product->reviews as $review)
 <article class="review-item" id="review-{{ $review->id }}">
-    <div class="review-item-head"><strong>{{ $review->buyer->first_name ?? 'Buyer' }}</strong><span>{{ str_repeat('★', $review->rating) }}{{ str_repeat('☆', 5 - $review->rating) }}</span></div>
+    <div class="review-item-head"><strong>{{ $review->buyer->first_name ?? 'Buyer' }}</strong><x-star-rating :value="$review->rating" /></div>
     @if($review->body)<p>{{ $review->body }}</p>@endif
     @if($review->seller_reply)
     <div class="review-seller-reply"><strong>Seller's reply</strong><p>{{ $review->seller_reply }}</p></div>

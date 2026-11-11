@@ -34,7 +34,7 @@
             <div class="review-row-stars">
                 @foreach(['rating' => 'Product', 'seller_rating' => 'Service', 'delivery_rating' => 'Delivery'] as $field => $label)
                     @if($order->$field)
-                    <span><span class="review-muted">{{ $label }}</span> <span class="review-stars" aria-label="{{ $order->$field }} out of 5">{{ str_repeat('★', $order->$field) }}<span class="review-stars-off">{{ str_repeat('★', 5 - $order->$field) }}</span></span></span>
+                    <span><span class="review-muted">{{ $label }}</span> <x-star-rating :value="$order->$field" class="review-stars" /></span>
                     @endif
                 @endforeach
             </div>

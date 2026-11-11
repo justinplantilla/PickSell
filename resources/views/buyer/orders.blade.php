@@ -78,7 +78,7 @@
             @endif
             @if(in_array($order->status, ['delivered', 'completed'], true) && $order->rating)
             <div class="orders-muted-text-4">
-                @for($i=1;$i<=5;$i++)<span style="color:{{ $i<=$order->rating ? '#f59e0b' : '#ddd' }};">★</span>@endfor
+                <x-star-rating :value="$order->rating" />
             </div>
             @endif
         </div>

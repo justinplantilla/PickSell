@@ -131,11 +131,7 @@
         <div class="card-body">
             @if($order->rating)
                 <div class="tracking-cancel-rated">
-                    <div class="star-rating">
-                        @for($i=1;$i<=5;$i++)
-                        <span class="star {{ $i <= $order->rating ? 'active' : '' }}">★</span>
-                        @endfor
-                    </div>
+                    <div><x-star-rating :value="$order->rating" style="font-size:1.8rem" /></div>
                     <p>Thanks for your feedback!</p>
                     @if($order->feedback)<p class="tracking-cancel-feedback-text">"{{ $order->feedback }}"</p>@endif
                 </div>

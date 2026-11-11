@@ -75,7 +75,7 @@
                 <div class="product-info">
                     <div class="product-cat">{{ $p->category }}</div>
                     <div class="product-name">{{ $p->name }}</div>
-                    <div class="product-rating">★★★★★</div>
+                    <div class="product-rating">@if($p->reviews_count)<x-star-rating :value="$p->reviews_avg_rating" /> <small>{{ number_format($p->reviews_avg_rating, 1) }} ({{ $p->reviews_count }})</small>@else<small>No reviews yet</small>@endif</div>
                     <div class="product-prices">
                         <span class="product-price">₱{{ number_format($p->effective_price, 2) }}</span>
                         @if($p->discount > 0)<span class="product-old">₱{{ number_format($p->price, 2) }}</span><span class="product-discount">-{{ $p->discount }}%</span>@endif

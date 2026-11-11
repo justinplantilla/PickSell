@@ -21,7 +21,7 @@
                     <strong>{{ $review->product?->name ?? 'Removed product' }}</strong>
                     <span class="moderation-muted">· {{ $review->product?->seller?->business_name ?? $review->product?->seller?->full_name }}</span>
                 </div>
-                <span class="moderation-stars" aria-label="{{ $review->rating }} out of 5">{{ str_repeat('★', $review->rating) }}<span>{{ str_repeat('★', 5 - $review->rating) }}</span></span>
+                <x-star-rating :value="$review->rating" class="moderation-stars" />
             </div>
             <p class="moderation-body">{{ $review->body ?: 'No written review.' }}</p>
             @if($review->photos->isNotEmpty())

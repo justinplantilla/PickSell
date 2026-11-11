@@ -59,7 +59,8 @@ Route::get('/', function () {
     return view('welcome', compact('featuredProducts'));
 });
 Route::get('/shop', function (Request $request) {
-    $query = Product::showcased()->where('stock', '>', 0)->whereHas('images')->with('seller');
+    $query = Product::showcased()->where('stock', '>', 0)->whereHas('images')->with('seller')
+        ->withAvg('reviews', 'rating')->withCount('reviews');
     $search = trim((string) $request->get('q', ''));
     if ($search) {
         $query->where(function ($builder) use ($search) {
