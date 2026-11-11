@@ -6,7 +6,7 @@
 <div class="pr-page-head">
     <div>
         <h1>Cash (COD)</h1>
-        <p>Every parcel is cash on delivery. At the end of the shift each rider hands over the cash; the system total is the expected amount.</p>
+        <p>Every parcel is cash on delivery. At the end of the shift each rider keeps their pay out of the COD they collected and hands over the rest; confirm the system total.</p>
     </div>
 </div>
 
@@ -47,31 +47,37 @@
     <h2>Riders holding cash</h2>
     <div class="pr-table-wrap">
         <table class="pr-table">
-            <thead><tr><th>Rider</th><th class="pr-num">Expected (system)</th>@if($isManager)<th>Counted cash</th>@endif</tr></thead>
+            <thead><tr><th>Rider</th><th class="pr-num">COD collected</th><th class="pr-num">Rider pay kept</th><th class="pr-num">To remit</th>@if($isManager)<th>Confirm</th>@endif</tr></thead>
             <tbody>
             @forelse($riders as $row)
                 <tr>
                     <td>{{ $row->rider->full_name }}</td>
+                    <td class="pr-num">₱{{ number_format($row->cod, 2) }}</td>
+                    <td class="pr-num">@if($row->pay > 0)−₱{{ number_format($row->pay, 2) }}@else — @endif</td>
                     <td class="pr-num"><strong>₱{{ number_format($row->expected, 2) }}</strong></td>
                     @if($isManager)
                         <td>
                             <form method="POST" action="{{ route('pickrush.station.cash.record', $row->rider) }}" class="pr-inline">
                                 @csrf
-                                <input name="received_amount" type="number" step="0.01" min="0" class="pr-input" placeholder="Counted ₱" required aria-label="Counted cash" style="width:130px">
+                                <input type="hidden" name="expected_amount" value="{{ number_format($row->expected, 2, '.', '') }}">
                                 @if($row->expected > $twoPersonAbove)
                                     <select name="second_counter_id" class="pr-select" required aria-label="Second counter">
                                         <option value="">Second counter</option>
                                         @foreach($colleagues as $c)<option value="{{ $c->id }}">{{ $c->full_name }}</option>@endforeach
                                     </select>
                                 @endif
-                                <input name="note" class="pr-input" placeholder="Note" aria-label="Note" style="width:140px">
-                                <button type="submit" class="pr-btn pr-btn-primary pr-btn-sm">Record</button>
+                                <button type="submit" class="pr-btn pr-btn-primary pr-btn-sm">Confirm ₱{{ number_format($row->expected, 2) }} received</button>
+                                <details class="pr-cash-differs">
+                                    <summary class="pr-muted">Cash doesn't match?</summary>
+                                    <input name="received_amount" type="number" step="0.01" min="0" class="pr-input" placeholder="Actual ₱ counted" aria-label="Actual cash counted" style="width:140px">
+                                    <input name="note" class="pr-input" placeholder="What happened" aria-label="Note" style="width:160px">
+                                </details>
                             </form>
                         </td>
                     @endif
                 </tr>
             @empty
-                <tr><td colspan="3" class="pr-muted">No rider is holding cash.</td></tr>
+                <tr><td colspan="5" class="pr-muted">No rider is holding cash.</td></tr>
             @endforelse
             </tbody>
         </table>
@@ -109,13 +115,13 @@
         <h2>Recent rider remittances</h2>
         <div class="pr-table-scroll">
         <table class="pr-table">
-            <thead><tr><th>Rider</th><th>Date</th><th class="pr-num">Received</th><th>Status</th></tr></thead>
+            <thead><tr><th>Rider</th><th>Date</th><th class="pr-num">Pay kept</th><th class="pr-num">Received</th><th>Status</th></tr></thead>
             <tbody>
             @forelse($recent as $r)
-                <tr><td>{{ $r->rider->full_name }}</td><td>{{ $r->remit_date->format('M d') }}</td><td class="pr-num">₱{{ number_format((float) $r->received_amount, 2) }}</td>
+                <tr><td>{{ $r->rider->full_name }}</td><td>{{ $r->remit_date->format('M d') }}</td><td class="pr-num">₱{{ number_format((float) $r->rider_pay_kept, 2) }}</td><td class="pr-num">₱{{ number_format((float) $r->received_amount, 2) }}</td>
                     <td><span class="pr-badge {{ $r->status === 'reconciled' ? 'pr-badge-ok' : 'pr-badge-bad' }}">{{ ucfirst($r->status) }}</span></td></tr>
             @empty
-                <tr><td colspan="4" class="pr-muted">None yet.</td></tr>
+                <tr><td colspan="5" class="pr-muted">None yet.</td></tr>
             @endforelse
             </tbody>
         </table>

@@ -271,6 +271,52 @@ class StationOperationsTest extends TestCase
 
     // Cash ------------------------------------------------------------------------------------
 
+    public function test_the_rider_keeps_their_pay_and_staff_confirm_the_rest(): void
+    {
+        $rider = $this->rider($this->sanJose);
+        $this->as($this->sanJoseManager);
+        $parcel = $this->bringToSanJose($this->parcel());
+        $parcel->forceFill(['rider_pay' => 40])->save();
+        $task = app(DispatchService::class)->assign($parcel->fresh(), $rider, $this->sanJoseManager);
+        app(RiderTaskService::class)->startDelivery($task);
+        app(RiderTaskService::class)->deliver($task->fresh(), 1500, 'proof.jpg');
+
+        $this->assertSame(['cod' => 1500.0, 'pay' => 40.0, 'to_remit' => 1460.0], array_diff_key(app(CashHandling::class)->breakdown($rider), ['earning_ids' => 0]));
+        $this->as($this->sanJoseManager)->get($this->pickrushUrl('/station/cash'))->assertSeeInOrder(['₱1,500.00', '−₱40.00', 'Confirm ₱1,460.00 received']);
+        $url = $this->pickrushUrl("/station/cash/riders/{$rider->id}");
+        $this->as($this->sanJoseManager)->post($url, ['expected_amount' => '1500.00'])->assertSessionHasErrors();
+        $this->assertSame(0, CodRemittance::count(), 'a total different from the one shown is not confirmed');
+
+        $this->as($this->sanJoseManager)->post($url, ['expected_amount' => '1460.00'])->assertSessionHasNoErrors();
+        $remittance = CodRemittance::sole();
+        $this->assertSame(['reconciled', '1460.00', '40.00', '1460.00', '0.00'],
+            [$remittance->status, $remittance->expected_amount, $remittance->rider_pay_kept, $remittance->received_amount, $remittance->variance]);
+        $this->assertSame(0, DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->whereNull('settled_at')->count(), 'the pay is settled once');
+        $this->assertSame(1460.0, app(CashHandling::class)->stationCashOnHand($this->sanJose));
+    }
+
+    public function test_only_the_pay_for_the_deliveries_being_remitted_is_kept(): void
+    {
+        $rider = $this->rider($this->sanJose);
+        $this->as($this->sanJoseManager);
+        // Earlier pickup pay, never part of any cash.
+        foreach (range(1, 16) as $i) {
+            DB::table('pr_rider_earnings')->insert(['rider_id' => $rider->id, 'parcel_id' => $this->parcel()->id, 'kind' => 'pickup',
+                'amount' => 15, 'earned_at' => now()->subDays(20), 'created_at' => now()]);
+        }
+
+        $parcel = $this->bringToSanJose($this->parcel(['cod_amount' => 500]));
+        $parcel->forceFill(['rider_pay' => 15])->save();
+        $task = app(DispatchService::class)->assign($parcel->fresh(), $rider, $this->sanJoseManager);
+        app(RiderTaskService::class)->startDelivery($task);
+        app(RiderTaskService::class)->deliver($task->fresh(), 500, 'proof.jpg');
+
+        $this->assertSame(['cod' => 500.0, 'pay' => 15.0, 'to_remit' => 485.0], array_diff_key(app(CashHandling::class)->breakdown($rider), ['earning_ids' => 0]),
+            'the ₱240 of old pickup pay is not taken from this cash');
+        app(CashHandling::class)->recordRiderRemittance($rider, null, $this->sanJoseManager);
+        $this->assertSame(16, DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->where('kind', 'pickup')->whereNull('settled_at')->count());
+    }
+
     public function test_cash_remittance_variance_blocks_dispatch_until_resolved_then_goes_to_hq(): void
     {
         $rider = $this->rider($this->sanJose);
@@ -280,8 +326,9 @@ class StationOperationsTest extends TestCase
         app(RiderTaskService::class)->startDelivery($task);
         app(RiderTaskService::class)->deliver($task->fresh(), 1500, 'proof.jpg');
 
-        $this->assertSame(1500.0, app(CashHandling::class)->expectedFrom($rider));
-        $this->as($this->sanJoseManager)->post($this->pickrushUrl("/station/cash/riders/{$rider->id}"), ["received_amount" => 1400])->assertRedirect()->assertSessionHasNoErrors();
+        $expected = app(CashHandling::class)->expectedFrom($rider);
+        $this->assertLessThan(1500.0, $expected, 'the rider keeps their pay');
+        $this->as($this->sanJoseManager)->post($this->pickrushUrl("/station/cash/riders/{$rider->id}"), ["received_amount" => $expected - 100])->assertRedirect()->assertSessionHasNoErrors();
         $remittance = CodRemittance::sole();
         $this->assertSame(['disputed', '-100.00'], [$remittance->status, $remittance->variance]);
         $this->assertSame(0.0, app(CashHandling::class)->expectedFrom($rider), 'the cash is counted once');
@@ -295,7 +342,7 @@ class StationOperationsTest extends TestCase
             ->assertSessionHasNoErrors();
         app(DispatchService::class)->assign($next->fresh(), $rider, $this->sanJoseManager);
 
-        $this->as($this->sanJoseManager)->post($this->pickrushUrl('/station/cash/remit'), ['amount' => 1400, 'reference_no' => 'BDO-0001'])->assertSessionHasNoErrors();
+        $this->as($this->sanJoseManager)->post($this->pickrushUrl('/station/cash/remit'), ['amount' => $expected - 100, 'reference_no' => 'BDO-0001'])->assertSessionHasNoErrors();
         $this->assertSame(0.0, app(CashHandling::class)->stationCashOnHand($this->sanJose));
         $this->assertNotNull(CodRemittance::withoutGlobalScopes()->sole()->hub_remittance_id, 'the rider cash is now part of the remittance to HQ');
     }
@@ -309,9 +356,9 @@ class StationOperationsTest extends TestCase
         app(RiderTaskService::class)->startDelivery($task);
         app(RiderTaskService::class)->deliver($task->fresh(), 25000, 'proof.jpg');
 
-        $this->expectRefusal(fn () => app(CashHandling::class)->recordRiderRemittance($rider, 25000, $this->sanJoseManager), 'second staff member');
+        $this->expectRefusal(fn () => app(CashHandling::class)->recordRiderRemittance($rider, null, $this->sanJoseManager), 'second staff member');
         $colleague = $this->staff(StaffRole::Dispatcher, $this->sanJose);
-        $this->assertSame('reconciled', app(CashHandling::class)->recordRiderRemittance($rider, 25000, $this->sanJoseManager, $colleague)->status);
+        $this->assertSame('reconciled', app(CashHandling::class)->recordRiderRemittance($rider, null, $this->sanJoseManager, $colleague)->status);
     }
 
     // Returns ---------------------------------------------------------------------------------

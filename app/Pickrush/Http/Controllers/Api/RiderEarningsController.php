@@ -4,6 +4,7 @@ namespace App\Pickrush\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Pickrush\Models\CodRemittance;
+use App\Pickrush\Services\Station\CashHandling;
 use App\Pickrush\Models\ParcelClass;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\RiderBatch;
@@ -92,9 +93,13 @@ class RiderEarningsController extends Controller
     private function cod(Rider $rider, RiderAvailability $availability): array
     {
         $last = CodRemittance::withoutGlobalScope('hub')->where('rider_id', $rider->id)->latest('id')->first();
+        $cash = app(CashHandling::class)->breakdown($rider);
 
         return [
-            'in_hand' => round($availability->codInHand($rider), 2),
+            'in_hand' => $cash['cod'],
+            // The rider keeps their pay out of the cash; to_remit is what they hand over at the station.
+            'pay_kept' => $cash['pay'],
+            'to_remit' => $cash['to_remit'],
             'limit' => (float) $rider->cod_limit,
             'remitted_this_month' => round((float) CodRemittance::withoutGlobalScope('hub')->where('rider_id', $rider->id)
                 ->where('created_at', '>=', now()->startOfMonth())->sum('received_amount'), 2),

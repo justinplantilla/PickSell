@@ -94,7 +94,7 @@
     <div class="card-header">
         <div>
             <span class="card-title" id="money-heading">Money by company</span>
-            <p class="oversight-description">Delivered PickSell parcels and their delivery-fee split, as saved at checkout. Claims are charged for parcels a company lost or damaged; net share is what the company is owed after them. COD collected is cash riders took on delivery; confirmed is what the company's HQ has confirmed from its stations.</p>
+            <p class="oversight-description">Delivered PickSell parcels and their delivery-fee split, as saved at checkout. Claims are charged for parcels a company lost or damaged; net share is what the company is owed after them. COD collected is cash riders took on delivery; riders keep their pay out of it, and confirmed is what the company's HQ has confirmed from its stations.</p>
         </div>
         <nav class="oversight-tabs" aria-label="Period">
             <a href="{{ route('admin.logistics.index') }}" class="oversight-tab {{ $period === 'month' ? 'is-active' : '' }}" @if($period === 'month') aria-current="page" @endif>This month</a>
@@ -106,7 +106,7 @@
         <table>
             <thead><tr>
                 <th>Company</th><th>Delivered</th><th>In progress</th><th>Delivery fees</th><th>Rider pay</th>
-                <th>Company share</th><th>Claims</th><th>Net share</th><th>PickSell commission</th><th>COD collected</th><th>COD confirmed</th>
+                <th>Company share</th><th>Claims</th><th>Net share</th><th>PickSell commission</th><th>COD collected</th><th>Rider pay kept</th><th>COD confirmed</th>
             </tr></thead>
             <tbody>
                 @foreach($money as $row)
@@ -122,6 +122,7 @@
                         <td class="oversight-number"><strong>{{ $peso($row['net_logistics']) }}</strong></td>
                         <td class="oversight-number">{{ $peso($row['picksell']) }}</td>
                         <td class="oversight-number">{{ $peso($row['cod_collected']) }}</td>
+                        <td class="oversight-number">{{ $peso($row['cod_rider_kept']) }}</td>
                         <td class="oversight-number">{{ $peso($row['cod_confirmed']) }}</td>
                     </tr>
                 @endforeach
@@ -130,7 +131,7 @@
                 <th>Total</th>
                 <th class="oversight-number">{{ number_format($money->sum('delivered')) }}</th>
                 <th class="oversight-number">{{ number_format($money->sum('in_progress')) }}</th>
-                @foreach(['fees', 'rider', 'logistics', 'claims', 'net_logistics', 'picksell', 'cod_collected', 'cod_confirmed'] as $column)
+                @foreach(['fees', 'rider', 'logistics', 'claims', 'net_logistics', 'picksell', 'cod_collected', 'cod_rider_kept', 'cod_confirmed'] as $column)
                     <th class="oversight-number">{{ $peso($money->sum($column)) }}</th>
                 @endforeach
             </tr></tfoot>

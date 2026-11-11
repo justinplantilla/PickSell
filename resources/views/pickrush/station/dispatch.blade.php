@@ -79,7 +79,7 @@
         <div class="pr-table-wrap">
             <table class="pr-table">
                 <thead><tr><th><input type="checkbox" aria-label="Select all" data-check-all="[data-pick]"></th>
-                    <th>Tracking no.</th><th>{{ $view === 'pickups' ? 'Item' : 'Deliver to' }}</th><th class="pr-num">COD</th><th>Zone</th><th>Suggested rider</th></tr></thead>
+                    <th>Tracking no.</th><th>{{ $view === 'pickups' ? 'Items' : 'Deliver to' }}</th><th class="pr-num">COD</th><th>Zone</th><th>Suggested rider</th></tr></thead>
                 <tbody>
                 @if($view === 'pickups')
                     @forelse($stops as $i => $stop)
@@ -106,7 +106,7 @@
                                     @if($declined)<span class="pr-badge pr-badge-warn" title="{{ $declined->fail_note }}">Declined by {{ $declined->rider?->full_name }}</span>@endif
                                     @if($missed)<span class="pr-badge pr-badge-bad" title="{{ $missed->fail_note }}">Not collected: {{ config('pickrush.pickup_failure_reasons.'.$missed->fail_reason, $missed->fail_reason) }} ({{ $missed->rider?->full_name }})</span>@endif
                                 </td>
-                                <td>{{ $p->item_description ?? '—' }}</td>
+                                <td>{{ $p->itemSummary() }}@if($p->weight_kg)<span class="pr-muted"> · {{ $p->weight_kg }} kg</span>@endif</td>
                                 <td class="pr-num">—</td>
                                 <td>—</td>
                                 <td><span class="pr-muted">Pick a rider</span></td>

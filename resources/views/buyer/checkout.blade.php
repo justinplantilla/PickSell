@@ -19,7 +19,7 @@
     <div class="checkout-left">
         {{-- Delivery address: the default (profile) one or another from the address book; shipping is priced on it. --}}
         <div class="card checkout-address-card" id="delivery-address">
-            <div class="card-header"><span class="card-title">📍 Delivery Address</span></div>
+            <div class="card-header"><span class="card-title checkout-card-title"><svg class="checkout-title-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg> Delivery Address</span></div>
             <div class="card-body">
                 <div class="checkout-address-current">
                     <strong>{{ $deliverTo->recipientName }}</strong> <span class="cart-muted-text-2">{{ $deliverTo->phone }}</span>
@@ -77,16 +77,15 @@
         </div>
 
         <div class="card">
-            <div class="card-header"><span class="card-title">Order Items</span></div>
+            <div class="card-header"><span class="card-title checkout-card-title">Order Items</span></div>
             <div class="cart-scroll">
                 <table class="checkout-table table-cards">
                     <thead><tr><th>Product</th><th>Variation</th><th>Price</th><th>Qty</th><th>Subtotal</th></tr></thead>
                     @foreach($items->groupBy(fn ($item) => $item->product->seller_id) as $sellerId => $storeItems)
-                    @php $store = $storeItems->first()->product->seller; $parcel = $shipping[$sellerId] ?? null; @endphp
+                    @php $store = $storeItems->first()->product->seller; @endphp
                     <tbody class="cart-store">
                     <tr class="cart-store-head">
-                        <td colspan="4"><a href="{{ route('buyer.seller', $store) }}" class="cart-store-name">{{ $store->business_name ?? $store->full_name }}</a></td>
-                        <td class="cart-muted-text-2">@if($parcel && $parcel['ok'])Shipping ₱{{ number_format((float) $parcel['delivery_fee'], 2) }}@if($parcel['estimated_delivery'])<span class="checkout-eta">Arrives {{ $parcel['estimated_delivery']['label'] }}</span>@endif @endif</td>
+                        <td colspan="5"><a href="{{ route('buyer.seller', $store) }}" class="cart-store-name">{{ $store->business_name ?? $store->full_name }}</a></td>
                     </tr>
                     @foreach($storeItems as $item)
                     <tr>
@@ -120,42 +119,54 @@
             </div>
         </div>
 
+        {{-- Shipping and Vouchers sit side by side (stacked on narrow screens). --}}
+        <div class="checkout-pair">
         {{-- Shipping: one parcel and one delivery fee per seller, with the logistics company the buyer picks (Pickrush pre-selected). --}}
-        <div class="card checkout-voucher-card" id="shipping">
-            <div class="card-header"><span class="card-title">🚚 Shipping</span></div>
-            <div class="card-body">
+        <div class="card checkout-voucher-card checkout-ship-card" id="shipping">
+            <div class="card-header"><span class="card-title checkout-card-title"><svg class="checkout-title-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm13.5-9 1.96 2.5H17V9.5h2.5zM18 18.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg> Shipping</span></div>
+            <div class="card-body checkout-ship-body">
                 @foreach($shipping as $sellerId => $parcel)
-                    <div class="checkout-summary-row">
-                        <span>
-                            {{ $parcel['seller']->business_name ?? $parcel['seller']->full_name }}
+                    <div class="checkout-ship-parcel {{ $parcel['ok'] ? '' : 'is-error' }}">
+                        <div class="checkout-ship-head">
+                            <span class="checkout-ship-store">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z"/></svg>
+                                {{ $parcel['seller']->business_name ?? $parcel['seller']->full_name }}
+                            </span>
                             @if($parcel['ok'])
-                                <small class="cart-muted-text">· {{ $parcel['carrier_name'] }}{{ $parcel['estimated_delivery'] ? ' · arrives '.$parcel['estimated_delivery']['label'] : '' }} · {{ $parcel['chargeable_weight_kg'] }} kg{{ $parcel['parcel_class'] !== 'STANDARD' ? ' · '.ucfirst(strtolower($parcel['parcel_class'])).' parcel' : '' }}</small>
+                                <span class="checkout-ship-fee">₱{{ number_format((float) $parcel['delivery_fee'], 2) }}</span>
                             @endif
-                        </span>
-                        @if($parcel['ok'])
-                            <span>₱{{ number_format((float) $parcel['delivery_fee'], 2) }}</span>
-                        @endif
-                    </div>
-                    @if(count($parcel['carriers']) > 1)
-                        <p class="checkout-voucher-hint">Ship with</p>
-                        <div class="checkout-voucher-list" role="radiogroup" aria-label="Logistics company for {{ $parcel['seller']->business_name ?? $parcel['seller']->full_name }}">
-                            @foreach($parcel['carriers'] as $option)
-                                <a class="checkout-voucher-option {{ $option['selected'] ? 'selected' : '' }} {{ $option['ok'] ? '' : 'is-unavailable' }}"
-                                   href="{{ $option['ok'] && ! $option['selected'] ? $checkoutLink(['carrier' => array_replace($carriers, [$sellerId => (int) $option['id']])]).'#shipping' : '#shipping' }}"
-                                   role="radio" aria-checked="{{ $option['selected'] ? 'true' : 'false' }}">
-                                    <div class="checkout-voucher-info">
-                                        <span class="checkout-voucher-label">{{ $option['name'] }}@if($option['is_default']) <small class="cart-muted-text">· recommended</small>@endif</span>
-                                        <span class="checkout-voucher-desc">{{ $option['ok'] ? ($option['estimated_delivery'] ? 'Arrives '.$option['estimated_delivery']['label'] : 'Delivery date shown after ordering') : $option['message'] }}</span>
-                                    </div>
-                                    <span class="checkout-voucher-savings">{{ $option['ok'] ? '₱'.number_format((float) $option['delivery_fee'], 2) : '' }}</span>
-                                </a>
-                            @endforeach
                         </div>
-                    @endif
-                    @unless($parcel['ok'])
-                        <p class="checkout-voucher-empty" role="alert" style="color:#c0392b">{{ $parcel['message'] }}</p>
-                    @endunless
+                        @if($parcel['ok'])
+                            <div class="checkout-ship-meta">
+                                <span class="checkout-ship-chip">{{ $parcel['carrier_name'] }}</span>
+                                @if($parcel['estimated_delivery'])<span class="checkout-ship-chip is-eta">Arrives {{ $parcel['estimated_delivery']['label'] }}</span>@endif
+                                <span class="checkout-ship-chip">{{ $parcel['chargeable_weight_kg'] }} kg</span>
+                                @if($parcel['parcel_class'] !== 'STANDARD')<span class="checkout-ship-chip">{{ ucfirst(strtolower($parcel['parcel_class'])) }} parcel</span>@endif
+                            </div>
+                        @endif
+                        @if(count($parcel['carriers']) > 1)
+                            <p class="checkout-ship-label">Ship with</p>
+                            <div class="checkout-ship-carriers" role="radiogroup" aria-label="Logistics company for {{ $parcel['seller']->business_name ?? $parcel['seller']->full_name }}">
+                                @foreach($parcel['carriers'] as $option)
+                                    <a class="checkout-ship-carrier {{ $option['selected'] ? 'selected' : '' }} {{ $option['ok'] ? '' : 'is-unavailable' }}"
+                                       href="{{ $option['ok'] && ! $option['selected'] ? $checkoutLink(['carrier' => array_replace($carriers, [$sellerId => (int) $option['id']])]).'#shipping' : '#shipping' }}"
+                                       role="radio" aria-checked="{{ $option['selected'] ? 'true' : 'false' }}">
+                                        <span class="checkout-ship-carrier-name">{{ $option['name'] }}@if($option['is_default']) <small>recommended</small>@endif</span>
+                                        <span class="checkout-ship-carrier-desc">{{ $option['ok'] ? ($option['estimated_delivery'] ? 'Arrives '.$option['estimated_delivery']['label'] : 'Date shown after ordering') : $option['message'] }}</span>
+                                        @if($option['ok'])<span class="checkout-ship-carrier-fee">₱{{ number_format((float) $option['delivery_fee'], 2) }}</span>@endif
+                                    </a>
+                                @endforeach
+                            </div>
+                        @endif
+                        @unless($parcel['ok'])
+                            <p class="checkout-ship-error" role="alert">{{ $parcel['message'] }}</p>
+                        @endunless
+                    </div>
                 @endforeach
+                <div class="checkout-ship-total">
+                    <span>Shipping total</span>
+                    <strong>₱{{ number_format($shippingTotal, 2) }}</strong>
+                </div>
             </div>
         </div>
 
@@ -165,7 +176,7 @@
         @endphp
         <div class="card checkout-voucher-card" id="vouchers">
             <div class="card-header">
-                <span class="card-title">🎟️ Vouchers</span>
+                <span class="card-title checkout-card-title"><svg class="checkout-title-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 10V6c0-1.11-.9-2-2-2H4c-1.1 0-1.99.89-1.99 2v4c1.1 0 1.99.9 1.99 2s-.89 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2zm-9 7.5h-2v-2h2v2zm0-4.5h-2v-2h2v2zm0-4.5h-2v-2h2v2z"/></svg> Vouchers</span>
             </div>
             <div class="card-body">
                 {{-- A typed code picks the store or PickSell voucher it belongs to. --}}
@@ -258,12 +269,13 @@
                 @endif
             </div>
         </div>
+        </div>
     </div>
 
     {{-- RIGHT: Order Summary --}}
-    <div class="checkout-right">
+    <div class="checkout-right" id="checkoutSummary">
         <div class="card">
-            <div class="card-header"><span class="card-title">Order Summary</span></div>
+            <div class="card-header"><span class="card-title checkout-card-title">Order Summary</span></div>
             <div class="card-body">
                 <form method="POST" action="/buyer/cart/checkout" id="checkoutPlaceForm">
                     @csrf
@@ -324,7 +336,7 @@
                         <small class="form-hint">{{ $deliverTo->isComplete() ? 'Shipping could not be priced for some items; see Shipping on the left.' : 'Complete the delivery address first.' }}</small>
                     @endunless
                 </form>
-                <a href="/buyer/cart" class="btn btn-outline" style="width:100%;justify-content:center;margin-top:0.5rem;">← Back to Cart</a>
+                <a href="/buyer/cart" class="btn btn-outline" style="width:100%;justify-content:center;margin-top:0.5rem;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg> Back to Cart</a>
             </div>
         </div>
     </div>
@@ -334,6 +346,25 @@
 @section('scripts')
 @vite('resources/js/components/address-picker.js')
 <script>
+// Keeps the Order Summary in view while scrolling. When it is taller than the screen it scrolls
+// through with the page and sticks at its top or bottom edge, so no part of the card is cut off.
+(function () {
+    const box = document.getElementById('checkoutSummary');
+    if (!box) return;
+    const gap = 76; // 60px navbar + 16px
+    let top = gap, lastY = window.scrollY;
+    function update() {
+        const overflow = box.offsetHeight - (window.innerHeight - gap - 16);
+        const y = window.scrollY;
+        top = overflow <= 0 ? gap : Math.min(gap, Math.max(gap - overflow, top - (y - lastY)));
+        lastY = y;
+        box.style.top = top + 'px';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+})();
+
 document.querySelectorAll('input[name="voucher_pick"]').forEach(radio => {
     radio.addEventListener('change', function () {
         const discount = parseFloat(this.dataset.discount) || 0;

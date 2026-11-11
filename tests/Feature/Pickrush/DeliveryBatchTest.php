@@ -16,6 +16,7 @@ use App\Pickrush\Services\ParcelRegistrar;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -174,7 +175,8 @@ class DeliveryBatchTest extends TestCase
             ->assertOk()
             ->assertJsonPath('batch.stops.1.status', 'failed')
             ->assertJsonPath('batch.to_return_count', 1)
-            ->assertJsonPath('batch.to_remit', fn ($v) => (float) $v === 500.0)
+            // The rider keeps their pay for Ana's parcel out of her ₱500.
+            ->assertJsonPath('batch.to_remit', fn ($v) => (float) $v === 500.0 - (float) DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->sum('amount'))
             ->assertJsonPath('batch.stage', 'dropped_off');
         $this->assertSame(ParcelStatus::DeliveryFailed, $ben->fresh()->current_status);
 
@@ -194,7 +196,7 @@ class DeliveryBatchTest extends TestCase
             ->assertJsonPath('batch.stops.1.items.0.status', 'returned')
             ->assertJsonPath('batch.to_return_count', 0);
 
-        $this->actingAs($this->manager, 'pickrush')->post($this->pickrushUrl("/station/cash/riders/{$rider->id}"), ['received_amount' => 500])
+        $this->actingAs($this->manager, 'pickrush')->post($this->pickrushUrl("/station/cash/riders/{$rider->id}"))
             ->assertSessionHasNoErrors();
         $api->getJson("/api/rider/batches/{$batch->id}")->assertOk()
             ->assertJsonPath('batch.status', 'completed')
@@ -226,8 +228,8 @@ class DeliveryBatchTest extends TestCase
             ->assertJsonPath('batches.0.batch_no', $batch->batch_no)
             ->assertJsonPath('batches.0.parcels', 1)
             ->assertJsonPath('cod.in_hand', fn ($v) => (float) $v === 0.0)
-            ->assertJsonPath('cod.remitted_this_month', fn ($v) => (float) $v === 500.0)
-            ->assertJsonPath('cod.last_remittance.amount', fn ($v) => (float) $v === 500.0);
+            ->assertJsonPath('cod.remitted_this_month', fn ($v) => (float) $v === 500.0 - (float) DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->sum('amount'))
+            ->assertJsonPath('cod.last_remittance.amount', fn ($v) => (float) $v === 500.0 - $rate);
     }
 
     public function test_a_failed_parcel_cannot_be_returned_to_the_seller_until_the_rider_hands_it_back(): void

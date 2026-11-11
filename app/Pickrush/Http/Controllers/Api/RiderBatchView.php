@@ -9,6 +9,7 @@ use App\Pickrush\Models\Assignment;
 use App\Pickrush\Models\RiderBatch;
 use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\Rider\RiderEarnings;
+use App\Pickrush\Services\Station\CashHandling;
 use Illuminate\Support\Collection;
 
 /**
@@ -120,7 +121,10 @@ final class RiderBatchView
         $failed = $tasks->where('status', 'failed');
         $open = $tasks->whereIn('status', ['assigned', 'out_for_delivery']);
         $collected = round((float) $delivered->sum('cod_collected'), 2);
-        $toRemit = round((float) $delivered->whereNull('cod_remittance_id')->sum('cod_collected'), 2);
+        $unremitted = $delivered->whereNull('cod_remittance_id');
+        // The same total the station confirms: the rider's cash less the pay they keep (capped at this batch's cash).
+        $toRemit = $unremitted->isEmpty() ? 0.0
+            : min(round((float) $unremitted->sum('cod_collected'), 2), app(CashHandling::class)->breakdown($batch->rider)['to_remit']);
         $orderNumbers = PicksellBridge::orderNumbers($tasks->pluck('parcel'));
 
         return [
@@ -141,7 +145,7 @@ final class RiderBatchView
             'cod_total' => round($tasks->where('type', 'delivery')->sum(fn (Assignment $task) => (float) $task->parcel->cod_amount), 2),
             'cod_collected' => $collected,
             'to_remit' => $toRemit,
-            'remitted' => $collected > 0 && $toRemit <= 0,
+            'remitted' => $collected > 0 && $unremitted->isEmpty(),
             'last_delivery_at' => $tasks->whereIn('status', ['completed', 'failed'])->max('completed_at')?->toIso8601String(),
             'est_earnings' => self::pay($tasks),
             'stops' => $tasks->groupBy(fn (Assignment $task) => self::recipient($task)['key'])

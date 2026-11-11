@@ -41,13 +41,19 @@ class LogisticsSettlement
             ->selectRaw('pr_hubs.company_id, coalesce(sum(pr_hub_remittances.remitted_amount), 0) as confirmed')
             ->groupBy('pr_hubs.company_id')->pluck('confirmed', 'company_id');
 
+        // Rider pay that riders kept out of that cash before handing it to their station.
+        $kept = DB::table('pr_cod_remittances')->join('pr_hubs', 'pr_hubs.id', '=', 'pr_cod_remittances.station_hub_id')
+            ->when($from, fn ($q) => $q->where('pr_cod_remittances.created_at', '>=', $from))
+            ->selectRaw('pr_hubs.company_id, coalesce(sum(pr_cod_remittances.rider_pay_kept), 0) as kept')
+            ->groupBy('pr_hubs.company_id')->pluck('kept', 'company_id');
+
         // Claims for parcels the company lost or damaged, charged against its share.
         $claims = DB::table('logistics_claims')->where('status', 'charged')
             ->when($from, fn ($q) => $q->where('created_at', '>=', $from))
             ->selectRaw('company_id, coalesce(sum(amount), 0) as charged')->groupBy('company_id')->pluck('charged', 'company_id');
 
         return Company::whereNotNull('approved_at')->orderByDesc('is_default')->orderBy('name')->get()
-            ->map(function (Company $company) use ($delivered, $open, $cod, $remitted, $claims) {
+            ->map(function (Company $company) use ($delivered, $open, $cod, $remitted, $kept, $claims) {
                 $row = $delivered->get($company->id);
                 $claimed = (float) ($claims[$company->id] ?? 0);
 
@@ -62,6 +68,7 @@ class LogisticsSettlement
                     'logistics' => (float) ($row->logistics ?? 0),
                     'picksell' => (float) ($row->picksell ?? 0),
                     'cod_collected' => (float) ($cod[$company->id] ?? 0),
+                    'cod_rider_kept' => (float) ($kept[$company->id] ?? 0),
                     'cod_confirmed' => (float) ($remitted[$company->id] ?? 0),
                 ];
             });

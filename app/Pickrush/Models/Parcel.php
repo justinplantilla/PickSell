@@ -108,6 +108,18 @@ class Parcel extends Model
         return $this->isHiddenFrom($staff) ? $this->maskedTrackingNo() : $this->tracking_no;
     }
 
+    /**
+     * "6 items": what labels and dispatch lists show instead of product names, which only the parcel page lists.
+     * Counts the quantities in item_description ("Tote × 2; Mug × 1"), a line without one counting as 1.
+     */
+    public function itemSummary(): string
+    {
+        $lines = array_filter(array_map('trim', explode(';', (string) $this->item_description)));
+        $count = array_sum(array_map(fn ($line) => preg_match('/×\s*(\d+)$/u', $line, $m) ? (int) $m[1] : 1, $lines));
+
+        return $count ? $count.' '.\Illuminate\Support\Str::plural('item', $count) : '—';
+    }
+
     public function getRouteKeyName(): string
     {
         return 'tracking_no';

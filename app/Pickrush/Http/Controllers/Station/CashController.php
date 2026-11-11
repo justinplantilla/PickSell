@@ -20,8 +20,12 @@ class CashController extends StationController
 
         return view('pickrush.station.cash', [
             'riders' => Rider::where('station_hub_id', $station->id)->whereIn('status', ['active', 'suspended'])->orderBy('full_name')->get()
-                ->map(fn (Rider $rider) => (object) ['rider' => $rider, 'expected' => $this->cash->expectedFrom($rider)])
-                ->filter(fn ($row) => $row->expected > 0)->values(),
+                ->map(function (Rider $rider) {
+                    $cash = $this->cash->breakdown($rider);
+
+                    return (object) ['rider' => $rider, 'cod' => $cash['cod'], 'pay' => $cash['pay'], 'expected' => $cash['to_remit']];
+                })
+                ->filter(fn ($row) => $row->cod > 0)->values(),
             'disputed' => CodRemittance::with('rider', 'receiver')->where('status', 'disputed')->latest()->get(),
             'recent' => CodRemittance::with('rider', 'receiver')->latest()->limit(30)->get(),
             'cashOnHand' => $this->cash->stationCashOnHand($station),
@@ -34,14 +38,17 @@ class CashController extends StationController
     public function record(Request $request, Rider $rider)
     {
         $data = $request->validate([
-            'received_amount' => 'required|numeric|min:0|max:10000000',
+            'expected_amount' => 'nullable|numeric|min:0',
+            // Left empty when the staff member confirms the expected total; typed only when the cash differs.
+            'received_amount' => 'nullable|numeric|min:0|max:10000000',
             'second_counter_id' => 'nullable|integer',
             'note' => 'nullable|string|max:500',
         ]);
         $second = empty($data['second_counter_id']) ? null : Staff::find($data['second_counter_id']);
 
         return $this->attempt(
-            fn () => $this->cash->recordRiderRemittance($rider, (float) $data['received_amount'], $this->staff(), $second, $data['note'] ?? null),
+            fn () => $this->cash->recordRiderRemittance($rider, isset($data['received_amount']) ? (float) $data['received_amount'] : null, $this->staff(), $second,
+                $data['note'] ?? null, isset($data['expected_amount']) ? (float) $data['expected_amount'] : null),
             fn (CodRemittance $r) => $r->status === 'reconciled'
                 ? "₱".number_format((float) $r->received_amount, 2)." received from {$rider->full_name}. Matches the system total."
                 : "Recorded with a variance of ₱".number_format((float) $r->variance, 2).". {$rider->full_name} cannot be dispatched until the hub manager resolves it.",

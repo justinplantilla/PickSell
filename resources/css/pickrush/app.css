@@ -118,6 +118,9 @@ h2 { font-size: 1.05rem; }
 .pr-tabs a { padding: .5rem .8rem; text-decoration: none; color: var(--pr-ink-soft); border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .pr-tabs a.is-active { color: var(--pr-brand-dark); border-bottom-color: var(--pr-brand); font-weight: 600; }
 .pr-inline { display: inline-flex; gap: .4rem; align-items: center; flex-wrap: wrap; margin: 0; }
+.pr-cash-differs { display: inline-flex; gap: .4rem; align-items: center; }
+.pr-cash-differs[open] { flex-basis: 100%; }
+.pr-cash-differs > summary { cursor: pointer; font-size: .8rem; }
 .pr-section { margin-bottom: 1.25rem; }
 .pr-section > h2 { margin-bottom: .6rem; }
 .pr-form-grid { display: grid; gap: .9rem 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }

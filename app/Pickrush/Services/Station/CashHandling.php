@@ -14,32 +14,74 @@ use App\Pickrush\Services\Rider\RiderBatches;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The cash chain. The expected amount is always the system total of COD delivered and not yet
- * remitted, never typed in. A difference between expected and counted stays "disputed" and blocks
+ * The cash chain. The expected amount is always a system total, never typed in: the COD delivered
+ * and not yet remitted, less the rider's pay for those deliveries, which they keep out of the
+ * cash. The remittance marks that pay settled; pickup and return pay is not taken from COD. Staff normally just confirm the total; a different
+ * count is typed only when the cash does not match. A difference between expected and counted stays "disputed" and blocks
  * the rider's next dispatch until the hub manager resolves it. Large counts need a second person.
  */
 class CashHandling
 {
     public function __construct(private RiderAvailability $availability, private RiderBatches $batches) {}
 
+    /** What the rider hands over now: COD in hand less the pay they keep. */
     public function expectedFrom(Rider $rider): float
     {
-        return round($this->availability->codInHand($rider), 2);
+        return $this->breakdown($rider)['to_remit'];
     }
 
-    public function recordRiderRemittance(Rider $rider, float $received, Staff $staff, ?Staff $secondCounter = null, ?string $note = null): CodRemittance
+    /**
+     * COD in hand, the rider pay kept from it, and what is left to hand over. Only the pay for the
+     * deliveries whose cash is being handed over is kept (pickups and returns bring in no cash, so
+     * their pay is not taken from it), and never more than that cash.
+     *
+     * @return array{cod: float, pay: float, to_remit: float, earning_ids: array<int, int>}
+     */
+    public function breakdown(Rider $rider, bool $lock = false): array
+    {
+        $cod = round($this->availability->codInHand($rider), 2);
+        $deliveries = Assignment::where('rider_id', $rider->id)->where('type', 'delivery')->where('status', 'completed')
+            ->whereNull('cod_remittance_id')->select('id');
+        $earnings = DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->where('kind', 'delivery')->whereNull('settled_at')
+            ->whereIn('assignment_id', $deliveries)
+            ->orderBy('earned_at')->orderBy('id')->when($lock, fn ($q) => $q->lockForUpdate())->get(['id', 'amount']);
+
+        $pay = 0.0;
+        $ids = [];
+        foreach ($earnings as $earning) {
+            if ($pay + (float) $earning->amount > $cod + 0.001) {
+                break;
+            }
+            $pay += (float) $earning->amount;
+            $ids[] = $earning->id;
+        }
+        $pay = round($pay, 2);
+
+        return ['cod' => $cod, 'pay' => $pay, 'to_remit' => round($cod - $pay, 2), 'earning_ids' => $ids];
+    }
+
+    /**
+     * $received null confirms the full expected amount. $shownExpected is the total the staff member
+     * saw when confirming; if more cash came in since, the confirmation is refused so it is re-checked.
+     */
+    public function recordRiderRemittance(Rider $rider, ?float $received, Staff $staff, ?Staff $secondCounter = null, ?string $note = null, ?float $shownExpected = null): CodRemittance
     {
         if ($rider->station_hub_id !== $staff->hub_id) {
             throw new OperationRefused('This rider belongs to another station.');
         }
 
-        return DB::transaction(function () use ($rider, $received, $staff, $secondCounter, $note) {
+        return DB::transaction(function () use ($rider, $received, $staff, $secondCounter, $note, $shownExpected) {
             $tasks = Assignment::where('rider_id', $rider->id)->where('type', 'delivery')->where('status', 'completed')
                 ->whereNull('cod_remittance_id')->lockForUpdate()->get();
-            $expected = round((float) $tasks->sum('cod_collected'), 2);
+            $kept = $this->breakdown($rider, lock: true);
+            $expected = $kept['to_remit'];
             if ($tasks->isEmpty()) {
                 throw new OperationRefused("{$rider->full_name} has no cash to remit.");
             }
+            if ($shownExpected !== null && round($shownExpected, 2) !== $expected) {
+                throw new OperationRefused("{$rider->full_name}'s total changed to ₱".number_format($expected, 2).'. Check the cash again and confirm.');
+            }
+            $received ??= $expected;
             $threshold = (float) config('pickrush.policies.two_person_count_above');
             if (max($expected, $received) > $threshold && (! $secondCounter || $secondCounter->is($staff) || $secondCounter->hub_id !== $staff->hub_id)) {
                 throw new OperationRefused('Amounts above ₱'.number_format($threshold).' need a second staff member from this station to count.');
@@ -51,6 +93,7 @@ class CashHandling
                 'station_hub_id' => $rider->station_hub_id,
                 'remit_date' => today(),
                 'expected_amount' => $expected,
+                'rider_pay_kept' => $kept['pay'],
                 'received_amount' => $received,
                 'variance' => $variance,
                 'status' => $variance == 0.0 ? 'reconciled' : 'disputed',
@@ -59,6 +102,7 @@ class CashHandling
                 'note' => $note,
             ]);
             Assignment::whereIn('id', $tasks->pluck('id'))->update(['cod_remittance_id' => $remittance->id]);
+            DB::table('pr_rider_earnings')->whereIn('id', $kept['earning_ids'])->update(['cod_remittance_id' => $remittance->id, 'settled_at' => now()]);
 
             // The rider's delivery batches may now be finished (cash in, parcels handed back).
             RiderBatch::where('rider_id', $rider->id)->where('type', 'delivery')->whereIn('status', RiderBatch::OPEN)->get()

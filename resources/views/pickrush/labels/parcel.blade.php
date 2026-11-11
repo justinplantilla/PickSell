@@ -73,7 +73,7 @@
             </td>
             <td style="width:110pt">
                 <div class="small">Contents</div>
-                <div class="addr">{{ $parcel->item_description ?? '—' }}</div>
+                <div class="addr">{{ $parcel->itemSummary() }}</div>
                 @if($parcel->weight_kg)<div class="addr">{{ $parcel->weight_kg }} kg</div>@endif
                 @if($orderNumber)<div class="addr">Order {{ $orderNumber }}</div>@endif
             </td>

@@ -197,17 +197,17 @@ class EndToEndTest extends TestCase
         ])->assertOk();
         $rider->post("/api/rider/batches/{$delivery->id}/deliveries/{$benTask}/fail", [
             'reason' => 'buyer_unavailable', 'photo' => $this->photo(), 'request_key' => 'd1',
-        ])->assertOk()->assertJsonPath('batch.to_remit', fn ($v) => (float) $v === 650.0);
+        ])->assertOk()->assertJsonPath('batch.to_remit', fn ($v) => (float) $v === 650.0 - (float) DB::table('pr_rider_earnings')->where('rider_id', $xtian->id)->where('kind', 'delivery')->sum('amount'));
 
         $this->assertSame('delivered', $anaOrder->fresh()->status);
         $this->assertSame(ParcelStatus::Delivered, $anaParcel->fresh()->current_status);
         $this->assertSame('delivery_failed', $benOrder->fresh()->status);
 
-        // 8. Back at the station: Ben's parcel handed back, ₱650 counted. Delivery batch done.
+        // 8. Back at the station: Ben's parcel handed back, ₱650 less Xtian's pay confirmed. Delivery batch done.
         $rider->postJson("/api/rider/batches/{$delivery->id}/hub/arrive", ['lat' => 14.0863, 'lng' => 121.1497])->assertOk();
         $this->asStaff($this->dispatcher)->post($this->pickrushUrl('/station/receiving'), ['tracking_no' => $benParcel->tracking_no])
             ->assertSessionHas('success', fn ($m) => str_contains($m, 'handed back by Xtian Sorro'));
-        $this->asStaff($this->manager)->post($this->pickrushUrl("/station/cash/riders/{$xtian->id}"), ['received_amount' => 650])
+        $this->asStaff($this->manager)->post($this->pickrushUrl("/station/cash/riders/{$xtian->id}"))
             ->assertSessionHasNoErrors();
         $rider->getJson("/api/rider/batches/{$delivery->id}")->assertJsonPath('batch.status', 'completed');
 
@@ -314,7 +314,7 @@ class EndToEndTest extends TestCase
             'tracking_no' => $parcel->tracking_no, 'cod_confirmed' => 980, 'photo' => $this->photo(),
         ])->assertOk();
         $leaApp->postJson("/api/rider/batches/{$batch->id}/hub/arrive", ['lat' => 13.8771, 'lng' => 121.1050])->assertOk();
-        $this->asStaff($sanJoseManager)->post($this->pickrushUrl("/station/cash/riders/{$lea->id}"), ['received_amount' => 980])
+        $this->asStaff($sanJoseManager)->post($this->pickrushUrl("/station/cash/riders/{$lea->id}"))
             ->assertSessionHasNoErrors();
 
         $this->assertSame('delivered', $order->fresh()->status);

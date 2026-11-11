@@ -7,7 +7,7 @@ use App\Pickrush\Support\CompanyOwned;
 use App\Pickrush\Support\HubOwned;
 use Illuminate\Database\Eloquent\Model;
 
-/** End-of-day cash handed from a rider to the station: system-expected against counted. */
+/** End-of-day cash handed from a rider to the station: system-expected (COD less the rider pay kept) against counted. */
 class CodRemittance extends Model
 {
     use Audited, CompanyOwned, HubOwned;
@@ -23,6 +23,7 @@ class CodRemittance extends Model
     protected $casts = [
         'remit_date' => 'date',
         'expected_amount' => 'decimal:2',
+        'rider_pay_kept' => 'decimal:2',
         'received_amount' => 'decimal:2',
         'variance' => 'decimal:2',
         'resolved_at' => 'datetime',
