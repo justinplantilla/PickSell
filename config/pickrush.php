@@ -62,6 +62,12 @@ return [
         // How often stations remit cash to the company: daily, every_two_days or weekly.
         'remittance_cycle' => 'daily',
 
+        // Cash counted before the cutoff is due at HQ by the cutoff that day (counted later: the next
+        // day), plus 1 or 6 days for the longer cycles. Past the cutoff the station is warned; this many
+        // hours later it cannot dispatch COD deliveries until it remits. Pickups and returns still go.
+        'remittance_cutoff' => '20:00',
+        'remittance_grace_hours' => 16,
+
         // Seller payout releases this many days after delivery (the dispute window).
         'payout_release_days' => 7,
     ],

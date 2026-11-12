@@ -23,6 +23,8 @@
                             <select id="{{ $name }}" name="{{ $name }}" class="pr-select" @disabled(! $canEdit)>
                                 @foreach($f->select as $option)<option value="{{ $option }}" @selected(old($name, $f->value) === $option)>{{ ucfirst(str_replace('_', ' ', $option)) }}</option>@endforeach
                             </select>
+                        @elseif($f->time)
+                            <input id="{{ $name }}" name="{{ $name }}" type="time" class="pr-input" value="{{ old($name, $f->value) }}" @disabled(! $canEdit) required>
                         @else
                             <input id="{{ $name }}" name="{{ $name }}" type="number" step="any" class="pr-input" value="{{ old($name, $f->value) }}" @disabled(! $canEdit) required>
                         @endif

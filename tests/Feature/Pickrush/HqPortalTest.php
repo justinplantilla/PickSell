@@ -16,6 +16,7 @@ use App\Pickrush\Services\Hq\PolicySettings;
 use App\Pickrush\Services\ParcelLedger;
 use App\Pickrush\Services\ParcelRegistrar;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class HqPortalTest extends TestCase
@@ -159,13 +160,32 @@ class HqPortalTest extends TestCase
         $remittance = HubRemittance::withoutGlobalScopes()->create(['station_hub_id' => $this->sanJose->id, 'expected_amount' => 5000, 'remitted_amount' => 4800,
             'variance' => -200, 'reference_no' => 'BDO-7788', 'submitted_by' => $manager->id]);
 
-        $this->as($this->support)->post($this->pickrushUrl("/hq/finance/remittances/{$remittance->id}"), ['decision' => 'confirm'])->assertForbidden();
-        $this->as($this->finance)->get($this->pickrushUrl('/hq/finance'))->assertOk()->assertSee('BDO-7788')->assertSee('₱-200.00');
-        $this->as($this->finance)->post($this->pickrushUrl("/hq/finance/remittances/{$remittance->id}"), ['decision' => 'dispute'])
+        $url = $this->pickrushUrl("/hq/finance/remittances/{$remittance->id}");
+        $this->as($this->support)->post($url, ['decision' => 'confirm'])->assertForbidden();
+        $this->as($this->finance)->get($this->pickrushUrl('/hq/finance'))->assertOk()->assertSee('BDO-7788')->assertSee('₱-200.00')->assertSee('Confirm ₱4,800.00 received');
+        // A dispute needs what the bank shows (the station tops up the difference) and why.
+        $this->as($this->finance)->post($url, ['decision' => 'dispute'])->assertSessionHasErrors('bank_amount');
+        $this->as($this->finance)->post($url, ['decision' => 'dispute', 'bank_amount' => 4500])
             ->assertSessionHas('errors', fn ($b) => str_contains($b->first('operation'), 'Say what does not match'));
-        $this->as($this->finance)->post($this->pickrushUrl("/hq/finance/remittances/{$remittance->id}"), ['decision' => 'dispute', 'note' => 'Bank shows ₱4,800 only'])
+        $this->as($this->finance)->post($url, ['decision' => 'dispute', 'bank_amount' => 4500, 'note' => 'Bank shows ₱4,500 only'])
             ->assertSessionHasNoErrors();
-        $this->assertSame(['disputed', $this->finance->id], [$remittance->fresh()->status, $remittance->fresh()->confirmed_by]);
+        $this->assertSame(['disputed', $this->finance->id, '4500.00'], [$remittance->fresh()->status, $remittance->fresh()->confirmed_by, $remittance->fresh()->bank_amount]);
+    }
+
+    public function test_finance_confirms_with_one_tap_and_can_open_the_slip(): void
+    {
+        Storage::fake('local');
+        $manager = $this->staff(StaffRole::HubManager, $this->sanJose);
+        Storage::disk('local')->put('pickrush/deposit-slips/slip.pdf', '%PDF-1.4 slip');
+        $remittance = HubRemittance::withoutGlobalScopes()->create(['station_hub_id' => $this->sanJose->id, 'expected_amount' => 5000, 'remitted_amount' => 5000,
+            'variance' => 0, 'reference_no' => 'BDO-9911', 'reference_key' => 'BDO9911', 'slip_path' => 'pickrush/deposit-slips/slip.pdf', 'submitted_by' => $manager->id]);
+
+        $this->as($this->finance)->get($this->pickrushUrl('/hq/finance'))->assertSee('View deposit slip');
+        $this->as($this->finance)->get($this->pickrushUrl("/hq/finance/remittances/{$remittance->id}/slip"))->assertOk();
+        // No amount typed: confirming records that the bank shows what the station declared.
+        $this->as($this->finance)->post($this->pickrushUrl("/hq/finance/remittances/{$remittance->id}"), ['decision' => 'confirm'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(['confirmed', '5000.00'], [$remittance->fresh()->status, $remittance->fresh()->bank_amount]);
     }
 
     public function test_alerts_list_cash_problems_stuck_parcels_and_expiring_documents(): void

@@ -152,6 +152,12 @@ class Rider extends Model
         return CodRemittance::where('rider_id', $this->id)->where('status', 'disputed')->exists();
     }
 
+    /** A staff count of this rider's cash that the rider has not confirmed or rejected yet. */
+    public function cashCountToConfirm(): ?CodRemittance
+    {
+        return CodRemittance::withoutGlobalScope('hub')->where('rider_id', $this->id)->where('status', CodRemittance::AWAITING_RIDER)->latest('id')->first();
+    }
+
     /** A new rider without a company in context takes the company of its hub. */
     protected function inferCompanyId(): ?int
     {

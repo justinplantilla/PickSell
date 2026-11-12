@@ -8,10 +8,14 @@ use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\HubRemittance;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\RiderBatch;
+use App\Pickrush\Models\RiderNotification;
 use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\OperationRefused;
 use App\Pickrush\Services\Rider\RiderBatches;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * The cash chain. The expected amount is always a system total, never typed in: the COD delivered
@@ -19,6 +23,10 @@ use Illuminate\Support\Facades\DB;
  * cash. The remittance marks that pay settled; pickup and return pay is not taken from COD. Staff normally just confirm the total; a different
  * count is typed only when the cash does not match. A difference between expected and counted stays "disputed" and blocks
  * the rider's next dispatch until the hub manager resolves it. Large counts need a second person.
+ *
+ * Every hand-over has a second party. The staff count waits for the rider to confirm it in the rider
+ * app; a rider who rejects it voids the count and the cash is counted again. The station's deposit
+ * to HQ carries the slip and a reference that can be used only once.
  */
 class CashHandling
 {
@@ -71,6 +79,9 @@ class CashHandling
         }
 
         return DB::transaction(function () use ($rider, $received, $staff, $secondCounter, $note, $shownExpected) {
+            if ($rider->cashCountToConfirm()) {
+                throw new OperationRefused("{$rider->full_name} has not confirmed the last count yet. They confirm or reject it in the rider app.");
+            }
             $tasks = Assignment::where('rider_id', $rider->id)->where('type', 'delivery')->where('status', 'completed')
                 ->whereNull('cod_remittance_id')->lockForUpdate()->get();
             $kept = $this->breakdown($rider, lock: true);
@@ -96,7 +107,7 @@ class CashHandling
                 'rider_pay_kept' => $kept['pay'],
                 'received_amount' => $received,
                 'variance' => $variance,
-                'status' => $variance == 0.0 ? 'reconciled' : 'disputed',
+                'status' => CodRemittance::AWAITING_RIDER,
                 'received_by' => $staff->id,
                 'second_counter_id' => $secondCounter?->id,
                 'note' => $note,
@@ -104,12 +115,56 @@ class CashHandling
             Assignment::whereIn('id', $tasks->pluck('id'))->update(['cod_remittance_id' => $remittance->id]);
             DB::table('pr_rider_earnings')->whereIn('id', $kept['earning_ids'])->update(['cod_remittance_id' => $remittance->id, 'settled_at' => now()]);
 
+            RiderNotification::send($rider, 'cash_count', 'Confirm the cash count',
+                "{$staff->full_name} counted ₱".number_format($received, 2).' from you'.($variance == 0.0 ? '.' : ' (system total ₱'.number_format($expected, 2).').')
+                .' Confirm or reject it on the handover screen.', ['cod_remittance_id' => $remittance->id]);
+
+            return $remittance;
+        });
+    }
+
+    /** The rider agrees with the staff count: it is reconciled, or disputed when it differs from the system total. */
+    public function confirmCount(CodRemittance $remittance, Rider $rider): CodRemittance
+    {
+        return DB::transaction(function () use ($remittance, $rider) {
+            $remittance = $this->awaitingFrom($remittance, $rider);
+            $remittance->update(['status' => (float) $remittance->variance == 0.0 ? 'reconciled' : 'disputed', 'rider_responded_at' => now()]);
+
             // The rider's delivery batches may now be finished (cash in, parcels handed back).
             RiderBatch::where('rider_id', $rider->id)->where('type', 'delivery')->whereIn('status', RiderBatch::OPEN)->get()
                 ->each(fn (RiderBatch $batch) => $this->batches->sync($batch));
 
             return $remittance;
         });
+    }
+
+    /**
+     * The rider says the count is wrong. The count is void: the cash is back with the rider in the
+     * system, their pay is no longer settled, and the station counts again with them.
+     */
+    public function rejectCount(CodRemittance $remittance, Rider $rider, string $reason): CodRemittance
+    {
+        return DB::transaction(function () use ($remittance, $rider, $reason) {
+            $remittance = $this->awaitingFrom($remittance, $rider);
+            Assignment::where('cod_remittance_id', $remittance->id)->update(['cod_remittance_id' => null]);
+            DB::table('pr_rider_earnings')->where('cod_remittance_id', $remittance->id)->update(['cod_remittance_id' => null, 'settled_at' => null]);
+            $remittance->update(['status' => CodRemittance::REJECTED, 'rider_responded_at' => now(), 'rider_note' => $reason]);
+
+            return $remittance;
+        });
+    }
+
+    private function awaitingFrom(CodRemittance $remittance, Rider $rider): CodRemittance
+    {
+        $remittance = CodRemittance::withoutGlobalScope('hub')->whereKey($remittance->id)->lockForUpdate()->firstOrFail();
+        if ($remittance->rider_id !== $rider->id) {
+            throw new OperationRefused('This count is for another rider.');
+        }
+        if ($remittance->status !== CodRemittance::AWAITING_RIDER) {
+            throw new OperationRefused('You already answered this count.');
+        }
+
+        return $remittance;
     }
 
     /** The hub manager settles a shortage or overage (deducted, found, written off) with a note. */
@@ -131,26 +186,35 @@ class CashHandling
             ->where('status', 'reconciled')->whereNull('hub_remittance_id')->sum('received_amount'), 2);
     }
 
-    public function submitHubRemittance(Staff $manager, float $amount, string $reference, ?string $note = null): HubRemittance
+    /**
+     * The station's deposit to HQ: the counted cash, the deposit slip, and a reference no other
+     * remittance has used. The amount is never typed: the manager confirms the system total.
+     * $shownExpected is the total they saw; if more cash was counted since, it is refused so they
+     * check again. A bank that received a different amount is caught when HQ enters the bank amount.
+     */
+    public function submitHubRemittance(Staff $manager, string $reference, UploadedFile $slip, ?string $note = null, ?float $shownExpected = null): HubRemittance
     {
-        if ($manager->role->value !== 'hub_manager' || ! $manager->hub?->isStation()) {
-            throw new OperationRefused('Only the station hub manager remits to the company.');
-        }
+        $this->mustRemit($manager);
 
-        return DB::transaction(function () use ($manager, $amount, $reference, $note) {
+        return $this->deposit($reference, $slip, function (string $reference, string $key, string $path) use ($manager, $note, $shownExpected) {
             $riderRemittances = CodRemittance::withoutGlobalScope('hub')->where('station_hub_id', $manager->hub_id)
                 ->where('status', 'reconciled')->whereNull('hub_remittance_id')->lockForUpdate()->get();
             if ($riderRemittances->isEmpty()) {
                 throw new OperationRefused('There is no reconciled cash to remit. Resolve open variances first.');
             }
             $expected = round((float) $riderRemittances->sum('received_amount'), 2);
+            if ($shownExpected !== null && round($shownExpected, 2) !== $expected) {
+                throw new OperationRefused('The cash to remit changed to ₱'.number_format($expected, 2).'. Check the deposit again and confirm.');
+            }
 
             $remittance = HubRemittance::create([
                 'station_hub_id' => $manager->hub_id,
                 'expected_amount' => $expected,
-                'remitted_amount' => $amount,
-                'variance' => round($amount - $expected, 2),
+                'remitted_amount' => $expected,
+                'variance' => 0,
                 'reference_no' => $reference,
+                'reference_key' => $key,
+                'slip_path' => $path,
                 'submitted_by' => $manager->id,
                 'note' => $note,
             ]);
@@ -158,5 +222,120 @@ class CashHandling
 
             return $remittance;
         });
+    }
+
+    /**
+     * HQ disputed a remittance because the bank received less: the station deposits the shortfall.
+     * The amount is the system's shortfall, never typed. HQ confirms the top-up like any deposit;
+     * once the shortfall is covered the disputed remittance is settled.
+     */
+    public function topUp(Staff $manager, HubRemittance $disputed, string $reference, UploadedFile $slip, ?float $shownShortfall = null): HubRemittance
+    {
+        $this->mustRemit($manager);
+
+        return $this->deposit($reference, $slip, function (string $reference, string $key, string $path) use ($manager, $disputed, $shownShortfall) {
+            $disputed = $this->disputedAt($disputed, $manager);
+            $shortfall = $disputed->shortfall();
+            if ($shortfall <= 0) {
+                throw new OperationRefused('HQ did not find this deposit short. Contest the dispute instead.');
+            }
+            if ($disputed->pendingTopUp()) {
+                throw new OperationRefused('A top-up for this deposit is already waiting for HQ.');
+            }
+            if ($shownShortfall !== null && round($shownShortfall, 2) !== $shortfall) {
+                throw new OperationRefused('The shortfall is now ₱'.number_format($shortfall, 2).'. Check it and confirm again.');
+            }
+
+            return HubRemittance::create([
+                'station_hub_id' => $manager->hub_id,
+                'settles_id' => $disputed->id,
+                'expected_amount' => $shortfall,
+                'remitted_amount' => $shortfall,
+                'variance' => 0,
+                'reference_no' => $reference,
+                'reference_key' => $key,
+                'slip_path' => $path,
+                'submitted_by' => $manager->id,
+                'note' => "Top-up for disputed deposit {$disputed->reference_no}",
+            ]);
+        });
+    }
+
+    /**
+     * The station disagrees with HQ's dispute (the bank posted late, the wrong account was read):
+     * its explanation and evidence go back to HQ, which checks the bank again and confirms or
+     * disputes it once more.
+     */
+    public function contest(Staff $manager, HubRemittance $disputed, string $explanation, ?UploadedFile $evidence = null): HubRemittance
+    {
+        $this->mustRemit($manager);
+
+        return DB::transaction(function () use ($manager, $disputed, $explanation, $evidence) {
+            $disputed = $this->disputedAt($disputed, $manager);
+            if ($disputed->pendingTopUp()) {
+                throw new OperationRefused('A top-up for this deposit is waiting for HQ. Wait for HQ to check it first.');
+            }
+            $disputed->update([
+                'status' => 'submitted',
+                'station_response' => $explanation,
+                'contest_path' => $evidence?->store('pickrush/deposit-slips', 'local') ?? $disputed->contest_path,
+                'contested_at' => now(),
+            ]);
+
+            return $disputed;
+        });
+    }
+
+    private function mustRemit(Staff $manager): void
+    {
+        if ($manager->role->value !== 'hub_manager' || ! $manager->hub?->isStation()) {
+            throw new OperationRefused('Only the station hub manager remits to the company.');
+        }
+    }
+
+    private function disputedAt(HubRemittance $disputed, Staff $manager): HubRemittance
+    {
+        $disputed = HubRemittance::withoutGlobalScopes()->whereKey($disputed->id)->lockForUpdate()->firstOrFail();
+        if ($disputed->station_hub_id !== $manager->hub_id) {
+            throw new OperationRefused('This deposit belongs to another station.');
+        }
+        if ($disputed->status !== 'disputed') {
+            throw new OperationRefused('HQ is not disputing this deposit.');
+        }
+
+        return $disputed;
+    }
+
+    /**
+     * A deposit with its slip and a reference no other remittance has used. $create makes the
+     * remittance inside the transaction; a refused deposit leaves no slip behind.
+     *
+     * @param  callable(string, string, string): HubRemittance  $create  given the reference, its key and the slip path
+     */
+    private function deposit(string $reference, UploadedFile $slip, callable $create): HubRemittance
+    {
+        $reference = trim($reference);
+        $key = HubRemittance::referenceKey($reference);
+        if ($key === '') {
+            throw new OperationRefused('Enter the reference number printed on the deposit slip.');
+        }
+        $path = $slip->store('pickrush/deposit-slips', 'local');
+
+        try {
+            return DB::transaction(function () use ($reference, $key, $path, $create) {
+                if ($used = HubRemittance::withoutGlobalScopes()->where('reference_key', $key)->first()) {
+                    throw new OperationRefused("Reference {$reference} was already used for a remittance on {$used->created_at->format('M j, Y')}. Each deposit has its own reference.");
+                }
+
+                return $create($reference, $key, $path);
+            });
+        } catch (UniqueConstraintViolationException) {
+            // Another remittance took the same reference at the same moment.
+            Storage::disk('local')->delete($path);
+            throw new OperationRefused("Reference {$reference} was already used for another remittance. Each deposit has its own reference.");
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete($path);
+            throw $e;
+        }
     }
 }

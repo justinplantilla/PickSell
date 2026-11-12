@@ -7,10 +7,19 @@ use App\Pickrush\Support\CompanyOwned;
 use App\Pickrush\Support\HubOwned;
 use Illuminate\Database\Eloquent\Model;
 
-/** End-of-day cash handed from a rider to the station: system-expected (COD less the rider pay kept) against counted. */
+/**
+ * End-of-day cash handed from a rider to the station: system-expected (COD less the rider pay kept)
+ * against counted. The staff count waits for the rider to confirm it in the rider app
+ * (awaiting_rider); then it is reconciled, or disputed when the count differs from the system total.
+ * A rejected count is void and the cash is counted again.
+ */
 class CodRemittance extends Model
 {
     use Audited, CompanyOwned, HubOwned;
+
+    public const AWAITING_RIDER = 'awaiting_rider';
+
+    public const REJECTED = 'rejected';
 
     protected $table = 'pr_cod_remittances';
 
@@ -27,6 +36,7 @@ class CodRemittance extends Model
         'received_amount' => 'decimal:2',
         'variance' => 'decimal:2',
         'resolved_at' => 'datetime',
+        'rider_responded_at' => 'datetime',
     ];
 
     public function rider()

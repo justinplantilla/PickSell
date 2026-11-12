@@ -10,6 +10,7 @@ use App\Pickrush\Models\HubRemittance;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\ParcelException;
 use App\Pickrush\Models\RiderDocument;
+use App\Pickrush\Services\Station\RemittanceDeadline;
 use App\Pickrush\Support\ParcelHubScope;
 
 /**
@@ -18,6 +19,30 @@ use App\Pickrush\Support\ParcelHubScope;
  */
 class Alerts
 {
+    /** Whether the station counted this rider's cash again after the rejected count. */
+    private static function countedAgain(CodRemittance $rejected): bool
+    {
+        return CodRemittance::withoutGlobalScope('hub')->where('rider_id', $rejected->rider_id)->where('id', '>', $rejected->id)
+            ->where('status', '!=', CodRemittance::REJECTED)->exists();
+    }
+
+    /** Stations holding counted cash past its deadline, oldest first. */
+    private function lateStations(): \Illuminate\Support\Collection
+    {
+        $deadline = app(RemittanceDeadline::class);
+        $holding = CodRemittance::withoutGlobalScope('hub')->whereIn('status', ['reconciled', 'disputed'])->whereNull('hub_remittance_id')->select('station_hub_id');
+        $disputed = HubRemittance::withoutGlobalScope('hub')->where('status', 'disputed')->select('station_hub_id');
+
+        return Hub::where(fn ($q) => $q->whereIn('id', $holding)->orWhereIn('id', $disputed))->get()
+            ->map(fn (Hub $station) => ['station' => $station] + $deadline->for($station))
+            ->whereIn('state', ['overdue', 'blocked'])->sortBy('due_at')->values()
+            ->map(fn ($late) => [
+                'label' => "{$late['station']->name} · ₱".number_format($late['amount'], 2),
+                'meta' => 'Due '.$late['due_at']->format('M j, g:i A').($late['state'] === 'blocked' ? ' · deliveries stopped' : ' · deliveries stop '.$late['block_at']->format('M j, g:i A')),
+                'url' => route('pickrush.hq.finance'),
+            ]);
+    }
+
     /** @return list<array{priority: int, level: string, title: string, detail: string, items: \Illuminate\Support\Collection}> */
     public function all(): array
     {
@@ -28,6 +53,18 @@ class Alerts
             [1, 'bad', 'Cash shortages and overages', 'Rider remittances with an unresolved variance.',
                 CodRemittance::withoutGlobalScope('hub')->with('rider.station')->where('status', 'disputed')->latest()->get()
                     ->map(fn ($r) => ['label' => "{$r->rider?->full_name} · ₱".number_format((float) $r->variance, 2), 'meta' => $r->rider?->station?->name, 'url' => null])],
+            [1, 'bad', 'Cash counts riders rejected', 'In the last 7 days a rider said the station counted their cash wrong.',
+                CodRemittance::withoutGlobalScope('hub')->with('rider.station', 'receiver')->where('status', CodRemittance::REJECTED)
+                    ->where('rider_responded_at', '>=', now()->subDays(7))->latest('rider_responded_at')->get()
+                    ->map(fn ($r) => ['label' => "{$r->rider?->full_name} · counted ₱".number_format((float) $r->received_amount, 2).' by '.($r->receiver?->full_name ?? 'staff'),
+                        'meta' => $r->rider?->station?->name.' · "'.$r->rider_note.'"'.(self::countedAgain($r) ? ' · counted again' : ' · not counted again yet'), 'url' => null])],
+            [1, 'bad', 'Stations late remitting cash', 'Counted cash past its deadline at HQ. After the grace hours the station cannot dispatch deliveries.',
+                $this->lateStations()],
+            [1, 'bad', 'Disputed with stations', 'Deposits HQ disputed, until the station tops them up or HQ confirms them after a contest.',
+                HubRemittance::withoutGlobalScope('hub')->with('station')->where('status', 'disputed')->whereNull('settles_id')->oldest('confirmed_at')->get()
+                    ->map(fn ($r) => ['label' => "{$r->station?->name} · ref {$r->reference_no}".($r->shortfall() > 0 ? ' · ₱'.number_format($r->shortfall(), 2).' short' : ''),
+                        'meta' => 'Disputed '.$r->confirmed_at?->format('M j, g:i A').($r->pendingTopUp() ? ' · top-up waiting for HQ' : ' · waiting for the station'),
+                        'url' => route('pickrush.hq.finance')])],
             [1, 'bad', 'Station remittances that do not match', 'Submitted amounts different from the counted cash.',
                 HubRemittance::withoutGlobalScope('hub')->with('station')->where('status', 'submitted')->where('variance', '!=', 0)->get()
                     ->map(fn ($r) => ['label' => "{$r->station?->name} · ₱".number_format((float) $r->variance, 2), 'meta' => $r->reference_no, 'url' => route('pickrush.hq.finance')])],

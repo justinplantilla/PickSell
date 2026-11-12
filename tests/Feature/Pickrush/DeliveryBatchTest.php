@@ -198,6 +198,13 @@ class DeliveryBatchTest extends TestCase
 
         $this->actingAs($this->manager, 'pickrush')->post($this->pickrushUrl("/station/cash/riders/{$rider->id}"))
             ->assertSessionHasNoErrors();
+        // Until the rider confirms the count on the handover screen, the cash is not remitted and the batch stays open.
+        $count = $api->getJson("/api/rider/batches/{$batch->id}")->assertOk()
+            ->assertJsonPath('batch.status', 'accepted')
+            ->assertJsonPath('batch.remitted', false)
+            ->assertJsonPath('batch.cash_count.counted_by', $this->manager->full_name)
+            ->json('batch.cash_count.id');
+        $api->postJson("/api/rider/cash-counts/{$count}/confirm")->assertOk()->assertJsonPath('status', 'reconciled');
         $api->getJson("/api/rider/batches/{$batch->id}")->assertOk()
             ->assertJsonPath('batch.status', 'completed')
             ->assertJsonPath('batch.remitted', true);

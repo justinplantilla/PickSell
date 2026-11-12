@@ -6,6 +6,7 @@ use App\Pickrush\Bridge\PicksellBridge;
 use App\Pickrush\Enums\ParcelStatus;
 use App\Pickrush\Enums\StaffRole;
 use App\Pickrush\Models\Assignment;
+use App\Pickrush\Models\CodRemittance;
 use App\Pickrush\Models\RiderBatch;
 use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\Rider\RiderEarnings;
@@ -126,6 +127,9 @@ final class RiderBatchView
         $toRemit = $unremitted->isEmpty() ? 0.0
             : min(round((float) $unremitted->sum('cod_collected'), 2), app(CashHandling::class)->breakdown($batch->rider)['to_remit']);
         $orderNumbers = PicksellBridge::orderNumbers($tasks->pluck('parcel'));
+        // The station's count of this batch's cash, waiting for the rider to confirm it on the handover screen.
+        $count = CodRemittance::withoutGlobalScope('hub')->whereIn('id', $delivered->pluck('cod_remittance_id')->filter()->unique())
+            ->where('status', CodRemittance::AWAITING_RIDER)->with('receiver')->latest('id')->first();
 
         return [
             // Progress bar in the app: assigned → pickup (loading at the station) → deliver → done.
@@ -145,7 +149,8 @@ final class RiderBatchView
             'cod_total' => round($tasks->where('type', 'delivery')->sum(fn (Assignment $task) => (float) $task->parcel->cod_amount), 2),
             'cod_collected' => $collected,
             'to_remit' => $toRemit,
-            'remitted' => $collected > 0 && $unremitted->isEmpty(),
+            'remitted' => $collected > 0 && $unremitted->isEmpty() && ! $count,
+            'cash_count' => $count ? RiderEarningsController::pendingCount($count) : null,
             'last_delivery_at' => $tasks->whereIn('status', ['completed', 'failed'])->max('completed_at')?->toIso8601String(),
             'est_earnings' => self::pay($tasks),
             'stops' => $tasks->groupBy(fn (Assignment $task) => self::recipient($task)['key'])

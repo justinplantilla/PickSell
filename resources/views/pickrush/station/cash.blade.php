@@ -6,9 +6,110 @@
 <div class="pr-page-head">
     <div>
         <h1>Cash (COD)</h1>
-        <p>Every parcel is cash on delivery. At the end of the shift each rider keeps their pay out of the COD they collected and hands over the rest; confirm the system total.</p>
+        <p>Every parcel is cash on delivery. At the end of the shift each rider keeps their pay out of the COD they collected and hands over the rest; confirm the system total. The rider then confirms your count in the rider app.</p>
     </div>
 </div>
+
+@if(in_array($deadline['state'], ['overdue', 'blocked'], true))
+    <div class="pr-alert {{ $deadline['state'] === 'blocked' ? 'pr-alert-bad' : 'pr-alert-warn' }}" role="alert">
+        <strong>₱{{ number_format($deadline['amount'], 2) }} was due at HQ on {{ $deadline['due_at']->format('M j, g:i A') }}.</strong>
+        @if($deadline['state'] === 'blocked')
+            Deliveries cannot be dispatched until it is remitted. Pickups and returns still go.
+        @else
+            Remit it by {{ $deadline['block_at']->format('M j, g:i A') }} or deliveries stop until you do.
+        @endif
+        @if($deadline['disputes'])Answer HQ's {{ \Illuminate\Support\Str::plural('dispute', $deadline['disputes']) }} below.@endif
+        @if($deadline['open_variances'])Resolve the {{ $deadline['open_variances'] }} open {{ \Illuminate\Support\Str::plural('variance', $deadline['open_variances']) }} first so all of it can be remitted.@endif
+    </div>
+@elseif($deadline['state'] === 'ok')
+    <p class="pr-muted">₱{{ number_format($deadline['amount'], 2) }} counted at the station. Remit to HQ by {{ $deadline['due_at']->format('M j, g:i A') }}.</p>
+@endif
+
+@foreach($disputes as $d)
+    @php $short = $d->shortfall(); $topUp = $d->topUps->firstWhere('status', 'submitted'); @endphp
+    <section class="pr-section pr-variances">
+        <h2>HQ disputed your deposit ref {{ $d->reference_no }}</h2>
+        <dl class="pr-dl">
+            <dt>You declared</dt><dd>₱{{ number_format((float) $d->remitted_amount, 2) }} · {{ $d->created_at->format('M j, g:i A') }}</dd>
+            @if($d->bank_amount !== null)<dt>Bank statement shows</dt><dd>₱{{ number_format((float) $d->bank_amount, 2) }}</dd>@endif
+            @if($short > 0)<dt>Short</dt><dd><span class="pr-badge pr-badge-bad">₱{{ number_format($short, 2) }}</span></dd>@endif
+            @if($d->note)<dt>HQ says</dt><dd>{{ $d->note }}</dd>@endif
+            @if($d->station_response)<dt>Your last answer</dt><dd>{{ $d->station_response }}</dd>@endif
+        </dl>
+        @if($topUp)
+            <p class="pr-muted">Top-up of ₱{{ number_format((float) $topUp->remitted_amount, 2) }} (ref {{ $topUp->reference_no }}) is waiting for HQ to check it.</p>
+        @elseif($isManager)
+            <div class="pr-two">
+                @if($short > 0)
+                    <form method="POST" action="{{ route('pickrush.station.cash.top-up', $d) }}" enctype="multipart/form-data" class="pr-card">
+                        @csrf
+                        <h3>Deposit the shortfall</h3>
+                        <input type="hidden" name="shortfall" value="{{ number_format($short, 2, '.', '') }}">
+                        <div class="pr-field"><label for="top_ref_{{ $d->id }}">Deposit reference</label><input id="top_ref_{{ $d->id }}" name="reference_no" class="pr-input" maxlength="60" required></div>
+                        <div class="pr-field"><label for="top_slip_{{ $d->id }}">Deposit slip (photo or PDF, up to 5 MB)</label><input id="top_slip_{{ $d->id }}" name="slip" type="file" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" class="pr-input" required></div>
+                        <button type="submit" class="pr-btn pr-btn-primary">Confirm ₱{{ number_format($short, 2) }} deposited</button>
+                    </form>
+                @endif
+                <form method="POST" action="{{ route('pickrush.station.cash.contest', $d) }}" enctype="multipart/form-data" class="pr-card">
+                    @csrf
+                    <h3>HQ is wrong: contest it</h3>
+                    <div class="pr-field"><label for="contest_{{ $d->id }}">What HQ should check</label><textarea id="contest_{{ $d->id }}" name="explanation" class="pr-input" rows="3" minlength="10" maxlength="1000" required placeholder="e.g. The bank posted the deposit the next morning; see the statement."></textarea></div>
+                    <div class="pr-field"><label for="evidence_{{ $d->id }}">Evidence (optional, photo or PDF)</label><input id="evidence_{{ $d->id }}" name="evidence" type="file" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" class="pr-input"></div>
+                    <button type="submit" class="pr-btn pr-btn-outline">Send back to HQ</button>
+                </form>
+            </div>
+        @else
+            <p class="pr-muted">The hub manager answers this dispute.</p>
+        @endif
+        <p class="pr-muted">Until you answer, this counts as cash due at HQ: deliveries stop {{ config('pickrush.policies.remittance_grace_hours') }} hours after HQ disputed it.</p>
+    </section>
+@endforeach
+
+@if($rejected->isNotEmpty())
+    <section class="pr-section pr-variances">
+        <h2>Counts riders rejected: count the cash again with them</h2>
+        <div class="pr-table-wrap">
+            <table class="pr-table">
+                <thead><tr><th>Rider</th><th>Counted by</th><th class="pr-num">Counted</th><th>Rider says</th><th>Rejected</th></tr></thead>
+                <tbody>
+                @foreach($rejected as $r)
+                    <tr>
+                        <td>{{ $r->rider->full_name }}</td>
+                        <td>{{ $r->receiver?->full_name }}</td>
+                        <td class="pr-num">₱{{ number_format((float) $r->received_amount, 2) }}</td>
+                        <td>{{ $r->rider_note }}</td>
+                        <td>{{ $r->rider_responded_at->format('M d, g:i A') }}</td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+        <p class="pr-muted">The cash is back on "Riders holding cash" below. HQ sees every rejected count.</p>
+    </section>
+@endif
+
+@if($awaiting->isNotEmpty())
+    <section class="pr-section">
+        <h2>Waiting for the rider to confirm</h2>
+        <div class="pr-table-wrap">
+            <table class="pr-table">
+                <thead><tr><th>Rider</th><th>Counted by</th><th class="pr-num">Expected</th><th class="pr-num">Counted</th><th>Counted at</th></tr></thead>
+                <tbody>
+                @foreach($awaiting as $r)
+                    <tr>
+                        <td>{{ $r->rider->full_name }}</td>
+                        <td>{{ $r->receiver?->full_name }}</td>
+                        <td class="pr-num">₱{{ number_format((float) $r->expected_amount, 2) }}</td>
+                        <td class="pr-num">₱{{ number_format((float) $r->received_amount, 2) }}@if((float) $r->variance != 0) <span class="pr-badge {{ (float) $r->variance < 0 ? 'pr-badge-bad' : 'pr-badge-warn' }}">{{ (float) $r->variance < 0 ? 'Short' : 'Over' }} ₱{{ number_format(abs((float) $r->variance), 2) }}</span>@endif</td>
+                        <td>{{ $r->created_at->format('M d, g:i A') }}</td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+        <p class="pr-muted">The rider confirms or rejects the count in the rider app. Until then the cash is not available to remit and the rider cannot be dispatched.</p>
+    </section>
+@endif
 
 @if($disputed->isNotEmpty())
     <section class="pr-section pr-variances">
@@ -87,16 +188,41 @@
 
 <div class="pr-two">
     <section class="pr-card">
-        <h2>Remit to HQ</h2>
-        <p>Cash at the station from counted, reconciled rider remittances: <strong>₱{{ number_format($cashOnHand, 2) }}</strong></p>
+        <h2>Collected, not yet remitted to HQ</h2>
+        <p>Rider remittances the riders confirmed collect here through the day. Remit them to HQ together whenever you are ready.</p>
+        @if($ready->isEmpty())
+            <p class="pr-muted">Nothing collected yet.</p>
+        @else
+            <div class="pr-table-scroll">
+            <table class="pr-table">
+                <thead><tr><th>Rider</th><th>Counted</th><th class="pr-num">Amount</th></tr></thead>
+                @foreach($ready->groupBy(fn ($r) => $r->created_at->toDateString()) as $day => $counts)
+                    <tbody>
+                    @foreach($counts as $r)
+                        <tr><td>{{ $r->rider->full_name }}</td><td>{{ $r->created_at->format('M d, g:i A') }}</td><td class="pr-num">₱{{ number_format((float) $r->received_amount, 2) }}</td></tr>
+                    @endforeach
+                    @if($ready->groupBy(fn ($r) => $r->created_at->toDateString())->count() > 1)
+                        <tr><td colspan="2" class="pr-muted">{{ \Illuminate\Support\Carbon::parse($day)->format('M d') }} subtotal ({{ $counts->count() }})</td><td class="pr-num">₱{{ number_format((float) $counts->sum('received_amount'), 2) }}</td></tr>
+                    @endif
+                    </tbody>
+                @endforeach
+                <tfoot><tr><th colspan="2" style="text-align:left">Total to remit ({{ $ready->count() }} {{ \Illuminate\Support\Str::plural('remittance', $ready->count()) }})</th><th class="pr-num">₱{{ number_format($cashOnHand, 2) }}</th></tr></tfoot>
+            </table>
+            </div>
+        @endif
         @if($isManager && $cashOnHand > 0)
-            <form method="POST" action="{{ route('pickrush.station.cash.remit') }}" class="pr-form-grid">
+            <details class="pr-section" @if($errors->any() && old('reference_no') !== null) open @endif>
+            <summary class="pr-btn pr-btn-outline">Remit ₱{{ number_format($cashOnHand, 2) }} to HQ</summary>
+            <form method="POST" action="{{ route('pickrush.station.cash.remit') }}" enctype="multipart/form-data" class="pr-form-grid" style="margin-top:.75rem">
                 @csrf
-                <div class="pr-field"><label for="amount">Amount deposited (₱)</label><input id="amount" name="amount" type="number" step="0.01" min="0" class="pr-input" value="{{ $cashOnHand }}" required></div>
-                <div class="pr-field"><label for="reference_no">Deposit reference</label><input id="reference_no" name="reference_no" class="pr-input" required></div>
-                <div class="pr-field"><label for="remit_note">Note</label><input id="remit_note" name="note" class="pr-input"></div>
-                <div class="pr-field" style="justify-content:flex-end"><button type="submit" class="pr-btn pr-btn-primary">Submit remittance</button></div>
+                <input type="hidden" name="expected_amount" value="{{ number_format($cashOnHand, 2, '.', '') }}">
+                <div class="pr-field"><label for="reference_no">Deposit reference</label><input id="reference_no" name="reference_no" class="pr-input" value="{{ old('reference_no') }}" maxlength="60" required></div>
+                <div class="pr-field"><label for="slip">Deposit slip (photo or PDF, up to 5 MB)</label><input id="slip" name="slip" type="file" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" class="pr-input" required></div>
+                <div class="pr-field"><label for="remit_note">Note</label><input id="remit_note" name="note" class="pr-input" value="{{ old('note') }}"></div>
+                <div class="pr-field" style="justify-content:flex-end"><button type="submit" class="pr-btn pr-btn-primary">Confirm ₱{{ number_format($cashOnHand, 2) }} deposited</button></div>
             </form>
+            <p class="pr-muted">Deposit the full total in one deposit. Each deposit reference can be used once. HQ finance checks the slip and the reference against the bank statement.</p>
+            </details>
         @endif
         @if($hubRemittances->isNotEmpty())
             <div class="pr-table-scroll">
@@ -104,7 +230,9 @@
                 <thead><tr><th>Submitted</th><th class="pr-num">Amount</th><th>Reference</th><th>Status</th></tr></thead>
                 <tbody>
                 @foreach($hubRemittances as $h)
-                    <tr><td>{{ $h->created_at->format('M d') }}</td><td class="pr-num">₱{{ number_format((float) $h->remitted_amount, 2) }}</td><td>{{ $h->reference_no }}</td><td><span class="pr-badge">{{ ucfirst($h->status) }}</span></td></tr>
+                    <tr><td>{{ $h->created_at->format('M d') }}</td><td class="pr-num">₱{{ number_format((float) $h->remitted_amount, 2) }}</td>
+                        <td>{{ $h->reference_no }}@if($h->slip_path) · <a href="{{ route('pickrush.station.cash.slip', $h) }}" target="_blank" rel="noopener">Slip</a>@endif</td>
+                        <td><span class="pr-badge {{ in_array($h->status, ['confirmed', 'settled'], true) ? 'pr-badge-ok' : ($h->status === 'disputed' ? 'pr-badge-bad' : '') }}">{{ ucfirst($h->status) }}</span></td></tr>
                 @endforeach
                 </tbody>
             </table>
@@ -119,7 +247,7 @@
             <tbody>
             @forelse($recent as $r)
                 <tr><td>{{ $r->rider->full_name }}</td><td>{{ $r->remit_date->format('M d') }}</td><td class="pr-num">₱{{ number_format((float) $r->rider_pay_kept, 2) }}</td><td class="pr-num">₱{{ number_format((float) $r->received_amount, 2) }}</td>
-                    <td><span class="pr-badge {{ $r->status === 'reconciled' ? 'pr-badge-ok' : 'pr-badge-bad' }}">{{ ucfirst($r->status) }}</span></td></tr>
+                    <td><span class="pr-badge {{ match ($r->status) { 'reconciled' => 'pr-badge-ok', 'awaiting_rider' => 'pr-badge-warn', default => 'pr-badge-bad' } }}">{{ match ($r->status) { 'awaiting_rider' => 'Waiting for rider', 'rejected' => 'Rejected by rider', default => ucfirst($r->status) } }}</span></td></tr>
             @empty
                 <tr><td colspan="5" class="pr-muted">None yet.</td></tr>
             @endforelse

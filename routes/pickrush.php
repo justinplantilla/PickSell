@@ -102,6 +102,8 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
                 Route::delete('/shipping/provinces', [Hq\ShippingController::class, 'destroyProvince'])->name('shipping.provinces.destroy');
                 Route::get('/finance', [Hq\FinanceController::class, 'index'])->name('finance');
                 Route::post('/finance/remittances/{remittance}', [Hq\FinanceController::class, 'confirm'])->name('finance.confirm');
+                Route::get('/finance/remittances/{remittance}/slip', [Hq\FinanceController::class, 'slip'])->name('finance.slip');
+                Route::get('/finance/remittances/{remittance}/evidence', [Hq\FinanceController::class, 'evidence'])->name('finance.evidence');
 
                 Route::middleware('pickrush.role:super_admin,support')->group(function () {
                     Route::get('/address-fix', [Hq\AddressFixController::class, 'index'])->name('address-fix');
@@ -190,6 +192,7 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
             Route::post('/rider-reports/{report}/resolve', [Station\LocationController::class, 'resolveReport'])->name('rider-reports.resolve');
 
             Route::get('/cash', [Station\CashController::class, 'index'])->name('cash');
+            Route::get('/cash/deposits/{hubRemittance}/slip', [Station\CashController::class, 'slip'])->name('cash.slip');
 
             // Hub manager only.
             Route::middleware('pickrush.station:manager')->group(function () {
@@ -208,6 +211,8 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
                 Route::post('/cash/riders/{rider}', [Station\CashController::class, 'record'])->name('cash.record');
                 Route::post('/cash/remittances/{remittance}/resolve', [Station\CashController::class, 'resolve'])->name('cash.resolve');
                 Route::post('/cash/remit', [Station\CashController::class, 'remit'])->name('cash.remit');
+                Route::post('/cash/deposits/{hubRemittance}/top-up', [Station\CashController::class, 'topUp'])->name('cash.top-up');
+                Route::post('/cash/deposits/{hubRemittance}/contest', [Station\CashController::class, 'contest'])->name('cash.contest');
             });
         });
     });

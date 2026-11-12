@@ -39,6 +39,9 @@ Route::prefix('rider')->name('pickrush.api.rider.')->group(function () {
         Route::patch('/shift', [RiderHomeController::class, 'shift'])->name('shift');
         Route::get('/options', [RiderHomeController::class, 'options'])->name('options');
         Route::get('/earnings', [RiderEarningsController::class, 'index'])->name('earnings');
+        // The station's count of the rider's cash: the rider confirms it or rejects it so it is counted again.
+        Route::post('/cash-counts/{remittance}/confirm', [RiderEarningsController::class, 'confirmCount'])->whereNumber('remittance')->name('cash-counts.confirm');
+        Route::post('/cash-counts/{remittance}/reject', [RiderEarningsController::class, 'rejectCount'])->whereNumber('remittance')->name('cash-counts.reject');
         Route::get('/notifications', [RiderHomeController::class, 'notifications'])->name('notifications');
         Route::post('/notifications/read', [RiderHomeController::class, 'readNotifications'])->name('notifications.read');
         Route::get('/activity', [RiderHomeController::class, 'activityPage'])->name('activity');

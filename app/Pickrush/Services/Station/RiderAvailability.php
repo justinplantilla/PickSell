@@ -24,6 +24,9 @@ class RiderAvailability
         if ($rider->hasOpenVariance()) {
             return "{$rider->full_name} has an unresolved cash variance; the hub manager must resolve it first.";
         }
+        if ($rider->cashCountToConfirm()) {
+            return "{$rider->full_name} has not confirmed the station's count of their cash in the rider app.";
+        }
         if ($this->openCount($rider) >= $rider->max_parcels) {
             return "{$rider->full_name} is at the daily load cap ({$rider->max_parcels} parcels).";
         }

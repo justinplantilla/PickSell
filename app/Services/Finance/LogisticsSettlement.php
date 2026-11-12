@@ -36,9 +36,10 @@ class LogisticsSettlement
 
         // Station remittances confirmed by the company's HQ, by the station's company.
         $remitted = DB::table('pr_hub_remittances')->join('pr_hubs', 'pr_hubs.id', '=', 'pr_hub_remittances.station_hub_id')
-            ->where('pr_hub_remittances.status', 'confirmed')
+            // A settled dispute counts for what the bank showed; its top-ups are confirmed deposits of their own.
+            ->whereIn('pr_hub_remittances.status', ['confirmed', 'settled'])
             ->when($from, fn ($q) => $q->where('pr_hub_remittances.confirmed_at', '>=', $from))
-            ->selectRaw('pr_hubs.company_id, coalesce(sum(pr_hub_remittances.remitted_amount), 0) as confirmed')
+            ->selectRaw("pr_hubs.company_id, coalesce(sum(case when pr_hub_remittances.status = 'settled' then coalesce(pr_hub_remittances.bank_amount, 0) else pr_hub_remittances.remitted_amount end), 0) as confirmed")
             ->groupBy('pr_hubs.company_id')->pluck('confirmed', 'company_id');
 
         // Rider pay that riders kept out of that cash before handing it to their station.

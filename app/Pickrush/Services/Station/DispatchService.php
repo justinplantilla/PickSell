@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
  */
 class DispatchService
 {
-    public function __construct(private ParcelLedger $ledger, private RiderAvailability $availability, private RiderBatches $batches) {}
+    public function __construct(private ParcelLedger $ledger, private RiderAvailability $availability, private RiderBatches $batches, private RemittanceDeadline $deadline) {}
 
     /** What kind of rider task this parcel needs at this station right now, or null if none. */
     public static function taskFor(Parcel $parcel, Hub $station): ?string
@@ -63,6 +63,11 @@ class DispatchService
 
             if ($rider->station_hub_id !== $station->id) {
                 throw new OperationRefused("{$rider->full_name} belongs to another station.");
+            }
+            // A station sitting on cash past its deadline collects no more until it remits.
+            if ($type === 'delivery' && ($cash = $this->deadline->for($station))['state'] === 'blocked') {
+                throw new OperationRefused("{$station->name} has ₱".number_format($cash['amount'], 2).' that was due at HQ on '
+                    .$cash['due_at']->format('M j, g:i A').'. Remit it on the Cash page before dispatching deliveries; pickups and returns still go.');
             }
             if ($parcel->openAssignment()->exists()) {
                 throw new OperationRefused("{$parcel->tracking_no} already has a rider. Reassign it instead.");

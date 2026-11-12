@@ -209,6 +209,7 @@ class EndToEndTest extends TestCase
             ->assertSessionHas('success', fn ($m) => str_contains($m, 'handed back by Xtian Sorro'));
         $this->asStaff($this->manager)->post($this->pickrushUrl("/station/cash/riders/{$xtian->id}"))
             ->assertSessionHasNoErrors();
+        $rider->postJson('/api/rider/cash-counts/'.$rider->getJson('/api/rider/earnings')->json('cod.pending_count.id').'/confirm')->assertOk();
         $rider->getJson("/api/rider/batches/{$delivery->id}")->assertJsonPath('batch.status', 'completed');
 
         // 9. Second attempt for Ben with another rider: delivered.
@@ -316,6 +317,7 @@ class EndToEndTest extends TestCase
         $leaApp->postJson("/api/rider/batches/{$batch->id}/hub/arrive", ['lat' => 13.8771, 'lng' => 121.1050])->assertOk();
         $this->asStaff($sanJoseManager)->post($this->pickrushUrl("/station/cash/riders/{$lea->id}"))
             ->assertSessionHasNoErrors();
+        $leaApp->postJson('/api/rider/cash-counts/'.$leaApp->getJson('/api/rider/earnings')->json('cod.pending_count.id').'/confirm')->assertOk();
 
         $this->assertSame('delivered', $order->fresh()->status);
         $this->assertSame(ParcelStatus::Delivered, $parcel->fresh()->current_status);

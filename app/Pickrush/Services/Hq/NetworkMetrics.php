@@ -12,6 +12,7 @@ use App\Pickrush\Models\ParcelEvent;
 use App\Pickrush\Support\ParcelHubScope;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Network figures for HQ, read live from the event log. Success rate counts parcels that finished
@@ -39,7 +40,9 @@ class NetworkMetrics
             'avg_delivery_hours' => $deliveredParcels->isEmpty() ? null
                 : round($deliveredParcels->avg(fn ($p) => $p->created_at->diffInMinutes($p->delivered_at) / 60), 1),
             'cod_collected' => (float) Assignment::where('type', 'delivery')->where('status', 'completed')->whereBetween('completed_at', [$from, $to])->sum('cod_collected'),
-            'cod_remitted' => (float) HubRemittance::withoutGlobalScope('hub')->where('status', 'confirmed')->whereBetween('confirmed_at', [$from, $to])->sum('remitted_amount'),
+            // A settled dispute counts for what the bank showed; its top-ups count as confirmed deposits.
+            'cod_remitted' => (float) HubRemittance::withoutGlobalScope('hub')->whereIn('status', ['confirmed', HubRemittance::SETTLED])->whereBetween('confirmed_at', [$from, $to])
+                ->sum(DB::raw(HubRemittance::receivedSql())),
         ];
     }
 
@@ -86,9 +89,13 @@ class NetworkMetrics
     public function cashOutstanding(): array
     {
         return [
-            'at_stations' => (float) CodRemittance::withoutGlobalScope('hub')->where('status', 'reconciled')->whereNull('hub_remittance_id')->sum('received_amount'),
+            // Counted cash, including counts the rider has not confirmed yet.
+            'at_stations' => (float) CodRemittance::withoutGlobalScope('hub')->whereIn('status', ['reconciled', CodRemittance::AWAITING_RIDER])->whereNull('hub_remittance_id')->sum('received_amount'),
             'with_riders' => (float) Assignment::where('type', 'delivery')->where('status', 'completed')->whereNull('cod_remittance_id')->sum('cod_collected'),
             'submitted_unconfirmed' => (float) HubRemittance::withoutGlobalScope('hub')->where('status', 'submitted')->sum('remitted_amount'),
+            // What the bank did not show for deposits HQ disputed, until the station covers it.
+            'disputed_with_stations' => round((float) HubRemittance::withoutGlobalScope('hub')->where('status', 'disputed')->whereNull('settles_id')->get()
+                ->sum(fn (HubRemittance $r) => $r->shortfall()), 2),
         ];
     }
 

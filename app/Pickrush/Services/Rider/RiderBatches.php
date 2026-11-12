@@ -4,6 +4,7 @@ namespace App\Pickrush\Services\Rider;
 
 use App\Pickrush\Enums\ParcelStatus;
 use App\Pickrush\Models\Assignment;
+use App\Pickrush\Models\CodRemittance;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\RiderBatch;
 use App\Pickrush\Models\RiderNotification;
@@ -292,12 +293,16 @@ class RiderBatches
 
         if ($batch->isDelivery()) {
             $live = $tasks->whereIn('status', ['assigned', 'out_for_delivery', 'completed', 'failed']);
+            // Cash counts the rider has not confirmed yet do not finish the batch.
+            $unconfirmed = CodRemittance::withoutGlobalScope('hub')->whereIn('id', $live->pluck('cod_remittance_id')->filter()->unique())
+                ->where('status', CodRemittance::AWAITING_RIDER)->pluck('id')->map(fn ($id) => (int) $id)->all();
             if ($live->isEmpty()) {
                 $batch->update(['status' => 'cancelled', 'completed_at' => now()]);
             } elseif ($batch->status === 'accepted' && $batch->started_at
                 && $live->whereIn('status', ['assigned', 'out_for_delivery'])->isEmpty()
                 && $live->where('status', 'failed')->every(fn (Assignment $task) => $task->returned_at !== null)
-                && $live->where('status', 'completed')->every(fn (Assignment $task) => (float) $task->cod_collected <= 0 || $task->cod_remittance_id !== null)) {
+                && $live->where('status', 'completed')->every(fn (Assignment $task) => (float) $task->cod_collected <= 0
+                    || ($task->cod_remittance_id !== null && ! in_array((int) $task->cod_remittance_id, $unconfirmed, true)))) {
                 $batch->update(['status' => 'completed', 'completed_at' => now()]);
             }
 

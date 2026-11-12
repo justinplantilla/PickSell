@@ -8,9 +8,11 @@ use App\Pickrush\Services\Station\CashHandling;
 use App\Pickrush\Models\ParcelClass;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\RiderBatch;
+use App\Pickrush\Services\OperationRefused;
 use App\Pickrush\Services\Station\RiderAvailability;
 use App\Pickrush\Support\Actor;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -89,10 +91,62 @@ class RiderEarningsController extends Controller
         ])->values()->all();
     }
 
+    /** The rider agrees with the station's count of their cash. */
+    public function confirmCount(int $remittance, CashHandling $cash): JsonResponse
+    {
+        $rider = Actor::rider();
+        try {
+            $count = $cash->confirmCount($this->count($remittance, $rider), $rider);
+        } catch (OperationRefused $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'message' => (float) $count->variance == 0.0
+                ? 'Count confirmed. Thank you.'
+                : 'Count confirmed. The hub manager will settle the ₱'.number_format(abs((float) $count->variance), 2).' difference with you.',
+            'status' => $count->status,
+        ]);
+    }
+
+    /** The rider says the count is wrong; the station counts the cash again with them. */
+    public function rejectCount(Request $request, int $remittance, CashHandling $cash): JsonResponse
+    {
+        $data = $request->validate(['reason' => 'required|string|min:5|max:500'], ['reason.required' => 'Say what is wrong with the count.']);
+        $rider = Actor::rider();
+        try {
+            $cash->rejectCount($this->count($remittance, $rider), $rider, $data['reason']);
+        } catch (OperationRefused $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => 'Count rejected. Ask the station to count your cash again with you.', 'status' => CodRemittance::REJECTED]);
+    }
+
+    /** A station count waiting for the rider, as the app shows it (earnings and the handover screen). */
+    public static function pendingCount(CodRemittance $count): array
+    {
+        return [
+            'id' => $count->id,
+            'expected' => (float) $count->expected_amount,
+            'counted' => (float) $count->received_amount,
+            'difference' => (float) $count->variance,
+            'pay_kept' => (float) $count->rider_pay_kept,
+            'counted_by' => $count->receiver?->full_name,
+            'at' => $count->created_at->toIso8601String(),
+        ];
+    }
+
+    private function count(int $id, Rider $rider): CodRemittance
+    {
+        return CodRemittance::withoutGlobalScope('hub')->where('rider_id', $rider->id)->findOrFail($id);
+    }
+
     /** COD still with the rider, and what they handed over to the station. */
     private function cod(Rider $rider, RiderAvailability $availability): array
     {
-        $last = CodRemittance::withoutGlobalScope('hub')->where('rider_id', $rider->id)->latest('id')->first();
+        $last = CodRemittance::withoutGlobalScope('hub')->where('rider_id', $rider->id)->where('status', '!=', CodRemittance::REJECTED)->latest('id')->first();
+        $pending = $rider->cashCountToConfirm()?->loadMissing('receiver');
         $cash = app(CashHandling::class)->breakdown($rider);
 
         return [
@@ -101,8 +155,10 @@ class RiderEarningsController extends Controller
             'pay_kept' => $cash['pay'],
             'to_remit' => $cash['to_remit'],
             'limit' => (float) $rider->cod_limit,
+            // A station count waiting for the rider to confirm or reject it.
+            'pending_count' => $pending ? self::pendingCount($pending) : null,
             'remitted_this_month' => round((float) CodRemittance::withoutGlobalScope('hub')->where('rider_id', $rider->id)
-                ->where('created_at', '>=', now()->startOfMonth())->sum('received_amount'), 2),
+                ->whereIn('status', ['reconciled', 'disputed'])->where('created_at', '>=', now()->startOfMonth())->sum('received_amount'), 2),
             'last_remittance' => $last ? [
                 'amount' => (float) $last->received_amount,
                 'at' => $last->created_at->toIso8601String(),

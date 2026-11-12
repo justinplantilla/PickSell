@@ -16,6 +16,7 @@ class SettingsController extends PortalController
             'groups' => collect(PolicySettings::FIELDS)->map(fn ($f, $key) => (object) [
                 'key' => $key, 'group' => $f[0], 'label' => $f[1], 'help' => $f[3], 'value' => PolicySettings::value($key),
                 'select' => str_starts_with($f[2], 'required|in:') ? explode(',', substr($f[2], strlen('required|in:'))) : null,
+                'time' => str_contains($f[2], 'date_format:H:i'),
             ])->groupBy('group'),
             'canEdit' => $this->canEdit(),
             'shared' => ! $this->staff()->company?->is_default,

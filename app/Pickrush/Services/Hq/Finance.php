@@ -16,8 +16,17 @@ use Carbon\CarbonInterface;
  */
 class Finance
 {
-    public function confirm(HubRemittance $remittance, Staff $finance, bool $matches, ?string $note): void
+    /**
+     * Confirming records that the bank received what the station declared. Disputing needs
+     * $bankAmount, what the bank statement shows for the deposit reference: the station tops up
+     * the difference.
+     */
+    public function confirm(HubRemittance $remittance, Staff $finance, bool $matches, ?string $note, ?float $bankAmount = null): void
     {
+        $bankAmount = $matches ? (float) $remittance->remitted_amount : $bankAmount;
+        if ($bankAmount === null) {
+            throw new OperationRefused('Enter the amount the bank statement shows for this deposit.');
+        }
         if ($remittance->status !== 'submitted') {
             throw new OperationRefused('This remittance was already '.$remittance->status.'.');
         }
@@ -29,10 +38,17 @@ class Finance
         }
         $remittance->update([
             'status' => $matches ? 'confirmed' : 'disputed',
+            'bank_amount' => round($bankAmount, 2),
             'confirmed_by' => $finance->id,
             'confirmed_at' => now(),
             'note' => trim(($remittance->note ? $remittance->note."\n" : '').($note ?? '')) ?: null,
         ]);
+
+        // A confirmed top-up that covers the shortfall settles the disputed remittance it was for.
+        $disputed = $matches ? $remittance->settles : null;
+        if ($disputed && $disputed->status === 'disputed' && $disputed->shortfall() <= 0) {
+            $disputed->update(['status' => HubRemittance::SETTLED]);
+        }
     }
 
     /** Delivered COD and fees in the period, split by shipper source (Picksell or direct). */
