@@ -49,8 +49,9 @@ class RiderTaskService
     }
 
     /**
-     * Proof of delivery. The rider confirms the COD amount but cannot change it, and a delivery
-     * that would push the cash they carry over their COD limit is refused.
+     * Proof of delivery, or of the hand-back to the seller. The rider confirms the cash amount but
+     * cannot change it (the buyer's COD, or the seller's return fee), and a hand-over that would push
+     * the cash they carry over their COD limit is refused.
      */
     public function deliver(Assignment $task, float $codConfirmed, string $proofPhotoPath, array $scan = []): void
     {
@@ -60,13 +61,13 @@ class RiderTaskService
         $this->expect($task, ['delivery', 'return'], ['out_for_delivery']);
         $parcel = $task->parcel;
         $isReturn = $task->type === 'return';
-        $cod = $isReturn ? 0.0 : (float) $parcel->cod_amount;
+        $cod = $isReturn ? (float) ($parcel->return_fee ?? 0) : (float) $parcel->cod_amount;
 
         if (abs($codConfirmed - $cod) > 0.009) {
-            throw new OperationRefused('The COD amount is ₱'.number_format($cod, 2).'; collect exactly that amount.');
+            throw new OperationRefused(($isReturn ? 'The return fee' : 'The COD amount').' is ₱'.number_format($cod, 2).'; collect exactly that amount.');
         }
-        if (! $isReturn && $this->availability->codInHand($task->rider) + $cod > (float) $task->rider->cod_limit) {
-            throw new OperationRefused('This delivery would put your cash on hand over your COD limit. Remit at the hub first.');
+        if ($cod > 0 && $this->availability->codInHand($task->rider) + $cod > (float) $task->rider->cod_limit) {
+            throw new OperationRefused('This '.($isReturn ? 'return' : 'delivery').' would put your cash on hand over your COD limit. Remit at the hub first.');
         }
 
         DB::transaction(function () use ($task, $proofPhotoPath, $scan, $isReturn, $cod) {
@@ -82,14 +83,19 @@ class RiderTaskService
         });
     }
 
-    /** A failed attempt: a reason from the closed list, a note for "other", and a photo. Earns the rider nothing. */
+    /**
+     * A failed attempt: a reason from the closed list, a note for "other", and a photo. Earns the
+     * rider nothing. A return the seller did not take back goes back to the station, held for them
+     * (the first refusal starts the hold).
+     */
     public function fail(Assignment $task, string $reason, ?string $note, string $photoPath, array $scan = []): void
     {
         if ($this->replayed($scan)) {
             return;
         }
-        $this->expect($task, ['delivery'], ['out_for_delivery']);
-        $reasons = config('pickrush.failure_reasons');
+        $this->expect($task, ['delivery', 'return'], ['out_for_delivery']);
+        $isReturn = $task->type === 'return';
+        $reasons = config($isReturn ? 'pickrush.return_failure_reasons' : 'pickrush.failure_reasons');
         if (! array_key_exists($reason, $reasons)) {
             throw new OperationRefused('Pick a reason from the list.');
         }
@@ -97,11 +103,14 @@ class RiderTaskService
             throw new OperationRefused('Write a note when the reason is "Other".');
         }
 
-        DB::transaction(function () use ($task, $reason, $reasons, $note, $photoPath, $scan) {
-            $this->ledger->record($task->parcel, ParcelStatus::DeliveryFailed, $task->rider->station, [
-                'note' => $reasons[$reason].($note ? " — {$note}" : ''),
+        DB::transaction(function () use ($task, $reason, $reasons, $note, $photoPath, $scan, $isReturn) {
+            $this->ledger->record($task->parcel, $isReturn ? ParcelStatus::ReturningToSender : ParcelStatus::DeliveryFailed, $task->rider->station, [
+                'note' => ($isReturn ? 'Seller did not take the return back: ' : '').$reasons[$reason].($note ? " — {$note}" : ''),
                 'meta' => ['reason' => $reason, 'photo' => $photoPath],
             ] + $this->options($task, $scan));
+            if ($isReturn && ! $task->parcel->return_refused_at) {
+                $task->parcel->forceFill(['return_refused_at' => $scan['occurred_at'] ?? now()])->save();
+            }
             $task->update([
                 'status' => 'failed', 'fail_reason' => $reason, 'fail_note' => $note,
                 'proof_photo_path' => $photoPath, 'completed_at' => $scan['occurred_at'] ?? now(),

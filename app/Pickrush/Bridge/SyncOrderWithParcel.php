@@ -4,6 +4,7 @@ namespace App\Pickrush\Bridge;
 
 use App\Models\Order;
 use App\Notifications\BuyerOrderUpdate;
+use App\Notifications\SellerReturnUpdate;
 use App\Pickrush\Enums\ParcelStatus;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\ParcelEvent;
@@ -73,13 +74,39 @@ class SyncOrderWithParcel
         }
 
         $event = $changed->event->loadMissing('hub', 'toHub');
-        foreach (PicksellBridge::ordersFor($parcel) as $order) {
+        $orders = PicksellBridge::ordersFor($parcel);
+        foreach ($orders as $order) {
             try {
                 $this->sync($parcel, $order, $event);
             } catch (Throwable $e) {
                 report($e);
                 $this->flag($parcel, "Order {$order->order_number} could not follow parcel scan \"{$changed->event->status->label()}\": {$e->getMessage()}");
             }
+        }
+        $this->tellSeller($parcel, $event, $orders);
+    }
+
+    /**
+     * The seller hears when the parcel starts back to them (and what they pay the return rider),
+     * and when a hand-back fails and the parcel is held at the station for them.
+     */
+    private function tellSeller(Parcel $parcel, ParcelEvent $event, $orders): void
+    {
+        $order = collect($orders)->first();
+        if (! $order || $event->status !== ParcelStatus::ReturningToSender) {
+            return;
+        }
+        $fee = (float) $parcel->return_fee > 0 ? ' Pay the return fee of ₱'.number_format((float) $parcel->return_fee, 2).' to the rider when it reaches you.' : '';
+        $message = $event->rider_id
+            ? "We could not hand back parcel {$parcel->tracking_no} (order #{$order->order_number}). It is held at ".($event->hub?->name ?? 'the station')
+                .' for '.config('pickrush.policies.return_hold_days').' days: contact the station to have it brought back.'.$fee
+                .' Returns not taken back are reported to PickSell and, after '.config('pickrush.policies.return_abandon_days').' days, kept by the logistics company.'
+            : "The buyer did not receive parcel {$parcel->tracking_no} (order #{$order->order_number}). It is on its way back to you.".$fee;
+
+        try {
+            $order->seller?->notify(new SellerReturnUpdate($order, $message));
+        } catch (Throwable $e) {
+            report($e);
         }
     }
 
@@ -144,7 +171,7 @@ class SyncOrderWithParcel
     {
         // On the way back to the seller only the final hand-over changes the order.
         if ($parcel->is_return) {
-            return $event->status === ParcelStatus::ReturnedToSender ? 'returned' : null;
+            return in_array($event->status, [ParcelStatus::ReturnedToSender, ParcelStatus::Abandoned], true) ? 'returned' : null;
         }
         // Arriving at a station only counts once it is the buyer's station.
         if ($event->status === ParcelStatus::ArrivedAtStation && $event->hub_id !== $parcel->dest_hub_id) {

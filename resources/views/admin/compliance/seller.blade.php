@@ -116,6 +116,37 @@
         @endif
     </section>
 
+    <section class="card" aria-labelledby="strikes-heading">
+        <div class="card-header">
+            <span class="card-title" id="strikes-heading">Return strikes</span>
+            <span class="oversight-description">{{ $strikes->filter(fn ($s) => $s->expires_at->isFuture())->count() }} live of {{ \App\Services\Logistics\SellerStrikes::HOLD_AT }} · each lapses after {{ \App\Services\Logistics\SellerStrikes::LIFETIME_DAYS }} days</span>
+        </div>
+        @if($seller->isSellingHeld())
+            <p class="compliance-pad"><span class="badge badge-suspended">Shop on hold</span> since {{ $seller->selling_held_at->format('M d, Y') }}: {{ $seller->selling_hold_reason }} Buyers can see the products but cannot order.</p>
+        @endif
+        @if($strikes->isNotEmpty())
+            <ol class="compliance-timeline">
+                @foreach($strikes as $strike)
+                    <li>
+                        <span class="oversight-meta">{{ $strike->created_at->format('M d, Y') }} · {{ $strike->expires_at->isFuture() ? 'lapses '.$strike->expires_at->format('M d, Y') : 'lapsed' }}@if($strike->issue) · <a href="{{ route('admin.logistics.issues.show', $strike->issue) }}">issue #{{ $strike->logistics_issue_id }}</a>@endif</span>
+                        <p class="compliance-reason">{{ $strike->reason }}</p>
+                    </li>
+                @endforeach
+            </ol>
+        @else
+            <p class="oversight-description compliance-pad">No strikes. A strike is given when a refused-return issue is resolved as the seller's fault.</p>
+        @endif
+        @if($seller->isSellingHeld() && $canSuspend)
+            <form method="POST" action="{{ route('admin.compliance.lift-hold', $seller) }}" class="compliance-form">
+                @csrf @method('PATCH')
+                <label class="form-label" for="lift-note">Lift the hold <span class="oversight-meta">— after talking with the seller; strikes stay on record</span></label>
+                <textarea id="lift-note" name="note" class="form-control" rows="2" required minlength="10" maxlength="1000">{{ old('note') }}</textarea>
+                @error('note')<span class="compliance-error">{{ $message }}</span>@enderror
+                <button type="submit" class="btn btn-outline btn-sm">Lift hold</button>
+            </form>
+        @endif
+    </section>
+
     {{-- 4. Suspensions --}}
     <section class="card" aria-labelledby="suspensions-heading">
         <div class="card-header"><span class="card-title" id="suspensions-heading">Suspensions</span></div>

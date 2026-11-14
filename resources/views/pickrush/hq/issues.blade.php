@@ -12,6 +12,26 @@
 
 @if($errors->has('operation'))<div class="pr-alert pr-alert-bad">{{ $errors->first('operation') }}</div>@endif
 
+<section class="pr-card pr-section">
+    <h2>Report a return the seller did not take back</h2>
+    <p class="pr-muted">After {{ $holdDays }} days held at the station, tell PickSell. PickSell talks with the seller and decides who was at fault; a seller at fault gets a strike. The return fee is not charged to anyone else: your company keeps the parcel once it is abandoned.</p>
+    @if($unreported->isNotEmpty())
+        <p><strong>Held past {{ $holdDays }} days, not reported yet:</strong>
+            @foreach($unreported as $parcel)<span class="pr-badge">{{ $parcel->tracking_no }}</span> @endforeach</p>
+    @endif
+    @if($canRespond)
+        <form method="POST" action="{{ route('pickrush.hq.issues.refused-return') }}" enctype="multipart/form-data" class="pr-form-grid">
+            @csrf
+            <div class="pr-field"><label>Tracking no.</label><input name="tracking_no" class="pr-input" value="{{ old('tracking_no') }}" required maxlength="40"></div>
+            <div class="pr-field" style="grid-column:1/-1"><label>What happened</label><textarea name="description" class="pr-input" rows="3" required minlength="10" maxlength="2000" placeholder="When the rider tried, what the seller said, how you contacted them…" style="width:100%">{{ old('description') }}</textarea></div>
+            <div class="pr-field"><label>Evidence (optional)</label><input name="evidence" type="file" accept="image/*,application/pdf" class="pr-input"></div>
+            <div class="pr-field"><button type="submit" class="pr-btn pr-btn-sm">Report to PickSell</button></div>
+        </form>
+    @else
+        <p class="pr-muted">Your super admin or support staff can report.</p>
+    @endif
+</section>
+
 <section class="pr-section">
     <h2>Waiting on your reply ({{ $waiting->count() }})</h2>
     @forelse($waiting as $issue)

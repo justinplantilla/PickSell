@@ -27,6 +27,8 @@ class Parcel extends Model
         'current_status' => ParcelStatus::class,
         'cod_amount' => 'decimal:2',
         'shipping_fee' => 'decimal:2',
+        'return_fee' => 'decimal:2',
+        'return_refused_at' => 'datetime',
         'rider_pay' => 'decimal:2',
         'platform_commission' => 'decimal:2',
         'logistics_share' => 'decimal:2',

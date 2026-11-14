@@ -81,6 +81,7 @@ class RiderHomeController extends Controller
             'pickup_failure_reasons' => $list(config('pickrush.pickup_failure_reasons')),
             'rider_problems' => $list(config('pickrush.rider_problems')),
             'delivery_failure_reasons' => $list(config('pickrush.failure_reasons')),
+            'return_failure_reasons' => $list(config('pickrush.return_failure_reasons')),
             'arrival_radius_m' => (int) config('pickrush.arrival_radius_m', 150),
         ]);
     }
@@ -130,7 +131,8 @@ class RiderHomeController extends Controller
 
     private const PICKUP_STATUSES = [ParcelStatus::PickedUp];
 
-    private const DELIVERY_STATUSES = [ParcelStatus::OutForDelivery, ParcelStatus::Delivered, ParcelStatus::DeliveryFailed, ParcelStatus::ReturnedToSender];
+    // A rider's "returning to sender" scan is a hand-back the seller did not accept.
+    private const DELIVERY_STATUSES = [ParcelStatus::OutForDelivery, ParcelStatus::Delivered, ParcelStatus::DeliveryFailed, ParcelStatus::ReturnedToSender, ParcelStatus::ReturningToSender];
 
     /** The dashboard's short list: the newest lines of any kind. */
     private function activity(Rider $rider): array
@@ -180,6 +182,7 @@ class RiderHomeController extends Controller
                 ParcelStatus::Delivered => ['delivered', "{$parcel->tracking_no} delivered", $parcel->delivery_address],
                 ParcelStatus::DeliveryFailed => ['failed', "Delivery failed: {$parcel->tracking_no}", $parcel->delivery_address],
                 ParcelStatus::ReturnedToSender => ['returned', "Returned to {$parcel->shipper_name}", $parcel->pickup_address],
+                ParcelStatus::ReturningToSender => ['failed', "Return not accepted: {$parcel->tracking_no}", $parcel->pickup_address],
             };
             $last = $lines->last();
             if ($last && $last['type'] === $type && $last['title'] === $title && in_array($type, ['pickup', 'dropped_off'], true)

@@ -86,6 +86,7 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
                 Route::get('/alerts', [Hq\AuditController::class, 'alerts'])->name('alerts');
                 Route::get('/marketplace-issues', [Hq\MarketplaceIssueController::class, 'index'])->name('issues');
                 Route::post('/marketplace-issues/{issue}/respond', [Hq\MarketplaceIssueController::class, 'respond'])->middleware('pickrush.role:super_admin,support')->name('issues.respond');
+                Route::post('/marketplace-issues/refused-returns', [Hq\MarketplaceIssueController::class, 'reportReturn'])->middleware('pickrush.role:super_admin,support')->name('issues.refused-return');
                 Route::get('/reports', [Hq\ReportController::class, 'index'])->name('reports');
                 Route::get('/reports/export', [Hq\ReportController::class, 'export'])->name('reports.export');
                 Route::get('/settings', [Hq\SettingsController::class, 'index'])->name('settings');
@@ -186,6 +187,7 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
 
             Route::get('/failed', [Station\FailedController::class, 'index'])->name('failed');
             Route::post('/failed/{parcel}/return', [Station\FailedController::class, 'returnToSender'])->name('failed.return');
+            Route::post('/failed/{parcel}/abandon', [Station\FailedController::class, 'abandon'])->name('failed.abandon');
 
             Route::get('/riders', [Station\RiderController::class, 'index'])->name('riders.index');
             Route::get('/riders/{rider}', [Station\RiderController::class, 'show'])->whereNumber('rider')->name('riders.show');

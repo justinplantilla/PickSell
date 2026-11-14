@@ -47,7 +47,7 @@ class Alerts
     public function all(): array
     {
         $stuckHours = (int) config('pickrush.policies.stuck_after_hours');
-        $open = [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost];
+        $open = [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost, ParcelStatus::Abandoned];
 
         $alerts = [
             [1, 'bad', 'Cash shortages and overages', 'Rider remittances with an unresolved variance.',

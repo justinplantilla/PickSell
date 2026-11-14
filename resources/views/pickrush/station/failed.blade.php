@@ -47,6 +47,49 @@
     </table>
 </div>
 
+@if($held->isNotEmpty())
+    <section class="pr-section" style="margin-top:1.25rem">
+        <h2>Returns the seller did not take back ({{ $held->count() }})</h2>
+        <p class="pr-muted">Held here for the seller for {{ $holdDays }} days: they can ask for another hand-back (assign it again in <a href="{{ route('pickrush.station.dispatch') }}">Dispatch</a>) or collect it. After that, HQ can report the seller to PickSell. After {{ $abandonDays }} days the parcel may be marked abandoned and kept by the company.</p>
+        <div class="pr-table-wrap">
+            <table class="pr-table">
+                <thead><tr><th>Tracking no.</th><th>Seller</th><th class="pr-num">Return fee</th><th>Held</th><th>Abandon</th></tr></thead>
+                <tbody>
+                @foreach($held as $parcel)
+                    @php($days = \App\Pickrush\Services\Station\FailedDeliveries::daysHeld($parcel))
+                    <tr>
+                        <td>
+                            <a href="{{ route('pickrush.parcels.show', $parcel) }}">{{ $parcel->tracking_no }}</a>
+                            @if($withRider = $parcel->assignments->first())
+                                <div><span class="pr-badge pr-badge-warn">Still with {{ $withRider->rider?->full_name }}</span></div>
+                            @endif
+                        </td>
+                        <td>{{ $parcel->shipper_name }}<div class="pr-muted">{{ $parcel->shipper_mobile }}</div></td>
+                        <td class="pr-num">₱{{ number_format((float) $parcel->return_fee, 2) }}</td>
+                        <td>
+                            {{ $days }} {{ \Illuminate\Support\Str::plural('day', $days) }}
+                            @if($days >= $abandonDays)<div><span class="pr-badge pr-badge-bad">Can be abandoned</span></div>
+                            @elseif($days >= $holdDays)<div><span class="pr-badge pr-badge-warn">Hold over: report to PickSell</span></div>@endif
+                        </td>
+                        <td>
+                            @if($days >= $abandonDays && ! $withRider)
+                                <form method="POST" action="{{ route('pickrush.station.failed.abandon', $parcel) }}" class="pr-inline">
+                                    @csrf
+                                    <input name="note" class="pr-input" placeholder="Note (optional)" aria-label="Note" style="width:160px">
+                                    <button type="submit" class="pr-btn pr-btn-outline pr-btn-sm">Mark abandoned</button>
+                                </form>
+                            @else
+                                <span class="pr-muted">After {{ $abandonDays }} days</span>
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+    </section>
+@endif
+
 @if($returning->isNotEmpty())
     <section class="pr-section" style="margin-top:1.25rem">
         <h2>Going back to sellers ({{ $returning->count() }})</h2>

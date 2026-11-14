@@ -27,7 +27,7 @@ class AddressFixer
             ?? throw new OperationRefused('Pick a barangay from the list.');
         $station = $this->router->stationFor($barangay->municipality_code, $parcel->company_id)
             ?? throw new OperationRefused("No station covers {$barangay->municipality->name} yet.");
-        if (in_array($parcel->current_status, [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost], true)) {
+        if (in_array($parcel->current_status, [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost, ParcelStatus::Abandoned], true)) {
             throw new OperationRefused('This parcel has finished its journey.');
         }
         $notCollected = in_array($parcel->current_status, [ParcelStatus::LabelCreated, ParcelStatus::WaitingPickup], true);

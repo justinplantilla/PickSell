@@ -88,7 +88,7 @@ class DeliveryRoutes
         if ($task->status === 'completed') {
             return $batch;     // a retried request
         }
-        $cod = $task->type === 'return' ? 0.0 : (float) $task->parcel->cod_amount;
+        $cod = $task->type === 'return' ? (float) ($task->parcel->return_fee ?? 0) : (float) $task->parcel->cod_amount;
         if (abs($codConfirmed - $cod) > 0.009) {
             throw new OperationRefused('The COD amount is ₱'.number_format($cod, 2).'; collect exactly that amount.');
         }
@@ -98,16 +98,13 @@ class DeliveryRoutes
         return $this->batches->sync($batch->refresh());
     }
 
-    /** A failed attempt: a reason from the closed list (a note for "other") and a photo. */
+    /** A failed attempt (or a return the seller did not take back): a reason from the closed list (a note for "other") and a photo. */
     public function fail(RiderBatch $batch, Rider $rider, int $assignmentId, string $reason, ?string $note, UploadedFile $photo, ?string $requestKey = null): RiderBatch
     {
         $batch = $this->onRoute($batch, $rider);
         $task = $this->stopTask($batch, $assignmentId, null);
         if ($task->status === 'failed') {
             return $batch;     // a retried request
-        }
-        if ($task->type !== 'delivery') {
-            throw new OperationRefused('A return to the seller cannot be marked failed here. Call your station.');
         }
         $path = $photo->store("pickrush/proof/{$batch->id}", 'local');
         $this->tasks->fail($task, $reason, $note, $path, $requestKey ? ['idempotency_key' => "{$requestKey}:fail:{$task->id}"] : []);

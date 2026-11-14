@@ -17,7 +17,7 @@ class AddressFixController extends PortalController
     public function index(Request $request)
     {
         $parcels = Parcel::with('originHub', 'destHub', 'currentHub')->where('needs_address_fix', true)
-            ->whereNotIn('current_status', [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost])
+            ->whereNotIn('current_status', [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost, ParcelStatus::Abandoned])
             ->oldest()->paginate(30);
 
         // Cascading picker without JavaScript: province → city → barangay through query parameters.

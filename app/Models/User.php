@@ -34,6 +34,7 @@ class User extends Authenticatable
     protected $casts = [
         'birthday' => 'date', 'email_verified_at' => 'datetime',
         'vacation_mode' => 'boolean', 'vacation_started_at' => 'datetime', 'vacation_ends_at' => 'datetime',
+        'selling_held_at' => 'datetime',
     ];
 
     /** Vacation days a seller may use per calendar month, across all vacations (see SellerVacations). */
@@ -148,10 +149,16 @@ class User extends Authenticatable
             && ($this->vacation_ends_at === null || $this->vacation_ends_at->isFuture());
     }
 
-    /** Sellers (in a whereHas on the seller) who are taking orders: not on vacation, or past its end. */
+    /** PickSell put the shop on hold (returns not taken back): visible, but no new orders until lifted. */
+    public function isSellingHeld(): bool
+    {
+        return $this->role === 'seller' && $this->selling_held_at !== null;
+    }
+
+    /** Sellers (in a whereHas on the seller) who are taking orders: not on vacation (or past its end), and not on hold. */
     public function scopeTakingOrders($query)
     {
-        return $query->where(fn ($seller) => $seller->where('vacation_mode', false)
+        return $query->whereNull('selling_held_at')->where(fn ($seller) => $seller->where('vacation_mode', false)
             ->orWhere(fn ($ended) => $ended->whereNotNull('vacation_ends_at')->where('vacation_ends_at', '<=', now())));
     }
 

@@ -40,17 +40,17 @@ class CashHandling
 
     /**
      * COD in hand, the rider pay kept from it, and what is left to hand over. Only the pay for the
-     * deliveries whose cash is being handed over is kept (pickups and returns bring in no cash, so
-     * their pay is not taken from it), and never more than that cash.
+     * deliveries and returns whose cash is being handed over (the buyer's COD, the seller's return
+     * fee) is kept (pickups bring in no cash, so their pay is not taken from it), and never more than that cash.
      *
      * @return array{cod: float, pay: float, to_remit: float, earning_ids: array<int, int>}
      */
     public function breakdown(Rider $rider, bool $lock = false): array
     {
         $cod = round($this->availability->codInHand($rider), 2);
-        $deliveries = Assignment::where('rider_id', $rider->id)->where('type', 'delivery')->where('status', 'completed')
+        $deliveries = Assignment::where('rider_id', $rider->id)->whereIn('type', ['delivery', 'return'])->where('status', 'completed')
             ->whereNull('cod_remittance_id')->select('id');
-        $earnings = DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->where('kind', 'delivery')->whereNull('settled_at')
+        $earnings = DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->whereIn('kind', ['delivery', 'return'])->whereNull('settled_at')
             ->whereIn('assignment_id', $deliveries)
             ->orderBy('earned_at')->orderBy('id')->when($lock, fn ($q) => $q->lockForUpdate())->get(['id', 'amount']);
 
@@ -82,7 +82,7 @@ class CashHandling
             if ($rider->cashCountToConfirm()) {
                 throw new OperationRefused("{$rider->full_name} has not confirmed the last count yet. They confirm or reject it in the rider app.");
             }
-            $tasks = Assignment::where('rider_id', $rider->id)->where('type', 'delivery')->where('status', 'completed')
+            $tasks = Assignment::where('rider_id', $rider->id)->whereIn('type', ['delivery', 'return'])->where('status', 'completed')
                 ->whereNull('cod_remittance_id')->lockForUpdate()->get();
             $kept = $this->breakdown($rider, lock: true);
             $expected = $kept['to_remit'];

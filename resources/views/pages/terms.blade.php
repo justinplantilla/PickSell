@@ -8,7 +8,7 @@
 @section('content')
 <article class="legal-page">
     <h1>Terms of Service</h1>
-    <p class="legal-updated">Last updated: October 15, 2026</p>
+    <p class="legal-updated">Last updated: November 14, 2026</p>
 
     <p>These terms govern your use of PickSell, an online marketplace that connects buyers, sellers, couriers and logistics partners in the Philippines. By creating an account you agree to them.</p>
 
@@ -28,7 +28,16 @@
     </ul>
 
     <h2>3. Delivery</h2>
-    <p>Parcels are collected from sellers and delivered by PickSell's logistics partners and riders. Delivery times are estimates. After repeated failed delivery attempts a parcel may be returned to the seller.</p>
+    <p>Parcels are collected from sellers and delivered by PickSell's logistics partners and riders. Delivery times are estimates.</p>
+
+    <h3>Parcels the buyer does not receive</h3>
+    <ul>
+        <li>A parcel is returned to the seller after {{ config('pickrush.policies.max_delivery_attempts') }} failed delivery attempts.</li>
+        <li>The seller pays the logistics partner a return fee equal to the parcel's original shipping fee, in cash to the rider when the parcel is handed back. PickSell takes no commission on it.</li>
+        <li>If the seller does not take the parcel back, it is held at the logistics partner's station for {{ config('pickrush.policies.return_hold_days') }} days, during which the seller can ask for it to be brought back or collect it. The logistics partner may then report it to PickSell.</li>
+        <li>PickSell reviews each report with the seller. A seller found at fault receives a strike, which lapses after {{ \App\Services\Logistics\SellerStrikes::LIFETIME_DAYS }} days. With {{ \App\Services\Logistics\SellerStrikes::HOLD_AT }} strikes at once, the shop stops taking new orders until PickSell resolves it with the seller.</li>
+        <li>A return not taken back within {{ config('pickrush.policies.return_abandon_days') }} days is treated as abandoned: the seller gives up the parcel, and the logistics partner may keep, sell, donate or dispose of it to recover its costs.</li>
+    </ul>
 
     <h2>4. Prohibited conduct</h2>
     <ul>

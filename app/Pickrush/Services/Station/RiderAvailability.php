@@ -57,7 +57,7 @@ class RiderAvailability
     /** Cash collected and not yet handed over to the station. */
     public function codInHand(Rider $rider): float
     {
-        return (float) Assignment::where('rider_id', $rider->id)->where('type', 'delivery')->where('status', 'completed')
+        return (float) Assignment::where('rider_id', $rider->id)->whereIn('type', ['delivery', 'return'])->where('status', 'completed')
             ->whereNull('cod_remittance_id')->sum('cod_collected');
     }
 }

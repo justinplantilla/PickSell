@@ -340,6 +340,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
         Route::patch('/compliance/{user}/warn', [AdminComplianceController::class, 'warn'])->name('admin.compliance.warn');
         Route::patch('/compliance/sellers/{user}/suspend', [AdminComplianceController::class, 'suspend'])->name('admin.compliance.suspend');
         Route::patch('/compliance/sellers/{user}/reinstate', [AdminComplianceController::class, 'suspend'])->name('admin.compliance.reinstate');
+        Route::patch('/compliance/sellers/{user}/lift-hold', [AdminComplianceController::class, 'liftHold'])->name('admin.compliance.lift-hold');
     });
 
     Route::middleware($can(Permission::RETURNS_VIEW))->group(function () {

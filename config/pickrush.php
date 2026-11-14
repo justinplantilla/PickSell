@@ -43,6 +43,11 @@ return [
     'policies' => [
         'max_delivery_attempts' => 3,
 
+        // A return the seller did not take back: held at the station this long (the seller asks for
+        // another hand-back or collects it), and after this many days the company may keep it.
+        'return_hold_days' => 7,
+        'return_abandon_days' => 30,
+
         // Rider limits. New riders start on probation with lower caps; the hub raises them later.
         'rider_limits' => [
             'probation' => ['cod_limit' => 3000, 'max_parcels' => 20],
@@ -122,6 +127,15 @@ return [
     'low_rating_threshold' => 3.0,
 
     // Closed list so failure reports are comparable across hubs.
+    // Why the seller did not take a return back (the parcel is then held at the station for them).
+    'return_failure_reasons' => [
+        'seller_unavailable' => 'Seller not around / shop closed',
+        'seller_refused_fee' => 'Seller refused to pay the return fee',
+        'seller_refused_parcel' => 'Seller refused the parcel',
+        'wrong_address' => 'Pickup address incomplete or does not exist',
+        'other' => 'Other (note required)',
+    ],
+
     'failure_reasons' => [
         'buyer_unavailable' => 'Buyer unavailable (no answer, nobody home)',
         'wrong_address' => 'Address incomplete or does not exist',

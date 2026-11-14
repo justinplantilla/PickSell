@@ -20,7 +20,7 @@ class ParcelLedger
 {
     private const IN_TRANSIT = [ParcelStatus::InTransitToProvince, ParcelStatus::InTransitToStation];
 
-    private const LEFT_NETWORK = [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost];
+    private const LEFT_NETWORK = [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost, ParcelStatus::Abandoned];
 
     public function __construct(private HubRouter $router) {}
 

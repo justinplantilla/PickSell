@@ -111,6 +111,37 @@ class LogisticsIssueDesk
         ]);
     }
 
+    /**
+     * The company reports a return its seller did not take back (manually, from its portal), once
+     * the parcel has been held for them. PickSell decides the fault; a seller at fault gets a strike.
+     */
+    public function reportRefusedReturn(Staff $staff, Parcel $parcel, string $description, ?UploadedFile $evidence = null): LogisticsIssue
+    {
+        if ($parcel->company_id !== $staff->company_id || $parcel->source !== PicksellBridge::SOURCE) {
+            throw new DomainException('That is not one of your PickSell parcels.');
+        }
+        if (! $parcel->is_return || ! $parcel->return_refused_at
+            || ! in_array($parcel->current_status, [ParcelStatus::ReturningToSender, ParcelStatus::Abandoned], true)) {
+            throw new DomainException("{$parcel->tracking_no} is not a return the seller did not take back.");
+        }
+        if (LogisticsIssue::where('parcel_id', $parcel->id)->where('type', 'return_refused')->exists()) {
+            throw new DomainException("You already reported {$parcel->tracking_no}. PickSell is looking into it.");
+        }
+
+        $issue = $this->open([
+            'company_id' => $staff->company_id,
+            'parcel_id' => $parcel->id,
+            'source' => 'report',
+            'type' => 'return_refused',
+            'reporter_role' => 'logistics',
+            'description' => $description,
+            'evidence_path' => $evidence?->store('logistics-issues', 'local'),
+        ] + $this->orderLinks($parcel));
+        $issue->events()->latest('id')->first()?->update(['staff_id' => $staff->id]);
+
+        return $issue;
+    }
+
     /** A buyer or seller reports a delivery problem on their order. */
     public function report(User $reporter, Order $order, string $type, string $description, ?UploadedFile $evidence = null): LogisticsIssue
     {
@@ -212,6 +243,12 @@ class LogisticsIssueDesk
         });
 
         $this->audit->record('logistics.issue.resolved', $issue, [], array_filter(['fault' => $fault, 'claim' => $claim?->amount]));
+
+        // A return the seller did not take back, found to be their fault: a strike (three hold the shop).
+        $seller = $issue->order?->seller ?? $issue->shipment?->seller;
+        if ($fault === 'seller' && $issue->type === 'return_refused' && $seller) {
+            app(SellerStrikes::class)->strike($seller, $issue, $admin, "Return {$issue->parcel?->tracking_no} not taken back. {$notes}");
+        }
 
         return $claim;
     }

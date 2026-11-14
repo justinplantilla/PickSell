@@ -79,9 +79,11 @@ class StationReceiving
                 $this->batches->sync($task->batch);
             }
 
-            return $parcel->current_status === ParcelStatus::ReturningToSender
-                ? "{$parcel->tracking_no} handed back by {$task->rider->full_name}. It is going back to the seller."
-                : "{$parcel->tracking_no} handed back by {$task->rider->full_name} after a failed delivery. Retry or return it under Failed deliveries.";
+            return match (true) {
+                $task->type === 'return' => "{$parcel->tracking_no} handed back by {$task->rider->full_name}: the seller did not take it back. Hold it for the seller (Failed deliveries).",
+                $parcel->current_status === ParcelStatus::ReturningToSender => "{$parcel->tracking_no} handed back by {$task->rider->full_name}. It is going back to the seller.",
+                default => "{$parcel->tracking_no} handed back by {$task->rider->full_name} after a failed delivery. Retry or return it under Failed deliveries.",
+            };
         }
         if ($failedHere && $parcel->current_status === ParcelStatus::DeliveryFailed) {
             throw new OperationRefused("{$parcel->tracking_no} is already here after a failed delivery. Retry or return it under Failed deliveries.");

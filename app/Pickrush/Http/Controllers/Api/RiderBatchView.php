@@ -226,7 +226,11 @@ final class RiderBatchView
             'parcel_class' => $parcel->parcel_class,
             'is_heavy' => self::isHeavy($task),
             'rider_pay' => (float) RiderEarnings::payFor($task),
-            'cod_amount' => $task->type === 'delivery' ? (float) $parcel->cod_amount : 0.0,
+            'cod_amount' => match ($task->type) {
+                'delivery' => (float) $parcel->cod_amount,
+                'return' => (float) ($parcel->return_fee ?? 0),   // the seller pays the return fee on hand-back
+                default => 0.0,
+            },
             'status' => $status,
             'note' => in_array($task->status, ['failed'], true) ? $task->fail_note : null,
             'done_at' => $task->completed_at?->toIso8601String(),

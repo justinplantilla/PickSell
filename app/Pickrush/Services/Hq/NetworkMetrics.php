@@ -34,12 +34,12 @@ class NetworkMetrics
             'returned' => $returned,
             'failed_attempts' => $finished(ParcelStatus::DeliveryFailed),
             'in_transit' => Parcel::withoutGlobalScope(ParcelHubScope::class)->whereIn('current_status', [ParcelStatus::InTransitToProvince, ParcelStatus::InTransitToStation])->count(),
-            'in_network' => Parcel::withoutGlobalScope(ParcelHubScope::class)->whereNotIn('current_status', [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost])->count(),
+            'in_network' => Parcel::withoutGlobalScope(ParcelHubScope::class)->whereNotIn('current_status', [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost, ParcelStatus::Abandoned])->count(),
             'success_rate' => self::rate($delivered, $delivered + $returned),
             'first_attempt_rate' => self::rate($deliveredParcels->where('attempt_count', 0)->count(), $deliveredParcels->count()),
             'avg_delivery_hours' => $deliveredParcels->isEmpty() ? null
                 : round($deliveredParcels->avg(fn ($p) => $p->created_at->diffInMinutes($p->delivered_at) / 60), 1),
-            'cod_collected' => (float) Assignment::where('type', 'delivery')->where('status', 'completed')->whereBetween('completed_at', [$from, $to])->sum('cod_collected'),
+            'cod_collected' => (float) Assignment::whereIn('type', ['delivery', 'return'])->where('status', 'completed')->whereBetween('completed_at', [$from, $to])->sum('cod_collected'),
             // A settled dispute counts for what the bank showed; its top-ups count as confirmed deposits.
             'cod_remitted' => (float) HubRemittance::withoutGlobalScope('hub')->whereIn('status', ['confirmed', HubRemittance::SETTLED])->whereBetween('confirmed_at', [$from, $to])
                 ->sum(DB::raw(HubRemittance::receivedSql())),
@@ -91,7 +91,7 @@ class NetworkMetrics
         return [
             // Counted cash, including counts the rider has not confirmed yet.
             'at_stations' => (float) CodRemittance::withoutGlobalScope('hub')->whereIn('status', ['reconciled', CodRemittance::AWAITING_RIDER])->whereNull('hub_remittance_id')->sum('received_amount'),
-            'with_riders' => (float) Assignment::where('type', 'delivery')->where('status', 'completed')->whereNull('cod_remittance_id')->sum('cod_collected'),
+            'with_riders' => (float) Assignment::whereIn('type', ['delivery', 'return'])->where('status', 'completed')->whereNull('cod_remittance_id')->sum('cod_collected'),
             'submitted_unconfirmed' => (float) HubRemittance::withoutGlobalScope('hub')->where('status', 'submitted')->sum('remitted_amount'),
             // What the bank did not show for deposits HQ disputed, until the station covers it.
             'disputed_with_stations' => round((float) HubRemittance::withoutGlobalScope('hub')->where('status', 'disputed')->whereNull('settles_id')->get()

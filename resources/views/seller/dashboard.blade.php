@@ -29,6 +29,10 @@
         </a>
     </div>
 
+    @if(auth()->user()->isSellingHeld())
+        <div class="alert alert-danger">Your shop is on hold: {{ auth()->user()->selling_hold_reason }} Buyers can see your products but can't order them. Contact PickSell support to resolve it.</div>
+    @endif
+
     @if(auth()->user()->isOnVacation())
         <div class="alert alert-warning">Vacation mode is on until {{ auth()->user()->vacation_ends_at?->format('M j, Y') }}. Buyers can visit your store but can't order. <a href="{{ route('seller.account') }}#vacation-mode">End vacation</a></div>
     @endif

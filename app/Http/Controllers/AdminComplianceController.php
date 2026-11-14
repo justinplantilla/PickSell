@@ -10,9 +10,11 @@ use App\Http\Requests\Admin\WarnSellerRequest;
 use App\Http\Requests\Admin\SuspendSellerRequest;
 use App\Models\ComplianceAction;
 use App\Models\ComplianceCase;
+use App\Models\SellerStrike;
 use App\Models\User;
 use App\Services\Admin\ComplianceService;
 use App\Services\AuditLogger;
+use App\Services\Logistics\SellerStrikes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -158,7 +160,22 @@ class AdminComplianceController extends Controller
             'history' => $actions,
             'openCases' => $seller->complianceCases()->open()->latest()->get(),
             'prefillProduct' => request()->integer('product') ?: null,
+            'strikes' => SellerStrike::where('seller_id', $seller->id)->with('issue.parcel')->latest()->get(),
         ]);
+    }
+
+    /** PickSell talked with the seller about returns not taken back, and lifts the shop hold. */
+    public function liftHold(Request $request, User $user, SellerStrikes $strikes)
+    {
+        Gate::authorize('suspendSeller', $user);
+        $data = $request->validate(['note' => 'required|string|min:10|max:1000']);
+        try {
+            $strikes->lift($user, $request->user(), $data['note']);
+        } catch (\DomainException $e) {
+            return back()->withErrors(['note' => $e->getMessage()]);
+        }
+
+        return back()->with('success', ($user->business_name ?: $user->full_name).' can take orders again.');
     }
 
     public function showCase(ComplianceCase $case)

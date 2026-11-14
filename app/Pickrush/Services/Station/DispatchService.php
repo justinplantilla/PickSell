@@ -44,12 +44,12 @@ class DispatchService
     }
 
     /**
-     * Assignments of a parcel the rider could not deliver and has not handed back yet (it is still
-     * on their vehicle until it is scanned in at Receiving).
+     * Assignments of a parcel the rider could not deliver (or hand back to the seller) and has not
+     * brought back yet (it is still on their vehicle until it is scanned in at Receiving).
      */
     public static function stillWithRider($query)
     {
-        return $query->where('pr_assignments.type', 'delivery')->where('pr_assignments.status', 'failed')
+        return $query->whereIn('pr_assignments.type', ['delivery', 'return'])->where('pr_assignments.status', 'failed')
             ->whereNotNull('pr_assignments.batch_id')->whereNull('pr_assignments.returned_at');
     }
 

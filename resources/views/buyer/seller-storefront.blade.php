@@ -25,6 +25,7 @@
                 <a href="/buyer/chat?user={{ $seller->id }}" class="btn btn-outline btn-sm">Chat</a>
             </div>
             @if($seller->isOnVacation())<div class="alert alert-warning" role="note">On vacation until {{ $seller->vacation_ends_at?->format('M j') }}: browse freely, but orders are paused until the seller is back.</div>@endif
+            @if($seller->isSellingHeld())<div class="alert alert-warning" role="note">This shop is not taking orders right now. You can still browse its products.</div>@endif
         </div>
         <div class="seller-storefront-count"><strong>{{ $products->total() }}</strong><span>products</span></div>
     </section>

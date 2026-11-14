@@ -21,6 +21,8 @@ class LogisticsIssue extends Model
         // From the parcel's status
         'lost' => 'Parcel lost',
         'returned' => 'Returned to seller (failed delivery)',
+        // Reported by the company: the seller did not take the return back
+        'return_refused' => 'Seller did not take back a return',
         // Reported by buyers and sellers
         'not_received' => 'Marked delivered but not received',
         'damaged_item' => 'Item arrived damaged',

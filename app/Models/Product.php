@@ -82,7 +82,7 @@ class Product extends Model
 
     public function isPurchasable(): bool
     {
-        return $this->status === 'active' && $this->seller?->status === 'approved' && ! $this->seller->isOnVacation();
+        return $this->status === 'active' && $this->seller?->status === 'approved' && ! $this->seller->isOnVacation() && ! $this->seller->isSellingHeld();
     }
 
     /** Shipping is priced on weight; without it the item cannot be checked out. */

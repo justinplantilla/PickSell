@@ -69,6 +69,7 @@ class ParcelEvent extends Model
             ParcelStatus::ReturnedToSender => 'Returned to the seller',
             ParcelStatus::Cancelled => 'Shipment cancelled',
             ParcelStatus::Lost => 'Reported lost; our team is investigating',
+            ParcelStatus::Abandoned => 'Not taken back by the seller',
         };
     }
 }

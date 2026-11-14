@@ -45,7 +45,7 @@ class ParcelController extends Controller
         // The hubs still ahead, as routing stands now (it is worked out again at every hub).
         $from = $parcel->currentHub ?? $parcel->nextHub;
         $target = $parcel->is_return ? $parcel->originHub : $parcel->destHub;
-        $ended = in_array($parcel->current_status, [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost], true);
+        $ended = in_array($parcel->current_status, [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost, ParcelStatus::Abandoned], true);
 
         return view('pickrush.parcels.show', [
             'parcel' => $parcel,

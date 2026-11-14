@@ -24,7 +24,7 @@ class AdminLogisticsController extends Controller
     {
         $period = $request->query('period') === 'all' ? 'all' : 'month';
         $parcels = Parcel::query()->where('source', 'picksell');
-        $finished = [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost];
+        $finished = [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost, ParcelStatus::Abandoned];
 
         $companies = Company::whereIn('status', ['approved', 'suspended'])->orderByDesc('is_default')->orderBy('name')->get()
             ->map(fn (Company $company) => [

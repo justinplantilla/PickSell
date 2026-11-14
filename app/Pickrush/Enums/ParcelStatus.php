@@ -25,6 +25,8 @@ enum ParcelStatus: string
     case ReturnedToSender = 'returned_to_sender';
     case Cancelled = 'cancelled';
     case Lost = 'lost';
+    // A return the seller never took back: after the hold, the logistics company keeps it.
+    case Abandoned = 'abandoned';
 
     /** status => statuses it may move to */
     private const TRANSITIONS = [
@@ -39,14 +41,16 @@ enum ParcelStatus: string
         'in_transit_to_station' => ['arrived_at_station', 'at_province_hub', 'lost'],
         'arrived_at_station' => ['assigned_to_rider', 'in_transit_to_province', 'returning_to_sender', 'returned_to_sender', 'on_hold'],
         'assigned_to_rider' => ['out_for_delivery', 'arrived_at_station'],
-        'out_for_delivery' => ['delivered', 'delivery_failed', 'returned_to_sender'],
+        // A return the seller did not take back goes back to the station as "returning" again.
+        'out_for_delivery' => ['delivered', 'delivery_failed', 'returned_to_sender', 'returning_to_sender'],
         'delivery_failed' => ['assigned_to_rider', 'arrived_at_station', 'returning_to_sender'],
         'on_hold' => ['at_origin_hub', 'at_province_hub', 'arrived_at_station', 'returning_to_sender', 'lost', 'cancelled'],
-        'returning_to_sender' => ['in_transit_to_province', 'assigned_to_rider', 'returned_to_sender', 'on_hold'],
+        'returning_to_sender' => ['in_transit_to_province', 'assigned_to_rider', 'returned_to_sender', 'on_hold', 'abandoned'],
         'delivered' => [],
         'returned_to_sender' => [],
         'cancelled' => [],
         'lost' => [],
+        'abandoned' => [],
     ];
 
     public function canMoveTo(self $next): bool
@@ -85,6 +89,7 @@ enum ParcelStatus: string
             self::ReturnedToSender => 'Returned to sender',
             self::Cancelled => 'Cancelled',
             self::Lost => 'Lost',
+            self::Abandoned => 'Abandoned by seller',
         };
     }
 }
