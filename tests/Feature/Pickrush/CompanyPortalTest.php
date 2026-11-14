@@ -28,7 +28,7 @@ class CompanyPortalTest extends TestCase
     {
         parent::setUp();
         $this->buildNetwork();
-        DB::table('pr_shipping_region_provinces')->insertOrIgnore([['name' => 'Batangas', 'region_code' => 'LUZON'], ['name' => 'Laguna', 'region_code' => 'LUZON']]);
+        DB::table('pr_shipping_region_provinces')->insertOrIgnore([['name' => 'Batangas', 'region_code' => 'S_LUZON'], ['name' => 'Laguna', 'region_code' => 'S_LUZON']]);
 
         $this->company = Company::create(['name' => 'Bilis Hatid Express Inc.', 'slug' => 'bilis-hatid', 'tracking_prefix' => 'BH', 'status' => 'approved', 'approved_at' => now()]);
         app(RateCardCopier::class)->copy($this->company);
@@ -50,7 +50,7 @@ class CompanyPortalTest extends TestCase
         $this->assertSame($pickrush->deliveryFee, $theirs->deliveryFee);
 
         // Their price change is theirs alone.
-        $level = DB::table('pr_shipping_route_levels')->where('company_id', $this->company->id)->where('origin_region', 'LUZON')->where('destination_region', 'LUZON')->value('level');
+        $level = DB::table('pr_shipping_route_levels')->where('company_id', $this->company->id)->where('origin_region', 'S_LUZON')->where('destination_region', 'S_LUZON')->value('level');
         app(RouteRateGenerator::class)->forCompany($this->company->id)->updateLevels([$level => ['fees' => ['1.00' => '999.00', '2.00' => '1000.00', '3.00' => '1001.00', '5.00' => '1002.00', '10.00' => '1003.00'], 'per_kg' => '50']], today()->toDateString());
 
         $this->assertSame('999.00', $calculator->quote($items, 'Laguna', 'Batangas', companyId: $this->company->id)->deliveryFee);

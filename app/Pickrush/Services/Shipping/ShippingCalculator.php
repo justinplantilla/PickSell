@@ -16,6 +16,7 @@ use App\Pickrush\Models\ShippingRate;
  *     a row for that exact route beats the generic row (no origin) for the same tier, and the
  *     generic row is used when the route has none or the seller's region is unknown;
  *  3. parcel class by chargeable kg (heavier than shipping.max_priced_weight_kg: REQUIRES_QUOTE);
+ *     rider pay = the class's pay + its per-kg pay × each started kg above the class's lower bound;
  *  4. fee = the smallest weight tier >= chargeable kg, or above the heaviest tier
  *     fee at over_kg + ceil(kg - over_kg) × per-kg rate.
  * All arithmetic is bcmath on decimal strings; nothing here is hardcoded.
@@ -97,7 +98,7 @@ class ShippingCalculator
             weightTierKg: bcadd($billedKg, '0', 2),
             parcelClass: $class->code,
             deliveryFee: bcadd($fee, '0', 2),
-            riderPay: bcadd((string) $class->rider_pay, '0', 2),
+            riderPay: self::riderPay($class, $kg),
             ratesVersion: $version,
         );
     }
@@ -153,6 +154,14 @@ class ShippingCalculator
     private static function round2(string $value): string
     {
         return bcadd($value, '0.005', 2);
+    }
+
+    /** What the pickup and the delivery rider each earn for a parcel of $kg in $class. */
+    private static function riderPay(ParcelClass $class, string $kg): string
+    {
+        $extraKg = self::ceil(bcsub($kg, (string) $class->min_kg_exclusive, 2));
+
+        return bcadd((string) $class->rider_pay, bcmul($extraKg, (string) ($class->per_kg_pay ?? '0'), 2), 2);
     }
 
     /** The smallest whole number >= a non-negative decimal (bcceil needs PHP 8.4). */

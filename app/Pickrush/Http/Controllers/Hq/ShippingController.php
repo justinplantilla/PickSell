@@ -21,7 +21,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Marketplace shipping prices, owned by Pickrush: route price levels and the 5 × 5 route grid
+ * Marketplace shipping prices, owned by Pickrush: route price levels and the 6 × 6 route grid
  * that generate a price for every (seller region → buyer region) pair, the generic destination
  * prices used as fallback, parcel classes (rider pay) and the province map. A price is never
  * edited in place: a dated row is added and the old one ends the day before, so orders keep the
@@ -30,7 +30,7 @@ use Illuminate\Validation\ValidationException;
  */
 class ShippingController extends PortalController
 {
-    private const REGION_ORDER = "case code when 'NCR' then 1 when 'LUZON' then 2 when 'VISAYAS' then 3 when 'MINDANAO' then 4 else 5 end";
+    private const REGION_ORDER = "case code when 'NCR' then 1 when 'N_LUZON' then 2 when 'S_LUZON' then 3 when 'VISAYAS' then 4 when 'MINDANAO' then 5 else 6 end";
 
     public function index(Request $request, RouteRateGenerator $routes)
     {
@@ -79,7 +79,7 @@ class ShippingController extends PortalController
         ]);
     }
 
-    /** Save the 5 × 5 route grid; route prices change from the date given. */
+    /** Save the 6 × 6 route grid; route prices change from the date given. */
     public function updateRouteLevels(Request $request, RouteRateGenerator $routes)
     {
         $this->authorizeEdit();
@@ -172,9 +172,11 @@ class ShippingController extends PortalController
             'min_kg_exclusive' => ['required', 'numeric', 'min:0', 'max:1000'],
             'max_kg_inclusive' => ['required', 'numeric', 'gt:min_kg_exclusive', 'max:1000'],
             'rider_pay' => ['required', 'numeric', 'min:0', 'max:100000'],
+            'per_kg_pay' => ['nullable', 'numeric', 'min:0', 'max:10000'],
             'is_active' => ['nullable', 'boolean'],
         ]);
         $data['is_active'] = $request->boolean('is_active');
+        $data['per_kg_pay'] ??= 0;
 
         $before = $class->only(array_keys($data));
         try {

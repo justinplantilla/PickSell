@@ -60,10 +60,10 @@ class HqShippingTest extends TestCase
 
     public function test_class_rider_pay_cannot_go_below_the_minimum_and_the_minimum_cannot_strand_a_class(): void
     {
-        $form = ['min_kg_exclusive' => 10, 'max_kg_inclusive' => 20, 'is_active' => 1];
+        $form = ['min_kg_exclusive' => 5, 'max_kg_inclusive' => 10, 'is_active' => 1];
 
         $this->as($this->admin)->put($this->pickrushUrl('/hq/shipping/classes/HEAVY'), $form + ['rider_pay' => 14])->assertSessionHasErrors('class_HEAVY');
-        $this->assertSame('25.00', (string) ParcelClass::find('HEAVY')->rider_pay);
+        $this->assertSame('40.00', (string) ParcelClass::find('HEAVY')->rider_pay);
 
         $this->as($this->admin)->put($this->pickrushUrl('/hq/shipping/classes/HEAVY'), $form + ['rider_pay' => 30])->assertSessionHasNoErrors();
         $this->assertSame('30.00', (string) ParcelClass::find('HEAVY')->rider_pay);
@@ -77,8 +77,8 @@ class HqShippingTest extends TestCase
 
     public function test_provinces_can_be_mapped_and_moved_between_regions(): void
     {
-        $this->as($this->admin)->post($this->pickrushUrl('/hq/shipping/provinces'), ['name' => '  PALAWAN ', 'region_code' => 'LUZON'])->assertSessionHasNoErrors();
-        $this->assertSame('LUZON', DB::table('pr_shipping_region_provinces')->where('name', 'Palawan')->value('region_code'), 'moved, not duplicated');
+        $this->as($this->admin)->post($this->pickrushUrl('/hq/shipping/provinces'), ['name' => '  PALAWAN ', 'region_code' => 'S_LUZON'])->assertSessionHasNoErrors();
+        $this->assertSame('S_LUZON', DB::table('pr_shipping_region_provinces')->where('name', 'Palawan')->value('region_code'), 'moved, not duplicated');
 
         $this->as($this->admin)->post($this->pickrushUrl('/hq/shipping/provinces'), ['name' => 'Kalookan', 'region_code' => 'NCR'])->assertSessionHasNoErrors();
         $this->assertSame('NCR', app(RegionResolver::class)->resolve('kalookan'));

@@ -53,7 +53,7 @@ class MarketplaceShippingTest extends TestCase
         $this->tanauan = $this->station('041029000');
         $this->manager = $this->staff(StaffRole::HubManager, $this->tanauan);
         $this->seller = $this->user('seller', 'Batangas', 'City of Tanauan', ['business_name' => 'Tote House']);
-        $this->buyer = $this->user('buyer', 'Batangas', 'City of Tanauan');           // LUZON, same-city delivery
+        $this->buyer = $this->user('buyer', 'Batangas', 'City of Tanauan');           // S_LUZON, same-city delivery
         $this->user('admin', 'Batangas', 'City of Tanauan');
     }
 
@@ -114,8 +114,8 @@ class MarketplaceShippingTest extends TestCase
             'NCR 0.5 kg' => ['60.00', '15.00', '45.00', '9.00', '36.00'],
             'NCR 1 kg' => ['75.00', '15.00', '60.00', '12.00', '48.00'],
             'Visayas 2 kg' => ['115.00', '15.00', '100.00', '20.00', '80.00'],
-            'NCR 15 kg' => ['405.00', '25.00', '380.00', '76.00', '304.00'],
-            'Mindanao 25 kg' => ['810.00', '50.00', '760.00', '152.00', '608.00'],
+            'NCR 15 kg' => ['405.00', '60.00', '345.00', '69.00', '276.00'],
+            'Mindanao 25 kg' => ['810.00', '80.00', '730.00', '146.00', '584.00'],
         ];
     }
 
@@ -205,7 +205,7 @@ class MarketplaceShippingTest extends TestCase
         $mug = $this->product(['name' => 'Mug', 'weight_kg' => 0.5]);
         $basket = $this->product(['seller_id' => $other->id, 'name' => 'Basket', 'weight_kg' => 2]);
 
-        // Tote House is in Batangas (LUZON), Cebu Crafts in Cebu (VISAYAS); both parcels are in the 2 kg tier.
+        // Tote House is in Batangas (S_LUZON), Cebu Crafts in Cebu (VISAYAS); both parcels are in the 2 kg tier.
         foreach (['Metro Manila' => ['₱105.00', '₱115.00'], 'Cebu' => ['₱115.00', '₱95.00'], 'Davao del Sur' => ['₱120.00', '₱115.00']] as $province => [$first, $second]) {
             $buyer = $this->user('buyer', $province, 'Somewhere');
             $ids = $this->cart($buyer, [[$tote, 1], [$mug, 1], [$basket, 1]]);
@@ -255,7 +255,7 @@ class MarketplaceShippingTest extends TestCase
         $this->checkout($this->buyer, $this->cart($this->buyer, [[$this->product(), 1]]));
         $before = OrderShipment::sole()->only(['delivery_fee', 'rider_pay', 'platform_commission', 'logistics_share', 'rates_version']);
 
-        ShippingRate::where('destination_region', 'LUZON')->update(['fee' => 999]);
+        ShippingRate::where('destination_region', 'S_LUZON')->update(['fee' => 999]);
         ParcelClass::find('STANDARD')->update(['rider_pay' => 40]);
         config(['app.delivery_commission_rate' => 50]);
 
@@ -265,7 +265,7 @@ class MarketplaceShippingTest extends TestCase
 
     // Delivery --------------------------------------------------------------------------------
 
-    /** Checkout, pack, label and hand over a 15 kg + 10 kg order (one 25 kg BULKY parcel). */
+    /** Checkout, pack, label and hand over a 15 kg + 10 kg order (one 25 kg EXTRA_BULKY parcel). */
     private function bulkyHandedOver(): array
     {
         $table = $this->product(['name' => 'Table', 'weight_kg' => 15, 'price' => 3000]);
@@ -304,13 +304,13 @@ class MarketplaceShippingTest extends TestCase
         [$first, $second, $parcel] = $this->bulkyHandedOver();
         $shipment = $first->shipment;
 
-        // 25 kg within Luzon (local): 280 + 15 × 25 = 655.
-        $this->assertSame(['BULKY', '25.00', '655.00', '50.00', '121.00', '484.00'], [$shipment->parcel_class, (string) $shipment->chargeable_weight_kg,
+        // 25 kg within South Luzon (local): 280 + 15 × 25 = 655; each rider earns 60 + 5 × 4 = 80.
+        $this->assertSame(['EXTRA_BULKY', '25.00', '655.00', '80.00', '115.00', '460.00'], [$shipment->parcel_class, (string) $shipment->chargeable_weight_kg,
             (string) $shipment->delivery_fee, (string) $shipment->rider_pay, (string) $shipment->platform_commission, (string) $shipment->logistics_share]);
         $this->assertSame($second->order_shipment_id, $shipment->id);
         $this->assertSame(['ready_for_pickup', 'ready_for_pickup'], [$first->status, $second->status]);
-        $this->assertSame(['655.00', '5655.00', 'BULKY', '50.00'], [(string) $parcel->shipping_fee, (string) $parcel->cod_amount, $parcel->parcel_class, (string) $parcel->rider_pay]);
-        $this->assertSame(['LUZON', 'LUZON', 'ORIGIN_DESTINATION'], [$parcel->origin_region, $parcel->destination_region, $parcel->price_source]);
+        $this->assertSame(['655.00', '5655.00', 'EXTRA_BULKY', '80.00'], [(string) $parcel->shipping_fee, (string) $parcel->cod_amount, $parcel->parcel_class, (string) $parcel->rider_pay]);
+        $this->assertSame(['S_LUZON', 'S_LUZON', 'ORIGIN_DESTINATION'], [$parcel->origin_region, $parcel->destination_region, $parcel->price_source]);
         $this->assertSame("{$first->order_number}, {$second->order_number}", PicksellBridge::orderNumbers([$parcel])[$parcel->id]);
 
         [$pickupRider, $deliveryRider, $task] = $this->outForDelivery($parcel);
@@ -318,10 +318,10 @@ class MarketplaceShippingTest extends TestCase
 
         $this->assertSame(['delivered', 'delivered'], [$first->fresh()->status, $second->fresh()->status]);
         $this->assertSame('delivered', $shipment->fresh()->status);
-        $this->assertSame(['logistics' => '484.00', 'picksell' => '121.00', 'rider' => '50.00'],
+        $this->assertSame(['logistics' => '460.00', 'picksell' => '115.00', 'rider' => '80.00'],
             DB::table('shipment_earnings')->orderBy('party')->pluck('amount', 'party')->map(fn ($a) => number_format((float) $a, 2, '.', ''))->all());
-        $this->assertSame(['pickup' => 15.0], DB::table('pr_rider_earnings')->where('rider_id', $pickupRider->id)->pluck('amount', 'kind')->map(fn ($a) => (float) $a)->all());
-        $this->assertSame(['delivery' => 50.0], DB::table('pr_rider_earnings')->where('rider_id', $deliveryRider->id)->pluck('amount', 'kind')->map(fn ($a) => (float) $a)->all());
+        $this->assertSame(['pickup' => 80.0], DB::table('pr_rider_earnings')->where('rider_id', $pickupRider->id)->pluck('amount', 'kind')->map(fn ($a) => (float) $a)->all());
+        $this->assertSame(['delivery' => 80.0], DB::table('pr_rider_earnings')->where('rider_id', $deliveryRider->id)->pluck('amount', 'kind')->map(fn ($a) => (float) $a)->all());
 
         // The delivered event repeats (retry, replay): nothing is credited twice.
         $event = $parcel->fresh()->events()->where('status', ParcelStatus::Delivered)->sole();
@@ -360,7 +360,7 @@ class MarketplaceShippingTest extends TestCase
         $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$first->id}/pack");
         $this->actingAs($this->seller)->post(config('app.url')."/seller/orders/{$first->id}/waybill");
         $parcel = PicksellBridge::parcelFor($first);
-        $this->assertSame('895.00', (string) $parcel->cod_amount);              // 500 + 300 + 95 (2 kg within Luzon)
+        $this->assertSame('895.00', (string) $parcel->cod_amount);              // 500 + 300 + 95 (2 kg within South Luzon)
 
         $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$first->id}/cancel", ['reason' => 'Out of stock'])->assertSessionHasNoErrors();
 

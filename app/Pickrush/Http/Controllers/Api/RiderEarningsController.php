@@ -28,9 +28,18 @@ class RiderEarningsController extends Controller
     public function index(RiderAvailability $availability): JsonResponse
     {
         $rider = Actor::rider();
-        // Delivery pay depends on the parcel class; "delivery" is the lowest, for older app versions.
-        $classes = ParcelClass::where('is_active', true)->orderBy('min_kg_exclusive')->pluck('rider_pay', 'code')->map(fn ($pay) => (float) $pay);
-        $rates = ['pickup' => (float) config('pickrush.rider_pay.pickup_per_parcel', 0), 'delivery' => (float) $classes->min(), 'classes' => $classes];
+        // Pickup and delivery pay the same, by parcel class; "pickup" and "delivery" are the lowest
+        // and "classes" the base pay, for older app versions. "class_rules" adds the weights and per-kg pay.
+        $active = ParcelClass::where('is_active', true)->orderBy('min_kg_exclusive')->get();
+        $classes = $active->pluck('rider_pay', 'code')->map(fn ($pay) => (float) $pay);
+        $rules = $active->map(fn (ParcelClass $class) => [
+            'code' => $class->code,
+            'above_kg' => (float) $class->min_kg_exclusive,
+            'up_to_kg' => (float) $class->max_kg_inclusive,
+            'pay' => (float) $class->rider_pay,
+            'per_kg_pay' => (float) $class->per_kg_pay,
+        ])->values();
+        $rates = ['pickup' => (float) $classes->min(), 'delivery' => (float) $classes->min(), 'classes' => $classes, 'class_rules' => $rules];
 
         $since = now()->startOfMonth()->min(now()->subDays(6)->startOfDay());
         $earned = DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->where('earned_at', '>=', $since)

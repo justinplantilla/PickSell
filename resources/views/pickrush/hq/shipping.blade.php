@@ -25,7 +25,7 @@
             </tbody>
         </table>
     </div>
-    <small class="pr-muted">Pickup riders' ₱{{ number_format((float) config('pickrush.rider_pay.pickup_per_parcel'), 2) }} per parcel is paid out of the logistics share. Failed deliveries earn no one anything.</small>
+    <small class="pr-muted">The pickup rider earns the same as the delivery rider, by parcel class; that pay comes out of the logistics share. Failed deliveries earn no one anything.</small>
 </section>
 
 <section class="pr-card pr-section">
@@ -136,13 +136,14 @@
 
 <section class="pr-card pr-section">
     <h2>Parcel classes</h2>
-    <p class="pr-muted">By the parcel's weight. Rider pay is what the delivery rider earns when the parcel is delivered; it cannot be below ₱{{ number_format($minRiderPay, 2) }}.{{ $canEditNetwork ? '' : ' Shared by every logistics company on PickSell.' }}</p>
+    <p class="pr-muted">By the parcel's weight. Rider pay is what the pickup rider and the delivery rider each earn for the parcel, plus the per-kg pay for each started kg above the class's lower weight (0 for none); it cannot be below ₱{{ number_format($minRiderPay, 2) }}.{{ $canEditNetwork ? '' : ' Shared by every logistics company on PickSell.' }}</p>
     @foreach($classes as $class)
         <form method="POST" action="{{ route('pickrush.hq.shipping.classes.update', $class) }}" class="pr-form-grid">
             @csrf @method('PUT')
             <div class="pr-field"><label>{{ $class->code }}: above (kg)</label><input name="min_kg_exclusive" type="number" step="0.01" class="pr-input" value="{{ $class->min_kg_exclusive }}" @disabled(! $canEditNetwork) required></div>
             <div class="pr-field"><label>up to and including (kg)</label><input name="max_kg_inclusive" type="number" step="0.01" class="pr-input" value="{{ $class->max_kg_inclusive }}" @disabled(! $canEditNetwork) required></div>
             <div class="pr-field"><label>Rider pay (₱)</label><input name="rider_pay" type="number" step="0.01" min="{{ $minRiderPay }}" class="pr-input" value="{{ $class->rider_pay }}" @disabled(! $canEditNetwork) required></div>
+            <div class="pr-field"><label>+ per started kg above {{ (float) $class->min_kg_exclusive }} kg (₱)</label><input name="per_kg_pay" type="number" step="0.01" min="0" class="pr-input" value="{{ $class->per_kg_pay ?? 0 }}" @disabled(! $canEditNetwork)></div>
             <div class="pr-field"><label><input type="checkbox" name="is_active" value="1" @checked($class->is_active) @disabled(! $canEditNetwork)> Active</label>
                 @if($canEditNetwork)<button type="submit" class="pr-btn pr-btn-outline pr-btn-sm">Save {{ $class->code }}</button>@endif
                 @error("class_{$class->code}")<span class="pr-field-error">{{ $message }}</span>@enderror

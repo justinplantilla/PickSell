@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Turns the five price levels and the 5 × 5 route grid into dated rate rows for every
+ * Turns the five price levels and the 6 × 6 route grid into dated rate rows for every
  * (seller region → buyer region) pair: price(origin, destination, tier) = level price of
  * level(origin, destination). Nothing is multiplied or rounded; every price is a level price.
  *

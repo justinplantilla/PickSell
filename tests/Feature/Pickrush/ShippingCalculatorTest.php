@@ -18,7 +18,7 @@ class ShippingCalculatorTest extends TestCase
     use RefreshDatabase;
 
     /** A province in each region. */
-    private const PROVINCE = ['NCR' => 'Metro Manila', 'LUZON' => 'Batangas', 'VISAYAS' => 'Cebu', 'MINDANAO' => 'Davao del Sur', 'ISLAND' => 'Palawan'];
+    private const PROVINCE = ['NCR' => 'Metro Manila', 'N_LUZON' => 'Pangasinan', 'S_LUZON' => 'Batangas', 'VISAYAS' => 'Cebu', 'MINDANAO' => 'Davao del Sur', 'ISLAND' => 'Palawan'];
 
     /** Without a seller province these are the generic (Metro Manila-origin) prices; routes are covered in RouteRatesTest. */
     private function quote(string|float $kg, string $province, array $item = [], ?string $asOf = null, ?string $sellerProvince = null): ShippingQuote
@@ -30,7 +30,8 @@ class ShippingCalculatorTest extends TestCase
     {
         $table = [
             'NCR' => [60, 75, 95, 115, 155, 280],
-            'LUZON' => [75, 85, 105, 125, 170, 310],
+            'N_LUZON' => [75, 85, 105, 125, 170, 310],
+            'S_LUZON' => [75, 85, 105, 125, 170, 310],
             'VISAYAS' => [85, 95, 115, 135, 180, 330],
             'MINDANAO' => [90, 100, 120, 140, 190, 345],
             'ISLAND' => [98, 110, 130, 152, 205, 370],
@@ -53,8 +54,7 @@ class ShippingCalculatorTest extends TestCase
         $this->assertTrue($quote->ok());
         $this->assertSame($region, $quote->destinationRegion);
         $this->assertSame(number_format($fee, 2, '.', ''), $quote->deliveryFee);
-        $this->assertSame('STANDARD', $quote->parcelClass);
-        $this->assertSame('15.00', $quote->riderPay);
+        $this->assertSame(bccomp($kg, '5', 2) <= 0 ? ['STANDARD', '15.00'] : ['HEAVY', '40.00'], [$quote->parcelClass, $quote->riderPay]);
     }
 
     public function test_a_weight_between_tiers_uses_the_next_tier_up(): void
@@ -91,30 +91,37 @@ class ShippingCalculatorTest extends TestCase
     {
         $visayas = $this->quote('12.3', 'Cebu');
         $this->assertSame('420.00', $visayas->deliveryFee);    // 330 + 3 × 30
-        $this->assertSame('HEAVY', $visayas->parcelClass);
-        $this->assertSame('25.00', $visayas->riderPay);
+        $this->assertSame('BULKY', $visayas->parcelClass);
+        $this->assertSame('60.00', $visayas->riderPay);
         $this->assertSame('13.00', $visayas->weightTierKg);
 
         $this->assertSame('405.00', $this->quote('15', 'Metro Manila')->deliveryFee);   // 280 + 5 × 25
     }
 
-    public function test_bulky_parcels_use_the_same_per_kg_formula_with_bulky_rider_pay(): void
+    public function test_extra_bulky_parcels_use_the_same_per_kg_formula_and_pay_the_rider_per_kg_above_20(): void
     {
         $quote = $this->quote('25', 'Davao del Sur');
 
         $this->assertSame('810.00', $quote->deliveryFee);      // 345 + 15 × 31, no handling fee
-        $this->assertSame('BULKY', $quote->parcelClass);
-        $this->assertSame('50.00', $quote->riderPay);
+        $this->assertSame('EXTRA_BULKY', $quote->parcelClass);
+        $this->assertSame('80.00', $quote->riderPay);           // 60 + 5 × 4
         $this->assertSame('1690.00', $this->quote('50', 'Palawan')->deliveryFee);   // ISLAND: 370 + 40 × 33
     }
 
     public function test_class_boundaries_are_inclusive_at_the_top(): void
     {
-        $this->assertSame('STANDARD', $this->quote('10', 'Metro Manila')->parcelClass);
-        $this->assertSame('HEAVY', $this->quote('10.01', 'Metro Manila')->parcelClass);
-        $this->assertSame('HEAVY', $this->quote('20', 'Metro Manila')->parcelClass);
-        $this->assertSame('BULKY', $this->quote('20.01', 'Metro Manila')->parcelClass);
-        $this->assertSame('BULKY', $this->quote('50', 'Metro Manila')->parcelClass);
+        $class = fn (string $kg) => [$this->quote($kg, 'Metro Manila')->parcelClass, $this->quote($kg, 'Metro Manila')->riderPay];
+
+        $this->assertSame(['STANDARD', '15.00'], $class('5'));
+        $this->assertSame(['HEAVY', '40.00'], $class('5.01'));
+        $this->assertSame(['HEAVY', '40.00'], $class('10'));
+        $this->assertSame(['BULKY', '60.00'], $class('10.01'));
+        $this->assertSame(['BULKY', '60.00'], $class('20'));
+        $this->assertSame(['EXTRA_BULKY', '64.00'], $class('20.01'));   // a started kg counts: 60 + 1 × 4
+        $this->assertSame(['EXTRA_BULKY', '64.00'], $class('20.5'));
+        $this->assertSame(['EXTRA_BULKY', '64.00'], $class('21'));
+        $this->assertSame(['EXTRA_BULKY', '100.00'], $class('30'));
+        $this->assertSame(['EXTRA_BULKY', '180.00'], $class('50'));
     }
 
     public function test_parcels_over_the_priced_limit_require_a_manual_quote(): void
@@ -179,7 +186,10 @@ class ShippingCalculatorTest extends TestCase
         $this->assertSame('MINDANAO', $regions->resolve('Davao De Oro'));          // PSGC capitalisation
         $this->assertSame('MINDANAO', $regions->resolve('Maguindanao'));           // PSGC's undivided province
         $this->assertSame('NCR', $regions->resolve('Quezon City'));
-        $this->assertSame('LUZON', $regions->resolve('Quezon'));
+        $this->assertSame('S_LUZON', $regions->resolve('Quezon'));
+        $this->assertSame('S_LUZON', $regions->resolve('Rizal'));
+        $this->assertSame('N_LUZON', $regions->resolve('Bulacan'));
+        $this->assertSame('N_LUZON', $regions->resolve('Ilocos Norte'));
         $this->assertSame('NCR', $regions->resolve('Second District'));            // PSGC district as province
         $this->assertSame('NCR', $regions->resolve('City of Las Piñas'));
         $this->assertSame('NCR', $regions->resolve(null, 'Makati'));               // no province: use the city
@@ -209,8 +219,8 @@ class ShippingCalculatorTest extends TestCase
         $this->assertSame([
             'ok' => true, 'origin_region' => null, 'origin_resolved' => false, 'destination_region' => 'MINDANAO',
             'price_source' => 'GENERIC_FALLBACK', 'chargeable_weight_kg' => '25.00',
-            'weight_tier_kg' => '25.00', 'parcel_class' => 'BULKY', 'delivery_fee' => '810.00',
-            'rider_pay' => '50.00', 'rates_version' => $this->quote('25', 'Davao del Sur')->ratesVersion,
+            'weight_tier_kg' => '25.00', 'parcel_class' => 'EXTRA_BULKY', 'delivery_fee' => '810.00',
+            'rider_pay' => '80.00', 'rates_version' => $this->quote('25', 'Davao del Sur')->ratesVersion,
         ], $this->quote('25', 'Davao del Sur')->toArray());
 
         $this->assertSame(['ok' => false, 'reason' => 'UNKNOWN_PROVINCE', 'message' => QuoteFailure::UnknownProvince->message()],

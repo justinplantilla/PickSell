@@ -53,7 +53,7 @@ class RouteRatesTest extends TestCase
         ksort($expected);
         $actual = $this->routeRows();
         ksort($actual);
-        $this->assertCount(150, $actual);
+        $this->assertCount(216, $actual);
         $this->assertSame($expected, $actual);
         $this->assertSame([RouteRateGenerator::FIRST_ROUTE_DATE], DB::table('pr_shipping_rates')->whereNotNull('origin_region')
             ->pluck('effective_from')->map(fn ($d) => substr((string) $d, 0, 10))->unique()->values()->all());
@@ -63,7 +63,7 @@ class RouteRatesTest extends TestCase
         $expectedPerKg = collect(self::csv('pickrush_origin_destination_perkg.csv'))->mapWithKeys(fn ($r) => [
             "{$r['origin_region']}|{$r['destination_region']}" => [bcadd($r['over_kg'], '0', 2), bcadd($r['per_kg_fee'], '0', 2)],
         ])->sortKeys()->all();
-        $this->assertCount(25, $perKg);
+        $this->assertCount(36, $perKg);
         $this->assertSame($expectedPerKg, $perKg);
     }
 
@@ -74,14 +74,14 @@ class RouteRatesTest extends TestCase
         $ncr = DB::table('pr_shipping_rates')->where('origin_region', 'NCR')->get()
             ->mapWithKeys(fn ($r) => ["{$r->destination_region}|".bcadd((string) $r->max_weight_kg, '0', 2) => bcadd((string) $r->fee, '0', 2)])->sortKeys()->all();
 
-        $this->assertCount(30, $generic);
+        $this->assertCount(36, $generic);
         $this->assertSame($generic, $ncr);
     }
 
     public function test_prices_rise_with_weight_on_every_route_and_stay_above_the_minimum_rider_pay(): void
     {
         $byRoute = collect($this->routeRows())->groupBy(fn ($fee, $key) => implode('|', array_slice(explode('|', $key), 0, 2)), preserveKeys: true);
-        $this->assertCount(25, $byRoute);
+        $this->assertCount(36, $byRoute);
         foreach ($byRoute as $route => $fees) {
             $fees = $fees->sortKeys(SORT_NATURAL)->values();
             foreach ($fees as $i => $fee) {
@@ -102,7 +102,7 @@ class RouteRatesTest extends TestCase
             }
         }
 
-        $grid['LUZON']['NCR'] = 0;     // NCR → LUZON stays 1
+        $grid['S_LUZON']['NCR'] = 0;     // NCR → S_LUZON stays 1
         $this->expectException(OperationRefused::class);
         $this->expectExceptionMessage('A route costs the same both ways');
         app(RouteRateGenerator::class)->updateGrid($grid, '2026-11-20');
@@ -112,10 +112,10 @@ class RouteRatesTest extends TestCase
     {
         $before = DB::table('pr_shipping_rates')->count() + DB::table('pr_shipping_overweight_rates')->count();
 
-        $this->artisan('pickrush:generate-route-rates')->expectsOutputToContain('0 created, 0 ended, 0 corrected, 175 unchanged')->assertSuccessful();
+        $this->artisan('pickrush:generate-route-rates')->expectsOutputToContain('0 created, 0 ended, 0 corrected, 252 unchanged')->assertSuccessful();
         $this->assertSame($before, DB::table('pr_shipping_rates')->count() + DB::table('pr_shipping_overweight_rates')->count());
-        $this->assertSame(180, DB::table('pr_shipping_rates')->count());             // 30 generic + 150 routes
-        $this->assertSame(30, DB::table('pr_shipping_overweight_rates')->count());   // 5 generic + 25 routes
+        $this->assertSame(252, DB::table('pr_shipping_rates')->count());             // 36 generic + 216 routes
+        $this->assertSame(42, DB::table('pr_shipping_overweight_rates')->count());   // 6 generic + 36 routes
     }
 
     public function test_generation_refuses_without_the_generic_base_rows(): void
@@ -145,16 +145,23 @@ class RouteRatesTest extends TestCase
             'NCR → NCR 1 kg' => ['1', 'Metro Manila', 'Makati', '75.00', 'STANDARD'],
             'NCR → Visayas 2 kg' => ['2', 'Quezon City', 'Cebu', '115.00', 'STANDARD'],
             // Within one region is local, priced like NCR → NCR.
-            'Luzon → Luzon 2 kg' => ['2', 'Laguna', 'Batangas', '95.00', 'STANDARD'],
+            'South Luzon → South Luzon 2 kg' => ['2', 'Laguna', 'Batangas', '95.00', 'STANDARD'],
+            'North Luzon → North Luzon 2 kg' => ['2', 'Pangasinan', 'Benguet', '95.00', 'STANDARD'],
             'Visayas → Visayas 2 kg' => ['2', 'Cebu', 'Bohol', '95.00', 'STANDARD'],
             'Mindanao → Mindanao 2 kg' => ['2', 'Davao del Sur', 'Bukidnon', '95.00', 'STANDARD'],
-            'Mindanao → Luzon 5 kg' => ['5', 'Davao del Sur', 'Laguna', '190.00', 'STANDARD'],
-            'Island → NCR 10 kg' => ['10', 'Palawan', 'Metro Manila', '370.00', 'STANDARD'],
+            'Mindanao → South Luzon 5 kg' => ['5', 'Davao del Sur', 'Laguna', '190.00', 'STANDARD'],
+            // North ↔ South Luzon passes through Metro Manila; North Luzon is a level further south.
+            'South → North Luzon 2 kg' => ['2', 'Batangas', 'Pangasinan', '115.00', 'STANDARD'],
+            'North → South Luzon 2 kg' => ['2', 'Pangasinan', 'Batangas', '115.00', 'STANDARD'],
+            'North Luzon → Visayas 2 kg' => ['2', 'Pangasinan', 'Cebu', '120.00', 'STANDARD'],
+            'South Luzon → Visayas 2 kg' => ['2', 'Batangas', 'Cebu', '115.00', 'STANDARD'],
+            'Mindanao → North Luzon 5 kg' => ['5', 'Davao del Sur', 'Pangasinan', '205.00', 'STANDARD'],
+            'Island → NCR 10 kg' => ['10', 'Palawan', 'Metro Manila', '370.00', 'HEAVY'],
             'Island → Island 1 kg' => ['1', 'Palawan', 'Siquijor', '100.00', 'STANDARD'],          // islands are not connected: level 3
-            'Island → Island 15 kg' => ['15', 'Palawan', 'Siquijor', '500.00', 'HEAVY'],           // 345 + 5 × 31
-            'Mindanao → NCR 15 kg' => ['15', 'Davao del Sur', 'Quezon City', '500.00', 'HEAVY'],       // 345 + 5 × 31
-            'Mindanao → Mindanao 20 kg' => ['20', 'Davao del Sur', 'Davao de Oro', '530.00', 'HEAVY'], // 280 + 10 × 25, same as NCR → NCR
-            'Mindanao → Mindanao 25 kg' => ['25', 'Davao del Sur', 'Davao de Oro', '655.00', 'BULKY'], // 280 + 15 × 25, no handling fee
+            'Island → Island 15 kg' => ['15', 'Palawan', 'Siquijor', '500.00', 'BULKY'],           // 345 + 5 × 31
+            'Mindanao → NCR 15 kg' => ['15', 'Davao del Sur', 'Quezon City', '500.00', 'BULKY'],       // 345 + 5 × 31
+            'Mindanao → Mindanao 20 kg' => ['20', 'Davao del Sur', 'Davao de Oro', '530.00', 'BULKY'], // 280 + 10 × 25, same as NCR → NCR
+            'Mindanao → Mindanao 25 kg' => ['25', 'Davao del Sur', 'Davao de Oro', '655.00', 'EXTRA_BULKY'], // 280 + 15 × 25, no handling fee
         ];
     }
 
@@ -182,13 +189,13 @@ class RouteRatesTest extends TestCase
 
     public function test_a_route_without_rows_or_with_expired_rows_uses_the_generic_price(): void
     {
-        ShippingRate::where('origin_region', 'LUZON')->where('destination_region', 'NCR')->update(['effective_to' => '2026-11-06']);
+        ShippingRate::where('origin_region', 'S_LUZON')->where('destination_region', 'NCR')->update(['effective_to' => '2026-11-06']);
 
         $this->assertSame('85.00', $this->quote('1', 'Quezon City', 'Laguna', '2026-11-06')->deliveryFee);
         $late = $this->quote('1', 'Quezon City', 'Laguna', '2026-11-07');
         $this->assertSame(['75.00', ShippingQuote::GENERIC_FALLBACK], [$late->deliveryFee, $late->priceSource]);
 
-        ShippingRate::where('origin_region', 'LUZON')->where('destination_region', 'NCR')->delete();
+        ShippingRate::where('origin_region', 'S_LUZON')->where('destination_region', 'NCR')->delete();
         $this->assertSame('75.00', $this->quote('1', 'Quezon City', 'Laguna')->deliveryFee);
     }
 
@@ -214,7 +221,7 @@ class RouteRatesTest extends TestCase
     public function test_changing_a_route_level_adds_dated_rows_and_keeps_history(): void
     {
         $grid = app(RouteRateGenerator::class)->grid();
-        $grid['LUZON']['NCR'] = $grid['NCR']['LUZON'] = 0;    // treat Luzon ↔ Metro Manila as local
+        $grid['S_LUZON']['NCR'] = $grid['NCR']['S_LUZON'] = 0;    // treat South Luzon ↔ Metro Manila as local
         $levels = collect($grid)->map(fn ($row) => collect($row)->map(fn ($l) => (string) $l)->all())->all();
 
         $this->hq()->put($this->pickrushUrl('/hq/shipping/route-levels'), ['levels' => $levels, 'effective_from' => today()->addDay()->toDateString()])
@@ -226,7 +233,7 @@ class RouteRatesTest extends TestCase
         $this->assertSame('75.00', $this->quote('1', 'Laguna', 'Quezon City', $tomorrow)->deliveryFee, 'both ways');
         $this->assertSame('75.00', $this->quote('1', 'Laguna', null, $tomorrow)->deliveryFee, 'the generic row follows the NCR route');
 
-        $old = ShippingRate::where('origin_region', 'LUZON')->where('destination_region', 'NCR')->where('max_weight_kg', 1)->orderBy('effective_from')->get();
+        $old = ShippingRate::where('origin_region', 'S_LUZON')->where('destination_region', 'NCR')->where('max_weight_kg', 1)->orderBy('effective_from')->get();
         $this->assertSame([['85.00', today()->toDateString()], ['75.00', null]], $old->map(fn ($r) => [(string) $r->fee, $r->effective_to?->toDateString()])->all());
         $this->assertTrue(AuditLog::where('action', 'shipping_route_levels.updated')->exists());
 
@@ -243,10 +250,10 @@ class RouteRatesTest extends TestCase
         $tomorrow = today()->addDay()->toDateString();
 
         $this->hq()->put($this->pickrushUrl('/hq/shipping/price-levels'), ['prices' => $form, 'effective_from' => $tomorrow])->assertSessionHasNoErrors();
-        $this->assertSame('88.00', $this->quote('1', 'Quezon City', 'Laguna', $tomorrow)->deliveryFee);       // LUZON → NCR is level 1
-        $this->assertSame('88.00', $this->quote('1', 'Laguna', 'Metro Manila', $tomorrow)->deliveryFee);      // so is NCR → LUZON
+        $this->assertSame('88.00', $this->quote('1', 'Quezon City', 'Laguna', $tomorrow)->deliveryFee);       // S_LUZON → NCR is level 1
+        $this->assertSame('88.00', $this->quote('1', 'Laguna', 'Metro Manila', $tomorrow)->deliveryFee);      // so is NCR → S_LUZON
         $this->assertSame('95.00', $this->quote('2', 'Cebu', 'Bohol', $tomorrow)->deliveryFee);               // VISAYAS → VISAYAS is level 0
-        $this->assertSame('88.00', $this->quote('1', 'Laguna', null, $tomorrow)->deliveryFee);                // generic LUZON = NCR → LUZON
+        $this->assertSame('88.00', $this->quote('1', 'Laguna', null, $tomorrow)->deliveryFee);                // generic S_LUZON = NCR → S_LUZON
         $this->assertSame('85.00', $this->quote('1', 'Quezon City', 'Laguna', today()->toDateString())->deliveryFee);
 
         $form[1]['fees']['2_00'] = '80.00';     // below the 1 kg price

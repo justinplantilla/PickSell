@@ -88,8 +88,7 @@ class RiderAccountTest extends TestCase
             'expected_amount' => 300, 'received_amount' => 300, 'variance' => 0, 'status' => 'reconciled', 'received_by' => $this->manager->id]);
         Assignment::where('cod_collected', 300)->update(['cod_remittance_id' => CodRemittance::sole()->id]);
 
-        $pickup = (float) config('pickrush.rider_pay.pickup_per_parcel');
-        $delivery = (float) config('pickrush.shipping.min_rider_pay');  // parcels without a class pay the minimum
+        $pickup = $delivery = (float) config('pickrush.shipping.min_rider_pay');  // parcels without a class pay the minimum, pickup or delivery
 
         $this->api()->getJson('/api/rider/earnings')->assertOk()
             ->assertJsonPath('today.pickups', 2)
@@ -103,7 +102,13 @@ class RiderAccountTest extends TestCase
             ->assertJsonPath('batches.0.earned', fn ($v) => (float) $v === $delivery)
             ->assertJsonPath('cod.in_hand', fn ($v) => (float) $v === 650.0)
             ->assertJsonPath('cod.remitted_this_month', fn ($v) => (float) $v === 300.0)
-            ->assertJsonPath('cod.last_remittance.status', 'reconciled');
+            ->assertJsonPath('cod.last_remittance.status', 'reconciled')
+            // Pickup pays the same as delivery, by class; EXTRA_BULKY adds ₱4 per started kg above 20 kg.
+            ->assertJsonPath('rates.pickup', fn ($v) => (float) $v === 15.0)
+            ->assertJsonPath('rates.classes.HEAVY', fn ($v) => (float) $v === 40.0)
+            ->assertJsonPath('rates.class_rules.3.code', 'EXTRA_BULKY')
+            ->assertJsonPath('rates.class_rules.3.above_kg', fn ($v) => (float) $v === 20.0)
+            ->assertJsonPath('rates.class_rules.3.per_kg_pay', fn ($v) => (float) $v === 4.0);
     }
 
     public function test_the_account_shows_station_details_documents_and_masked_payout(): void

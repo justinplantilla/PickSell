@@ -74,7 +74,7 @@ final class RiderBatchView
             'dropped_off_count' => $droppedOff->count(),
             'not_collected_count' => $shown->where('status', 'failed')->count(),
             'last_pickup_at' => $picked->max('completed_at')?->toIso8601String(),
-            'est_earnings' => round($tasks->count() * (float) config('pickrush.rider_pay.pickup_per_parcel', 0), 2),
+            'est_earnings' => self::pay($tasks),
             'stops' => $shown->groupBy(fn (Assignment $task) => $task->parcel->shipper_name.'|'.$task->parcel->pickup_address)
                 ->values()
                 ->map(function (Collection $tasks, int $i) use ($orderNumbers) {
@@ -222,7 +222,7 @@ final class RiderBatchView
             'description' => $parcel->item_description,
             'weight_kg' => $parcel->weight_kg !== null ? (float) $parcel->weight_kg : null,
             'size' => $parcel->size_category,
-            // Marketplace parcels: the class sets the delivery pay; HEAVY and BULKY are flagged before pickup.
+            // Marketplace parcels: the class sets the pickup and delivery pay; HEAVY and heavier are flagged before pickup.
             'parcel_class' => $parcel->parcel_class,
             'is_heavy' => self::isHeavy($task),
             'rider_pay' => (float) RiderEarnings::payFor($task),
@@ -241,7 +241,7 @@ final class RiderBatchView
 
     private static function isHeavy(Assignment $task): bool
     {
-        return in_array($task->parcel->parcel_class, ['HEAVY', 'BULKY'], true);
+        return in_array($task->parcel->parcel_class, ['HEAVY', 'BULKY', 'EXTRA_BULKY'], true);
     }
 
     private static function manager(int $stationId): ?array

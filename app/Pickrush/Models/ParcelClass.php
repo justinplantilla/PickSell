@@ -6,8 +6,9 @@ use App\Pickrush\Services\OperationRefused;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * STANDARD / HEAVY / BULKY: a chargeable-weight band (above min, up to and including max) and
- * what the delivery rider earns for it. No class may pay below config('pickrush.shipping.min_rider_pay').
+ * STANDARD / HEAVY / BULKY / EXTRA_BULKY: a chargeable-weight band (above min, up to and including
+ * max) and what the pickup rider and the delivery rider each earn for it: rider_pay, plus per_kg_pay
+ * for each started kg above min (EXTRA_BULKY). No class may pay below config('pickrush.shipping.min_rider_pay').
  */
 class ParcelClass extends Model
 {
@@ -25,6 +26,7 @@ class ParcelClass extends Model
         'min_kg_exclusive' => 'decimal:2',
         'max_kg_inclusive' => 'decimal:2',
         'rider_pay' => 'decimal:2',
+        'per_kg_pay' => 'decimal:2',
         'is_active' => 'boolean',
     ];
 

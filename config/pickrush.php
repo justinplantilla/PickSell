@@ -90,12 +90,6 @@ return [
         'delivery_days' => [0 => [1, 2], 1 => [2, 3], 2 => [3, 5], 3 => [4, 7], 4 => [5, 10]],
     ],
 
-    // What a rider earns per pickup. A delivery (or a return to the seller) pays the parcel
-    // class's rider pay (pr_parcel_classes); a failed attempt pays nothing.
-    'rider_pay' => [
-        'pickup_per_parcel' => 15,
-    ],
-
     // "Arrived" near a pinned seller or station (metres). The rider's distance is always recorded;
     // only when enforced is a rider farther than this refused (off for now: set
     // PICKRUSH_ENFORCE_ARRIVAL_RADIUS=true to lock the slider again).

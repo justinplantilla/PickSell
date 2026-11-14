@@ -49,7 +49,7 @@ class CarrierChoiceTest extends TestCase
         app(RateCardCopier::class)->copy($this->bilis);
         app(HubCreator::class)->province($this->bilis->id, '041000000');
         app(HubCreator::class)->station($this->bilis->id, '041029000');
-        $level = DB::table('pr_shipping_route_levels')->where('company_id', $this->bilis->id)->where('origin_region', 'LUZON')->where('destination_region', 'LUZON')->value('level');
+        $level = DB::table('pr_shipping_route_levels')->where('company_id', $this->bilis->id)->where('origin_region', 'S_LUZON')->where('destination_region', 'S_LUZON')->value('level');
         app(RouteRateGenerator::class)->forCompany($this->bilis->id)->updateLevels([$level => ['fees' => ['0.50' => '50.00', '1.00' => '60.00', '2.00' => '70.00', '3.00' => '80.00', '5.00' => '90.00', '10.00' => '200.00'], 'per_kg' => '20']], today()->toDateString());
     }
 

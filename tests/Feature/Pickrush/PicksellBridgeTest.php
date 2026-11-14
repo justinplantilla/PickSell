@@ -206,7 +206,7 @@ class PicksellBridgeTest extends TestCase
             'province' => 'Batangas', 'municipality' => 'City of Tanauan', 'barangay' => 'Altura Matanda', 'street' => 'Mabini St', 'house_no' => '7']);
         $order = $this->preparing();
         $shipment = OrderShipment::create(['reference' => 'SHP-OFFICE01', 'buyer_id' => $this->buyer->id, 'seller_id' => $this->seller->id,
-            'destination_region' => 'LUZON', 'price_source' => 'GENERIC_FALLBACK', 'parcel_class' => 'STANDARD', 'chargeable_weight_kg' => 1,
+            'destination_region' => 'S_LUZON', 'price_source' => 'GENERIC_FALLBACK', 'parcel_class' => 'STANDARD', 'chargeable_weight_kg' => 1,
             'delivery_fee' => 100, 'rider_pay' => 50, 'platform_commission' => 10, 'logistics_share' => 40, 'delivery_commission_rate' => 10,
             'rates_version' => 'test'] + DeliveryAddress::fromBook($office)->shipmentColumns());
         $order->update(['order_shipment_id' => $shipment->id]);

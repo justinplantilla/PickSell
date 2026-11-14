@@ -190,7 +190,7 @@ class RiderBatchTest extends TestCase
         $this->api($rider)->getJson('/api/rider/dashboard')->assertOk()
             ->assertJsonCount(0, 'batches')
             ->assertJsonPath('today.pickups', 2)
-            ->assertJsonPath('today.earnings', fn ($earned) => (float) $earned === 2 * (float) config('pickrush.rider_pay.pickup_per_parcel'))
+            ->assertJsonPath('today.earnings', fn ($earned) => (float) $earned === 2 * (float) config('pickrush.shipping.min_rider_pay'))   // unclassed parcels pay the minimum
             ->assertJsonPath('activity.0.type', 'dropped_off')
             ->assertJsonPath('activity.0.count', 2);
     }

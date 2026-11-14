@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Pickrush\Services\Shipping\RouteRateGenerator;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Pickrush's marketplace rate card, the province-to-region map and the parcel classes. Safe to
@@ -12,8 +13,8 @@ use Illuminate\Support\Facades\DB;
  *
  * The generic prices are a Metro Manila-origin price list (confirmed by the Pickrush team),
  * taken from Flash Express rates as a reference only: Pickrush is the carrier. They become the
- * five route price levels, and the 5 × 5 route grid below generates a price for every
- * (seller region → buyer region) pair. HEAVY ₱25 and BULKY ₱50 rider pay are proposals.
+ * five route price levels, and the 6 × 6 route grid below generates a price for every
+ * (seller region → buyer region) pair.
  */
 class ShippingRatesSeeder extends Seeder
 {
@@ -24,18 +25,19 @@ class ShippingRatesSeeder extends Seeder
 
     private const FEES = [
         'NCR' => [60, 75, 95, 115, 155, 280],
-        'LUZON' => [75, 85, 105, 125, 170, 310],
+        'N_LUZON' => [75, 85, 105, 125, 170, 310],
+        'S_LUZON' => [75, 85, 105, 125, 170, 310],
         'VISAYAS' => [85, 95, 115, 135, 180, 330],
         'MINDANAO' => [90, 100, 120, 140, 190, 345],
         'ISLAND' => [98, 110, 130, 152, 205, 370],
     ];
 
-    private const PER_KG_ABOVE_10 = ['NCR' => 25, 'LUZON' => 28, 'VISAYAS' => 30, 'MINDANAO' => 31, 'ISLAND' => 33];
+    private const PER_KG_ABOVE_10 = ['NCR' => 25, 'N_LUZON' => 28, 'S_LUZON' => 28, 'VISAYAS' => 30, 'MINDANAO' => 31, 'ISLAND' => 33];
 
     /** Price level k uses the generic prices to this destination (the NCR-origin price list). */
     private const LEVELS = [
         0 => ['NCR', 'Local (within one region)'],
-        1 => ['LUZON', 'Nearby / provincial'],
+        1 => ['S_LUZON', 'Nearby / provincial'],
         2 => ['VISAYAS', 'Inter-island, mid distance'],
         3 => ['MINDANAO', 'Far'],
         4 => ['ISLAND', 'Remote islands'],
@@ -43,29 +45,47 @@ class ShippingRatesSeeder extends Seeder
 
     /**
      * Route level: seller's region (row) → buyer's region (column). Symmetric. Within a region is
-     * local (0), except between island provinces, which are not connected by land (3).
+     * local (0), except between island provinces, which are not connected by land (3). North ↔ South
+     * Luzon passes through Metro Manila (2), and North Luzon is one level further from the Visayas
+     * and Mindanao than South Luzon.
      */
     private const ROUTE_LEVELS = [
-        'NCR' => ['NCR' => 0, 'LUZON' => 1, 'VISAYAS' => 2, 'MINDANAO' => 3, 'ISLAND' => 4],
-        'LUZON' => ['NCR' => 1, 'LUZON' => 0, 'VISAYAS' => 2, 'MINDANAO' => 3, 'ISLAND' => 4],
-        'VISAYAS' => ['NCR' => 2, 'LUZON' => 2, 'VISAYAS' => 0, 'MINDANAO' => 2, 'ISLAND' => 3],
-        'MINDANAO' => ['NCR' => 3, 'LUZON' => 3, 'VISAYAS' => 2, 'MINDANAO' => 0, 'ISLAND' => 4],
-        'ISLAND' => ['NCR' => 4, 'LUZON' => 4, 'VISAYAS' => 3, 'MINDANAO' => 4, 'ISLAND' => 3],
+        'NCR' => ['NCR' => 0, 'N_LUZON' => 1, 'S_LUZON' => 1, 'VISAYAS' => 2, 'MINDANAO' => 3, 'ISLAND' => 4],
+        'N_LUZON' => ['NCR' => 1, 'N_LUZON' => 0, 'S_LUZON' => 2, 'VISAYAS' => 3, 'MINDANAO' => 4, 'ISLAND' => 4],
+        'S_LUZON' => ['NCR' => 1, 'N_LUZON' => 2, 'S_LUZON' => 0, 'VISAYAS' => 2, 'MINDANAO' => 3, 'ISLAND' => 4],
+        'VISAYAS' => ['NCR' => 2, 'N_LUZON' => 3, 'S_LUZON' => 2, 'VISAYAS' => 0, 'MINDANAO' => 2, 'ISLAND' => 3],
+        'MINDANAO' => ['NCR' => 3, 'N_LUZON' => 4, 'S_LUZON' => 3, 'VISAYAS' => 2, 'MINDANAO' => 0, 'ISLAND' => 4],
+        'ISLAND' => ['NCR' => 4, 'N_LUZON' => 4, 'S_LUZON' => 4, 'VISAYAS' => 3, 'MINDANAO' => 4, 'ISLAND' => 3],
     ];
 
-    /** code => [above kg, up to kg, rider pay] */
+    /** code => [above kg, up to kg, rider pay, per-kg pay for each started kg above the lower bound] */
     private const CLASSES = [
-        'STANDARD' => [0, 10, 15],
-        'HEAVY' => [10, 20, 25],
-        'BULKY' => [20, 50, 50],
+        'STANDARD' => [0, 5, 15, 0],
+        'HEAVY' => [5, 10, 40, 0],
+        'BULKY' => [10, 20, 60, 0],
+        'EXTRA_BULKY' => [20, 50, 60, 4],
     ];
 
     private const REGIONS = [
         'NCR' => 'Metro Manila',
-        'LUZON' => 'Luzon',
+        'N_LUZON' => 'North Luzon',
+        'S_LUZON' => 'South Luzon',
         'VISAYAS' => 'Visayas',
         'MINDANAO' => 'Mindanao',
         'ISLAND' => 'Island provinces',
+    ];
+
+    public const NORTH_LUZON = [
+        'Abra', 'Apayao', 'Benguet', 'Ifugao', 'Kalinga', 'Mountain Province',
+        'Ilocos Norte', 'Ilocos Sur', 'La Union', 'Pangasinan',
+        'Cagayan', 'Isabela', 'Nueva Vizcaya', 'Quirino',
+        'Aurora', 'Bataan', 'Bulacan', 'Nueva Ecija', 'Pampanga', 'Tarlac', 'Zambales',
+    ];
+
+    public const SOUTH_LUZON = [
+        'Batangas', 'Cavite', 'Laguna', 'Quezon', 'Rizal',
+        'Occidental Mindoro', 'Oriental Mindoro',
+        'Albay', 'Camarines Norte', 'Camarines Sur', 'Sorsogon',
     ];
 
     /**
@@ -85,13 +105,10 @@ class ShippingRatesSeeder extends Seeder
             'City of Navotas', 'City of Paranaque', 'Pasay City', 'City of Pasig', 'City of San Juan',
             'City of Taguig', 'City of Valenzuela',
         ],
-        'LUZON' => [
-            'Abra', 'Albay', 'Apayao', 'Aurora', 'Bataan', 'Batangas', 'Benguet', 'Bulacan', 'Cagayan',
-            'Camarines Norte', 'Camarines Sur', 'Cavite', 'Ifugao', 'Ilocos Norte', 'Ilocos Sur',
-            'Isabela', 'Kalinga', 'La Union', 'Laguna', 'Mountain Province', 'Nueva Ecija',
-            'Nueva Vizcaya', 'Occidental Mindoro', 'Oriental Mindoro', 'Pampanga', 'Pangasinan',
-            'Quezon', 'Quirino', 'Rizal', 'Sorsogon', 'Tarlac', 'Zambales',
-        ],
+        // Cordillera, Ilocos, Cagayan Valley and Central Luzon
+        'N_LUZON' => self::NORTH_LUZON,
+        // CALABARZON, mainland MIMAROPA and mainland Bicol
+        'S_LUZON' => self::SOUTH_LUZON,
         'VISAYAS' => [
             'Aklan', 'Antique', 'Bohol', 'Capiz', 'Cebu', 'Eastern Samar', 'Iloilo', 'Leyte',
             'Negros Occidental', 'Negros Oriental', 'Northern Samar', 'Samar', 'Southern Leyte',
@@ -148,11 +165,13 @@ class ShippingRatesSeeder extends Seeder
             ])->values()->all());
         }
 
+        // The shipping migration seeds before per_kg_pay exists; the class reweigh migration sets it then.
+        $perKg = Schema::hasColumn('pr_parcel_classes', 'per_kg_pay');
         DB::table('pr_parcel_classes')->insertOrIgnore(collect(self::CLASSES)->map(fn ($c, $code) => [
             'code' => $code, 'min_kg_exclusive' => $c[0], 'max_kg_inclusive' => $c[1],
             'rider_pay' => $c[2], 'is_active' => true,
             'created_at' => $now, 'updated_at' => $now,
-        ])->values()->all());
+        ] + ($perKg ? ['per_kg_pay' => $c[3]] : []))->values()->all());
 
         $this->seedRouteLevels();
         app(RouteRateGenerator::class)->generate(RouteRateGenerator::FIRST_ROUTE_DATE);

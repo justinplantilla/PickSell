@@ -5,7 +5,7 @@ namespace App\Pickrush\Services\Shipping;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Which shipping region (NCR, LUZON, VISAYAS, MINDANAO, ISLAND) an address is in, from
+ * Which shipping region (NCR, N_LUZON, S_LUZON, VISAYAS, MINDANAO, ISLAND) an address is in, from
  * pr_shipping_region_provinces. Names match ignoring case, extra spaces and ñ/n. Without a
  * province the city is used, so Metro Manila addresses saved by city still resolve.
  */
