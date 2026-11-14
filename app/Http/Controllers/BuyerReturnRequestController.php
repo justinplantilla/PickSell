@@ -15,6 +15,7 @@ class BuyerReturnRequestController extends Controller
     {
         abort_if($order->buyer_id !== auth()->id(), 404);
         abort_unless(in_array($order->status, ['delivered', 'completed'], true), 422, 'Returns can only be requested for delivered orders.');
+        abort_unless($order->returnWindowOpen(), 422, 'Returns can only be requested within '.config('pickrush.policies.return_window_days').' days of delivery.');
         abort_if($order->returnRequest()->exists(), 409, 'A return request already exists for this order.');
 
         $data = $request->validate([

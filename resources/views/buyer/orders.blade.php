@@ -64,6 +64,11 @@
                 @csrf @method('PATCH')
                 <button type="submit" class="btn btn-coral btn-sm">Order Received</button>
             </form>
+            @endif
+            @if(! $order->returnRequest && $order->returnWindowOpen())
+            <button type="button" class="btn btn-outline btn-sm" data-open-return="{{ $order->id }}" title="Until {{ $order->returnWindowEndsAt()->format('M j, g:i A') }}">Return / Refund</button>
+            @endif
+            @if($order->status === 'delivered')
             <span class="orders-muted-text-4">Got your parcel? Confirm it, then rate it.@if($autoAt = \App\Services\Orders\OrderReceipt::autoConfirmAt($order)) We’ll confirm it for you on {{ $autoAt->format('M d, Y') }}.@endif</span>
             @endif
             @if($order->status === 'completed' && !$order->rating)
@@ -179,9 +184,9 @@
                 <p>Admin resolution: {{ $order->returnRequest->admin_notes }}</p>
             @endif
         </div>
-    @elseif(in_array($order->status, ['delivered', 'completed'], true))
-        <details class="return-request-panel">
-            <summary>Request return or refund</summary>
+    @elseif(in_array($order->status, ['delivered', 'completed'], true) && $order->returnWindowOpen())
+        <details class="return-request-panel" id="return-panel-{{ $order->id }}">
+            <summary>Request return or refund <small>(until {{ $order->returnWindowEndsAt()->format('M j, g:i A') }})</small></summary>
             <form method="POST" action="{{ route('buyer.orders.returns.store', $order) }}" class="return-request-form" enctype="multipart/form-data">
                 @csrf
                 <label class="form-label" for="return-reason-{{ $order->id }}">Reason</label>

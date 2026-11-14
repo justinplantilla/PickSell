@@ -111,10 +111,27 @@ document.addEventListener('click', event => {
     const interactive = event.target.closest('a, button, form, input, select, textarea, label, summary, details');
     if (!toggle && (!inSummary || interactive)) return;
 
+    const details = document.getElementById(card.querySelector('[data-order-toggle]').getAttribute('aria-controls'));
+    setDetailsOpen(card, details.hidden);
+});
+
+function setDetailsOpen(card, open) {
     const button = card.querySelector('[data-order-toggle]');
     const details = document.getElementById(button.getAttribute('aria-controls'));
-    const open = details.hidden;
     details.hidden = !open;
     button.setAttribute('aria-expanded', String(open));
     card.classList.toggle('is-open', open);
+}
+
+// "Return / Refund" next to "Order Received": opens the order's details at the return form.
+document.addEventListener('click', event => {
+    const trigger = event.target.closest('[data-open-return]');
+    if (!trigger) return;
+    const card = trigger.closest('[data-order-card]');
+    const panel = document.getElementById(`return-panel-${trigger.dataset.openReturn}`);
+    if (!card || !panel) return;
+    setDetailsOpen(card, true);
+    panel.open = true;
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    panel.querySelector('select')?.focus({ preventScroll: true });
 });

@@ -211,6 +211,22 @@ class Order extends Model
         return $this->returns();
     }
 
+    /** When the buyer can no longer ask for a return or refund: return_window_days after delivery. */
+    public function returnWindowEndsAt(): ?\Carbon\CarbonInterface
+    {
+        $delivered = $this->delivered_at ?? $this->completed_at;
+
+        return $delivered?->copy()->addDays((int) config('pickrush.policies.return_window_days'));
+    }
+
+    /** Delivered, and still within the return window. */
+    public function returnWindowOpen(): bool
+    {
+        $ends = $this->returnWindowEndsAt();
+
+        return in_array($this->status, ['delivered', 'completed'], true) && $ends !== null && now()->lt($ends);
+    }
+
     public function returns()
     {
         return $this->hasOne(ReturnRequest::class);

@@ -11,6 +11,7 @@ use App\Pickrush\Models\Company;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\RiderReport;
+use App\Pickrush\Services\Hq\PicksellSettlement;
 use App\Pickrush\Services\HubRouter;
 use App\Pickrush\Services\ParcelLedger;
 use App\Pickrush\Services\ParcelRegistrar;
@@ -89,6 +90,8 @@ class PicksellBridge
         $options = Company::approved()->orderByDesc('is_default')->orderBy('name')->get()
             ->filter(fn (Company $company) => $company->is_default || $chosen === [] || in_array($company->id, $chosen))
             ->filter(fn (Company $company) => $company->is_default || $this->serves($company->id, $origin, $destination))
+            // A company that has not settled with PickSell past its deadline gets no new orders until it does.
+            ->reject(fn (Company $company) => app(PicksellSettlement::class)->holdsBack($company))
             ->mapWithKeys(fn (Company $company) => [$company->id => [
                 'company' => $company,
                 'quote' => $this->quote($buyer, $seller, $lines, $to, $company->id),

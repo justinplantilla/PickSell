@@ -31,9 +31,10 @@
             <small>{{ number_format($averageCommissionRate, 2) }}% platform rate</small>
         </article>
         <article class="kpi-block earnings-summary-card earnings-summary-card--net">
-            <div class="kpi-title">Net earnings</div>
-            <strong>₱{{ number_format($totalNetEarnings, 2) }}</strong>
-            <small>Gross sales less commission</small>
+            <div class="kpi-title">Net earnings received</div>
+            <strong>₱{{ number_format($receivedNetEarnings, 2) }}</strong>
+            <small>PickSell has the money and the buyer can no longer return the order.</small>
+            <small class="earnings-expected">Expected in total: ₱{{ number_format($expectedNetEarnings, 2) }} · ₱{{ number_format($pendingNetEarnings, 2) }} still to come (waiting for the buyer, on the way, or in the {{ config('pickrush.policies.return_window_days') }}-day return window)</small>
         </article>
     </section>
 
@@ -41,7 +42,7 @@
         <div class="earnings-panel-header">
             <div>
                 <h2>Commission breakdown</h2>
-                <p>Only completed orders are included. Each order keeps the commission rate and amount recorded when it was placed.</p>
+                <p>Completed orders, plus delivered orders waiting for the buyer to confirm. Each order keeps the commission rate and amount recorded when it was placed.</p>
             </div>
         </div>
         <div class="earnings-filter-row">
@@ -75,7 +76,7 @@
 
         <div class="earnings-period">Showing {{ \Carbon\Carbon::parse($from)->format('M d, Y') }} – {{ \Carbon\Carbon::parse($to)->format('M d, Y') }}</div>
 
-        @if($orders->isEmpty())
+        @if($orders->isEmpty() && $waitingOrders->isEmpty())
             <div class="earnings-empty">
                 <strong>No completed orders in this period</strong>
                 <span>Commission and net earnings will appear here when orders are completed.</span>
@@ -91,11 +92,12 @@
                             <th scope="col">Commission deducted</th>
                             <th scope="col">Net earnings</th>
                             <th scope="col">Order status</th>
+                            <th scope="col">Payment</th>
                             <th scope="col"><span class="earnings-visually-hidden">Commission details</span></th>
                         </tr>
                     </thead>
                     <tbody>
-                    @foreach($orders as $order)
+                    @foreach($waitingOrders->concat($orders) as $order)
                         <tr>
                             <td><a href="{{ route('seller.orders.show', $order['id']) }}">#{{ $order['order_number'] }}</a></td>
                             <td><time datetime="{{ $order['created_at']->toDateString() }}">{{ $order['created_at']->format('M d, Y') }}</time></td>
@@ -103,10 +105,16 @@
                             <td class="earnings-amount--deduction">-₱{{ number_format($order['commission'], 2) }} ({{ number_format($order['commission_rate'], 2) }}%)</td>
                             <td class="earnings-amount--net">₱{{ number_format($order['net_earnings'], 2) }}</td>
                             <td><x-order-status-badge :status="$order['status']" /></td>
+                            <td>@switch($order['stage'])
+                                @case('received')<span class="earnings-payment earnings-payment--received" title="PickSell has the money and the buyer can no longer return the order">Received</span>@break
+                                @case('on_hold')<span class="earnings-payment" title="PickSell has the money; the buyer can still ask for a return, or has asked">On hold</span>@if($order['return_until'])<small class="earnings-discount-note">return window until {{ $order['return_until']->format('M j') }}</small>@endif @break
+                                @case('waiting_buyer')<span class="earnings-payment earnings-payment--waiting" title="Delivered; the buyer has not confirmed they received it">Waiting for buyer</span>@break
+                                @default<span class="earnings-payment earnings-payment--waiting" title="The logistics company has not settled this order's cash with PickSell yet">On the way</span>
+                            @endswitch</td>
                             <td><button type="button" class="earnings-disclosure-trigger" aria-expanded="false" aria-controls="earnings-details-{{ $order['id'] }}" aria-label="Why was I charged this? Order #{{ $order['order_number'] }}" data-earnings-disclosure>Why charged?</button></td>
                         </tr>
                         <tr id="earnings-details-{{ $order['id'] }}" class="earnings-details-row" hidden>
-                            <td colspan="7">
+                            <td colspan="8">
                                 <dl class="earnings-disclosure-card">
                                     @if($order['product_discount'] > 0 || $order['store_discount'] > 0)
                                     <div><dt>List price</dt><dd>₱{{ number_format($order['amount'] + $order['product_discount'] + $order['store_discount'], 2) }}</dd></div>

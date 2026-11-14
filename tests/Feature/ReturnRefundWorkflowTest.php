@@ -84,6 +84,28 @@ class ReturnRefundWorkflowTest extends TestCase
             ->assertStatus(409);
     }
 
+    public function test_the_buyer_can_ask_for_a_return_only_within_the_return_window(): void
+    {
+        config(['pickrush.policies.return_window_days' => 5]);
+        $buyer = $this->makeUser('buyer');
+        $seller = $this->makeUser('seller');
+        $order = $this->makeOrder($buyer, $seller, 'completed');
+        $order->forceFill(['delivered_at' => now()->subDays(4)])->save();
+        $return = fn () => $this->actingAs($buyer)->post(route('buyer.orders.returns.store', $order), [
+            'reason' => 'damaged', 'details' => 'The item arrived damaged.',
+        ]);
+
+        $this->assertTrue($order->fresh()->returnWindowOpen());
+        $this->actingAs($buyer)->get(route('buyer.orders'))->assertSee('Request return or refund');
+
+        // Five days after delivery the window has closed: no button, and the request is refused.
+        $this->travel(2)->days();
+        $this->assertFalse($order->fresh()->returnWindowOpen());
+        $this->actingAs($buyer)->get(route('buyer.orders'))->assertDontSee('Request return or refund');
+        $return()->assertStatus(422);
+        $this->assertFalse(ReturnRequest::where('order_id', $order->id)->exists());
+    }
+
     public function test_buyer_tracking_page_belongs_to_the_buyer_who_placed_the_order(): void
     {
         $buyer = $this->makeUser('buyer');

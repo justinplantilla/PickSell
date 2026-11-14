@@ -14,8 +14,12 @@ use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\RiderToken;
 use App\Pickrush\Models\Staff;
 use App\Pickrush\Models\Zone;
+use App\Models\User;
+use App\Pickrush\Models\Company;
+use App\Pickrush\Models\CompanySettlement;
 use App\Pickrush\Services\Hq\Finance;
 use App\Pickrush\Services\Hq\NetworkMetrics;
+use App\Pickrush\Services\Hq\PicksellSettlement;
 use App\Pickrush\Services\ManifestService;
 use App\Pickrush\Services\OperationRefused;
 use App\Pickrush\Services\ParcelRegistrar;
@@ -571,6 +575,75 @@ class StationOperationsTest extends TestCase
         $third = $remitAll('BDO-3001');
         app(Finance::class)->confirm($third, $finance, false, 'Short', 0);
         $this->as($this->manager)->post($this->pickrushUrl("/station/cash/deposits/{$third->id}/contest"), ['explanation' => 'Not ours to answer at all'])->assertNotFound();
+    }
+
+    public function test_the_company_settles_with_picksell_what_its_hq_received_and_picksell_confirms_it(): void
+    {
+        Storage::fake('local');
+        config(['pickrush.policies.settlement_days' => 1, 'pickrush.policies.settlement_grace_hours' => 24]);
+        $this->travelTo(Carbon::parse('2026-11-10 09:00'));
+        $rider = $this->rider($this->sanJose);
+        $finance = $this->staff(StaffRole::Finance);
+        $picksell = app(PicksellSettlement::class);
+        $company = Company::findOrFail(Company::defaultId());
+        $this->as($this->sanJoseManager);
+        foreach ([[1000, 50, 30], [1500, 60, 40]] as [$cod, $pay, $share]) {
+            $parcel = $this->bringToSanJose($this->parcel(['cod_amount' => $cod, 'source' => 'picksell']));
+            $parcel->forceFill(['rider_pay' => $pay, 'logistics_share' => $share])->save();
+            $task = app(DispatchService::class)->assign($parcel->fresh(), $rider, $this->sanJoseManager);
+            app(RiderTaskService::class)->startDelivery($task);
+            app(RiderTaskService::class)->deliver($task->fresh(), $cod, 'proof.jpg');
+        }
+        app(CashHandling::class)->confirmCount(app(CashHandling::class)->recordRiderRemittance($rider, null, $this->sanJoseManager), $rider);
+        $hub = app(CashHandling::class)->submitHubRemittance($this->sanJoseManager, 'BDO-5001', $this->slip())->fresh();
+        $this->assertSame(0.0, $picksell->owed($company->id)['total'], 'owed only once HQ confirms the cash');
+
+        // HQ confirms the station's cash: now the parcels are owed to PickSell (COD less rider pay and share).
+        app(Finance::class)->confirm($hub, $finance, true, null);
+        $owed = $picksell->owed($company->id);
+        $this->assertSame([2, 920.0 + 1400.0], [$owed['parcels']->count(), $owed['total']]);
+        $this->as($finance)->get($this->pickrushUrl('/hq/finance'))->assertSee('Owed to PickSell, not yet settled')->assertSee('Settle ₱2,320.00 with PickSell');
+
+        // Past the deadline and grace: overdue, but PickSell's default carrier stays at checkout.
+        $this->travelTo(Carbon::parse('2026-11-12 10:00'));
+        $this->assertSame('blocked', $picksell->deadline($company->id)['state']);
+        $this->assertFalse($picksell->holdsBack($company));
+
+        // HQ finance settles everything in one deposit; the amount is the system's.
+        $store = $this->pickrushUrl('/hq/finance/settlements');
+        $this->as($this->staff(StaffRole::Support))->post($store, ['total' => 2320, 'reference_no' => 'BPI-1', 'slip' => $this->slip()])->assertForbidden();
+        $this->as($finance)->post($store, ['total' => 2000, 'reference_no' => 'BPI-1', 'slip' => $this->slip()])
+            ->assertSessionHas('errors', fn ($b) => str_contains($b->first('operation'), 'changed to ₱2,320.00'));
+        $this->as($finance)->post($store, ['total' => 2320, 'reference_no' => 'BPI-1', 'slip' => $this->slip()])->assertSessionHasNoErrors();
+        $settlement = CompanySettlement::withoutGlobalScopes()->sole();
+        $this->assertSame(['2320.00', 2, 'submitted'], [$settlement->amount, $settlement->parcel_count, $settlement->status]);
+        $this->assertSame([0, 'none'], [$picksell->owedParcels($company->id)->count(), $picksell->deadline($company->id)['state']]);
+
+        // A PickSell admin finds ₱320 missing; the company tops it up and the dispute is settled.
+        $admin = User::create(['first_name' => 'Pick', 'last_name' => 'Admin', 'email' => 'settle-admin@picksell.test', 'password' => bcrypt('password'),
+            'role' => 'admin', 'status' => 'approved', 'sex' => 'Female', 'contact_no' => '09171234568', 'birthday' => '1990-01-01', 'age' => 35,
+            'province' => 'Metro Manila', 'municipality' => 'Quezon City', 'barangay' => 'Bahay']);
+        $adminUrl = fn (string $path) => rtrim(config('app.url'), '/').$path;   // the marketplace, not the logistics portal
+        $this->actingAs($admin)->get($adminUrl('/admin/logistics/settlements'))->assertOk()->assertSee('Settlements to confirm (1)')->assertSee('Confirm ₱2,320.00 received');
+        $this->actingAs($admin)->patch($adminUrl("/admin/logistics/settlements/{$settlement->id}/review"), ['decision' => 'dispute'])->assertSessionHasErrors('bank_amount');
+        $this->actingAs($admin)->patch($adminUrl("/admin/logistics/settlements/{$settlement->id}/review"), ['decision' => 'dispute', 'bank_amount' => 2000, 'note' => 'Bank shows ₱2,000'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(['disputed', 320.0], [$settlement->fresh()->status, $settlement->fresh()->shortfall()]);
+        $this->as($finance)->get($this->pickrushUrl('/hq/finance'))->assertSee('PickSell disputed your settlement ref BPI-1')->assertSee('Confirm ₱320.00 deposited');
+        $this->as($finance)->post($this->pickrushUrl("/hq/finance/settlements/{$settlement->id}/top-up"), ['shortfall' => 320, 'reference_no' => 'BPI-2', 'slip' => $this->slip()])
+            ->assertSessionHasNoErrors();
+        $topUp = CompanySettlement::withoutGlobalScopes()->where('settles_id', $settlement->id)->sole();
+        $this->actingAs($admin)->patch($adminUrl("/admin/logistics/settlements/{$topUp->id}/review"), ['decision' => 'confirm'])->assertSessionHasNoErrors();
+        $this->assertSame(CompanySettlement::SETTLED, $settlement->fresh()->status);
+        $this->assertTrue($settlement->fresh()->isReceived());
+
+        // Another company past its deadline with an unanswered dispute is not offered at checkout.
+        $other = Company::create(['name' => 'Bilis Hatid Express', 'slug' => 'bilis-hatid', 'tracking_prefix' => 'BH', 'status' => 'approved']);
+        $late = CompanySettlement::withoutGlobalScopes()->create(['company_id' => $other->id, 'amount' => 500, 'reference_no' => 'BH-1', 'reference_key' => 'BH1',
+            'slip_path' => 'x.pdf', 'status' => 'disputed', 'bank_amount' => 0, 'submitted_by' => $finance->id, 'confirmed_at' => now()->subHours(30)]);
+        $this->assertTrue($picksell->holdsBack($other));
+        $late->update(['status' => 'confirmed']);
+        $this->assertFalse($picksell->holdsBack($other));
     }
 
     public function test_cash_counted_after_the_cutoff_is_due_the_next_day_and_longer_cycles_add_days(): void

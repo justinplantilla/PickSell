@@ -68,8 +68,14 @@ return [
         'remittance_cutoff' => '20:00',
         'remittance_grace_hours' => 16,
 
-        // Seller payout releases this many days after delivery (the dispute window).
-        'payout_release_days' => 7,
+        // A logistics company settles with PickSell within this many days of the cash reaching its HQ;
+        // this many hours later PickSell stops offering it at checkout until it settles.
+        'settlement_days' => 1,
+        'settlement_grace_hours' => 24,
+
+        // Buyers can ask for a return or refund this many days after delivery; after that (and once
+        // PickSell has the cash) the seller's earnings for the order count as received.
+        'return_window_days' => 5,
     ],
 
     /*

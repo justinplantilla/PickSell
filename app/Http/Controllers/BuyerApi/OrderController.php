@@ -157,6 +157,7 @@ class OrderController extends Controller
     {
         $this->find($request, $order);
         abort_unless(in_array($order->status, ['delivered', 'completed'], true), 422, 'Returns can only be requested for delivered orders.');
+        abort_unless($order->returnWindowOpen(), 422, 'Returns can only be requested within '.config('pickrush.policies.return_window_days').' days of delivery.');
         abort_if($order->returnRequest()->exists(), 409, 'A return request already exists for this order.');
 
         // The app may send the label it showed; store the website's code.

@@ -28,7 +28,9 @@ class PolicySettings
         'policies.remittance_cycle' => ['Cash', 'Station remittance cycle', 'required|in:daily,every_two_days,weekly', 'Daily: cash is due at HQ by the cutoff the day it was counted. Every two days or weekly: 1 or 6 days later.'],
         'policies.remittance_cutoff' => ['Cash', 'Station remittance cutoff', 'required|date_format:H:i', 'Cash counted after this time is due the next day.'],
         'policies.remittance_grace_hours' => ['Cash', 'Hours after the cutoff before COD dispatch stops', 'required|integer|min:0|max:168', 'Until then the station and HQ are warned. Pickups and returns still go.'],
-        'policies.payout_release_days' => ['Cash', 'Seller payout window (days after delivery)', 'required|integer|min:0|max:60', 'The dispute window before COD is released to the seller.'],
+        'policies.settlement_days' => ['Cash', 'Days to settle with PickSell', 'required|integer|min:0|max:30', 'After the cash reaches HQ, the company pays PickSell within this many days.'],
+        'policies.settlement_grace_hours' => ['Cash', 'Hours after that before PickSell stops offering the company', 'required|integer|min:0|max:336', 'Until then the company and PickSell are warned.'],
+        'policies.return_window_days' => ['Cash', 'Return window (days after delivery)', 'required|integer|min:0|max:60', 'Buyers can ask for a return or refund this long after delivery. After it, and once PickSell has the cash, the seller\'s earnings count as received.'],
         'shipping.min_rider_pay' => ['Marketplace shipping', 'Minimum rider pay per parcel (₱)', 'required|numeric|min:0|max:10000', 'No parcel class may pay a rider less than this.'],
         'shipping.max_priced_weight_kg' => ['Marketplace shipping', 'Heaviest parcel priced automatically (kg)', 'required|numeric|min:1|max:1000', 'Heavier parcels need a manual quote.'],
     ];

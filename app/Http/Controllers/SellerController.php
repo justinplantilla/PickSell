@@ -24,7 +24,9 @@ use App\Services\Reports\FinancialReportService;
 use App\Services\SellerVacations;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -892,12 +894,21 @@ class SellerController extends Controller
         $from = $start->toDateString();
         $to = $end->toDateString();
         $finance = app(FinancialReportService::class)->sellerPeriod($start, $end, $this->seller()->id);
+        $orders = self::withEarningsStage($finance['orders']);
+        $waiting = $this->waitingForBuyer($start, $end);
+        $expected = round($orders->sum('net_earnings') + $waiting->sum('net_earnings'), 2);
+        $received = round($orders->where('stage', 'received')->sum('net_earnings'), 2);
 
         return [
             'from' => $from,
             'to' => $to,
             'preset' => $preset,
-            'orders' => $finance['orders'],
+            'orders' => $orders,
+            'waitingOrders' => $waiting,
+            // Received: PickSell has the cash and the buyer can no longer return the order. The rest is still coming.
+            'receivedNetEarnings' => $received,
+            'expectedNetEarnings' => $expected,
+            'pendingNetEarnings' => round($expected - $received, 2),
             'totalOrders' => $finance['completed_orders'],
             'totalSales' => $finance['gross_sales'],
             'totalCommission' => $finance['commission'],
@@ -906,6 +917,72 @@ class SellerController extends Controller
             'totalProductDiscounts' => round($finance['orders']->sum('product_discount'), 2),
             'totalStoreDiscounts' => round($finance['orders']->sum('store_discount'), 2),
         ];
+    }
+
+    /**
+     * Where each completed order's earnings stand:
+     *  - on_the_way: the logistics company has not settled its cash with PickSell yet;
+     *  - on_hold: PickSell has the cash, but the buyer can still ask for a return, or has asked;
+     *  - received: PickSell has the cash and the order can no longer be returned.
+     */
+    private static function withEarningsStage(Collection $orders): Collection
+    {
+        $settled = self::receivedByPicksell($orders->pluck('id'));
+        $models = Order::whereIn('id', $orders->pluck('id'))->with('returns')->get()->keyBy('id');
+
+        return $orders->map(function (array $row) use ($settled, $models) {
+            $order = $models->get($row['id']);
+            $openReturn = $order?->returns && $order->returns->status !== 'rejected';
+            $stage = match (true) {
+                ! in_array($row['id'], $settled, true) => 'on_the_way',
+                $openReturn || $order?->returnWindowOpen() => 'on_hold',
+                default => 'received',
+            };
+
+            return $row + ['stage' => $stage, 'return_until' => $order?->returnWindowOpen() ? $order->returnWindowEndsAt() : null];
+        });
+    }
+
+    /** Delivered in the period and not yet confirmed received by the buyer: earnings still to come. */
+    private function waitingForBuyer(CarbonInterface $start, CarbonInterface $end): Collection
+    {
+        $money = app(CommissionService::class);
+
+        return Order::where('seller_id', $this->seller()->id)->where('status', 'delivered')->whereBetween('delivered_at', [$start, $end])
+            ->latest('delivered_at')->get()
+            ->map(fn (Order $order) => [
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'created_at' => $order->created_at,
+                'amount' => (float) $order->amount,
+                'commission_rate' => $money->rateForOrder($order),
+                'commission' => (float) $order->commission,
+                'net_earnings' => round((float) $order->amount - (float) $order->commission, 2),
+                'status' => $order->status,
+                'product_discount' => (float) ($order->product_discount ?? 0),
+                'store_discount' => (float) ($order->store_discount ?? 0),
+                'stage' => 'waiting_buyer',
+                'return_until' => null,
+            ]);
+    }
+
+    /**
+     * Of these orders, the ones whose parcel's cash the logistics company has settled with PickSell
+     * (its settlement confirmed, or a disputed one covered by top-ups).
+     *
+     * @return array<int, int>
+     */
+    private static function receivedByPicksell(Collection $orderIds): array
+    {
+        $orders = Order::whereIn('id', $orderIds)->with('shipment:id,reference')->get(['id', 'order_shipment_id']);
+        // The parcel's external_ref: the shipment's reference, or the order id for orders from before shipments.
+        $refs = $orders->mapWithKeys(fn (Order $order) => [$order->id => PicksellBridge::ref($order)]);
+        $settled = DB::table('pr_parcels')->where('source', 'picksell')->where('is_return', false)->whereIn('external_ref', $refs->values())
+            ->join('pr_company_settlements', 'pr_company_settlements.id', '=', 'pr_parcels.company_settlement_id')
+            ->whereIn('pr_company_settlements.status', ['confirmed', 'settled'])
+            ->pluck('pr_parcels.external_ref')->all();
+
+        return $refs->filter(fn (string $ref) => in_array($ref, $settled, true))->keys()->map(fn ($id) => (int) $id)->all();
     }
 
     // Reports

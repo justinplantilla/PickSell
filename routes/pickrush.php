@@ -104,6 +104,13 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
                 Route::post('/finance/remittances/{remittance}', [Hq\FinanceController::class, 'confirm'])->name('finance.confirm');
                 Route::get('/finance/remittances/{remittance}/slip', [Hq\FinanceController::class, 'slip'])->name('finance.slip');
                 Route::get('/finance/remittances/{remittance}/evidence', [Hq\FinanceController::class, 'evidence'])->name('finance.evidence');
+                // Paying PickSell: HQ finance settles, tops up or contests; everyone in HQ can open the slips.
+                Route::get('/finance/settlements/{settlement}/slip', [Hq\PicksellSettlementController::class, 'slip'])->name('finance.settlements.slip');
+                Route::middleware('pickrush.role:super_admin,finance')->group(function () {
+                    Route::post('/finance/settlements', [Hq\PicksellSettlementController::class, 'store'])->name('finance.settlements.store');
+                    Route::post('/finance/settlements/{settlement}/top-up', [Hq\PicksellSettlementController::class, 'topUp'])->name('finance.settlements.top-up');
+                    Route::post('/finance/settlements/{settlement}/contest', [Hq\PicksellSettlementController::class, 'contest'])->name('finance.settlements.contest');
+                });
 
                 Route::middleware('pickrush.role:super_admin,support')->group(function () {
                     Route::get('/address-fix', [Hq\AddressFixController::class, 'index'])->name('address-fix');

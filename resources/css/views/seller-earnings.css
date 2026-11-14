@@ -92,3 +92,10 @@ body.dark .review-reply-form { background:#161616; border-left-color:#3a2a25; }
 body.dark .analytics-table th, body.dark .analytics-table td { border-color:#2a2a2a; }
 @media (max-width:760px) { .analytics-summary { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
 .earnings-discount-note { display:block; font-size:.72rem; color:#b45309; font-weight:600; }
+.earnings-expected { display:block; margin-top:.35rem; padding-top:.35rem; border-top:1px dashed currentColor; opacity:.75; }
+.earnings-payment { display:inline-block; padding:.12rem .5rem; border-radius:999px; font-size:.72rem; font-weight:700; white-space:nowrap; background:#fef3c7; color:#92400e; }
+.earnings-payment--received { background:#dcfce7; color:#166534; }
+.earnings-payment--waiting { background:#f1f5f9; color:#475569; }
+body.dark .earnings-payment--waiting { background:#1f2937; color:#cbd5e1; }
+body.dark .earnings-payment { background:#3a2e12; color:#fcd34d; }
+body.dark .earnings-payment--received { background:#14301f; color:#86efac; }

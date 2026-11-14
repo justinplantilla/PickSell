@@ -5,21 +5,29 @@ namespace App\Pickrush\Http\Controllers\Hq;
 use App\Pickrush\Http\Controllers\PortalController;
 use App\Pickrush\Models\AuditLog;
 use App\Pickrush\Models\CodRemittance;
+use App\Pickrush\Models\CompanySettlement;
 use App\Pickrush\Models\HubRemittance;
 use App\Pickrush\Services\Hq\Finance;
 use App\Pickrush\Services\Hq\NetworkMetrics;
+use App\Pickrush\Services\Hq\PicksellSettlement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 /** Station remittances to confirm, cash outstanding, variances, revenue and what is owed to shippers. */
 class FinanceController extends PortalController
 {
-    public function index(Request $request, Finance $finance, NetworkMetrics $metrics)
+    public function index(Request $request, Finance $finance, NetworkMetrics $metrics, PicksellSettlement $picksell)
     {
         $period = array_key_exists($request->query('period'), DashboardController::PERIODS) ? $request->query('period') : 'month';
         [$from, $to] = DashboardController::range($period);
+        $companyId = (int) $this->staff()->company_id;
 
         return view('pickrush.hq.finance', [
+            // What the company owes PickSell, its deadline, and its settlements (newest first).
+            'owed' => $picksell->owed($companyId),
+            'owedDeadline' => $picksell->deadline($companyId),
+            'settlementDisputes' => CompanySettlement::with('topUps')->where('status', 'disputed')->whereNull('settles_id')->latest('confirmed_at')->orderByDesc('id')->get(),
+            'settlements' => CompanySettlement::latest()->orderByDesc('id')->limit(15)->get(),
             'period' => $period,
             'periods' => DashboardController::PERIODS,
             // Newest first; a contested remittance counts from when the station contested it.

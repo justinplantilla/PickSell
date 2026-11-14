@@ -94,6 +94,7 @@
     <div class="card-header">
         <div>
             <span class="card-title" id="money-heading">Money by company</span>
+            <p class="oversight-description"><a href="{{ route('admin.logistics.settlements') }}" class="btn btn-outline btn-sm">Settlements from companies</a></p>
             <p class="oversight-description">Delivered PickSell parcels and their delivery-fee split, as saved at checkout. Claims are charged for parcels a company lost or damaged; net share is what the company is owed after them. COD collected is cash riders took on delivery; riders keep their pay out of it, and confirmed is what the company's HQ has confirmed from its stations.</p>
         </div>
         <nav class="oversight-tabs" aria-label="Period">

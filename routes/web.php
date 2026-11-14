@@ -14,6 +14,7 @@ use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\AdminLogisticsController;
 use App\Http\Controllers\AdminLogisticsCompanyController;
 use App\Http\Controllers\AdminLogisticsIssueController;
+use App\Http\Controllers\AdminLogisticsSettlementController;
 use App\Http\Controllers\DeliveryProblemController;
 use App\Http\Controllers\AdminOffPlatformController;
 use App\Http\Controllers\OffPlatformReportController;
@@ -363,6 +364,9 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
         Route::get('/issues', [AdminLogisticsIssueController::class, 'index'])->name('issues');
         Route::get('/issues/{issue}', [AdminLogisticsIssueController::class, 'show'])->name('issues.show');
         Route::get('/issues/{issue}/evidence', [AdminLogisticsIssueController::class, 'evidence'])->name('issues.evidence');
+        Route::get('/settlements', [AdminLogisticsSettlementController::class, 'index'])->name('settlements');
+        Route::get('/settlements/{settlement}/slip', [AdminLogisticsSettlementController::class, 'slip'])->name('settlements.slip');
+        Route::get('/settlements/{settlement}/evidence', [AdminLogisticsSettlementController::class, 'evidence'])->name('settlements.evidence');
     });
     Route::middleware($can(Permission::SELLER_COMPLIANCE_VIEW))->prefix('/off-platform')->name('admin.off-platform')->group(function () {
         Route::get('/', [AdminOffPlatformController::class, 'index']);
@@ -378,6 +382,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
         Route::patch('/issues/{issue}/escalate', [AdminLogisticsIssueController::class, 'escalate'])->name('issues.escalate');
         Route::patch('/issues/{issue}/resolve', [AdminLogisticsIssueController::class, 'resolve'])->name('issues.resolve');
         Route::patch('/claims/{claim}/waive', [AdminLogisticsIssueController::class, 'waive'])->name('claims.waive');
+        Route::patch('/settlements/{settlement}/review', [AdminLogisticsSettlementController::class, 'review'])->name('settlements.review');
     });
     Route::middleware($can(Permission::LOGISTICS_MANAGE))->prefix('/logistics/companies/{company}')->name('admin.logistics.companies.')->group(function () {
         Route::patch('/approve', [AdminLogisticsCompanyController::class, 'approve'])->name('approve');
