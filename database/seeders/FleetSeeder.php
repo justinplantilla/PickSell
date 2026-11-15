@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\DB;
  *
  *   php artisan db:seed --class=FleetSeeder
  *
- * Seeded drivers have no license photos; the hub manager uploads them under Trucks & drivers.
+ * Seeded drivers have no license photos and trucks no OR/CR photos; the hub manager uploads them
+ * under Trucks & drivers.
  * Safe to run again: a hub that already has a truck or a driver is left as it is.
  */
 class FleetSeeder extends Seeder
@@ -62,6 +63,13 @@ class FleetSeeder extends Seeder
                         'vehicle_type' => 'truck',
                         'registered_owner' => $companies[$hub->company_id] ?? null,
                         'capacity_parcels' => $hub->isProvince() ? 1500 : 500,
+                        // Sample LTO papers; the OR runs a year from now.
+                        'cr_no' => sprintf('%09d', 310000000 + $hub->id * 10 + $i),
+                        'mv_file_no' => sprintf('0401-%011d', 22000000000 + $hub->id * 10 + $i),
+                        'engine_no' => sprintf('4HK1-%06d', 600000 + $hub->id * 10 + $i),
+                        'chassis_no' => sprintf('JALFRR90L%08d', 8000000 + $hub->id * 10 + $i),
+                        'or_no' => sprintf('%09d', 810000000 + $hub->id * 10 + $i),
+                        'registration_expiry' => today()->addYear()->endOfMonth()->toDateString(),
                         'default_driver_id' => $driver->id,
                         'is_active' => true,
                     ]);

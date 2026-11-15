@@ -6,7 +6,9 @@ use App\Pickrush\Bridge\PicksellBridge;
 use App\Pickrush\Models\AuditLog;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\RiderDocument;
+use App\Pickrush\Models\RiderDocumentUpdate;
 use App\Pickrush\Models\Zone;
+use App\Pickrush\Services\Rider\DocumentRenewal;
 use App\Pickrush\Services\Station\CashHandling;
 use App\Pickrush\Services\Station\RiderAvailability;
 use App\Pickrush\Services\Station\RiderOnboarding;
@@ -27,7 +29,8 @@ class RiderController extends StationController
         $statuses = $status === 'pending' ? ['pending', 'under_review'] : [$status];
 
         return view('pickrush.station.riders', [
-            'riders' => Rider::with('zone')->withExists('tokens')->when($status, fn ($q) => $q->whereIn('status', $statuses))
+            'riders' => Rider::with('zone', 'documents')->withExists('tokens')
+                ->withCount(['documentUpdates as updates_waiting' => fn ($q) => $q->where('status', 'pending')])->when($status, fn ($q) => $q->whereIn('status', $statuses))
                 ->orderByRaw("case when status in ('pending', 'under_review') then 0 else 1 end")
                 ->orderBy('applied_at')->orderBy('full_name')->get(),
             'status' => $status,
@@ -37,15 +40,20 @@ class RiderController extends StationController
 
     public function show(Rider $rider, RiderAvailability $availability, CashHandling $cash)
     {
-        $rider->load('zone', 'documents', 'creator', 'approver');
+        $rider->load('zone', 'documents', 'documentHistory', 'creator', 'approver');
+        // Signs the path only: staff browse over https but the tunnel reaches Picksell over http.
+        $link = fn (RiderDocument $doc) => URL::temporarySignedRoute('pickrush.station.riders.document', now()->addMinutes(10), ['rider' => $rider, 'document' => $doc], absolute: false);
+        $pending = $rider->documentUpdates()->where('status', 'pending')->oldest('id')->get();
 
         return view('pickrush.station.rider', [
             'rider' => $rider,
             'required' => RiderOnboarding::requiredDocuments($rider),
-            'documentLinks' => $rider->documents->mapWithKeys(fn (RiderDocument $doc) => [
-                // Signs the path only: staff browse over https but the tunnel reaches Picksell over http.
-                $doc->id => URL::temporarySignedRoute('pickrush.station.riders.document', now()->addMinutes(10), ['rider' => $rider, 'document' => $doc], absolute: false),
-            ]),
+            'documentLinks' => $rider->documents->concat($rider->documentHistory)->mapWithKeys(fn (RiderDocument $doc) => [$doc->id => $link($doc)]),
+            'pendingUpdates' => $pending,
+            'updateLinks' => $pending->mapWithKeys(fn (RiderDocumentUpdate $update) => [$update->id => collect($update->files)->keys()
+                ->map(fn (int $i) => URL::temporarySignedRoute('pickrush.station.riders.update-file', now()->addMinutes(10),
+                    ['rider' => $rider, 'update' => $update->id, 'index' => $i], absolute: false))->all()]),
+            'expired' => $rider->expiredDocument(),
             'open' => $rider->openAssignments()->with('parcel')->get(),
             'cashExpected' => $cash->expectedFrom($rider),
             'openCount' => $availability->openCount($rider),
@@ -75,6 +83,38 @@ class RiderController extends StationController
         AuditLog::record($document, 'viewed');
 
         return Storage::disk('local')->response($document->file_path);
+    }
+
+    /** A file of a renewal the rider sent and the station has not decided yet. */
+    public function updateFile(Rider $rider, int $update, int $index)
+    {
+        $update = $rider->documentUpdates()->findOrFail($update);
+        $path = $update->files[$index]['path'] ?? abort(404);
+        AuditLog::record($update, 'viewed');
+
+        return Storage::disk('local')->response($path);
+    }
+
+    /** Approve a renewed license or OR/CR (it replaces the old one), or reject it with a reason. */
+    public function decideUpdate(Request $request, Rider $rider, int $update, DocumentRenewal $renewal)
+    {
+        $data = $request->validate([
+            'decision' => 'required|in:approve,reject',
+            'reason' => 'required_if:decision,reject|nullable|string|max:500',
+        ]);
+        $update = $rider->documentUpdates()->findOrFail($update);
+
+        return $data['decision'] === 'approve'
+            ? $this->attempt(fn () => $renewal->approve($update, $this->staff()), "{$update->label()} approved. It replaces the old one.")
+            : $this->attempt(fn () => $renewal->reject($update, $this->staff(), $data['reason']), "{$update->label()} rejected. The rider sees the reason in the app.");
+    }
+
+    /** The real expiry read off the OR/CR, for one the system gave an estimated date. */
+    public function orcrExpiry(Request $request, Rider $rider, DocumentRenewal $renewal)
+    {
+        $data = $request->validate(['expiry_date' => 'required|date']);
+
+        return $this->attempt(fn () => $renewal->setOrcrExpiry($rider, $this->staff(), $data['expiry_date']), 'OR/CR expiry saved.');
     }
 
     public function approve(Rider $rider)

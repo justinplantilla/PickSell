@@ -9,11 +9,20 @@ use App\Pickrush\Models\Rider;
 /** Whether a rider can take one more parcel, and if not, why. */
 class RiderAvailability
 {
-    /** @return string|null the reason the rider cannot take it, or null when they can */
-    public function blocker(Rider $rider, ?Parcel $parcel = null): ?string
+    /**
+     * @param  bool  $carriesCod  false for a pickup: the parcel's size still counts, its COD does not
+     * @return string|null the reason the rider cannot take it, or null when they can
+     */
+    public function blocker(Rider $rider, ?Parcel $parcel = null, bool $carriesCod = true): ?string
     {
+        if ($parcel && ($vehicle = $this->vehicleBlocker($rider, $parcel))) {
+            return $vehicle;
+        }
         if (! $rider->isActive()) {
             return "{$rider->full_name} is not active ({$rider->status}).";
+        }
+        if ($expired = $rider->expiredDocument()) {
+            return "{$rider->full_name}'s {$expired->label()} expired on {$expired->expiry_date->format('M d, Y')}. Approve a renewed one on their rider page first.";
         }
         if (! $rider->isSignedIn()) {
             return "{$rider->full_name} is logged out of the rider app.";
@@ -30,7 +39,7 @@ class RiderAvailability
         if ($this->openCount($rider) >= $rider->max_parcels) {
             return "{$rider->full_name} is at the daily load cap ({$rider->max_parcels} parcels).";
         }
-        if ($parcel && ! $parcel->is_return) {
+        if ($parcel && $carriesCod && ! $parcel->is_return) {
             $cod = $this->codInHand($rider) + $this->codAssigned($rider) + (float) $parcel->cod_amount;
             if ($cod > (float) $rider->cod_limit) {
                 return "{$rider->full_name} would carry ₱".number_format($cod, 2).' in COD, above the ₱'.number_format((float) $rider->cod_limit, 2).' limit.';
@@ -38,6 +47,17 @@ class RiderAvailability
         }
 
         return null;
+    }
+
+    /** The rider's vehicle is too small for the parcel's class. */
+    public function vehicleBlocker(Rider $rider, Parcel $parcel): ?string
+    {
+        if ($rider->canCarry($parcel->parcel_class)) {
+            return null;
+        }
+        $fits = Rider::vehiclesFor($parcel->parcel_class);
+
+        return "{$rider->full_name} rides a {$rider->vehicleName()}; {$parcel->parcel_class} parcels need a ".($fits ?: 'bigger vehicle').'.';
     }
 
     public function openCount(Rider $rider): int

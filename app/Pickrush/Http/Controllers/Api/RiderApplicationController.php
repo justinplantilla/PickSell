@@ -133,6 +133,8 @@ class RiderApplicationController extends Controller
             'license_back' => "required|{$image}",
             'orcr' => 'required|array|min:1|max:5',
             'orcr.*' => 'file|mimes:jpg,jpeg,png,heic,webp,pdf|max:8192',
+            // The vehicle's registration on the OR; a rider with an expired one gets no tasks.
+            'orcr_expiry' => 'required|date|after_or_equal:today',
         ];
     }
 

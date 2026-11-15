@@ -22,6 +22,8 @@ use Illuminate\Support\Str;
  * hub and dispatches it with a vehicle and driver; the receiving hub scans every parcel against
  * the list. The trip closes by itself once every listed parcel is scanned; closed early, the
  * unscanned ones become "missing". Unlisted parcels scanned off it are "extra".
+ * The receiving hub records when the truck arrived (its button, or the first parcel scanned off
+ * it); a trip not arrived by its due time is overdue.
  * Used by station hubs (to and from their province hub) and province hubs alike.
  */
 class ManifestService
@@ -121,7 +123,7 @@ class ManifestService
     /**
      * The trip leaves with one of the sending hub's registered trucks and drivers: every parcel on
      * it goes in transit to the receiving hub. A truck or driver still out on a trip that has not
-     * been received yet cannot take another.
+     * been received yet cannot take another. A truck without its OR/CR, or with an expired OR, stays.
      */
     public function dispatch(Manifest $manifest, Vehicle $vehicle, Driver $driver, Staff $staff): void
     {
@@ -144,7 +146,13 @@ class ManifestService
                 throw new OperationRefused("{$driver->full_name} is inactive.");
             }
             if ($driver->isLicenseExpired()) {
-                throw new OperationRefused("{$driver->full_name}'s license expired on {$driver->license_expiry->format('M d, Y')}. Update it under Trucks & drivers.");
+                throw new OperationRefused("{$driver->full_name}'s license expired on {$driver->license_expiry->format('M d, Y')}. Renew it under Trucks & drivers.");
+            }
+            if (! $vehicle->hasPapers()) {
+                throw new OperationRefused("{$vehicle->plate_no} has no OR/CR on file. Add its papers under Trucks & drivers.");
+            }
+            if ($vehicle->isRegistrationExpired()) {
+                throw new OperationRefused("{$vehicle->plate_no}'s registration (OR) expired on {$vehicle->registration_expiry->format('M d, Y')}. Renew it under Trucks & drivers.");
             }
             $out = Manifest::withoutGlobalScope('hub')->where('status', 'dispatched');
             if ((clone $out)->where('vehicle_id', $vehicle->id)->exists()) {
@@ -168,8 +176,24 @@ class ManifestService
                 'vehicle_id' => $vehicle->id, 'vehicle_plate' => $vehicle->plate_no,
                 'driver_id' => $driver->id, 'driver_name' => $driver->full_name,
                 'dispatched_by' => $staff->id, 'dispatched_at' => now(),
+                'due_at' => now()->addHours(Manifest::tripHours($manifest->fromHub, $manifest->toHub)),
             ]);
             $original->setRawAttributes($manifest->getAttributes(), true);
+        });
+    }
+
+    /** The receiving hub records the truck at its gate, which stops the trip from going overdue. */
+    public function truckArrived(Manifest $manifest, Staff $staff): void
+    {
+        DB::transaction(function () use ($manifest, $staff) {
+            $manifest = Manifest::withoutGlobalScope('hub')->whereKey($manifest->id)->lockForUpdate()->firstOrFail();
+            if ($manifest->status !== 'dispatched' || $manifest->to_hub_id !== $staff->hub_id) {
+                throw new OperationRefused('This trip is not arriving at your hub.');
+            }
+            if ($manifest->arrived_at) {
+                throw new OperationRefused('This truck was already marked arrived.');
+            }
+            $manifest->update(['arrived_at' => now(), 'arrived_by' => $staff->id]);
         });
     }
 
@@ -183,6 +207,9 @@ class ManifestService
             $manifest = Manifest::withoutGlobalScope('hub')->whereKey($manifest->id)->lockForUpdate()->firstOrFail();
             if (! in_array($manifest->status, ['dispatched', 'received'], true) || $manifest->to_hub_id !== $staff->hub_id) {
                 throw new OperationRefused('This trip is not arriving at your hub.');
+            }
+            if ($manifest->arrived_at === null) {
+                $manifest->update(['arrived_at' => now(), 'arrived_by' => $staff->id]);   // first scan off the truck
             }
             $parcel = Parcel::withoutGlobalScope(ParcelHubScope::class)->where('tracking_no', self::normalize($trackingNo))->first()
                 ?? throw new OperationRefused('Unknown tracking number.');

@@ -22,9 +22,11 @@
         <tbody>
         @forelse($riders as $rider)
             <tr>
-                <td><a href="{{ route('pickrush.station.riders.show', $rider) }}"><strong>{{ $rider->full_name }}</strong></a>@if($rider->on_probation) <span class="pr-badge">Probation</span>@endif</td>
+                <td><a href="{{ route('pickrush.station.riders.show', $rider) }}"><strong>{{ $rider->full_name }}</strong></a>@if($rider->on_probation) <span class="pr-badge">Probation</span>@endif
+                    @if($expiredDoc = $rider->expiredDocument())<span class="pr-badge pr-badge-bad">{{ $expiredDoc->label() }} expired</span>@endif
+                    @if($rider->updates_waiting)<span class="pr-badge pr-badge-warn">Document to review</span>@endif</td>
                 <td>{{ $rider->mobile_no }}</td>
-                <td>{{ ucfirst((string) $rider->vehicle_type) }} {{ $rider->plate_no }}</td>
+                <td>{{ $rider->vehicleName() }} {{ $rider->plate_no }}</td>
                 <td>{{ $rider->zone?->name ?? '—' }}</td>
                 <td>@include('pickrush.station.partials.rider-status', ['status' => $rider->status])@if($rider->isApplication() && $rider->applied_at)<div class="pr-muted">applied {{ $rider->applied_at->diffForHumans() }}</div>@endif</td>
                 <td>{{ $rider->isOnShift() ? 'On shift' : 'Off duty' }}@if($rider->isActive() && ! $rider->isSignedIn())<div class="pr-muted">Logged out</div>@endif</td>

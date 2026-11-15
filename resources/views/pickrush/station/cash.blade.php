@@ -6,7 +6,7 @@
 <div class="pr-page-head">
     <div>
         <h1>Cash (COD)</h1>
-        <p>Every parcel is cash on delivery. At the end of the shift each rider keeps their pay out of the COD they collected and hands over the rest; confirm the system total. The rider then confirms your count in the rider app.</p>
+        <p>Every parcel is cash on delivery. At the end of the shift each rider hands over all the COD they collected (their pay goes to their wallet and weekly payslip); confirm the system total. The rider then confirms your count in the rider app.</p>
     </div>
 </div>
 
@@ -130,6 +130,9 @@
                                 <form method="POST" action="{{ route('pickrush.station.cash.resolve', $r) }}" class="pr-inline">
                                     @csrf
                                     <input name="resolution" class="pr-input" placeholder="What happened, what was agreed" required minlength="10" aria-label="Resolution" style="width:240px">
+                                    @if((float) $r->variance < 0)
+                                        <label class="pr-check"><input type="checkbox" name="charge_rider" value="1"> Deduct from rider's pay</label>
+                                    @endif
                                     <button type="submit" class="pr-btn pr-btn-outline pr-btn-sm">Resolve</button>
                                 </form>
                             @else
@@ -148,13 +151,12 @@
     <h2>Riders holding cash</h2>
     <div class="pr-table-wrap">
         <table class="pr-table">
-            <thead><tr><th>Rider</th><th class="pr-num">COD collected</th><th class="pr-num">Rider pay kept</th><th class="pr-num">To remit</th>@if($isManager)<th>Confirm</th>@endif</tr></thead>
+            <thead><tr><th>Rider</th><th class="pr-num">COD collected</th><th class="pr-num">To remit</th>@if($isManager)<th>Confirm</th>@endif</tr></thead>
             <tbody>
             @forelse($riders as $row)
                 <tr>
                     <td>{{ $row->rider->full_name }}</td>
                     <td class="pr-num">₱{{ number_format($row->cod, 2) }}</td>
-                    <td class="pr-num">@if($row->pay > 0)−₱{{ number_format($row->pay, 2) }}@else — @endif</td>
                     <td class="pr-num"><strong>₱{{ number_format($row->expected, 2) }}</strong></td>
                     @if($isManager)
                         <td>
@@ -178,7 +180,7 @@
                     @endif
                 </tr>
             @empty
-                <tr><td colspan="5" class="pr-muted">No rider is holding cash.</td></tr>
+                <tr><td colspan="4" class="pr-muted">No rider is holding cash.</td></tr>
             @endforelse
             </tbody>
         </table>

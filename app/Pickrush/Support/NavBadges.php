@@ -8,6 +8,8 @@ use App\Pickrush\Models\Manifest;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\ParcelException;
 use App\Pickrush\Models\Rider;
+use App\Pickrush\Models\RiderDeduction;
+use App\Pickrush\Models\RiderDocumentUpdate;
 use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\Station\DispatchService;
 
@@ -33,8 +35,12 @@ final class NavBadges
             'pickrush.station.dispatch' => self::dispatchQueue($hub->id),
             'pickrush.station.failed' => Parcel::where('current_hub_id', $hub->id)->where('current_status', ParcelStatus::DeliveryFailed)->count(),
             'pickrush.station.trips.index' => $loading(),
-            'pickrush.station.riders.index' => Rider::where('station_hub_id', $hub->id)->whereIn('status', ['pending', 'under_review'])->count(),
+            // Applications and renewed documents waiting for the hub manager.
+            'pickrush.station.riders.index' => Rider::where('station_hub_id', $hub->id)->whereIn('status', ['pending', 'under_review'])->count()
+                + RiderDocumentUpdate::where('status', 'pending')->whereIn('rider_id', Rider::where('station_hub_id', $hub->id)->select('id'))->count(),
             'pickrush.station.cash' => CodRemittance::where('station_hub_id', $hub->id)->where('status', 'disputed')->count(),
+            'pickrush.station.payroll' => RiderDeduction::where('status', RiderDeduction::DISPUTED)
+                ->whereIn('rider_id', Rider::where('station_hub_id', $hub->id)->select('id'))->count(),
             'pickrush.exceptions.index' => $exceptions(),
         ] : [
             'pickrush.province.inbound' => $arriving(),

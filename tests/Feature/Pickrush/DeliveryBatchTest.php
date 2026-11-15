@@ -15,6 +15,7 @@ use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\ParcelRegistrar;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -175,8 +176,8 @@ class DeliveryBatchTest extends TestCase
             ->assertOk()
             ->assertJsonPath('batch.stops.1.status', 'failed')
             ->assertJsonPath('batch.to_return_count', 1)
-            // The rider keeps their pay for Ana's parcel out of her ₱500.
-            ->assertJsonPath('batch.to_remit', fn ($v) => (float) $v === 500.0 - (float) DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->sum('amount'))
+            // The rider hands over all of Ana's ₱500; their pay goes to the payslip.
+            ->assertJsonPath('batch.to_remit', fn ($v) => (float) $v === 500.0)
             ->assertJsonPath('batch.stage', 'dropped_off');
         $this->assertSame(ParcelStatus::DeliveryFailed, $ben->fresh()->current_status);
 
@@ -235,8 +236,8 @@ class DeliveryBatchTest extends TestCase
             ->assertJsonPath('batches.0.batch_no', $batch->batch_no)
             ->assertJsonPath('batches.0.parcels', 1)
             ->assertJsonPath('cod.in_hand', fn ($v) => (float) $v === 0.0)
-            ->assertJsonPath('cod.remitted_this_month', fn ($v) => (float) $v === 500.0 - (float) DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->sum('amount'))
-            ->assertJsonPath('cod.last_remittance.amount', fn ($v) => (float) $v === 500.0 - $rate);
+            ->assertJsonPath('cod.remitted_this_month', fn ($v) => (float) $v === 500.0)
+            ->assertJsonPath('cod.last_remittance.amount', fn ($v) => (float) $v === 500.0);
     }
 
     public function test_a_failed_parcel_cannot_be_returned_to_the_seller_until_the_rider_hands_it_back(): void
@@ -304,6 +305,38 @@ class DeliveryBatchTest extends TestCase
 
         $titles = collect([...$first->json('activity'), ...$second->json('activity')])->pluck('title');
         $this->assertCount(33, $titles->unique());   // nothing shown twice, nothing skipped
+    }
+
+    public function test_the_activity_history_filters_by_kind_result_and_dates(): void
+    {
+        $rider = $this->rider();
+        $ledger = app(\App\Pickrush\Services\ParcelLedger::class);
+        // Out for delivery a minute before the result, both on the same day.
+        $scan = function (string $buyer, ParcelStatus $result, Carbon $at) use ($ledger, $rider) {
+            $parcel = $this->readyParcel($buyer, 0);
+            $ledger->record($parcel, ParcelStatus::AssignedToRider, $this->tanauan, ['rider_id' => $rider->id, 'occurred_at' => $at->copy()->subMinutes(2)]);
+            $ledger->record($parcel, ParcelStatus::OutForDelivery, $this->tanauan, ['rider_id' => $rider->id, 'occurred_at' => $at->copy()->subMinute()]);
+            $ledger->record($parcel, $result, $this->tanauan, ['rider_id' => $rider->id, 'occurred_at' => $at]);
+        };
+        $scan('Old', ParcelStatus::Delivered, today()->subDays(10)->setTime(9, 0));
+        $scan('Week', ParcelStatus::DeliveryFailed, today()->subDays(3)->setTime(23, 30));
+        $scan('Today', ParcelStatus::Delivered, today()->setTime(8, 0));
+        $api = $this->api($rider);
+        $types = fn (string $query) => $api->getJson("/api/rider/activity?{$query}")->assertOk()->json('activity.*.type');
+        $out = 'out_for_delivery';
+
+        $this->assertSame(['delivered', $out, 'failed', $out, 'delivered', $out], $types('kind=all'));
+        $this->assertSame($types('kind=all'), $types(''), 'no kind means everything');
+        $this->assertSame(['delivered', 'delivered'], $types('kind=delivery&type=delivered'));
+        $this->assertSame([], $types('kind=pickup&type=delivered'), 'a type outside the kind finds nothing');
+
+        $from = today()->subDays(3)->toDateString();
+        $this->assertSame(['delivered', $out, 'failed', $out], $types("from={$from}&to=".today()->toDateString()));
+        $this->assertSame(['failed', $out], $types("from={$from}&to={$from}"), 'the to day counts until midnight');
+        $this->assertSame(['delivered', $out], $types('to='.today()->subDays(4)->toDateString()));
+
+        $api->getJson("/api/rider/activity?from={$from}&to=".today()->subDays(5)->toDateString())->assertStatus(422)->assertJsonValidationErrors('to');
+        $api->getJson('/api/rider/activity?type=lost')->assertStatus(422)->assertJsonValidationErrors('type');
     }
 
     public function test_declining_a_delivery_batch_puts_the_parcels_back_in_the_station_queue(): void

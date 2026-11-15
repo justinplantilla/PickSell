@@ -78,7 +78,8 @@ class DispatchService
             if ($type === 'delivery' && $parcel->attempt_count >= config('pickrush.policies.max_delivery_attempts')) {
                 throw new OperationRefused("{$parcel->tracking_no} has reached the delivery attempt limit; return it to the seller.");
             }
-            if ($blocker = $this->availability->blocker($rider, $type === 'delivery' ? $parcel : null)) {
+            // Every task checks the vehicle against the parcel; only a delivery adds its COD.
+            if ($blocker = $this->availability->blocker($rider, $parcel, carriesCod: $type === 'delivery')) {
                 throw new OperationRefused($blocker);
             }
 

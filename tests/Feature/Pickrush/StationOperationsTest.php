@@ -11,6 +11,7 @@ use App\Pickrush\Models\HubRemittance;
 use App\Pickrush\Models\Manifest;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\Rider;
+use App\Pickrush\Models\RiderDeduction;
 use App\Pickrush\Models\RiderToken;
 use App\Pickrush\Models\Staff;
 use App\Pickrush\Models\Zone;
@@ -252,6 +253,41 @@ class StationOperationsTest extends TestCase
         $this->expectRefusal(fn () => $dispatch->assign($parcel, $this->rider($this->sanJose), $this->sanJoseManager), 'attempt limit');
     }
 
+    public function test_the_vehicle_must_fit_the_parcel_class_and_the_station_suggests_one_that_does(): void
+    {
+        $moto = $this->rider($this->sanJose);
+        Zone::withoutGlobalScopes()->create(['station_hub_id' => $this->sanJose->id, 'name' => 'A', 'default_rider_id' => $moto->id])
+            ->barangayLinks()->create(['barangay_code' => '041005001']);
+        $parcel = $this->bringToSanJose($this->parcel());
+        $dispatch = app(DispatchService::class);
+        $suggest = fn () => app(ZoneSuggester::class)->suggest($parcel->fresh(), $this->sanJose);
+        $this->as($this->sanJoseManager);
+
+        $parcel->forceFill(['parcel_class' => 'BULKY'])->save();
+        $this->assertTrue($moto->is($suggest()['rider']), 'a motorcycle still carries BULKY');
+
+        $parcel->forceFill(['parcel_class' => 'EXTRA_BULKY'])->save();
+        $this->assertNull($suggest()['rider']);
+        $this->assertStringContainsString('No rider at San Jose Station has a vehicle for EXTRA_BULKY parcels', $suggest()['note']);
+        $this->expectRefusal(fn () => $dispatch->assign($parcel->fresh(), $moto, $this->sanJoseManager), 'rides a Motorcycle; EXTRA_BULKY parcels need a Tricycle or 4 Wheel');
+
+        $car = $this->rider($this->sanJose, ['vehicle_type' => 'four_wheel']);
+        $this->assertTrue($car->is($suggest()['rider']));
+        $this->assertStringContainsString('Station 4 Wheel rider', $suggest()['note']);
+        $car->update(['shift_status' => 'off_duty']);
+        $this->assertStringContainsString('Every rider whose vehicle fits EXTRA_BULKY is unavailable', $suggest()['note']);
+        $car->update(['shift_status' => 'on_shift']);
+        $this->as($this->sanJoseManager)->post($this->pickrushUrl('/station/dispatch'), ['parcel_ids' => [$parcel->id]])->assertSessionHasNoErrors();
+        $this->assertSame(1, $car->openAssignments()->count());
+
+        // Collecting it from the seller needs the same vehicle; its COD does not count on a pickup.
+        $pickup = $this->parcel(['cod_amount' => 50000]);
+        $pickup->forceFill(['parcel_class' => 'EXTRA_BULKY'])->save();
+        $this->as($this->dispatcher);
+        $this->expectRefusal(fn () => $dispatch->assign($pickup, $this->rider($this->tanauan), $this->dispatcher), 'rides a Motorcycle');
+        $dispatch->assign($pickup, $this->rider($this->tanauan, ['vehicle_type' => 'tricycle', 'cod_limit' => 1000]), $this->dispatcher);
+    }
+
     // Rider tasks -----------------------------------------------------------------------------
 
     public function test_delivery_needs_the_exact_cod_and_failed_attempts_need_a_reason(): void
@@ -281,7 +317,7 @@ class StationOperationsTest extends TestCase
 
     // Cash ------------------------------------------------------------------------------------
 
-    public function test_the_rider_keeps_their_pay_and_staff_confirm_the_rest(): void
+    public function test_the_rider_hands_over_all_the_cod_and_their_pay_waits_for_the_payslip(): void
     {
         $rider = $this->rider($this->sanJose);
         $this->as($this->sanJoseManager);
@@ -291,23 +327,23 @@ class StationOperationsTest extends TestCase
         app(RiderTaskService::class)->startDelivery($task);
         app(RiderTaskService::class)->deliver($task->fresh(), 1500, 'proof.jpg');
 
-        $this->assertSame(['cod' => 1500.0, 'pay' => 40.0, 'to_remit' => 1460.0], array_diff_key(app(CashHandling::class)->breakdown($rider), ['earning_ids' => 0]));
-        $this->as($this->sanJoseManager)->get($this->pickrushUrl('/station/cash'))->assertSeeInOrder(['₱1,500.00', '−₱40.00', 'Confirm ₱1,460.00 received']);
+        $this->assertSame(['cod' => 1500.0, 'pay' => 0.0, 'to_remit' => 1500.0], app(CashHandling::class)->breakdown($rider));
+        $this->as($this->sanJoseManager)->get($this->pickrushUrl('/station/cash'))->assertSeeInOrder(['₱1,500.00', 'Confirm ₱1,500.00 received']);
         $url = $this->pickrushUrl("/station/cash/riders/{$rider->id}");
-        $this->as($this->sanJoseManager)->post($url, ['expected_amount' => '1500.00'])->assertSessionHasErrors();
+        $this->as($this->sanJoseManager)->post($url, ['expected_amount' => '1460.00'])->assertSessionHasErrors();
         $this->assertSame(0, CodRemittance::count(), 'a total different from the one shown is not confirmed');
 
-        $this->as($this->sanJoseManager)->post($url, ['expected_amount' => '1460.00'])->assertSessionHasNoErrors();
+        $this->as($this->sanJoseManager)->post($url, ['expected_amount' => '1500.00'])->assertSessionHasNoErrors();
         $remittance = CodRemittance::sole();
-        $this->assertSame([CodRemittance::AWAITING_RIDER, '1460.00', '40.00', '1460.00', '0.00'],
+        $this->assertSame([CodRemittance::AWAITING_RIDER, '1500.00', '0.00', '1500.00', '0.00'],
             [$remittance->status, $remittance->expected_amount, $remittance->rider_pay_kept, $remittance->received_amount, $remittance->variance]);
-        $this->assertSame(0, DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->whereNull('settled_at')->count(), 'the pay is settled once');
+        $this->assertSame(1, DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->whereNull('settled_at')->count(), 'the pay waits for the payslip');
         $this->assertSame(0.0, app(CashHandling::class)->stationCashOnHand($this->sanJose), 'not available to remit until the rider confirms');
         $this->assertDatabaseHas('pr_rider_notifications', ['rider_id' => $rider->id, 'type' => 'cash_count']);
 
         app(CashHandling::class)->confirmCount($remittance, $rider);
         $this->assertSame('reconciled', $remittance->fresh()->status);
-        $this->assertSame(1460.0, app(CashHandling::class)->stationCashOnHand($this->sanJose));
+        $this->assertSame(1500.0, app(CashHandling::class)->stationCashOnHand($this->sanJose));
     }
 
     public function test_a_rider_who_rejects_the_count_gets_the_cash_counted_again(): void
@@ -322,9 +358,9 @@ class StationOperationsTest extends TestCase
         app(RiderTaskService::class)->deliver($task->fresh(), 1500, 'proof.jpg');
 
         // Staff record ₱500 less than the rider handed over.
-        $count = app(CashHandling::class)->recordRiderRemittance($rider, 960, $this->sanJoseManager);
+        $count = app(CashHandling::class)->recordRiderRemittance($rider, 1000, $this->sanJoseManager);
         $this->assertSame(0.0, app(CashHandling::class)->expectedFrom($rider));
-        $this->expectRefusal(fn () => app(CashHandling::class)->recordRiderRemittance($rider, 1460, $this->sanJoseManager), 'has not confirmed the last count');
+        $this->expectRefusal(fn () => app(CashHandling::class)->recordRiderRemittance($rider, 1500, $this->sanJoseManager), 'has not confirmed the last count');
         $next = $this->bringToSanJose($this->parcel());
         $this->expectRefusal(fn () => app(DispatchService::class)->assign($next, $rider, $this->sanJoseManager), 'has not confirmed the station\'s count');
 
@@ -334,29 +370,29 @@ class StationOperationsTest extends TestCase
         $app = $this->withHeaders(['Authorization' => 'Bearer '.RiderToken::issue($rider), 'Accept' => 'application/json']);
         $app->getJson('/api/rider/earnings')->assertOk()
             ->assertJsonPath('cod.pending_count.id', $count->id)
-            ->assertJsonPath('cod.pending_count.counted', 960)
+            ->assertJsonPath('cod.pending_count.counted', 1000)
             ->assertJsonPath('cod.pending_count.difference', -500);
         $app->postJson("/api/rider/cash-counts/{$count->id}/reject")->assertUnprocessable()->assertJsonValidationErrors('reason');
-        $app->postJson("/api/rider/cash-counts/{$count->id}/reject", ['reason' => 'I handed over ₱1,460, not ₱960'])->assertOk();
+        $app->postJson("/api/rider/cash-counts/{$count->id}/reject", ['reason' => 'I handed over ₱1,500, not ₱1,000'])->assertOk();
         $app->postJson("/api/rider/cash-counts/{$count->id}/confirm")->assertUnprocessable()->assertJsonPath('message', 'You already answered this count.');
 
         // The count is void: the cash is with the rider again, the pay unsettled, and HQ sees it.
-        $this->assertSame([CodRemittance::REJECTED, 'I handed over ₱1,460, not ₱960'], [$count->fresh()->status, $count->fresh()->rider_note]);
-        $this->assertSame(1460.0, app(CashHandling::class)->expectedFrom($rider));
+        $this->assertSame([CodRemittance::REJECTED, 'I handed over ₱1,500, not ₱1,000'], [$count->fresh()->status, $count->fresh()->rider_note]);
+        $this->assertSame(1500.0, app(CashHandling::class)->expectedFrom($rider));
         $this->assertSame(1, DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->whereNull('settled_at')->count());
-        $this->as($this->sanJoseManager)->get($this->pickrushUrl('/station/cash'))->assertSee('Counts riders rejected')->assertSee('I handed over ₱1,460, not ₱960');
+        $this->as($this->sanJoseManager)->get($this->pickrushUrl('/station/cash'))->assertSee('Counts riders rejected')->assertSee('I handed over ₱1,500, not ₱1,000');
         $this->as($this->staff(StaffRole::Finance))->get($this->pickrushUrl('/hq/alerts'))->assertSee('Cash counts riders rejected');
 
         // Counted again together: confirmed and available to remit.
-        $recount = app(CashHandling::class)->recordRiderRemittance($rider, 1460, $this->sanJoseManager);
+        $recount = app(CashHandling::class)->recordRiderRemittance($rider, 1500, $this->sanJoseManager);
         $this->as($this->sanJoseManager)->get($this->pickrushUrl('/station/cash'))->assertDontSee('Counts riders rejected');
         $this->as($this->staff(StaffRole::Finance))->get($this->pickrushUrl('/hq/alerts'))->assertSee('· counted again')->assertDontSee('not counted again yet');   // HQ keeps the history
         $app->postJson("/api/rider/cash-counts/{$recount->id}/confirm")->assertOk()->assertJsonPath('status', 'reconciled');
-        $this->assertSame(1460.0, app(CashHandling::class)->stationCashOnHand($this->sanJose));
+        $this->assertSame(1500.0, app(CashHandling::class)->stationCashOnHand($this->sanJose));
         app(DispatchService::class)->assign($next->fresh(), $rider, $this->sanJoseManager);
     }
 
-    public function test_only_the_pay_for_the_deliveries_being_remitted_is_kept(): void
+    public function test_no_pay_is_kept_from_the_cash(): void
     {
         $rider = $this->rider($this->sanJose);
         $this->as($this->sanJoseManager);
@@ -372,10 +408,10 @@ class StationOperationsTest extends TestCase
         app(RiderTaskService::class)->startDelivery($task);
         app(RiderTaskService::class)->deliver($task->fresh(), 500, 'proof.jpg');
 
-        $this->assertSame(['cod' => 500.0, 'pay' => 15.0, 'to_remit' => 485.0], array_diff_key(app(CashHandling::class)->breakdown($rider), ['earning_ids' => 0]),
-            'the ₱240 of old pickup pay is not taken from this cash');
+        $this->assertSame(['cod' => 500.0, 'pay' => 0.0, 'to_remit' => 500.0], app(CashHandling::class)->breakdown($rider),
+            'neither the delivery pay nor the old pickup pay is taken from this cash');
         app(CashHandling::class)->recordRiderRemittance($rider, null, $this->sanJoseManager);
-        $this->assertSame(16, DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->where('kind', 'pickup')->whereNull('settled_at')->count());
+        $this->assertSame(17, DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->whereNull('settled_at')->count(), 'all of it waits for the payslip');
     }
 
     public function test_cash_remittance_variance_blocks_dispatch_until_resolved_then_goes_to_hq(): void
@@ -388,7 +424,7 @@ class StationOperationsTest extends TestCase
         app(RiderTaskService::class)->deliver($task->fresh(), 1500, 'proof.jpg');
 
         $expected = app(CashHandling::class)->expectedFrom($rider);
-        $this->assertLessThan(1500.0, $expected, 'the rider keeps their pay');
+        $this->assertSame(1500.0, $expected, 'the rider hands over all of it');
         $this->as($this->sanJoseManager)->post($this->pickrushUrl("/station/cash/riders/{$rider->id}"), ["received_amount" => $expected - 100])->assertRedirect()->assertSessionHasNoErrors();
         $remittance = CodRemittance::sole();
         app(CashHandling::class)->confirmCount($remittance, $rider);
@@ -409,6 +445,37 @@ class StationOperationsTest extends TestCase
             ->assertSessionHasNoErrors();
         $this->assertSame(0.0, app(CashHandling::class)->stationCashOnHand($this->sanJose));
         $this->assertNotNull(CodRemittance::withoutGlobalScopes()->sole()->hub_remittance_id, 'the rider cash is now part of the remittance to HQ');
+    }
+
+    public function test_a_shortage_the_rider_owes_becomes_a_deduction_on_their_payslip(): void
+    {
+        $rider = $this->rider($this->sanJose);
+        $this->as($this->sanJoseManager);
+        $cash = app(CashHandling::class);
+        $count = function (float $received) use ($rider, $cash) {
+            $parcel = $this->bringToSanJose($this->parcel(['cod_amount' => 500]));
+            $task = app(DispatchService::class)->assign($parcel, $rider, $this->sanJoseManager);
+            app(RiderTaskService::class)->startDelivery($task);
+            app(RiderTaskService::class)->deliver($task->fresh(), 500, 'proof.jpg');
+            $remittance = $cash->recordRiderRemittance($rider, $received, $this->sanJoseManager);
+            $cash->confirmCount($remittance, $rider);
+
+            return $remittance->fresh();
+        };
+
+        $over = $count(520);
+        $this->expectRefusal(fn () => $cash->resolve($over, $this->sanJoseManager, 'Extra ₱20 found in the pouch', chargeRider: true), 'Only a shortage');
+        $cash->resolve($over, $this->sanJoseManager, 'Extra ₱20 found in the pouch');
+        $this->assertSame(0, RiderDeduction::count());
+
+        $short = $count(470);
+        $this->as($this->sanJoseManager)->post($this->pickrushUrl("/station/cash/remittances/{$short->id}/resolve"), ['resolution' => 'Rider gave wrong change', 'charge_rider' => '1'])
+            ->assertSessionHasNoErrors();
+        $deduction = RiderDeduction::sole();
+        $this->assertSame([$rider->id, 'shortage', '30.00', RiderDeduction::ACTIVE, $short->id, null],
+            [$deduction->rider_id, $deduction->kind, $deduction->amount, $deduction->status, $deduction->cod_remittance_id, $deduction->payslip_id]);
+        $this->assertSame('reconciled', $short->fresh()->status);
+        $this->assertDatabaseHas('pr_rider_notifications', ['rider_id' => $rider->id, 'type' => 'deduction']);
     }
 
     public function test_a_deposit_to_hq_needs_its_slip_and_a_reference_used_only_once(): void

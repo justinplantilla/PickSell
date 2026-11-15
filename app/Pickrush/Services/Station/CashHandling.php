@@ -8,6 +8,7 @@ use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\HubRemittance;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\RiderBatch;
+use App\Pickrush\Models\RiderDeduction;
 use App\Pickrush\Models\RiderNotification;
 use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\OperationRefused;
@@ -18,11 +19,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * The cash chain. The expected amount is always a system total, never typed in: the COD delivered
- * and not yet remitted, less the rider's pay for those deliveries, which they keep out of the
- * cash. The remittance marks that pay settled; pickup and return pay is not taken from COD. Staff normally just confirm the total; a different
- * count is typed only when the cash does not match. A difference between expected and counted stays "disputed" and blocks
- * the rider's next dispatch until the hub manager resolves it. Large counts need a second person.
+ * The cash chain. The expected amount is always a system total, never typed in: all the COD
+ * delivered and not yet remitted. Riders hand over all of it; their pay goes to their wallet and
+ * weekly payslip instead. Staff normally just confirm the total; a different count is typed only
+ * when the cash does not match. A difference between expected and counted stays "disputed" and
+ * blocks the rider's next dispatch until the hub manager resolves it; a shortage the rider owes
+ * becomes a deduction on their payslip. Large counts need a second person.
  *
  * Every hand-over has a second party. The staff count waits for the rider to confirm it in the rider
  * app; a rider who rejects it voids the count and the cash is counted again. The station's deposit
@@ -32,40 +34,23 @@ class CashHandling
 {
     public function __construct(private RiderAvailability $availability, private RiderBatches $batches) {}
 
-    /** What the rider hands over now: COD in hand less the pay they keep. */
+    /** What the rider hands over now: all the COD in hand. */
     public function expectedFrom(Rider $rider): float
     {
         return $this->breakdown($rider)['to_remit'];
     }
 
     /**
-     * COD in hand, the rider pay kept from it, and what is left to hand over. Only the pay for the
-     * deliveries and returns whose cash is being handed over (the buyer's COD, the seller's return
-     * fee) is kept (pickups bring in no cash, so their pay is not taken from it), and never more than that cash.
+     * COD in hand and what is to hand over: all of it. Rider pay is no longer kept out of the cash
+     * (pay 0 is kept in the shape for the screens that still show it).
      *
-     * @return array{cod: float, pay: float, to_remit: float, earning_ids: array<int, int>}
+     * @return array{cod: float, pay: float, to_remit: float}
      */
-    public function breakdown(Rider $rider, bool $lock = false): array
+    public function breakdown(Rider $rider): array
     {
         $cod = round($this->availability->codInHand($rider), 2);
-        $deliveries = Assignment::where('rider_id', $rider->id)->whereIn('type', ['delivery', 'return'])->where('status', 'completed')
-            ->whereNull('cod_remittance_id')->select('id');
-        $earnings = DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->whereIn('kind', ['delivery', 'return'])->whereNull('settled_at')
-            ->whereIn('assignment_id', $deliveries)
-            ->orderBy('earned_at')->orderBy('id')->when($lock, fn ($q) => $q->lockForUpdate())->get(['id', 'amount']);
 
-        $pay = 0.0;
-        $ids = [];
-        foreach ($earnings as $earning) {
-            if ($pay + (float) $earning->amount > $cod + 0.001) {
-                break;
-            }
-            $pay += (float) $earning->amount;
-            $ids[] = $earning->id;
-        }
-        $pay = round($pay, 2);
-
-        return ['cod' => $cod, 'pay' => $pay, 'to_remit' => round($cod - $pay, 2), 'earning_ids' => $ids];
+        return ['cod' => $cod, 'pay' => 0.0, 'to_remit' => $cod];
     }
 
     /**
@@ -84,8 +69,7 @@ class CashHandling
             }
             $tasks = Assignment::where('rider_id', $rider->id)->whereIn('type', ['delivery', 'return'])->where('status', 'completed')
                 ->whereNull('cod_remittance_id')->lockForUpdate()->get();
-            $kept = $this->breakdown($rider, lock: true);
-            $expected = $kept['to_remit'];
+            $expected = $this->breakdown($rider)['to_remit'];
             if ($tasks->isEmpty()) {
                 throw new OperationRefused("{$rider->full_name} has no cash to remit.");
             }
@@ -104,7 +88,6 @@ class CashHandling
                 'station_hub_id' => $rider->station_hub_id,
                 'remit_date' => today(),
                 'expected_amount' => $expected,
-                'rider_pay_kept' => $kept['pay'],
                 'received_amount' => $received,
                 'variance' => $variance,
                 'status' => CodRemittance::AWAITING_RIDER,
@@ -113,7 +96,6 @@ class CashHandling
                 'note' => $note,
             ]);
             Assignment::whereIn('id', $tasks->pluck('id'))->update(['cod_remittance_id' => $remittance->id]);
-            DB::table('pr_rider_earnings')->whereIn('id', $kept['earning_ids'])->update(['cod_remittance_id' => $remittance->id, 'settled_at' => now()]);
 
             RiderNotification::send($rider, 'cash_count', 'Confirm the cash count',
                 "{$staff->full_name} counted ₱".number_format($received, 2).' from you'.($variance == 0.0 ? '.' : ' (system total ₱'.number_format($expected, 2).').')
@@ -140,14 +122,13 @@ class CashHandling
 
     /**
      * The rider says the count is wrong. The count is void: the cash is back with the rider in the
-     * system, their pay is no longer settled, and the station counts again with them.
+     * system, and the station counts again with them.
      */
     public function rejectCount(CodRemittance $remittance, Rider $rider, string $reason): CodRemittance
     {
         return DB::transaction(function () use ($remittance, $rider, $reason) {
             $remittance = $this->awaitingFrom($remittance, $rider);
             Assignment::where('cod_remittance_id', $remittance->id)->update(['cod_remittance_id' => null]);
-            DB::table('pr_rider_earnings')->where('cod_remittance_id', $remittance->id)->update(['cod_remittance_id' => null, 'settled_at' => null]);
             $remittance->update(['status' => CodRemittance::REJECTED, 'rider_responded_at' => now(), 'rider_note' => $reason]);
 
             return $remittance;
@@ -167,8 +148,12 @@ class CashHandling
         return $remittance;
     }
 
-    /** The hub manager settles a shortage or overage (deducted, found, written off) with a note. */
-    public function resolve(CodRemittance $remittance, Staff $manager, string $resolution): void
+    /**
+     * The hub manager settles a shortage or overage (deducted, found, written off) with a note. A
+     * shortage the rider owes ($chargeRider) becomes a deduction on their payslip, which the
+     * rider can dispute.
+     */
+    public function resolve(CodRemittance $remittance, Staff $manager, string $resolution, bool $chargeRider = false): void
     {
         if ($remittance->status !== 'disputed') {
             throw new OperationRefused('This remittance has no open variance.');
@@ -176,7 +161,30 @@ class CashHandling
         if ($remittance->station_hub_id !== $manager->hub_id || $manager->role->value !== 'hub_manager') {
             throw new OperationRefused('Only this station\'s hub manager can resolve a variance.');
         }
-        $remittance->update(['status' => 'reconciled', 'resolved_by' => $manager->id, 'resolved_at' => now(), 'resolution_note' => $resolution]);
+        $short = round(-(float) $remittance->variance, 2);
+        if ($chargeRider && $short <= 0) {
+            throw new OperationRefused("Only a shortage can be deducted from the rider's pay.");
+        }
+
+        DB::transaction(function () use ($remittance, $manager, $resolution, $chargeRider, $short) {
+            $remittance->update(['status' => 'reconciled', 'resolved_by' => $manager->id, 'resolved_at' => now(), 'resolution_note' => $resolution]);
+            if (! $chargeRider) {
+                return;
+            }
+            RiderDeduction::create([
+                'rider_id' => $remittance->rider_id,
+                'kind' => 'shortage',
+                'amount' => $short,
+                'reason' => 'Cash short at the '.$remittance->remit_date->format('M j').' remittance: '.$resolution,
+                'cod_remittance_id' => $remittance->id,
+                'status' => RiderDeduction::ACTIVE,
+                'created_by' => $manager->id,
+                'occurred_at' => now(),
+            ]);
+            RiderNotification::send($remittance->rider, 'deduction', 'Cash short deducted from your pay',
+                '₱'.number_format($short, 2).' short at the '.$remittance->remit_date->format('M j').' remittance comes off this week\'s payslip. You can dispute it in Earnings.',
+                ['cod_remittance_id' => $remittance->id]);
+        });
     }
 
     /** Cash the station holds for the company: counted rider remittances not yet sent on. */

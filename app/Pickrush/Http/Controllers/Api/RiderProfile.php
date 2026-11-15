@@ -15,6 +15,7 @@ final class RiderProfile
     {
         $rider->loadMissing('station', 'documents', 'zone');
         $license = $rider->documents->firstWhere('doc_type', 'drivers_license');
+        $orcr = $rider->documents->firstWhere('doc_type', 'or_cr');
 
         return [
             'id' => $rider->id,
@@ -36,6 +37,7 @@ final class RiderProfile
             'plate_number' => $rider->plate_no,
             'license_no' => $rider->license_no,
             'license_expiry' => $license?->expiry_date?->toDateString(),
+            'orcr_expiry' => $orcr?->expiry_date?->toDateString(),
             'hub' => $rider->station ? self::hub($rider->station) : null,
             'company' => ($company = Company::find($rider->company_id)) ? self::company($company) : null,
             'on_probation' => $rider->on_probation,
@@ -57,7 +59,20 @@ final class RiderProfile
                 'label' => $doc->label(),
                 'side' => $doc->side,
                 'expiry' => $doc->expiry_date?->toDateString(),
+                'expiry_estimated' => $doc->expiry_estimated,   // set by the system; the station still checks it
             ])->values()->all(),
+            // The newest renewal of each document the rider sent, so the app shows "waiting" or why it was not accepted.
+            'document_updates' => $rider->documentUpdates()->whereIn('status', ['pending', 'approved', 'rejected'])->latest('id')->get()
+                ->unique('doc_type')->map(fn ($update) => [
+                    'type' => $update->doc_type,
+                    'label' => $update->label(),
+                    'status' => $update->status,
+                    'reason' => $update->reason,
+                    'expiry' => $update->expiry_date->toDateString(),
+                    'sent_at' => $update->created_at->toIso8601String(),
+                ])->values()->all(),
+            // A license or OR/CR in force that expired: the rider gets no new tasks until a renewal is approved.
+            'blocked_by_document' => $rider->expiredDocument()?->label(),
             'station_contact' => self::stationContact($rider),
         ];
     }

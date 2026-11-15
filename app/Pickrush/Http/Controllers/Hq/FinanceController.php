@@ -37,6 +37,7 @@ class FinanceController extends PortalController
             'recent' => HubRemittance::with('station')->where('status', '!=', 'submitted')->latest('confirmed_at')->limit(20)->get(),
             'cash' => $metrics->cashOutstanding(),
             'settlement' => $finance->settlement($from, $to),
+            'payroll' => $finance->payroll($from, $to),
             'variances' => CodRemittance::with('rider.station')->where('variance', '!=', 0)->whereBetween('remit_date', [$from->toDateString(), $to->toDateString()])->latest()->limit(50)->get(),
             'canConfirm' => in_array($this->staff()->role->value, ['super_admin', 'finance'], true),
         ]);

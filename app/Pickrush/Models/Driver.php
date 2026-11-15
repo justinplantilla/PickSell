@@ -38,6 +38,11 @@ class Driver extends Model
         return $this->belongsTo(Hub::class);
     }
 
+    public function renewals()
+    {
+        return $this->hasMany(FleetRenewal::class)->latest('id');
+    }
+
     public function isLicenseExpired(): bool
     {
         return $this->license_expiry->lt(today());

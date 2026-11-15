@@ -10,6 +10,8 @@ use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\Staff;
 use App\Pickrush\Services\Hq\HubCreator;
+use App\Pickrush\Services\Rider\DocumentRenewal;
+use App\Pickrush\Services\Station\RiderAvailability;
 use App\Pickrush\Services\Station\RiderOnboarding;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -72,6 +74,7 @@ class RiderApplicationTest extends TestCase
             'license_front' => UploadedFile::fake()->create('front.jpg', 120, 'image/jpeg'),
             'license_back' => UploadedFile::fake()->create('back.jpg', 120, 'image/jpeg'),
             'orcr' => [UploadedFile::fake()->create('orcr.pdf', 80, 'application/pdf')],
+            'orcr_expiry' => now()->addMonths(8)->toDateString(),
         ], $overrides);
     }
 
@@ -150,6 +153,16 @@ class RiderApplicationTest extends TestCase
         $this->assertSame('active', $rider->fresh()->status);
     }
 
+    public function test_a_4_wheel_rider_starts_with_the_bigger_load_cap(): void
+    {
+        $this->apply(['vehicle_type' => 'four_wheel'])->assertCreated();
+
+        $rider = Rider::withoutGlobalScopes()->sole();
+        $this->assertSame(['four_wheel', 40, '4 Wheel · NAB 1234'], [$rider->vehicle_type, $rider->max_parcels, $rider->vehicleLabel()]);
+        $this->actingAs($this->manager, 'pickrush')->get($this->pickrushUrl("/station/riders/{$rider->id}"))->assertOk()
+            ->assertSee('4 Wheel')->assertSee('40 on probation, 100 after');
+    }
+
     public function test_the_applicant_is_emailed_when_the_station_decides(): void
     {
         $this->apply()->assertCreated();
@@ -198,8 +211,8 @@ class RiderApplicationTest extends TestCase
     {
         $noManager = $this->station('041005000');
 
-        $this->apply(['vehicle_type' => 'bicycle', 'hub_id' => $noManager->id, 'birth_date' => now()->subYears(17)->toDateString(), 'license_expiry' => '2020-01-01'])
-            ->assertStatus(422)->assertJsonValidationErrors(['vehicle_type', 'hub_id', 'birth_date', 'license_expiry']);
+        $this->apply(['vehicle_type' => 'bicycle', 'hub_id' => $noManager->id, 'birth_date' => now()->subYears(17)->toDateString(), 'license_expiry' => '2020-01-01', 'orcr_expiry' => '2020-01-01'])
+            ->assertStatus(422)->assertJsonValidationErrors(['vehicle_type', 'hub_id', 'birth_date', 'license_expiry', 'orcr_expiry']);
 
         $this->apply()->assertCreated();
         $this->apply(['email' => 'second@example.com'])->assertStatus(422)->assertJsonValidationErrors('mobile');
@@ -263,6 +276,88 @@ class RiderApplicationTest extends TestCase
         foreach ($oldFiles as $path) {
             Storage::disk('local')->assertMissing($path);
         }
+    }
+
+    // Renewing documents ----------------------------------------------------------------------
+
+    /** An approved rider signed in to the app; returns a function that calls the API as them. */
+    private function approvedRider(): array
+    {
+        $this->apply()->assertCreated();
+        $rider = Rider::withoutGlobalScopes()->sole();
+        app(RiderOnboarding::class)->approve($rider, $this->manager);
+        $headers = ['Authorization' => 'Bearer '.$this->login(), 'Accept' => 'application/json'];
+        $call = function (string $method, string $path, array $data = []) use ($headers) {
+            $this->app->forgetInstance('pickrush.rider');
+
+            return $this->call($method, $this->api($path), $data, [], array_filter($data, fn ($v) => $v instanceof UploadedFile || is_array($v)),
+                $this->transformHeadersToServerVars($headers));
+        };
+
+        return [$rider->fresh(), $call];
+    }
+
+    public function test_a_rider_renews_a_document_and_an_expired_one_blocks_dispatch_until_the_manager_approves(): void
+    {
+        [$rider, $call] = $this->approvedRider();
+        $call('GET', 'me')->assertOk()->assertJsonPath('rider.orcr_expiry', now()->addMonths(8)->toDateString())
+            ->assertJsonPath('rider.document_updates', [])->assertJsonPath('rider.blocked_by_document', null);
+
+        // The license lapses: no new tasks.
+        $rider->documents()->where('doc_type', 'drivers_license')->update(['expiry_date' => today()->subDay()]);
+        $this->assertStringContainsString("Driver's license expired on", app(RiderAvailability::class)->blocker($rider->fresh()));
+        $call('GET', 'me')->assertJsonPath('rider.blocked_by_document', "Driver's license");
+
+        $license = fn (array $overrides = []) => $overrides + ['license_no' => 'n01-23-999999', 'expiry_date' => today()->addYears(3)->toDateString(),
+            'front' => UploadedFile::fake()->create('front.jpg', 100, 'image/jpeg'), 'back' => UploadedFile::fake()->create('back.jpg', 100, 'image/jpeg')];
+        $call('POST', 'documents/drivers_license', $license(['expiry_date' => today()->subDay()->toDateString()]))->assertStatus(422)->assertJsonValidationErrors('expiry_date');
+        $call('POST', 'documents/drivers_license', $license(['license_no' => 'TYPO']))->assertCreated();
+        $call('POST', 'documents/drivers_license', $license())->assertCreated()
+            ->assertJsonPath('rider.document_updates.0.status', 'pending')->assertJsonPath('rider.blocked_by_document', "Driver's license");
+        $this->assertSame(['replaced', 'pending'], $rider->documentUpdates()->orderBy('id')->pluck('status')->all(), 'the newer one replaces the one still waiting');
+
+        $update = $rider->documentUpdates()->where('status', 'pending')->sole();
+        $page = $this->pickrushUrl("/station/riders/{$rider->id}");
+        $decide = $this->pickrushUrl("/station/riders/{$rider->id}/document-updates/{$update->id}");
+        $this->actingAs($this->manager, 'pickrush')->get($page)->assertOk()->assertSee('Renewed documents to review')->assertSee('N01-23-999999');
+        $this->actingAs($this->manager, 'pickrush')->post($decide, ['decision' => 'reject'])->assertSessionHasErrors('reason');
+
+        $this->actingAs($this->manager, 'pickrush')->post($decide, ['decision' => 'approve'])->assertSessionHasNoErrors();
+        $rider->refresh();
+        $this->assertNull($rider->expiredDocument());
+        $this->assertSame('N01-23-999999', $rider->license_no);
+        $this->assertSame([today()->addYears(3)->toDateString()], $rider->documents()->where('doc_type', 'drivers_license')->get()->map(fn ($d) => $d->expiry_date->toDateString())->unique()->values()->all());
+        $this->assertSame(2, $rider->documentHistory()->count(), 'the old license (both sides) is kept');
+        $this->actingAs($this->manager, 'pickrush')->get($page)->assertOk()->assertSee('Replaced documents (2)')->assertDontSee('Renewed documents to review');
+        $this->actingAs($this->manager, 'pickrush')->post($decide, ['decision' => 'approve'])->assertSessionHasErrors('operation');
+        $this->assertDatabaseHas('pr_rider_notifications', ['rider_id' => $rider->id, 'type' => 'document_approved']);
+
+        // An OR/CR renewal the manager turns down: the rider sees why.
+        $call('POST', 'documents/or_cr', ['expiry_date' => today()->addYear()->toDateString(), 'files' => [UploadedFile::fake()->create('orcr.pdf', 80, 'application/pdf')]])->assertCreated();
+        $orcr = $rider->documentUpdates()->where('doc_type', 'or_cr')->sole();
+        $this->actingAs($this->manager, 'pickrush')->post($this->pickrushUrl("/station/riders/{$rider->id}/document-updates/{$orcr->id}"),
+            ['decision' => 'reject', 'reason' => 'The plate on the OR/CR is not yours.'])->assertSessionHasNoErrors();
+        $call('GET', 'me')->assertJsonFragment(['type' => 'or_cr', 'status' => 'rejected', 'reason' => 'The plate on the OR/CR is not yours.']);
+        $this->assertDatabaseHas('pr_rider_notifications', ['rider_id' => $rider->id, 'type' => 'document_rejected']);
+    }
+
+    public function test_riders_are_reminded_before_a_document_expires_unless_a_renewal_is_waiting(): void
+    {
+        [$rider, $call] = $this->approvedRider();
+        $rider->documents()->where('doc_type', 'drivers_license')->update(['expiry_date' => today()->addDays(7)]);
+        $rider->documents()->where('doc_type', 'or_cr')->update(['expiry_date' => today()->addDays(30), 'expiry_estimated' => true]);
+
+        $this->assertSame(2, app(DocumentRenewal::class)->remind(), 'one per document, not per license side');
+        $this->assertDatabaseHas('pr_rider_notifications', ['rider_id' => $rider->id, 'title' => "Your Driver's license expires in 7 days"]);
+
+        $call('POST', 'documents/or_cr', ['expiry_date' => today()->addYear()->toDateString(), 'files' => [UploadedFile::fake()->create('orcr.pdf', 80, 'application/pdf')]])->assertCreated();
+        $this->assertSame(1, app(DocumentRenewal::class)->remind(), 'the OR/CR is already renewed and waiting');
+
+        // The manager reads the real date off an estimated OR/CR.
+        $this->actingAs($this->manager, 'pickrush')->get($this->pickrushUrl("/station/riders/{$rider->id}"))->assertSee('Estimated')->assertSee('Set real expiry');
+        $this->actingAs($this->manager, 'pickrush')->patch($this->pickrushUrl("/station/riders/{$rider->id}/orcr-expiry"), ['expiry_date' => today()->addMonths(5)->toDateString()])
+            ->assertSessionHasNoErrors();
+        $this->assertSame([false], $rider->documents()->where('doc_type', 'or_cr')->pluck('expiry_estimated')->unique()->all());
     }
 
     // Choosing a company ----------------------------------------------------------------------

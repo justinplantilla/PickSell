@@ -76,9 +76,10 @@ class CashController extends StationController
 
     public function resolve(Request $request, CodRemittance $remittance)
     {
-        $data = $request->validate(['resolution' => 'required|string|min:10|max:1000']);
+        $data = $request->validate(['resolution' => 'required|string|min:10|max:1000', 'charge_rider' => 'nullable|boolean']);
 
-        return $this->attempt(fn () => $this->cash->resolve($remittance, $this->staff(), $data['resolution']), 'Variance resolved.');
+        return $this->attempt(fn () => $this->cash->resolve($remittance, $this->staff(), $data['resolution'], $request->boolean('charge_rider')),
+            $request->boolean('charge_rider') ? "Variance resolved. The shortage comes off the rider's payslip." : 'Variance resolved.');
     }
 
     public function remit(Request $request)

@@ -89,17 +89,49 @@ trait BuildsNetwork
             'plate_no' => "TRK {$hub->id}",
             'vehicle_type' => 'truck',
             'default_driver_id' => $driver->id,
+            'cr_no' => sprintf('%09d', 400000000 + $hub->id),
+            'mv_file_no' => sprintf('0401-%011d', 23000000000 + $hub->id),
+            'engine_no' => sprintf('ENG-%06d', $hub->id),
+            'chassis_no' => sprintf('CHS%08d', $hub->id),
+            'or_no' => sprintf('%09d', 900000000 + $hub->id),
+            'registration_expiry' => today()->addYear()->toDateString(),
             'is_active' => true,
         ]);
 
         return [$vehicle, $driver];
     }
 
-    /** Dispatch the trip with the sending hub's truck and driver. */
-    protected function dispatchTrip(Manifest $trip, Staff $staff): void
+    /**
+     * Dispatch the trip with the sending hub's truck and driver. Unless told otherwise the truck is
+     * also marked arrived at the receiving hub's gate.
+     */
+    protected function dispatchTrip(Manifest $trip, Staff $staff, bool $arrive = true): void
     {
         [$vehicle, $driver] = $this->fleet($trip->fromHub);
         app(ManifestService::class)->dispatch($trip, $vehicle, $driver, $staff);
+        if ($arrive) {
+            $trip->forceFill(['arrived_at' => now()])->save();
+        }
+    }
+
+    /** The OR/CR fields of the add-truck form, unique per call, with photo uploads (a real 1×1 PNG). */
+    protected function truckPapers(array $overrides = []): array
+    {
+        static $n = 0;
+        $n++;
+        $png = fn (string $name) => \Illuminate\Http\UploadedFile::fake()->createWithContent($name,
+            base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='));
+
+        return array_merge([
+            'cr_no' => sprintf('51%07d', $n),
+            'mv_file_no' => sprintf('0401%011d', 30000000000 + $n),
+            'engine_no' => sprintf('eng-%05d', $n),
+            'chassis_no' => sprintf('chs%08d', $n),
+            'or_no' => sprintf('61%07d', $n),
+            'registration_expiry' => today()->addYear()->toDateString(),
+            'or_photo' => $png('or.png'),
+            'cr_photo' => $png('cr.png'),
+        ], $overrides);
     }
 
     protected function pickrushUrl(string $path = '/'): string

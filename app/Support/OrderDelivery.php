@@ -44,7 +44,7 @@ final class OrderDelivery
 
         return [
             'name'    => $rider->full_name,
-            'vehicle' => $rider->vehicleLabel(),
+            ...$rider->vehicleForBuyers(),
             // Riders call buyers while the parcel is out for delivery; not before or after.
             'phone'   => $task->status === 'out_for_delivery' ? $rider->mobile_no : null,
         ];

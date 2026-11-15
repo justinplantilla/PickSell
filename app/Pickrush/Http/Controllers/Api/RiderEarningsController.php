@@ -21,7 +21,8 @@ use Illuminate\Support\Facades\DB;
  * The rider's Earnings page: what finished tasks earned (today, this week, this month, the last
  * 7 days, per batch) and the COD cash they still hold, read from the earnings ledger
  * (RiderEarnings): a pickup at the flat rate, a marketplace delivery at its parcel class's pay,
- * failed attempts nothing. Payouts are handled by the station outside the app.
+ * failed attempts nothing. All of it goes to the rider's wallet (RiderWalletController): riders
+ * hand over all the COD and are paid through weekly payslips.
  */
 class RiderEarningsController extends Controller
 {
@@ -60,6 +61,7 @@ class RiderEarningsController extends Controller
             'days' => $days,
             'batches' => $this->batches($rider),
             'cod' => $this->cod($rider, $availability),
+            'wallet' => RiderWalletController::summary($rider),
         ]);
     }
 
@@ -160,7 +162,7 @@ class RiderEarningsController extends Controller
 
         return [
             'in_hand' => $cash['cod'],
-            // The rider keeps their pay out of the cash; to_remit is what they hand over at the station.
+            // Always 0 now (riders hand over all the COD); kept for older app versions.
             'pay_kept' => $cash['pay'],
             'to_remit' => $cash['to_remit'],
             'limit' => (float) $rider->cod_limit,

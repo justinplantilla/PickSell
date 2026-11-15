@@ -134,8 +134,11 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
             Route::get('/fleet', [FleetController::class, 'index'])->name('fleet.index');
             Route::post('/fleet', [FleetController::class, 'store'])->name('fleet.store');
             Route::put('/fleet/{vehicle}', [FleetController::class, 'update'])->name('fleet.update');
+            Route::put('/fleet/{vehicle}/papers', [FleetController::class, 'renewPapers'])->name('fleet.papers.renew');
+            Route::get('/fleet/{vehicle}/papers/{document}', [FleetController::class, 'paper'])->whereIn('document', ['or', 'cr'])->name('fleet.papers.show');
             Route::post('/fleet/drivers', [FleetController::class, 'storeDriver'])->name('fleet.drivers.store');
             Route::put('/fleet/drivers/{driver}', [FleetController::class, 'updateDriver'])->name('fleet.drivers.update');
+            Route::put('/fleet/drivers/{driver}/license', [FleetController::class, 'renewLicense'])->name('fleet.drivers.license.renew');
             Route::get('/fleet/drivers/{driver}/license/{side}', [FleetController::class, 'license'])->whereIn('side', ['front', 'back'])->name('fleet.drivers.license');
         });
 
@@ -158,6 +161,7 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
             Route::delete('/trips/{manifest}/parcels/{item}', [Province\TripController::class, 'remove'])->name('trips.remove');
             Route::post('/trips/{manifest}/dispatch', [Province\TripController::class, 'dispatch'])->name('trips.dispatch');
             Route::delete('/trips/{manifest}', [Province\TripController::class, 'cancel'])->name('trips.cancel');
+            Route::post('/trips/{manifest}/arrived', [Province\TripController::class, 'arrived'])->name('trips.arrived');
             Route::post('/trips/{manifest}/receive', [Province\TripController::class, 'receive'])->name('trips.receive');
             Route::post('/trips/{manifest}/close', [Province\TripController::class, 'close'])->name('trips.close');
         });
@@ -178,6 +182,7 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
             Route::delete('/trips/{manifest}/parcels/{item}', [Station\TripController::class, 'remove'])->name('trips.remove');
             Route::post('/trips/{manifest}/dispatch', [Station\TripController::class, 'dispatch'])->name('trips.dispatch');
             Route::delete('/trips/{manifest}', [Station\TripController::class, 'cancel'])->name('trips.cancel');
+            Route::post('/trips/{manifest}/arrived', [Station\TripController::class, 'arrived'])->name('trips.arrived');
             Route::post('/trips/{manifest}/receive', [Station\TripController::class, 'receive'])->name('trips.receive');
             Route::post('/trips/{manifest}/close', [Station\TripController::class, 'close'])->name('trips.close');
 
@@ -193,6 +198,8 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
             Route::get('/riders/{rider}', [Station\RiderController::class, 'show'])->whereNumber('rider')->name('riders.show');
             Route::patch('/riders/{rider}/shift', [Station\RiderController::class, 'shift'])->name('riders.shift');
             Route::get('/riders/{rider}/documents/{document}', [Station\RiderController::class, 'document'])->middleware('signed:relative')->name('riders.document');
+            Route::get('/riders/{rider}/document-updates/{update}/files/{index}', [Station\RiderController::class, 'updateFile'])
+                ->whereNumber(['update', 'index'])->middleware('signed:relative')->name('riders.update-file');
 
             Route::get('/zones', [Station\ZoneController::class, 'index'])->name('zones.index');
 
@@ -209,6 +216,8 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
                 Route::post('/riders/{rider}/approve', [Station\RiderController::class, 'approve'])->name('riders.approve');
                 Route::post('/riders/{rider}/status', [Station\RiderController::class, 'changeStatus'])->name('riders.status');
                 Route::patch('/riders/{rider}/limits', [Station\RiderController::class, 'limits'])->name('riders.limits');
+                Route::post('/riders/{rider}/document-updates/{update}', [Station\RiderController::class, 'decideUpdate'])->whereNumber('update')->name('riders.document-updates.decide');
+                Route::patch('/riders/{rider}/orcr-expiry', [Station\RiderController::class, 'orcrExpiry'])->name('riders.orcr-expiry');
 
                 Route::put('/location', [Station\LocationController::class, 'update'])->name('location.update');
 
@@ -222,6 +231,14 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
                 Route::post('/cash/remit', [Station\CashController::class, 'remit'])->name('cash.remit');
                 Route::post('/cash/deposits/{hubRemittance}/top-up', [Station\CashController::class, 'topUp'])->name('cash.top-up');
                 Route::post('/cash/deposits/{hubRemittance}/contest', [Station\CashController::class, 'contest'])->name('cash.contest');
+
+                // Rider payroll: pay is private, so only the hub manager sees it.
+                Route::get('/payroll', [Station\PayrollController::class, 'index'])->name('payroll');
+                Route::get('/payroll/payslips/{payslip}', [Station\PayrollController::class, 'show'])->name('payroll.show');
+                Route::post('/payroll/payslips/{payslip}/release', [Station\PayrollController::class, 'release'])->name('payroll.release');
+                Route::post('/payroll/release-week', [Station\PayrollController::class, 'releaseWeek'])->name('payroll.release-week');
+                Route::post('/payroll/deductions', [Station\PayrollController::class, 'deduct'])->name('payroll.deduct');
+                Route::post('/payroll/deductions/{deduction}/decide', [Station\PayrollController::class, 'decide'])->name('payroll.decide');
             });
         });
     });

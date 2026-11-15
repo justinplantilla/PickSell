@@ -41,7 +41,7 @@ class Rider extends Model
     public const STATUSES = ['pending', 'under_review', 'active', 'suspended', 'deactivated', 'rejected'];
 
     /** Vehicles a rider can apply with. */
-    public const VEHICLE_TYPES = ['motorcycle' => 'Motorcycle', 'tricycle' => 'Tricycle'];
+    public const VEHICLE_TYPES = ['motorcycle' => 'Motorcycle', 'tricycle' => 'Tricycle', 'four_wheel' => '4 Wheel'];
 
     /** "Motorcycle · NBC 1234", as buyers see the rider bringing their parcel; null when neither is known. */
     public function vehicleLabel(): ?string
@@ -49,6 +49,47 @@ class Rider extends Model
         $label = collect([self::VEHICLE_TYPES[$this->vehicle_type] ?? null, $this->plate_no])->filter()->join(' · ');
 
         return $label !== '' ? $label : null;
+    }
+
+    /** The vehicle on the buyer's order: the label, and the type the buyer app picks its icon from. */
+    public function vehicleForBuyers(): array
+    {
+        return ['vehicle' => $this->vehicleLabel(), 'vehicle_type' => $this->vehicle_type];
+    }
+
+    public function vehicleName(): string
+    {
+        return self::VEHICLE_TYPES[$this->vehicle_type] ?? ucfirst((string) $this->vehicle_type);
+    }
+
+    /** Parcel classes this rider's vehicle may carry; null when it is not restricted. */
+    public function carriableClasses(): ?array
+    {
+        return config("pickrush.policies.vehicle_parcel_classes.{$this->vehicle_type}");
+    }
+
+    /** A parcel without a class (booked outside the marketplace) fits any vehicle. */
+    public function canCarry(?string $parcelClass): bool
+    {
+        $allowed = $this->carriableClasses();
+
+        return $parcelClass === null || $allowed === null || in_array($parcelClass, $allowed, true);
+    }
+
+    /** The vehicles that may carry a parcel class, as "Tricycle or 4 Wheel". */
+    public static function vehiclesFor(string $parcelClass): string
+    {
+        return collect(self::VEHICLE_TYPES)
+            ->filter(fn ($label, $type) => in_array($parcelClass, config("pickrush.policies.vehicle_parcel_classes.{$type}") ?? [], true))
+            ->join(', ', ' or ');
+    }
+
+    /** Parcels a day for a rider on probation or standard limits, by vehicle. */
+    public static function maxParcelsFor(?string $vehicleType, string $tier): int
+    {
+        return $vehicleType === 'four_wheel'
+            ? (int) config("pickrush.policies.rider_limits.four_wheel_max_parcels.{$tier}")
+            : (int) config("pickrush.policies.rider_limits.{$tier}.max_parcels");
     }
 
     protected static function booted(): void
@@ -71,9 +112,28 @@ class Rider extends Model
         return $this->belongsTo(Zone::class);
     }
 
+    /** The documents in force; replaced ones are under documentHistory(). */
     public function documents()
     {
-        return $this->hasMany(RiderDocument::class);
+        return $this->hasMany(RiderDocument::class)->whereNull('replaced_at');
+    }
+
+    public function documentHistory()
+    {
+        return $this->hasMany(RiderDocument::class)->whereNotNull('replaced_at')->latest('replaced_at');
+    }
+
+    public function documentUpdates()
+    {
+        return $this->hasMany(RiderDocumentUpdate::class);
+    }
+
+    /** The first license or OR/CR in force that has expired; such a rider gets no new tasks. */
+    public function expiredDocument(): ?RiderDocument
+    {
+        $documents = $this->relationLoaded('documents') ? $this->documents : $this->documents()->get();
+
+        return $documents->filter->isExpired()->sortBy('expiry_date')->first();
     }
 
     public function assignments()

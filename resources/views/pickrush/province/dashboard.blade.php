@@ -18,6 +18,8 @@
     <div class="pr-alert pr-alert-warn" role="status"><strong>Not fully set up:</strong> {{ implode(', ', $gaps) }}</div>
 @endif
 
+@include('pickrush.partials.fleet-alerts', ['hub' => $hub])
+
 {{-- Parcels in the order they move through the center, then what needs a person, then volume. --}}
 <section class="pr-card pr-flow-card">
     <div class="pr-card-head"><h2>Parcel flow</h2></div>

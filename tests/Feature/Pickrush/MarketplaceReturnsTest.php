@@ -159,9 +159,9 @@ class MarketplaceReturnsTest extends TestCase
         $this->assertSame(ParcelStatus::ReturnedToSender, $parcel->fresh()->current_status);
         $this->assertSame('returned', $order->fresh()->status);
         $this->assertSame(['return' => 15.0], DB::table('pr_rider_earnings')->where('rider_id', $rider->id)->pluck('amount', 'kind')->map(fn ($a) => (float) $a)->all());
-        // The rider keeps their ₱15 from the ₱75 and hands ₱60 to the station; the company keeps it all.
+        // The rider hands all ₱75 to the station; their ₱15 goes to their payslip.
         $cash = app(CashHandling::class)->breakdown($rider);
-        $this->assertSame([75.0, 15.0, 60.0], [$cash['cod'], $cash['pay'], $cash['to_remit']]);
+        $this->assertSame([75.0, 0.0, 75.0], [$cash['cod'], $cash['pay'], $cash['to_remit']]);
         $this->assertSame(0, DB::table('shipment_earnings')->count(), 'no PickSell commission or split on a return');
     }
 

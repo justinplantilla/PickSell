@@ -19,7 +19,8 @@ class Manifest extends Model
 
     protected $guarded = ['id'];
 
-    protected $casts = ['dispatched_at' => 'datetime', 'received_at' => 'datetime', 'closed_at' => 'datetime'];
+    protected $casts = ['dispatched_at' => 'datetime', 'due_at' => 'datetime', 'arrived_at' => 'datetime',
+        'received_at' => 'datetime', 'closed_at' => 'datetime'];
 
     protected static function booted(): void
     {
@@ -55,6 +56,30 @@ class Manifest extends Model
     public function driver()
     {
         return $this->belongsTo(Driver::class)->withoutGlobalScopes();
+    }
+
+    public function arriver()
+    {
+        return $this->belongsTo(Staff::class, 'arrived_by');
+    }
+
+    /** Hours a trip between these hubs has before it is overdue: local within a province, long between two. */
+    public static function tripHours(Hub $from, Hub $to): int
+    {
+        $long = $from->isProvince() && $to->isProvince();
+
+        return (int) config('pickrush.fleet.trip_hours.'.($long ? 'long' : 'local'), $long ? 24 : 6);
+    }
+
+    /** On the road past its due time, not yet marked arrived. */
+    public function isOverdue(): bool
+    {
+        return $this->status === 'dispatched' && $this->arrived_at === null && $this->due_at?->isPast();
+    }
+
+    public function scopeOverdue(Builder $query): Builder
+    {
+        return $query->where('status', 'dispatched')->whereNull('arrived_at')->where('due_at', '<', now());
     }
 
     public function getRouteKeyName(): string

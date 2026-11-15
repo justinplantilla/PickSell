@@ -10,7 +10,7 @@
     <label for="{{ $inputId }}" class="pr-scan-label">{{ $label ?? 'Scan or type a tracking number' }}</label>
     <div class="pr-scan-row">
         <input id="{{ $inputId }}" name="tracking_no" class="pr-input pr-scan-input" placeholder="PR…" required autofocus inputmode="text" spellcheck="false">
-        <button type="button" class="pr-btn pr-btn-outline" data-scan-camera-open aria-controls="{{ $inputId }}-camera-panel">📷 Camera</button>
+        <button type="button" class="pr-btn pr-btn-outline" data-scan-camera-open aria-controls="{{ $inputId }}-camera-panel">Camera</button>
         <button type="submit" class="pr-btn pr-btn-primary">{{ $button ?? 'Scan' }}</button>
     </div>
     <div class="pr-scan-camera" id="{{ $inputId }}-camera-panel" data-scan-camera-panel hidden>

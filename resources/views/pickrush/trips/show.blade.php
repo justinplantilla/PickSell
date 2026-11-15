@@ -5,6 +5,7 @@
 @php
     $counts = $manifest->items->countBy('scan_status');
     $badge = fn ($s) => match ($s) { 'scanned' => 'pr-badge-ok', 'missing' => 'pr-badge-bad', 'extra' => 'pr-badge-warn', default => '' };
+    $arriving = ! $outbound && in_array($manifest->status, ['dispatched', 'received'], true);
 @endphp
 <div class="pr-page-head">
     <div>
@@ -14,6 +15,7 @@
     <div>
         <a href="{{ route($prefix.'.print', $manifest) }}" target="_blank" rel="noopener" class="pr-btn pr-btn-outline pr-btn-sm">Print manifest</a>
         <span class="pr-badge pr-badge-brand">{{ ucfirst($manifest->status) }}</span>
+        @if($manifest->isOverdue())<span class="pr-badge pr-badge-bad">Overdue</span>@endif
         @if($outbound && $manifest->status === 'draft')
             <form method="POST" action="{{ route($prefix.'.cancel', $manifest) }}" style="display:inline">
                 @csrf @method('DELETE')
@@ -32,7 +34,14 @@
             </form>
         @endif
     </div>
-@elseif(! $outbound && in_array($manifest->status, ['dispatched', 'received'], true))
+@elseif($arriving)
+    @unless($manifest->arrived_at)
+        {{-- Stops the overdue clock when unloading starts later; the first scan records it too. --}}
+        <form method="POST" action="{{ route($prefix.'.arrived', $manifest) }}" class="pr-actions" style="margin-bottom:.5rem">
+            @csrf
+            <button type="submit" class="pr-btn pr-btn-outline">Mark truck arrived</button>
+        </form>
+    @endunless
     @include('pickrush.partials.scan-box', ['action' => route($prefix.'.receive', $manifest), 'label' => 'Scan each parcel off the vehicle', 'button' => 'Receive'])
 @endif
 
@@ -83,14 +92,26 @@
             <select name="vehicle_id" class="pr-select" aria-label="Truck" required data-fleet-picker>
                 <option value="">Pick a truck…</option>
                 @foreach($vehicles as $vehicle)
-                    <option value="{{ $vehicle->id }}" data-driver="{{ $vehicle->default_driver_id }}" @selected((int) old('vehicle_id') === $vehicle->id) @disabled($vehiclesOut->has($vehicle->id))>{{ $vehicle->plate_no }} · {{ $vehicle->vehicle_type }}{{ $vehiclesOut->has($vehicle->id) ? ' · on a trip' : '' }}</option>
+                    @php
+                        $why = match (true) {
+                            $vehiclesOut->has($vehicle->id) => ' · on a trip',
+                            ! $vehicle->hasPapers() => ' · no OR/CR',
+                            $vehicle->isRegistrationExpired() => ' · OR expired',
+                            default => null,
+                        };
+                        $warn = \App\Pickrush\Support\Expiry::state($vehicle->registration_expiry) === 'expiring' ? ' · OR '.strtolower(\App\Pickrush\Support\Expiry::badge($vehicle->registration_expiry)[1]) : '';
+                    @endphp
+                    <option value="{{ $vehicle->id }}" data-driver="{{ $vehicle->default_driver_id }}" @selected((int) old('vehicle_id') === $vehicle->id) @disabled($why)>{{ $vehicle->plate_no }} · {{ $vehicle->vehicle_type }}{{ $why ?? $warn }}</option>
                 @endforeach
             </select>
             <select name="driver_id" class="pr-select" aria-label="Driver" required>
                 <option value="">Pick a driver…</option>
                 @foreach($drivers as $driver)
-                    @php($unavailable = $driversOut->has($driver->id) || $driver->isLicenseExpired())
-                    <option value="{{ $driver->id }}" @selected((int) old('driver_id') === $driver->id) @disabled($unavailable)>{{ $driver->full_name }}{{ $driversOut->has($driver->id) ? ' · on a trip' : ($driver->isLicenseExpired() ? ' · license expired' : '') }}</option>
+                    @php
+                        $why = $driversOut->has($driver->id) ? ' · on a trip' : ($driver->isLicenseExpired() ? ' · license expired' : null);
+                        $warn = \App\Pickrush\Support\Expiry::state($driver->license_expiry) === 'expiring' ? ' · license '.strtolower(\App\Pickrush\Support\Expiry::badge($driver->license_expiry)[1]) : '';
+                    @endphp
+                    <option value="{{ $driver->id }}" @selected((int) old('driver_id') === $driver->id) @disabled($why)>{{ $driver->full_name }}{{ $why ?? $warn }}</option>
                 @endforeach
             </select>
             <button type="submit" class="pr-btn pr-btn-primary" data-confirm="Dispatch this trip with {{ $manifest->items->count() }} parcels?">Dispatch trip</button>
@@ -99,12 +120,14 @@
 @elseif($manifest->status !== 'draft')
     <section class="pr-card" style="margin-top:1rem">
         <dl class="pr-dl">
-            <dt>Vehicle</dt><dd>{{ $manifest->vehicle_plate }} · {{ $manifest->driver_name }}</dd>
+            <dt>Vehicle</dt><dd>{{ $manifest->vehicle_plate }} · {{ $manifest->driver_name }}@if($manifest->driver?->mobile_no) · {{ $manifest->driver->mobile_no }}@endif</dd>
             <dt>Dispatched</dt><dd>{{ $manifest->dispatched_at?->format('M d, Y h:i A') }}</dd>
+            @if($manifest->due_at)<dt>Due by</dt><dd>{{ $manifest->due_at->format('M d, Y h:i A') }}@if($manifest->isOverdue()) <span class="pr-badge pr-badge-bad">Overdue {{ $manifest->due_at->diffForHumans(null, true) }}</span>@endif</dd>@endif
+            <dt>Arrived</dt><dd>@if($manifest->arrived_at){{ $manifest->arrived_at->format('M d, Y h:i A') }}{{ $manifest->arriver ? ' · '.$manifest->arriver->full_name : '' }}@else — @endif</dd>
             <dt>Received</dt><dd>{{ $manifest->received_at?->format('M d, Y h:i A') ?? '—' }}</dd>
             <dt>Closed</dt><dd>{{ $manifest->closed_at?->format('M d, Y h:i A') ?? '—' }}</dd>
         </dl>
-        @if(! $outbound && in_array($manifest->status, ['dispatched', 'received'], true))
+        @if($arriving)
             <form method="POST" action="{{ route($prefix.'.close', $manifest) }}" class="pr-actions">
                 @csrf
                 <button type="submit" class="pr-btn pr-btn-outline" data-confirm="Close the check? Unscanned parcels will be marked missing.">Close check</button>

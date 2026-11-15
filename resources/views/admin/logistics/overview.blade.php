@@ -107,7 +107,7 @@
         <table>
             <thead><tr>
                 <th>Company</th><th>Delivered</th><th>In progress</th><th>Delivery fees</th><th>Rider pay</th>
-                <th>Company share</th><th>Claims</th><th>Net share</th><th>PickSell commission</th><th>COD collected</th><th>Rider pay kept</th><th>COD confirmed</th>
+                <th>Company share</th><th>Pickup pay</th><th>Claims</th><th>Recovered from riders</th><th>Net share</th><th>PickSell commission</th><th>COD collected</th><th>Rider pay kept (before wallet)</th><th>COD confirmed</th>
             </tr></thead>
             <tbody>
                 @foreach($money as $row)
@@ -119,7 +119,9 @@
                         <td class="oversight-number">{{ $peso($row['fees']) }}</td>
                         <td class="oversight-number">{{ $peso($row['rider']) }}</td>
                         <td class="oversight-number">{{ $peso($row['logistics']) }}</td>
+                        <td class="oversight-number">@if($row['pickup_pay'] > 0)−{{ $peso($row['pickup_pay']) }}@else — @endif</td>
                         <td class="oversight-number">@if($row['claims'] > 0)−{{ $peso($row['claims']) }}@else — @endif</td>
+                        <td class="oversight-number">@if($row['rider_recovered'] > 0)+{{ $peso($row['rider_recovered']) }}@else — @endif</td>
                         <td class="oversight-number"><strong>{{ $peso($row['net_logistics']) }}</strong></td>
                         <td class="oversight-number">{{ $peso($row['picksell']) }}</td>
                         <td class="oversight-number">{{ $peso($row['cod_collected']) }}</td>
@@ -132,7 +134,7 @@
                 <th>Total</th>
                 <th class="oversight-number">{{ number_format($money->sum('delivered')) }}</th>
                 <th class="oversight-number">{{ number_format($money->sum('in_progress')) }}</th>
-                @foreach(['fees', 'rider', 'logistics', 'claims', 'net_logistics', 'picksell', 'cod_collected', 'cod_rider_kept', 'cod_confirmed'] as $column)
+                @foreach(['fees', 'rider', 'logistics', 'pickup_pay', 'claims', 'rider_recovered', 'net_logistics', 'picksell', 'cod_collected', 'cod_rider_kept', 'cod_confirmed'] as $column)
                     <th class="oversight-number">{{ $peso($money->sum($column)) }}</th>
                 @endforeach
             </tr></tfoot>

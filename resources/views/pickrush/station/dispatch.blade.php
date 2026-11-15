@@ -106,7 +106,8 @@
                                     @if($declined)<span class="pr-badge pr-badge-warn" title="{{ $declined->fail_note }}">Declined by {{ $declined->rider?->full_name }}</span>@endif
                                     @if($missed)<span class="pr-badge pr-badge-bad" title="{{ $missed->fail_note }}">Not collected: {{ config('pickrush.pickup_failure_reasons.'.$missed->fail_reason, $missed->fail_reason) }} ({{ $missed->rider?->full_name }})</span>@endif
                                 </td>
-                                <td>{{ $p->itemSummary() }}@if($p->weight_kg)<span class="pr-muted"> · {{ $p->weight_kg }} kg</span>@endif</td>
+                                <td>{{ $p->itemSummary() }}@if($p->weight_kg)<span class="pr-muted"> · {{ $p->weight_kg }} kg</span>@endif
+                                    @if($p->parcel_class === 'EXTRA_BULKY')<span class="pr-badge pr-badge-warn">Extra bulky: {{ \App\Pickrush\Models\Rider::vehiclesFor('EXTRA_BULKY') }} only</span>@endif</td>
                                 <td class="pr-num">—</td>
                                 <td>—</td>
                                 <td><span class="pr-muted">Pick a rider</span></td>
@@ -155,7 +156,7 @@
                     @unless($view === 'pickups')<option value="">Each parcel's suggested rider</option>@endunless
                     @foreach($riders as $r)
                         <option value="{{ $r->rider->id }}" @disabled($r->blocker)>
-                            {{ $r->rider->full_name }} · {{ $r->open }}/{{ $r->rider->max_parcels }} parcels · ₱{{ number_format($r->cod, 0) }}/{{ number_format((float) $r->rider->cod_limit, 0) }} COD{{ $r->blocker ? ' · unavailable' : '' }}
+                            {{ $r->rider->full_name }} · {{ $r->rider->vehicleName() }} · {{ $r->open }}/{{ $r->rider->max_parcels }} parcels · ₱{{ number_format($r->cod, 0) }}/{{ number_format((float) $r->rider->cod_limit, 0) }} COD{{ $r->blocker ? ' · unavailable' : '' }}
                         </option>
                     @endforeach
                 </select>

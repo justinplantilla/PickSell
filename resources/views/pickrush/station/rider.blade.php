@@ -30,7 +30,7 @@
             <dt>Name</dt><dd>{{ $rider->full_name }}</dd>
             <dt>Birthdate</dt><dd>{{ $rider->birthdate?->format('M d, Y') ?? '—' }}@if($rider->birthdate) ({{ $rider->birthdate->age }} years old)@endif</dd>
             <dt>Address</dt><dd>{{ $rider->address ?? '—' }}</dd>
-            <dt>Vehicle</dt><dd>{{ \App\Pickrush\Models\Rider::VEHICLE_TYPES[$rider->vehicle_type] ?? ucfirst((string) $rider->vehicle_type) }} · plate {{ $rider->plate_no ?? '—' }}</dd>
+            <dt>Vehicle</dt><dd>{{ $rider->vehicleName() }} · plate {{ $rider->plate_no ?? '—' }}</dd>
             <dt>License no.</dt><dd>{{ $rider->license_no ?? '—' }}</dd>
         </dl>
         <p><strong>Before approving:</strong> open the license and OR/CR below. Check that the license photo matches the applicant and has not expired, and that the plate on the OR/CR matches. Interview the rider at the station if anything is unclear.</p>
@@ -87,19 +87,71 @@
                     <td>
                         @forelse($docs as $doc)
                             <a href="{{ $documentLinks[$doc->id] }}" target="_blank" rel="noopener">{{ $doc->side ? 'View '.$doc->side : 'View' }}</a>
-                            @if($doc->expiry_date)<span @class(['pr-badge', 'pr-badge-bad' => $doc->isExpired()])>{{ $doc->isExpired() ? 'Expired' : 'Expires' }} {{ $doc->expiry_date->format('M d, Y') }}</span>@endif
                         @empty
                             <span class="pr-muted">Not uploaded</span>
                         @endforelse
+                        @if($doc = $docs->first())
+                            @if($doc->expiry_date)
+                                @php [$badgeClass, $badgeText] = \App\Pickrush\Support\Expiry::badge($doc->expiry_date) @endphp
+                                <div><span class="pr-badge {{ $badgeClass }}">{{ $badgeText }}</span> <span class="pr-muted">until {{ $doc->expiry_date->format('M d, Y') }}</span>
+                                    @if($doc->expiry_estimated)<span class="pr-badge pr-badge-warn" title="Set by the system for OR/CRs on file before expiries were asked for">Estimated</span>@endif</div>
+                            @endif
+                            @if($doc->expiry_estimated && $isManager)
+                                <form method="POST" action="{{ route('pickrush.station.riders.orcr-expiry', $rider) }}" class="pr-inline" style="margin-top:.35rem">
+                                    @csrf @method('PATCH')
+                                    <input type="date" name="expiry_date" class="pr-input" required aria-label="OR/CR expiry">
+                                    <button class="pr-btn pr-btn-outline pr-btn-sm" type="submit">Set real expiry</button>
+                                </form>
+                            @endif
+                        @endif
                     </td>
                 </tr>
             @endforeach
             </tbody>
         </table>
         </div>
-        <p class="pr-muted">Uploaded by the rider in the app. Files are private: links work for 10 minutes and every view is logged.</p>
+        @if($expired)
+            <div class="pr-alert pr-alert-warn">{{ $expired->label() }} expired on {{ $expired->expiry_date->format('M d, Y') }}. {{ $rider->full_name }} gets no new tasks until a renewed one is approved.</div>
+        @endif
+        <p class="pr-muted">Uploaded by the rider in the app. Riders renew them in the app too; you approve below. Files are private: links work for 10 minutes and every view is logged.</p>
+        @if($rider->documentHistory->isNotEmpty())
+            <details><summary class="pr-muted">Replaced documents ({{ $rider->documentHistory->count() }})</summary>
+                <ul>@foreach($rider->documentHistory as $old)
+                    <li><a href="{{ $documentLinks[$old->id] }}" target="_blank" rel="noopener">{{ $old->label() }}{{ $old->side ? ' ('.$old->side.')' : '' }}</a>
+                        <span class="pr-muted">· until {{ $old->expiry_date?->format('M d, Y') ?? '—' }} · replaced {{ $old->replaced_at->format('M d, Y') }}</span></li>
+                @endforeach</ul>
+            </details>
+        @endif
     </section>
 </div>
+
+@if($pendingUpdates->isNotEmpty())
+<section class="pr-card" style="margin-top:1rem">
+    <h2>Renewed documents to review</h2>
+    @foreach($pendingUpdates as $update)
+        @php $current = $rider->documents->firstWhere('doc_type', $update->doc_type) @endphp
+        <div style="margin-bottom:1rem">
+            <h3>{{ $update->label() }} <span class="pr-muted">· sent {{ $update->created_at->diffForHumans() }}</span></h3>
+            <dl class="pr-dl">
+                @if($update->license_no)<dt>License no.</dt><dd>{{ $update->license_no }} <span class="pr-muted">(on file: {{ $rider->license_no ?? '—' }})</span></dd>@endif
+                <dt>Valid until</dt><dd>{{ $update->expiry_date->format('M d, Y') }} <span class="pr-muted">(on file: {{ $current?->expiry_date?->format('M d, Y') ?? '—' }})</span></dd>
+                <dt>Files</dt><dd>@foreach($update->files as $i => $file)<a href="{{ $updateLinks[$update->id][$i] }}" target="_blank" rel="noopener">{{ $file['side'] ? 'View '.$file['side'] : 'View file '.($i + 1) }}</a>@if(! $loop->last) · @endif @endforeach</dd>
+            </dl>
+            @if($isManager)
+                <p class="pr-muted">Check that the name and {{ $update->doc_type === 'or_cr' ? 'plate ('.$rider->plate_no.')' : 'photo' }} match the rider and the date matches the document.</p>
+                <form method="POST" action="{{ route('pickrush.station.riders.document-updates.decide', [$rider, $update->id]) }}" class="pr-inline">
+                    @csrf
+                    <button class="pr-btn pr-btn-primary" type="submit" name="decision" value="approve">Approve</button>
+                    <input name="reason" class="pr-input" placeholder="Reason, to reject" aria-label="Reason to reject" style="width:220px">
+                    <button class="pr-btn pr-btn-outline" type="submit" name="decision" value="reject">Reject</button>
+                </form>
+            @else
+                <p class="pr-muted">The hub manager approves or rejects renewed documents.</p>
+            @endif
+        </div>
+    @endforeach
+</section>
+@endif
 
 {{-- Fixed: checked against the rider's documents at approval. Only the home zone is the station's to set. --}}
 <section class="pr-card" style="margin-top:1rem">
@@ -110,7 +162,8 @@
         <dt>Birthdate</dt><dd>{{ $rider->birthdate?->format('M d, Y') ?? '—' }}</dd>
         <dt>Home address</dt><dd>{{ $rider->address ?? '—' }}</dd>
         <dt>Emergency contact</dt><dd>{{ collect([$rider->emergency_contact_name, $rider->emergency_contact_no])->filter()->join(' · ') ?: '—' }}</dd>
-        <dt>Vehicle</dt><dd>{{ \App\Pickrush\Models\Rider::VEHICLE_TYPES[$rider->vehicle_type] ?? ucfirst((string) $rider->vehicle_type) }}@if($rider->vehicle_model) · {{ $rider->vehicle_model }}@endif · plate {{ $rider->plate_no ?? '—' }}</dd>
+        <dt>Vehicle</dt><dd>{{ $rider->vehicleName() }}@if($rider->vehicle_model) · {{ $rider->vehicle_model }}@endif · plate {{ $rider->plate_no ?? '—' }}</dd>
+        <dt>Can carry</dt><dd>{{ $rider->carriableClasses() ? implode(', ', $rider->carriableClasses()) : 'Any parcel' }}</dd>
         <dt>Driver's license no.</dt><dd>{{ $rider->license_no ?? '—' }}</dd>
         <dt>Payout</dt><dd>@if($rider->payout_method){{ ['gcash' => 'GCash', 'maya' => 'Maya', 'bank' => 'Bank'][$rider->payout_method] ?? $rider->payout_method }} · {{ $rider->payout_account ?? '—' }}@else — @endif</dd>
     </dl>
@@ -135,7 +188,8 @@
             <form method="POST" action="{{ route('pickrush.station.riders.limits', $rider) }}" class="pr-form-grid">
                 @csrf @method('PATCH')
                 <div class="pr-field"><label for="cod_limit">COD limit (₱)</label><input id="cod_limit" name="cod_limit" type="number" step="0.01" min="0" class="pr-input" value="{{ $rider->cod_limit }}" required></div>
-                <div class="pr-field"><label for="max_parcels">Parcels a day</label><input id="max_parcels" name="max_parcels" type="number" min="1" class="pr-input" value="{{ $rider->max_parcels }}" required></div>
+                <div class="pr-field"><label for="max_parcels">Parcels a day</label><input id="max_parcels" name="max_parcels" type="number" min="1" class="pr-input" value="{{ $rider->max_parcels }}" required>
+                    <span class="pr-muted">{{ $rider->vehicleName() }}: {{ \App\Pickrush\Models\Rider::maxParcelsFor($rider->vehicle_type, 'probation') }} on probation, {{ \App\Pickrush\Models\Rider::maxParcelsFor($rider->vehicle_type, 'standard') }} after</span></div>
                 <label class="pr-check"><input type="checkbox" name="on_probation" value="1" @checked($rider->on_probation)> On probation</label>
                 <div class="pr-field" style="justify-content:flex-end"><button class="pr-btn pr-btn-outline" type="submit">Save limits</button></div>
             </form>

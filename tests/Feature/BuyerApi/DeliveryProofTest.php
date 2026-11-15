@@ -95,7 +95,7 @@ class DeliveryProofTest extends TestCase
 
         // On the way: who is bringing it, with their number; cash still to pay; no photo yet.
         $this->getJson("/api/mobile/buyer/orders/{$order->id}")->assertOk()
-            ->assertJsonPath('order.courier', ['name' => 'Rico Santos', 'vehicle' => 'Motorcycle · NBC 1234', 'phone' => '09181234567'])
+            ->assertJsonPath('order.courier', ['name' => 'Rico Santos', 'vehicle' => 'Motorcycle · NBC 1234', 'vehicle_type' => 'motorcycle', 'phone' => '09181234567'])
             ->assertJsonPath('order.has_proof_of_delivery', false)
             ->assertJsonPath('order.payment_status', 'unpaid');
         $this->get("/api/mobile/buyer/orders/{$order->id}/proof-of-delivery")->assertNotFound();

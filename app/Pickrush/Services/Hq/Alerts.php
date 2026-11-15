@@ -5,12 +5,16 @@ namespace App\Pickrush\Services\Hq;
 use App\Pickrush\Enums\ParcelStatus;
 use App\Pickrush\Models\Assignment;
 use App\Pickrush\Models\CodRemittance;
+use App\Pickrush\Models\Driver;
 use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\HubRemittance;
+use App\Pickrush\Models\Manifest;
 use App\Pickrush\Models\Parcel;
 use App\Pickrush\Models\ParcelException;
 use App\Pickrush\Models\RiderDocument;
+use App\Pickrush\Models\Vehicle;
 use App\Pickrush\Services\Station\RemittanceDeadline;
+use App\Pickrush\Support\Expiry;
 use App\Pickrush\Support\ParcelHubScope;
 
 /**
@@ -43,6 +47,20 @@ class Alerts
             ]);
     }
 
+    /** Active trucks' ORs and drivers' licenses expired or expiring, soonest first. */
+    private function fleetPapers(): \Illuminate\Support\Collection
+    {
+        $until = today()->addDays(Expiry::warningDays());
+        $trucks = Vehicle::withoutGlobalScope('hub')->with('hub')->where('is_active', true)
+            ->where(fn ($q) => $q->whereNull('registration_expiry')->orWhere('registration_expiry', '<=', $until))->get()
+            ->map(fn ($v) => ['label' => "{$v->plate_no} · OR/CR", 'expiry' => $v->registration_expiry, 'hub' => $v->hub?->name]);
+        $drivers = Driver::withoutGlobalScope('hub')->with('hub')->where('is_active', true)->where('license_expiry', '<=', $until)->get()
+            ->map(fn ($d) => ['label' => "{$d->full_name} · license", 'expiry' => $d->license_expiry, 'hub' => $d->hub?->name]);
+
+        return $trucks->concat($drivers)->sortBy(fn ($p) => $p['expiry']?->timestamp ?? 0)->values()
+            ->map(fn ($p) => ['label' => $p['label'], 'meta' => Expiry::badge($p['expiry'])[1].($p['expiry'] ? ' '.$p['expiry']->format('M d, Y') : '').' · '.$p['hub'], 'url' => null]);
+    }
+
     /** @return list<array{priority: int, level: string, title: string, detail: string, items: \Illuminate\Support\Collection}> */
     public function all(): array
     {
@@ -71,6 +89,10 @@ class Alerts
             [2, 'bad', 'Missing parcels', 'Listed on a trip but never scanned in.',
                 ParcelException::withoutGlobalScope('hub')->with('parcel', 'hub', 'againstHub')->where('type', 'missing')->where('status', 'open')->get()
                     ->map(fn ($e) => ['label' => $e->parcel?->tracking_no, 'meta' => "at {$e->hub?->name}, against {$e->againstHub?->name}", 'url' => $e->parcel ? route('pickrush.parcels.show', $e->parcel) : null])],
+            [2, 'bad', 'Trucks overdue', 'Dispatched trips not marked arrived by their due time. Call the driver.',
+                Manifest::withoutGlobalScope('hub')->with('fromHub', 'toHub', 'driver')->overdue()->oldest('due_at')->get()
+                    ->map(fn ($m) => ['label' => "{$m->manifest_no} · {$m->fromHub?->name} → {$m->toHub?->name}",
+                        'meta' => "{$m->vehicle_plate} · {$m->driver_name}".($m->driver?->mobile_no ? " ({$m->driver->mobile_no})" : '').' · '.$m->due_at->diffForHumans(null, true).' late', 'url' => null])],
             [2, 'warn', "Stuck parcels (no scan for {$stuckHours}h+)", 'Still in the network with no movement.',
                 Parcel::withoutGlobalScope(ParcelHubScope::class)->with('currentHub', 'nextHub')->whereNotIn('current_status', $open)
                     ->where('updated_at', '<', now()->subHours($stuckHours))->oldest('updated_at')->limit(50)->get()
@@ -83,8 +105,10 @@ class Alerts
                     ->selectRaw('rider_id, count(*) as fails')->groupBy('rider_id')->having('fails', '>=', 3)->get()
                     ->map(fn ($a) => ['label' => "{$a->rider?->full_name} · {$a->fails} failed", 'meta' => $a->rider?->station?->name, 'url' => null])],
             [4, 'warn', 'Rider documents expiring in 30 days', 'Renew before they lapse.',
-                RiderDocument::with('rider.station')->whereNotNull('expiry_date')->where('expiry_date', '<=', today()->addDays(30))->orderBy('expiry_date')->get()
+                RiderDocument::with('rider.station')->whereNull('replaced_at')->whereNotNull('expiry_date')->where('expiry_date', '<=', today()->addDays(30))->orderBy('expiry_date')->get()
                     ->map(fn ($d) => ['label' => "{$d->rider?->full_name} · {$d->label()}", 'meta' => ($d->isExpired() ? 'expired ' : 'expires ').$d->expiry_date->format('M d, Y').' · '.$d->rider?->station?->name, 'url' => null])],
+            [4, 'warn', 'Truck and driver papers expiring in '.Expiry::warningDays().' days', 'Trucks with an expired OR and drivers with an expired license cannot take trips.',
+                $this->fleetPapers()],
             [5, 'info', 'Hubs not ready', 'Active hubs still missing a manager, a zone or an approved rider.',
                 collect([['label' => $this->notReadyCount().' hubs', 'meta' => 'See the hub directory', 'url' => route('pickrush.hubs.index', ['readiness' => 'no_manager'])]])],
         ];

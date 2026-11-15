@@ -14,7 +14,7 @@
         'Overview' => ['pickrush.station.dashboard'],
         'Parcels' => ['pickrush.station.receiving', 'pickrush.station.dispatch', 'pickrush.station.failed', 'pickrush.station.trips.index', 'pickrush.exceptions.index', 'pickrush.parcels.index'],
         'Riders & area' => ['pickrush.station.riders.index', 'pickrush.station.zones.index', 'pickrush.station.location'],
-        'Money' => ['pickrush.station.cash'],
+        'Money' => ['pickrush.station.cash', 'pickrush.station.payroll'],
     ] : [
         'Overview' => ['pickrush.hq.dashboard', 'pickrush.hq.alerts', 'pickrush.hq.reports'],
         'Operations' => ['pickrush.parcels.index', 'pickrush.hq.address-fix', 'pickrush.exceptions.index', 'pickrush.hubs.index', 'pickrush.links.index'],
@@ -48,6 +48,7 @@
         'pickrush.province.inventory' => 'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10',
         'pickrush.fleet.index' => 'M3 6h11v10H3zM14 10h4l3 3v3h-7M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
         'pickrush.station.cash' => 'M2 6h20v13H2zM12 10a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM6 10v.01M18 15v.01',
+        'pickrush.station.payroll' => 'M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 13h6M9 17h6',
     ];
     $items = collect(\App\Pickrush\Support\Navigation::for($staff))->keyBy('route');
     $badges = \App\Pickrush\Support\NavBadges::for($staff);

@@ -323,8 +323,8 @@ class ProvinceOperationsTest extends TestCase
         $this->as($this->staff(StaffRole::Finance))->get($this->pickrushUrl('/province/sorting'))->assertForbidden();
         $this->as($this->sorter)->get($this->pickrushUrl('/'))->assertRedirect(route('pickrush.province.dashboard'));
 
-        $this->as($this->sorter)->post($this->pickrushUrl('/fleet'), ['plate_no' => 'abc 1', 'vehicle_type' => 'van'])->assertForbidden();
-        $this->as($this->manager)->post($this->pickrushUrl('/fleet'), ['plate_no' => 'abc 1', 'vehicle_type' => 'van'])->assertSessionHasNoErrors();
+        $this->as($this->sorter)->post($this->pickrushUrl('/fleet'), ['plate_no' => 'abc 1', 'vehicle_type' => 'van'] + $this->truckPapers())->assertForbidden();
+        $this->as($this->manager)->post($this->pickrushUrl('/fleet'), ['plate_no' => 'abc 1', 'vehicle_type' => 'van'] + $this->truckPapers())->assertSessionHasNoErrors();
         $this->assertSame('ABC 1', Vehicle::withoutGlobalScopes()->sole()->plate_no);
 
         foreach (['/province', '/province/inbound', '/province/sorting', '/province/trips', '/province/inventory', '/exceptions', '/exceptions?status=resolved', '/fleet'] as $page) {

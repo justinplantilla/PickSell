@@ -3,8 +3,10 @@
 use App\Pickrush\Http\Controllers\Api\RiderApplicationController;
 use App\Pickrush\Http\Controllers\Api\RiderAuthController;
 use App\Pickrush\Http\Controllers\Api\RiderBatchController;
+use App\Pickrush\Http\Controllers\Api\RiderDocumentController;
 use App\Pickrush\Http\Controllers\Api\RiderEarningsController;
 use App\Pickrush\Http\Controllers\Api\RiderHomeController;
+use App\Pickrush\Http\Controllers\Api\RiderWalletController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -42,9 +44,17 @@ Route::prefix('rider')->name('pickrush.api.rider.')->group(function () {
         // The station's count of the rider's cash: the rider confirms it or rejects it so it is counted again.
         Route::post('/cash-counts/{remittance}/confirm', [RiderEarningsController::class, 'confirmCount'])->whereNumber('remittance')->name('cash-counts.confirm');
         Route::post('/cash-counts/{remittance}/reject', [RiderEarningsController::class, 'rejectCount'])->whereNumber('remittance')->name('cash-counts.reject');
+        // The wallet: payslips, withdrawals (simulated) and disputing a deduction.
+        Route::get('/payslips', [RiderWalletController::class, 'payslips'])->name('payslips.index');
+        Route::get('/payslips/{payslip}', [RiderWalletController::class, 'payslip'])->whereNumber('payslip')->name('payslips.show');
+        Route::post('/withdrawals', [RiderWalletController::class, 'withdraw'])->middleware('throttle:pickrush-rider-auth')->name('withdrawals.store');
+        Route::post('/deductions/{deduction}/dispute', [RiderWalletController::class, 'dispute'])->whereNumber('deduction')->name('deductions.dispute');
         Route::get('/notifications', [RiderHomeController::class, 'notifications'])->name('notifications');
         Route::post('/notifications/read', [RiderHomeController::class, 'readNotifications'])->name('notifications.read');
         Route::get('/activity', [RiderHomeController::class, 'activityPage'])->name('activity');
+        // Renewing a driver's license or OR/CR; the station approves it.
+        Route::post('/documents/{type}', [RiderDocumentController::class, 'store'])->whereIn('type', ['drivers_license', 'or_cr'])
+            ->middleware('throttle:pickrush-rider-apply')->name('documents.store');
 
         Route::get('/batches', [RiderBatchController::class, 'index'])->name('batches.index');
         Route::get('/batches/{batch}', [RiderBatchController::class, 'show'])->whereNumber('batch')->name('batches.show');

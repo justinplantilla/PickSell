@@ -38,6 +38,11 @@ return [
     // Hub-to-hub trucks are owned by the company that registers them; it hires the drivers.
     'fleet' => [
         'max_vehicles' => ['station' => 1, 'province' => 3],
+        // A driver's license or a truck's OR expiring within this many days is flagged for renewal.
+        'expiry_warning_days' => 30,
+        // Hours a trip has to arrive before it is overdue: between a station and its province hub
+        // (local), and between two province hubs (long).
+        'trip_hours' => ['local' => 6, 'long' => 24],
     ],
 
     'policies' => [
@@ -52,6 +57,16 @@ return [
         'rider_limits' => [
             'probation' => ['cod_limit' => 3000, 'max_parcels' => 20],
             'standard' => ['cod_limit' => 10000, 'max_parcels' => 60],
+            // A 4 wheel carries more: these parcels-a-day caps replace the ones above for it.
+            'four_wheel_max_parcels' => ['probation' => 40, 'standard' => 100],
+        ],
+
+        // Parcel classes each rider vehicle may carry, for pickups and deliveries alike. A rider
+        // with no vehicle on file is not restricted.
+        'vehicle_parcel_classes' => [
+            'motorcycle' => ['STANDARD', 'HEAVY', 'BULKY'],
+            'tricycle' => ['STANDARD', 'HEAVY', 'BULKY', 'EXTRA_BULKY'],
+            'four_wheel' => ['STANDARD', 'HEAVY', 'BULKY', 'EXTRA_BULKY'],
         ],
 
         // Cash counts above this need a second staff member present.

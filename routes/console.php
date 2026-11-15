@@ -102,3 +102,37 @@ Schedule::command('orders:enforce-shipping-deadlines')
     ->everyFifteenMinutes()
     ->name('enforce-shipping-deadlines')
     ->withoutOverlapping();
+
+// Rider payroll: Sunday night closes the week into a payslip per rider; payslips the station
+// manager has not released by Tuesday release themselves. Both are safe to repeat.
+Artisan::command('pickrush:close-payroll-week {--week= : Any date in the week to close (default: last week)}', function () {
+    $week = $this->option('week') ? \Illuminate\Support\Carbon::parse($this->option('week')) : now()->subWeek();
+    $made = app(\App\Pickrush\Services\Rider\RiderPayroll::class)->close($week);
+    $this->info("Made {$made} rider payslips.");
+})->purpose('Close a payroll week (Monday to Sunday) into rider payslips');
+
+Artisan::command('pickrush:release-payslips', function () {
+    $released = app(\App\Pickrush\Services\Rider\RiderPayroll::class)->autoRelease();
+    $this->info("Released {$released} rider payslips.");
+})->purpose('Release rider payslips the station manager did not release by Tuesday');
+
+Schedule::command('pickrush:close-payroll-week')
+    ->weeklyOn(1, '00:05')
+    ->name('close-rider-payroll-week')
+    ->withoutOverlapping();
+
+Schedule::command('pickrush:release-payslips')
+    ->dailyAt('00:10')
+    ->name('release-rider-payslips')
+    ->withoutOverlapping();
+
+// Riders whose license or OR/CR expires in 30, 7 or 1 days (or today) are told to renew it in the app.
+Artisan::command('pickrush:remind-document-expiry', function () {
+    $sent = app(\App\Pickrush\Services\Rider\DocumentRenewal::class)->remind();
+    $this->info("Sent {$sent} document expiry reminders.");
+})->purpose('Remind riders to renew a driver\'s license or OR/CR that is about to expire');
+
+Schedule::command('pickrush:remind-document-expiry')
+    ->dailyAt('07:00')
+    ->name('remind-rider-document-expiry')
+    ->withoutOverlapping();

@@ -21,7 +21,7 @@ trait ManagesTrips
 
     public function show(Manifest $manifest, ManifestService $manifests)
     {
-        $manifest->load('fromHub', 'toHub', 'items.parcel', 'items.scanner');
+        $manifest->load('fromHub', 'toHub', 'items.parcel', 'items.scanner', 'arriver');
 
         return view('pickrush.trips.show', [
             'prefix' => $this->tripRoutePrefix(),
@@ -90,6 +90,15 @@ trait ManagesTrips
         return $this->attempt(
             fn () => $manifests->dispatch($manifest, $vehicle, $driver, $this->staff()),
             "Trip {$manifest->manifest_no} dispatched to {$manifest->toHub->name}.",
+        );
+    }
+
+    /** The truck is at the gate, even if unloading starts later. */
+    public function arrived(Manifest $manifest, ManifestService $manifests)
+    {
+        return $this->attempt(
+            fn () => $manifests->truckArrived($manifest, $this->staff()),
+            "Trip {$manifest->manifest_no} arrived. Scan each parcel off the truck.",
         );
     }
 

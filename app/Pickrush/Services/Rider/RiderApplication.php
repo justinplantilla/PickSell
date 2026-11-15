@@ -97,7 +97,7 @@ class RiderApplication
                 'status' => 'pending',
                 'shift_status' => 'off_duty',
                 'cod_limit' => $limits['cod_limit'],
-                'max_parcels' => $limits['max_parcels'],
+                'max_parcels' => Rider::maxParcelsFor($data['vehicle_type'], 'probation'),
                 'on_probation' => true,
                 'created_by' => null,
             ]);
@@ -117,7 +117,9 @@ class RiderApplication
         $oldFiles = $rider->documents()->pluck('file_path')->all();
         DB::transaction(function () use ($rider, $data, $files) {
             $rider->documents()->get()->each->delete();
-            $rider->update($this->attributes($data) + ['status' => 'pending', 'status_reason' => null]);
+            // The vehicle may have changed, and the starting load cap goes with it.
+            $rider->update($this->attributes($data) + ['status' => 'pending', 'status_reason' => null,
+                'max_parcels' => Rider::maxParcelsFor($data['vehicle_type'], 'probation')]);
             $this->storeDocuments($rider, $data, $files);
         });
         Storage::disk('local')->delete($oldFiles);
@@ -167,7 +169,7 @@ class RiderApplication
         $store('drivers_license', $files['license_front'], 'front', $data['license_expiry']);
         $store('drivers_license', $files['license_back'], 'back', $data['license_expiry']);
         foreach ($files['orcr'] as $file) {
-            $store('or_cr', $file);
+            $store('or_cr', $file, null, $data['orcr_expiry']);
         }
     }
 

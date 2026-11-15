@@ -10,7 +10,8 @@ use App\Pickrush\Models\Zone;
 
 /**
  * Suggests the rider for a parcel from its drop-off barangay: the zone's default rider, then the
- * backup. Nothing is assigned automatically; the dispatcher confirms or overrides.
+ * backup, then (when their vehicles are too small for the parcel) another station rider whose
+ * vehicle fits. Nothing is assigned automatically; the dispatcher confirms or overrides.
  */
 class ZoneSuggester
 {
@@ -29,10 +30,8 @@ class ZoneSuggester
         }
 
         $notes = [];
-        foreach ([$zone->defaultRider, $zone->backupRider] as $rider) {
-            if (! $rider) {
-                continue;
-            }
+        $zoneRiders = array_filter([$zone->defaultRider, $zone->backupRider]);
+        foreach ($zoneRiders as $rider) {
             $blocker = $this->availability->blocker($rider, $parcel);
             if (! $blocker) {
                 return ['zone' => $zone, 'rider' => $rider, 'note' => $rider->is($zone->defaultRider) ? 'Zone default rider' : 'Backup rider (default unavailable)'];
@@ -40,7 +39,32 @@ class ZoneSuggester
             $notes[] = $blocker;
         }
 
+        // The zone's riders cannot fit the parcel: look for anyone at the station whose vehicle can.
+        if (collect($zoneRiders)->contains(fn (Rider $rider) => ! $rider->canCarry($parcel->parcel_class))) {
+            return ['zone' => $zone] + $this->biggerVehicle($parcel, $station, $zoneRiders);
+        }
+
         return ['zone' => $zone, 'rider' => null, 'note' => $notes ? implode(' ', $notes) : "{$zone->name} has no rider set."];
+    }
+
+    /**
+     * @param  Rider[]  $skip  the zone's riders, already tried
+     * @return array{rider: ?Rider, note: string}
+     */
+    private function biggerVehicle(Parcel $parcel, Hub $station, array $skip): array
+    {
+        $class = $parcel->parcel_class;
+        $fit = Rider::withoutGlobalScope('hub')->where('station_hub_id', $station->id)->active()->withExists('tokens')->orderBy('full_name')->get()
+            ->reject(fn (Rider $rider) => collect($skip)->contains(fn (Rider $zoneRider) => $zoneRider->is($rider)))
+            ->filter(fn (Rider $rider) => $rider->canCarry($class));
+        if ($fit->isEmpty()) {
+            return ['rider' => null, 'note' => "No rider at {$station->name} has a vehicle for {$class} parcels (needs a ".Rider::vehiclesFor($class).').'];
+        }
+        $rider = $fit->first(fn (Rider $rider) => ! $this->availability->blocker($rider, $parcel));
+
+        return $rider
+            ? ['rider' => $rider, 'note' => "Station {$rider->vehicleName()} rider (zone riders can't carry {$class})"]
+            : ['rider' => null, 'note' => "Every rider whose vehicle fits {$class} is unavailable right now."];
     }
 
     public function zoneFor(Parcel $parcel, Hub $station): ?Zone

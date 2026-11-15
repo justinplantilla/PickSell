@@ -220,6 +220,51 @@
 </div>
 
 <section class="pr-section">
+    <h2>Rider payroll</h2>
+    <p class="pr-muted">Riders hand over all the COD; their pay goes to their wallet. Each week closes into payslips on Sunday night, the station manager releases them (or they release themselves on Tuesday), and riders withdraw. Withdrawals are simulated for now: no money is sent.</p>
+    <div class="pr-two">
+        <section class="pr-card">
+            <h3>Pay earned in this period</h3>
+            <table class="pr-table">
+                <thead><tr><th>Task</th><th class="pr-num">Tasks</th><th class="pr-num">Pay</th></tr></thead>
+                <tbody>
+                @foreach(['pickup' => 'Pickups', 'delivery' => 'Deliveries', 'return' => 'Returns to sellers'] as $kind => $label)
+                    <tr><td>{{ $label }}</td><td class="pr-num">{{ number_format($payroll['by_kind'][$kind]['tasks']) }}</td><td class="pr-num">{{ $peso($payroll['by_kind'][$kind]['amount']) }}</td></tr>
+                @endforeach
+                </tbody>
+                <tfoot><tr><th style="text-align:left" colspan="2">Total</th><th class="pr-num">{{ $peso($payroll['earned']) }}</th></tr></tfoot>
+            </table>
+            <p class="pr-muted">Pickup pay comes out of the company's share of the delivery fee; the fee split reserves only the delivery rider's pay.</p>
+        </section>
+        <section class="pr-card">
+            <h3>Owed to riders</h3>
+            <dl class="pr-dl">
+                <dt>Payroll payable (released, not withdrawn)</dt><dd><strong>{{ $peso($payroll['payable']) }}</strong></dd>
+                <dt>Waiting for release (closed, not released)</dt><dd>{{ $peso($payroll['waiting']) }}</dd>
+                <dt>Withdrawn in this period</dt><dd>{{ $peso($payroll['withdrawn']) }}</dd>
+            </dl>
+            <p class="pr-muted">Payable and waiting are as of now; the rest follows the period above.</p>
+        </section>
+    </div>
+    <div class="pr-table-wrap" style="margin-top:1rem">
+        <table class="pr-table">
+            <thead><tr><th>Station</th><th class="pr-num">Payslips</th><th class="pr-num">Earned</th><th class="pr-num">Deductions</th><th class="pr-num">Released</th><th class="pr-num">Waiting</th></tr></thead>
+            <tbody>
+            @forelse($payroll['stations'] as $row)
+                <tr>
+                    <td>{{ $row['station'] }}</td><td class="pr-num">{{ number_format($row['payslips']) }}</td>
+                    <td class="pr-num">{{ $peso($row['earned']) }}</td><td class="pr-num">@if($row['deductions'] > 0)−{{ $peso($row['deductions']) }}@else — @endif</td>
+                    <td class="pr-num">{{ $peso($row['released']) }}</td><td class="pr-num">{{ $peso($row['waiting']) }}</td>
+                </tr>
+            @empty
+                <tr><td colspan="6" class="pr-muted">No payslips for weeks starting in this period.</td></tr>
+            @endforelse
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="pr-section">
     <h2>Rider cash variances</h2>
     <div class="pr-table-wrap">
         <table class="pr-table">

@@ -15,7 +15,7 @@ final class Navigation
     public static function for(Staff $staff): array
     {
         if ($staff->hub?->isStation()) {
-            return [
+            $items = [
                 ['label' => 'Dashboard', 'route' => 'pickrush.station.dashboard', 'active' => 'pickrush.station.dashboard'],
                 ['label' => 'Receiving', 'route' => 'pickrush.station.receiving', 'active' => 'pickrush.station.receiving*'],
                 ['label' => 'Dispatch', 'route' => 'pickrush.station.dispatch', 'active' => 'pickrush.station.dispatch*'],
@@ -29,6 +29,11 @@ final class Navigation
                 ['label' => 'Exceptions', 'route' => 'pickrush.exceptions.index', 'active' => 'pickrush.exceptions.*'],
                 ['label' => 'Parcels', 'route' => 'pickrush.parcels.index', 'active' => 'pickrush.parcels.*'],
             ];
+            if ($staff->role === StaffRole::HubManager) {
+                array_splice($items, 10, 0, [['label' => 'Rider payroll', 'route' => 'pickrush.station.payroll', 'active' => 'pickrush.station.payroll*']]);
+            }
+
+            return $items;
         }
 
         if ($staff->hub?->isProvince()) {

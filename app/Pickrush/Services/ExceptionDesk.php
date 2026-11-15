@@ -29,7 +29,7 @@ class ExceptionDesk
     ];
 
     /** Manager-only resolutions. */
-    private const MANAGER_ONLY = ['mark_lost'];
+    private const MANAGER_ONLY = ['mark_lost' => 'mark a parcel as lost'];
 
     public function __construct(private ParcelLedger $ledger, private ManifestService $manifests) {}
 
@@ -94,8 +94,8 @@ class ExceptionDesk
         if ($exception->hub_id !== $staff->hub_id && ! $staff->isCompany()) {
             throw new OperationRefused('The hub that found it resolves it.');
         }
-        if (in_array($action, self::MANAGER_ONLY, true) && ! $staff->hasRole(StaffRole::HubManager, StaffRole::SuperAdmin)) {
-            throw new OperationRefused('Only the hub manager can mark a parcel as lost.');
+        if (isset(self::MANAGER_ONLY[$action]) && ! $staff->hasRole(StaffRole::HubManager, StaffRole::SuperAdmin)) {
+            throw new OperationRefused('Only the hub manager can '.self::MANAGER_ONLY[$action].'.');
         }
 
         DB::transaction(function () use ($exception, $action, $staff, $note, $trackingNo) {
