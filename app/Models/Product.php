@@ -191,6 +191,33 @@ class Product extends Model
         return $image?->image_url;
     }
 
+    /**
+     * The options as buyers pick them: each option name with its values in the seller's order, and
+     * every combination with its stock (never above the product's), price and image URL.
+     *
+     * @return array{names: list<string>, values: list<list<string>>, combinations: list<array>}
+     */
+    public function optionChoices(): array
+    {
+        $names = array_column($this->variations->first()?->optionPairs() ?? [], 0);
+        $values = array_map(
+            fn (int $i) => $this->variations->map(fn (ProductVariation $v) => $v->optionValues()[$i] ?? null)->filter()->unique()->values()->all(),
+            array_keys($names),
+        );
+
+        return [
+            'names' => $names,
+            'values' => $values,
+            'combinations' => $this->variations->map(fn (ProductVariation $v) => [
+                'id' => $v->id,
+                'values' => $v->optionValues(),
+                'stock' => min((int) $v->stock, (int) $this->stock),
+                'price' => $this->priceFor($v),
+                'image' => $v->image_id && ($image = $this->images->firstWhere('id', $v->image_id)) ? $image->url : null,
+            ])->values()->all(),
+        ];
+    }
+
     /** The picked option's own image, else the cover: what carts and orders show for this choice. */
     public function imageFor(?ProductVariation $variation): ?string
     {

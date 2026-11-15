@@ -121,8 +121,10 @@ class VariationImageTest extends TestCase
         $blue = ProductVariation::where('value', 'Blue')->sole();
         $buyer = $this->buyer();
 
-        $this->actingAs($buyer)->get(route('buyer.product', $product))->assertOk()
-            ->assertSee('data-image="'.$blueImage->url.'"', false);
+        $page = $this->actingAs($buyer)->get(route('buyer.product', $product))->assertOk()->getContent();
+        preg_match('#<script type="application/json" id="variantChoices">(.*?)</script>#s', $page, $json);
+        $choices = json_decode($json[1], true);
+        $this->assertSame($blueImage->url, collect($choices['combinations'])->firstWhere('id', $blue->id)['image']);
 
         $cart = Cart::create(['buyer_id' => $buyer->id]);
         CartItem::create(['cart_id' => $cart->id, 'product_id' => $product->id, 'variation_id' => $blue->id, 'quantity' => 1]);

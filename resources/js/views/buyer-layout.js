@@ -150,7 +150,7 @@ async function handleBuyerCardCartAction(button) {
         let choice = {};
         const optionsUrl = cardOptionsUrl(button);
         const product = optionsUrl ? await fetch(optionsUrl, { headers: { Accept: 'application/json' } }).then(r => (r.ok ? r.json() : null)) : null;
-        if (product?.options?.length) {
+        if (product?.choices?.combinations?.length) {
             choice = await openQuickAdd(product, { buyNow });
             if (!choice) return;
         }

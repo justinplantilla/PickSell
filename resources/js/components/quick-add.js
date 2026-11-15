@@ -1,12 +1,15 @@
 /**
  * Quick-add modal for product cards (home, browse, categories, storefront, wishlist, cart
  * recommendations). A card has no option picker, so a product sold in options opens this modal:
- * photo (follows the picked option's image), price, option chips, quantity, and one button that
- * adds to the cart or, from Buy Now, goes on to checkout. Products without options skip it.
+ * photo (follows the picked option's image), price, one row of chips per option name, quantity,
+ * and one button that adds to the cart or, from Buy Now, goes on to checkout. Products without
+ * options skip it.
  *
- * openQuickAdd() resolves with { variationId, quantity } once the buyer confirms, or null when
- * they close the modal.
+ * openQuickAdd(product) takes BuyerController::productOptions() and resolves with
+ * { variationId, quantity } once the buyer confirms, or null when they close the modal.
  */
+import { createVariantPicker } from './variant-picker.js';
+
 const peso = value => `₱${Number(value).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 let dialog;
@@ -43,68 +46,35 @@ export function openQuickAdd(product, { buyNow = false } = {}) {
     if (!dialog) build();
     const image = dialog.querySelector('[data-quick-add-image]');
     const price = dialog.querySelector('[data-quick-add-price]');
-    const groups = dialog.querySelector('[data-quick-add-groups]');
     const qty = dialog.querySelector('[data-quick-add-qty]');
     const stock = dialog.querySelector('[data-quick-add-stock]');
     const error = dialog.querySelector('[data-quick-add-error]');
     const submit = dialog.querySelector('[data-quick-add-submit]');
+    const { combinations } = product.choices;
 
-    let chosen = null;
     image.src = product.image || '';
     image.hidden = !product.image;
     image.alt = product.name;
     dialog.querySelector('[data-quick-add-name]').textContent = product.name;
-    const prices = product.options.map(option => option.price);
+    const prices = combinations.map(combo => combo.price);
     const low = Math.min(...prices);
     const high = Math.max(...prices);
-    price.textContent = high > low ? `${peso(low)} – ${peso(high)}` : peso(low);
+    const range = high > low ? `${peso(low)} – ${peso(high)}` : peso(low);
     submit.textContent = buyNow ? 'Buy Now' : 'Add to Cart';
     error.textContent = '';
     qty.value = 1;
-    qty.max = product.stock;
-    stock.textContent = 'Choose an option';
 
-    groups.replaceChildren();
-    const byType = new Map();
-    product.options.forEach(option => {
-        if (!byType.has(option.type)) byType.set(option.type, []);
-        byType.get(option.type).push(option);
-    });
-    byType.forEach((options, type) => {
-        const group = document.createElement('div');
-        group.className = 'quick-add-group';
-        group.setAttribute('role', 'group');
-        const label = document.createElement('div');
-        label.className = 'quick-add-label';
-        label.textContent = type.charAt(0).toUpperCase() + type.slice(1);
-        group.setAttribute('aria-label', label.textContent);
-        const chips = document.createElement('div');
-        chips.className = 'quick-add-options';
-        options.forEach(option => {
-            const chip = document.createElement('button');
-            chip.type = 'button';
-            chip.className = 'var-btn';
-            chip.textContent = option.value;
-            chip.disabled = option.stock <= 0;
-            if (chip.disabled) chip.title = 'Out of stock';
-            chip.setAttribute('aria-pressed', 'false');
-            chip.addEventListener('click', () => {
-                chosen = option;
-                chips.querySelectorAll('.var-btn').forEach(b => {
-                    b.classList.toggle('selected', b === chip);
-                    b.setAttribute('aria-pressed', String(b === chip));
-                });
-                price.textContent = peso(option.price);
-                qty.max = option.stock;
-                if (Number(qty.value) > option.stock) qty.value = option.stock;
-                stock.textContent = `${option.stock} available`;
-                if (option.image) { image.src = option.image; image.hidden = false; }
-                error.textContent = '';
-            });
-            chips.appendChild(chip);
-        });
-        group.append(label, chips);
-        groups.appendChild(group);
+    let chosen = null;
+    const picker = createVariantPicker(dialog.querySelector('[data-quick-add-groups]'), product.choices, {
+        onChange({ combination, image: photo }) {
+            chosen = combination;
+            price.textContent = combination ? peso(combination.price) : range;
+            qty.max = combination ? combination.stock : product.stock;
+            if (Number(qty.value) > Number(qty.max)) qty.value = qty.max;
+            stock.textContent = combination ? `${combination.stock} available` : 'Choose your options';
+            if (photo) { image.src = photo; image.hidden = false; }
+            if (combination) error.textContent = '';
+        },
     });
 
     return new Promise(resolve => {
@@ -120,7 +90,7 @@ export function openQuickAdd(product, { buyNow = false } = {}) {
         const onSubmit = event => {
             event.preventDefault();
             if (!chosen) {
-                error.textContent = 'Choose an option first.';
+                error.textContent = 'Choose an option for each row first.';
                 return;
             }
             const quantity = Math.min(Number(qty.max) || 1, Math.max(1, Number(qty.value) || 1));
@@ -140,6 +110,6 @@ export function openQuickAdd(product, { buyNow = false } = {}) {
         dialog.addEventListener('submit', onSubmit);
         dialog.addEventListener('cancel', onCancel);
         dialog.showModal();
-        (groups.querySelector('.var-btn:not(:disabled)') ?? submit).focus();
+        picker.focusFirst();
     });
 }

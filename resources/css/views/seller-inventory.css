@@ -78,12 +78,39 @@ body.dark .gallery-tile-status, body.dark .gallery-progress-text { color:#e5e7eb
 body.dark .gallery-tile.is-failed .gallery-tile-overlay { background:rgba(45,15,13,0.85); color:#f28b82; }
 
 /* Variations (options) editor */
-.product-variations-type { margin:0.5rem 0 0; }
-.product-variation-rows { display:flex; flex-direction:column; gap:0.45rem; margin:0.5rem 0; }
-.product-variation-rows:empty { margin:0.25rem 0; }
-.product-variation-row { display:grid; grid-template-columns:auto minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1fr) auto; gap:0.45rem; align-items:center; }
-@media (max-width: 640px) { .product-variation-row { grid-template-columns:auto 1fr 1fr; } }
+/* Options editor: up to three option names, each with value chips, then one row per combination. */
+.option-name-blocks { display:flex; flex-direction:column; gap:0.6rem; margin:0.5rem 0; }
+.option-name-blocks:empty { margin:0.25rem 0; }
+.option-name-block { display:flex; flex-direction:column; gap:0.45rem; padding:0.7rem; border:1px solid #e4ded2; border-radius:10px; background:#fcfbf8; }
+.option-name-row, .option-value-add { display:flex; gap:0.45rem; align-items:center; }
+.option-name-row .form-control, .option-value-add .form-control { margin:0; flex:1; min-width:0; }
+.option-values { display:flex; flex-wrap:wrap; gap:0.4rem; }
+.option-values:empty { display:none; }
+.option-value-chip { display:inline-flex; align-items:center; gap:0.35rem; padding:0.2rem 0.25rem 0.2rem 0.3rem; border:1px solid #ddd6c8; border-radius:999px; background:#fff; font-size:0.8rem; font-weight:600; }
+.option-value-chip .variation-image-toggle { width:28px; height:28px; border-radius:50%; }
+.option-value-chip .variation-image-toggle svg { width:15px; height:15px; }
+.option-value-text { padding-left:0.15rem; }
+.option-value-remove { width:1.5rem; height:1.5rem; padding:0; border:0; border-radius:50%; background:transparent; color:#6b6b6b; font-size:1rem; line-height:1; cursor:pointer; }
+.option-value-remove:hover { background:#f4f1ea; color:#b91c1c; }
+.option-value-remove:focus-visible { outline:2px solid var(--coral, #E8472A); outline-offset:1px; }
+.option-image-hint { font-size:0.75rem; color:#6b6b6b; }
+.variation-combos { margin-top:0.75rem; }
+.variation-bulk { display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center; margin:0.4rem 0 0.6rem; font-size:0.8rem; font-weight:600; }
+.variation-bulk .form-control { margin:0; width:110px; }
+.product-variation-head { display:grid; grid-template-columns:minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap:0.45rem; font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; color:#6b6b6b; }
+.product-variation-rows { display:flex; flex-direction:column; gap:0.45rem; margin:0.35rem 0 0.5rem; max-height:320px; overflow-y:auto; }
+.product-variation-row { display:grid; grid-template-columns:minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap:0.45rem; align-items:center; }
 .product-variation-row .form-control { margin:0; }
+.variation-combo-label { font-size:0.85rem; font-weight:600; overflow-wrap:anywhere; }
+.product-variations-message { margin:0.3rem 0; font-size:0.8rem; font-weight:600; color:#b45309; }
+.product-variations-message:empty { display:none; }
+@media (max-width: 640px) { .product-variation-head, .product-variation-row { grid-template-columns:minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); } }
+body.dark .option-name-block { background:#181818; border-color:#333; }
+body.dark .option-value-chip { background:#1f1f1f; border-color:#3a3a3a; }
+body.dark .option-value-remove { color:#a3a3a3; }
+body.dark .option-value-remove:hover { background:#2a2a2a; color:#fca5a5; }
+body.dark .option-image-hint, body.dark .product-variation-head { color:#a3a3a3; }
+body.dark .product-variations-message { color:#fbbf24; }
 /* Option image: a thumbnail button that opens a picker of the product's gallery images. */
 .variation-image { position:relative; }
 .variation-image-toggle { width:40px; height:40px; padding:0; display:grid; place-items:center; border:1px dashed #c9c2b4; border-radius:8px; background:#fff; color:#8a8378; cursor:pointer; overflow:hidden; }

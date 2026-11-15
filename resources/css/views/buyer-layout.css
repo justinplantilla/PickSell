@@ -539,7 +539,10 @@ body.dark .seller-preferred { background:#0f2a1c; color:#6ce9a6; }
 .quick-add-name { margin:0 2rem 0 0; font-size:1.05rem; line-height:1.35; }
 .quick-add-price { font-size:1.35rem; font-weight:800; color:var(--coral); }
 .quick-add-label { display:block; font-size:.82rem; font-weight:700; margin-bottom:.4rem; }
-.quick-add-options { display:flex; flex-wrap:wrap; gap:.45rem; }
+.quick-add .variation-group { margin-bottom:.6rem; }
+.quick-add .variation-label { font-size:.82rem; font-weight:700; margin-bottom:.4rem; }
+.quick-add .variation-label span { font-weight:500; color:#6b6b6b; }
+.quick-add .variation-options { display:flex; flex-wrap:wrap; gap:.45rem; }
 .quick-add .var-btn { padding:.35rem .8rem; border:1.5px solid #ddd6c8; border-radius:6px; font-size:.82rem; cursor:pointer; background:#fff; color:inherit; }
 .quick-add .var-btn:hover:not(:disabled), .quick-add .var-btn.selected { border-color:var(--coral); color:var(--coral); background:#fff3f0; }
 .quick-add .var-btn:disabled { opacity:.45; cursor:not-allowed; text-decoration:line-through; }

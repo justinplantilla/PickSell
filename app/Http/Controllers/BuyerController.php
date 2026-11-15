@@ -257,7 +257,7 @@ class BuyerController extends Controller
     public function productOptions(Product $product)
     {
         abort_if($product->status !== 'active', 404);
-        $product->load('variations');
+        $product->load('variations', 'images');
         $imageUrl = fn (?string $path) => $path ? Storage::url($path) : null;
 
         return response()->json([
@@ -268,14 +268,7 @@ class BuyerController extends Controller
             'stock' => (int) $product->stock,
             'purchasable' => $product->isPurchasable(),
             'url' => route('buyer.product', $product),
-            'options' => $product->variations->map(fn ($v) => [
-                'id' => $v->id,
-                'type' => $v->type,
-                'value' => $v->value,
-                'stock' => min((int) $v->stock, (int) $product->stock),
-                'price' => $product->priceFor($v),
-                'image' => $v->image_id ? $imageUrl($product->imageFor($v)) : null,
-            ])->values(),
+            'choices' => $product->optionChoices(),
         ]);
     }
 

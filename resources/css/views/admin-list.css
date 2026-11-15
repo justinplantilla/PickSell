@@ -101,7 +101,7 @@ td.list-amount, td.list-number { line-height: var(--list-line-1); font-size: 0.8
 .list-link-button[hidden] { display: none; }
 body.list-bulk-open .dashboard-pagination { padding-bottom: 4.5rem; }
 
-.list-dialog { width: min(480px, calc(100vw - 2rem)); padding: 0; border: 0; border-radius: 14px; box-shadow: 0 20px 48px rgba(0, 0, 0, 0.25); }
+.list-dialog { margin: auto; width: min(480px, calc(100vw - 2rem)); padding: 0; border: 0; border-radius: 14px; box-shadow: 0 20px 48px rgba(0, 0, 0, 0.25); }
 .list-dialog::backdrop { background: rgba(17, 17, 17, 0.45); }
 .list-dialog form { display: grid; gap: 0.5rem; padding: 1.3rem; }
 .list-dialog h2 { margin: 0; font-size: 1.05rem; }

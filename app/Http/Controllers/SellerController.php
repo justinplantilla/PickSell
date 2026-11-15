@@ -7,6 +7,7 @@ use App\Models\Message;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductReview;
+use App\Models\ProductVariation;
 use App\Models\ReturnRequest;
 use App\Models\User;
 use App\Notifications\FollowedStoreNewProduct;
@@ -35,6 +36,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class SellerController extends Controller
@@ -416,23 +418,28 @@ class SellerController extends Controller
         'gallery_managed' => 'nullable|boolean',
         'gallery_alt' => 'nullable|array',
         'gallery_alt.*' => 'nullable|string|max:255',
-        // One kind of option per product (e.g. Size), each value with its own stock.
+        // Up to three option names (e.g. Color and Size); each row is one combination of their
+        // values with its own stock. A single option may still come as variation_type + value.
         'variations_managed' => 'nullable|boolean',
-        'variation_type' => 'nullable|required_with:variations|string|max:50',
-        'variations' => 'nullable|array|max:30',
+        'option_names' => 'nullable|array|max:'.ProductVariation::MAX_OPTION_NAMES,
+        'option_names.*' => 'required|string|max:30|distinct:ignore_case',
+        'variation_type' => 'nullable|string|max:50',
+        'variations' => 'nullable|array|max:'.ProductVariation::MAX_COMBINATIONS,
         'variations.*.id' => 'nullable|integer',
-        'variations.*.value' => 'required|string|max:50|distinct:ignore_case',
+        'variations.*.value' => 'nullable|string|max:50',
+        'variations.*.values' => 'nullable|array|max:'.ProductVariation::MAX_OPTION_NAMES,
+        'variations.*.values.*' => 'nullable|string|max:50',
         'variations.*.price' => 'nullable|numeric|min:0',
         'variations.*.stock' => 'required|integer|min:0',
         // A gallery entry ("existing:{id}" / "upload:{token}") the option shows when picked.
         'variations.*.image' => 'nullable|string|max:64',
     ];
 
-    private const PRODUCT_EXTRAS = ['gallery', 'gallery_cover', 'gallery_managed', 'gallery_alt', 'variations_managed', 'variation_type', 'variations'];
+    private const PRODUCT_EXTRAS = ['gallery', 'gallery_cover', 'gallery_managed', 'gallery_alt', 'variations_managed', 'option_names', 'variation_type', 'variations'];
 
     public function storeProduct(Request $request, ProductGallery $gallery)
     {
-        $data = $this->withVariationStock($request->validate(self::PRODUCT_RULES, self::PRODUCT_MESSAGES));
+        $data = $this->withVariationStock($this->withCombinations($request->validate(self::PRODUCT_RULES, self::PRODUCT_MESSAGES)));
         $data['seller_id'] = $this->seller()->id;
 
         $managed = $request->boolean('gallery_managed');
@@ -455,7 +462,7 @@ class SellerController extends Controller
     {
         abort_if($product->seller_id !== $this->seller()->id, 403);
 
-        $data = $this->withVariationStock($request->validate(self::PRODUCT_RULES, self::PRODUCT_MESSAGES));
+        $data = $this->withVariationStock($this->withCombinations($request->validate(self::PRODUCT_RULES, self::PRODUCT_MESSAGES)));
 
         $managed = $request->boolean('gallery_managed');
         DB::transaction(function () use ($product, $data, $gallery, $managed) {
@@ -470,11 +477,62 @@ class SellerController extends Controller
         'sale_starts_at.required_with' => 'Pick when the sale starts.',
         'sale_ends_at.required_with' => 'Pick when the sale ends.',
         'sale_ends_at.after' => 'The sale must end after it starts.',
-        'variation_type.required_with' => 'Name the option, e.g. Size or Color.',
-        'variations.*.value.required' => 'Each option needs a value.',
-        'variations.*.value.distinct' => 'Each option value must be different.',
+        'option_names.*.required' => 'Name each option, e.g. Color or Size.',
+        'option_names.*.distinct' => 'Each option name must be different.',
+        'option_names.max' => 'A product can have up to '.ProductVariation::MAX_OPTION_NAMES.' option names.',
+        'variations.max' => 'A product can have up to '.ProductVariation::MAX_COMBINATIONS.' combinations.',
         'variations.*.stock.required' => 'Each option needs its stock.',
     ];
+
+    /**
+     * Turn each submitted row into its [name, value] pairs (variations.*.pairs) and refuse rows
+     * that miss a value, repeat another combination, or give an option more than
+     * ProductVariation::MAX_VALUES_PER_OPTION values. All problems are reported together.
+     */
+    private function withCombinations(array $data): array
+    {
+        $rows = $data['variations'] ?? [];
+        if (empty($data['variations_managed']) || ! $rows) {
+            return $data;
+        }
+
+        $names = array_values(array_map('trim', $data['option_names'] ?? array_filter([$data['variation_type'] ?? null])));
+        $errors = [];
+        if (! $names) {
+            $errors['variation_type'] = 'Name the option, e.g. Size or Color.';
+        }
+
+        $seen = [];
+        $valuesPerName = array_fill(0, count($names), []);
+        foreach ($rows as $i => $row) {
+            $values = array_map(fn ($v) => trim((string) $v), $row['values'] ?? [$row['value'] ?? '']);
+            if (count($values) !== max(count($names), 1) || in_array('', $values, true)) {
+                $errors["variations.{$i}.value"] = 'Each option needs a value.';
+                continue;
+            }
+            $key = mb_strtolower(implode("\u{1F}", $values));
+            if (isset($seen[$key])) {
+                $message = count($values) > 1 ? 'Each combination must be different.' : 'Each option value must be different.';
+                $errors["variations.{$seen[$key]}.value"] = $message;
+                $errors["variations.{$i}.value"] = $message;
+            }
+            $seen[$key] ??= $i;
+            foreach ($values as $n => $value) {
+                $valuesPerName[$n][mb_strtolower($value)] = true;
+            }
+            $data['variations'][$i]['pairs'] = array_map(null, $names ?: [''], $values);
+        }
+        foreach ($valuesPerName as $n => $values) {
+            if (count($values) > ProductVariation::MAX_VALUES_PER_OPTION) {
+                $errors["option_names.{$n}"] = "{$names[$n]} can have up to ".ProductVariation::MAX_VALUES_PER_OPTION.' values.';
+            }
+        }
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        return $data;
+    }
 
     /** With options, the product's stock is what its options add up to. */
     private function withVariationStock(array $data): array
@@ -518,7 +576,8 @@ class SellerController extends Controller
         $kept = [];
         // validate() lists rows that have an id first; the keys keep the form's order.
         foreach (collect($data['variations'] ?? [])->sortKeys() as $row) {
-            $values = ['type' => trim($data['variation_type']), 'value' => trim($row['value']), 'stock' => (int) $row['stock'],
+            $values = ['type' => implode(' / ', array_column($row['pairs'], 0)), 'value' => implode(' / ', array_column($row['pairs'], 1)),
+                'options' => $row['pairs'], 'stock' => (int) $row['stock'],
                 'price' => isset($row['price']) && $row['price'] !== '' ? $row['price'] : null,
                 'image_id' => $imageIds[$row['image'] ?? ''] ?? null];
             $variation = isset($row['id']) ? $existing->get((int) $row['id']) : null;
@@ -553,7 +612,7 @@ class SellerController extends Controller
                 }
             }
             foreach ($product->variations as $variation) {
-                $copy->variations()->create($variation->only(['type', 'value', 'price']) + ['stock' => 0, 'image_id' => $copiedImages[$variation->image_id] ?? null]);
+                $copy->variations()->create($variation->only(['type', 'value', 'options', 'price']) + ['stock' => 0, 'image_id' => $copiedImages[$variation->image_id] ?? null]);
             }
 
             return $copy;

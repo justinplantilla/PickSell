@@ -152,8 +152,11 @@ class BuyerFollowUpFeaturesTest extends TestCase
         $xl = ProductVariation::create(['product_id' => $shirt->id, 'type' => 'Size', 'value' => 'XL', 'price' => 400, 'stock' => 3]);
 
         // ₱300 −10% = ₱270 for S; ₱400 −10% = ₱360 for XL.
-        $this->actingAs($buyer)->get(route('buyer.product', $shirt))->assertOk()
-            ->assertSee('₱270.00 – ₱360.00')->assertSee('data-price="₱360.00"', false);
+        $page = $this->actingAs($buyer)->get(route('buyer.product', $shirt))->assertOk()
+            ->assertSee('₱270.00 – ₱360.00')->getContent();
+        // The option chips (variant-picker.js) read each combination's price from this JSON.
+        preg_match('#<script type="application/json" id="variantChoices">(.*?)</script>#s', $page, $json);
+        $this->assertEqualsWithDelta(360, collect(json_decode($json[1], true)['combinations'])->firstWhere('id', $xl->id)['price'], 0.001);
 
         $this->cartLine($buyer, $shirt, 1, $small->id);
         $line = $this->cartLine($buyer, $shirt, 2, $xl->id);

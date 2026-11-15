@@ -24,14 +24,17 @@ class QuickAddOptionsTest extends TestCase
         $this->actingAs($this->buyer())->getJson(route('buyer.product.options', $product))->assertOk()
             ->assertJsonPath('name', 'Desk Lamp')
             ->assertJsonPath('image', Storage::url($product->primary_image))
-            ->assertJsonPath('options.0.id', $blue->id)
+            ->assertJsonPath('choices.names', ['Color'])
+            ->assertJsonPath('choices.values', [['Blue', 'Red']])
+            ->assertJsonPath('choices.combinations.0.id', $blue->id)
+            ->assertJsonPath('choices.combinations.0.values', ['Blue'])
             // An option never offers more than the product has in stock.
-            ->assertJsonPath('options.0.stock', 4)
-            ->assertJsonPath('options.0.price', 540)
-            ->assertJsonPath('options.0.image', Storage::url('products/blue.jpg'))
-            ->assertJsonPath('options.1.id', $red->id)
-            ->assertJsonPath('options.1.stock', 0)
-            ->assertJsonPath('options.1.image', null);
+            ->assertJsonPath('choices.combinations.0.stock', 4)
+            ->assertJsonPath('choices.combinations.0.price', 540)
+            ->assertJsonPath('choices.combinations.0.image', $blueImage->url)
+            ->assertJsonPath('choices.combinations.1.id', $red->id)
+            ->assertJsonPath('choices.combinations.1.stock', 0)
+            ->assertJsonPath('choices.combinations.1.image', null);
     }
 
     public function test_a_product_without_options_returns_none_and_an_archived_one_is_not_found(): void
@@ -39,7 +42,7 @@ class QuickAddOptionsTest extends TestCase
         $buyer = $this->buyer();
         $product = $this->product($this->seller());
 
-        $this->actingAs($buyer)->getJson(route('buyer.product.options', $product))->assertOk()->assertJsonPath('options', []);
+        $this->actingAs($buyer)->getJson(route('buyer.product.options', $product))->assertOk()->assertJsonPath('choices.combinations', []);
 
         $product->update(['status' => 'archived']);
         $this->getJson(route('buyer.product.options', $product))->assertNotFound();

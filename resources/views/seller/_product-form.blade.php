@@ -82,19 +82,30 @@
     </div>
 </div>
 
-<div class="form-group product-variations" data-product-variations>
+<div class="form-group product-variations" data-product-variations data-max-names="{{ \App\Models\ProductVariation::MAX_OPTION_NAMES }}" data-max-values="{{ \App\Models\ProductVariation::MAX_VALUES_PER_OPTION }}" data-max-combinations="{{ \App\Models\ProductVariation::MAX_COMBINATIONS }}">
     <input type="hidden" name="variations_managed" value="1" disabled data-variations-managed>
     <div class="product-gallery-head">
         <span class="form-label">Variations</span>
         <span class="product-gallery-count">Optional</span>
     </div>
-    <div class="form-group product-variations-type" data-variation-type-wrap hidden>
-        <label class="form-label" for="variation-type-{{ !empty($edit) ? 'edit' : 'add' }}">Option name *</label>
-        <input type="text" id="variation-type-{{ !empty($edit) ? 'edit' : 'add' }}" name="variation_type" class="form-control" maxlength="50" placeholder="e.g. Size or Color" data-variation-type>
+    <div class="option-name-blocks" data-option-names></div>
+    <button type="button" class="btn btn-outline btn-sm" data-add-option-name>+ Add option (e.g. Color or Size)</button>
+    <div class="variation-combos" data-combos hidden>
+        <div class="product-gallery-head">
+            <span class="form-label">Combinations</span>
+            <span class="product-gallery-count" data-combo-count></span>
+        </div>
+        <div class="variation-bulk">
+            <span>Set all</span>
+            <input type="number" class="form-control" min="0" step="0.01" placeholder="Price" aria-label="Price for every combination" data-apply-price>
+            <input type="number" class="form-control" min="0" placeholder="Stock" aria-label="Stock for every combination" data-apply-stock>
+            <button type="button" class="btn btn-outline btn-sm" data-apply-all>Apply</button>
+        </div>
+        <div class="product-variation-head" aria-hidden="true"><span>Combination</span><span>Price (₱)</span><span>Stock</span></div>
+        <div class="product-variation-rows" data-variation-rows></div>
     </div>
-    <div class="product-variation-rows" data-variation-rows></div>
-    <button type="button" class="btn btn-outline btn-sm" data-add-variation>+ Add option</button>
-    <small class="product-images-hint">For products sold in options, e.g. Size: S, M, L. Each option has its own stock (the product's stock becomes their total) and can have its own price; leave the price blank to use the product's. Tap an option's image box to pick which product image buyers see when they choose it.</small>
+    <p class="product-variations-message" role="status" data-variations-message></p>
+    <small class="product-images-hint">For products sold in options, e.g. Color and Size: up to {{ \App\Models\ProductVariation::MAX_OPTION_NAMES }} options with up to {{ \App\Models\ProductVariation::MAX_VALUES_PER_OPTION }} values each. Every combination (Red / M) gets its own stock, and the product's stock becomes their total. Leave a price blank to use the product's.</small>
 </div>
 
 <div class="form-group product-gallery"data-product-gallery data-max="{{ \App\Models\Product::MAX_IMAGES }}" data-upload-url="{{ route('seller.inventory.images.store') }}" data-discard-url="{{ url('/seller/inventory/images') }}">

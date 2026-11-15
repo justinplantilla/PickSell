@@ -1,15 +1,18 @@
-function selectVariation(btn, typeSlug) {
-    document.querySelectorAll(`.var-btn[data-type="${btn.dataset.type}"]`).forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    document.getElementById('selected_' + typeSlug).textContent = btn.dataset.value;
-    document.getElementById('variation_id').value = btn.dataset.id;
-    // Each option has its own stock: cap the quantity and show what this option has left.
+import { createVariantPicker } from '../components/variant-picker.js';
+
+const peso = value => `₱${Number(value).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/** A full pick is one combination: it sets variation_id, the price, the stock cap and the photo. */
+function showVariant({ combination, image }) {
     const qty = document.getElementById('qtyInput');
-    qty.max = btn.dataset.stock;
+    const price = document.getElementById('detailPrice');
+    price.dataset.range ??= price.textContent;
+    document.getElementById('variation_id').value = combination?.id ?? '';
+    price.textContent = combination ? peso(combination.price) : price.dataset.range;
+    qty.max = combination ? combination.stock : qty.dataset.productStock;
     if (parseInt(qty.value) > parseInt(qty.max)) qty.value = qty.max;
-    document.getElementById('stockAvailable').textContent = `${btn.dataset.stock} available`;
-    if (btn.dataset.price) document.getElementById('detailPrice').textContent = btn.dataset.price;
-    if (btn.dataset.image) showGalleryImage(btn.dataset.image, btn.dataset.value);
+    document.getElementById('stockAvailable').textContent = `${qty.max} available`;
+    if (image) showGalleryImage(image);
 }
 function changeQty(delta) {
     const input = document.getElementById('qtyInput');
@@ -107,7 +110,6 @@ document.getElementById('buyNowBtn')?.addEventListener('click', event => {
     confirmCartAction(event.currentTarget, 'Add this product and continue to checkout?', { redirectToCheckout: true });
 });
 
-window.selectVariation = selectVariation;
 window.changeQty = changeQty;
 window.addProductToCart = addProductToCart;
 
@@ -125,11 +127,15 @@ document.querySelectorAll('[data-gallery-thumb]').forEach(thumb => {
     thumb.addEventListener('click', () => showGalleryImage(thumb.dataset.src, thumb.dataset.alt));
 });
 
-document.querySelectorAll('.var-btn[data-type-slug]').forEach(button => button.addEventListener('click', () => selectVariation(button, button.dataset.typeSlug)));
-// Coming from the cart or checkout (?option=ID): that option starts picked, if it is still in stock.
-const preselected = new URLSearchParams(window.location.search).get('option');
-const preselectedButton = preselected && document.querySelector(`.var-btn[data-type-slug][data-id="${CSS.escape(preselected)}"]:not(:disabled)`);
-if (preselectedButton) selectVariation(preselectedButton, preselectedButton.dataset.typeSlug);
+const pickerRoot = document.querySelector('[data-variant-picker]');
+if (pickerRoot) {
+    const qty = document.getElementById('qtyInput');
+    qty.dataset.productStock = qty.max;
+    const picker = createVariantPicker(pickerRoot, JSON.parse(document.getElementById('variantChoices').textContent), { onChange: showVariant });
+    // Coming from the cart or checkout (?option=ID): that combination starts picked, if it is still in stock.
+    const preselected = new URLSearchParams(window.location.search).get('option');
+    if (preselected) picker.select(preselected);
+}
 document.querySelectorAll('[data-qty-step]').forEach(button => button.addEventListener('click', () => changeQty(Number(button.dataset.qtyStep))));
 
 // Zoom: clicking opens the photo full size.
