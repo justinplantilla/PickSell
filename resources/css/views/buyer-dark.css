@@ -1,0 +1,177 @@
+/*
+ * Buyer dark mode (body.dark): the dark counterpart of every light-only colour in the buyer
+ * pages' styles, loaded after them. White surfaces become #1b1b1b, cream ones #232323, tinted
+ * badges a dark tint of the same hue; dark text turns light and light borders dark.
+ * Rules keep !important where the light rule had it, so they still win.
+ */
+:root { --dk-surface: #1b1b1b; --dk-raised: #232323; --dk-line: #333333; --dk-text: #e5e7eb; --dk-muted: #a3a3a3; }
+body.dark { --bone: #232323; --line: #333333; --ink: #e5e7eb; --coral-soft: #3a1f19; }
+
+/* css/views/buyer-account.css */
+body.dark .buyer-account-section { background: #1b1b1b; border-color: #333333; }
+body.dark .buyer-account-section-heading h2 { color: #b9c3d5; }
+body.dark .buyer-account-field .form-label { color: #a3a3a3; }
+body.dark .buyer-account-address-badge { background: #371e15; }
+body.dark .buyer-account-address-card { background: #1b1b1b; }
+body.dark .buyer-account-pin-note { background: #232323; color: #f5bc99; }
+
+/* css/views/buyer-cart.css */
+body.dark .cart-thumb-placeholder { background: #232323 !important; }
+body.dark .cart-muted-text-2 { color: #a3a3a3 !important; }
+body.dark .cart-divider { border-top-color: #333333 !important; }
+body.dark .cart-recommendation { border-bottom-color: #333333; }
+body.dark .cart-recommendation img { background: #232323; }
+body.dark .cart-remove-btn { background: #371515; }
+body.dark .checkout-ship-total { border-top-color: #333333; }
+body.dark .checkout-summary-row { color: #a3a3a3; }
+body.dark .checkout-voucher-option.is-unavailable:hover { border-color: #333333; background: #232323; }
+body.dark .cart-recommended-section { border-top-color: #333333; }
+body.dark .qty-stepper { background: #1b1b1b; }
+body.dark .qty-btn { background: #232323; color: #a3a3a3; }
+body.dark .qty-stepper .qty-input { background: #1b1b1b; color: #e5e7eb; }
+body.dark .qty-stepper .qty-input:focus { background: #1b1b1b; }
+
+/* css/views/buyer-chat.css */
+body.dark .chat-layout { background: #1b1b1b; border-color: #333333; }
+body.dark .chat-sidebar { border-right-color: #333333; }
+body.dark .chat-sidebar-header { border-bottom-color: #333333; }
+body.dark .chat-sidebar-title span { background: #371c15; }
+body.dark .chat-search { background: #232323; }
+body.dark .chat-item { border-bottom-color: #333333; }
+body.dark .chat-item:hover, body.dark .chat-item.active { background: #371c15; }
+body.dark .chat-header { border-bottom-color: #333333; }
+body.dark .chat-product-context { border-color: #684c27; background: #1b1b1b; }
+body.dark .chat-product-context img { background: #232323; }
+body.dark .chat-messages { background: #1b1b1b; }
+body.dark .msg.received .msg-bubble { background: #1b1b1b; border-color: #333333; }
+body.dark .msg.auto-reply .msg-bubble { background: #202020; border-color: #303030; color: #a3a3a3; }
+body.dark .msg-auto-reply-label { color: #737373; }
+body.dark .chat-input-area { border-top-color: #333333; background: #1b1b1b; }
+body.dark .chat-empty { background: #1b1b1b; }
+body.dark .chat-empty strong { color: #e5e7eb; }
+body.dark .chat-sidebar .buyer-chat-empty strong { color: #e5e7eb; }
+body.dark .product-context { background: #1b1b1b; border-color: #684c27; }
+body.dark .product-context-close:hover { background: #372915; }
+body.dark .msg-product-tag { background: #1b1b1b; border-color: #684c27; color: #f7c097; }
+body.dark .buyer-chat-row { background: #1b1b1b !important; border-color: #684c27 !important; }
+body.dark .buyer-chat-row-2 { background: #1b1b1b !important; border-color: #684c27 !important; }
+@media (max-width: 720px) { body.dark .chat-sidebar { border-bottom-color: #333333; } }
+body.dark .chat-thread-product img, body.dark .chat-thread-product-placeholder { background: #232323; color: #f7c097; }
+
+/* css/views/buyer-home.css */
+body.dark .buyer-top-pick { border-color: #333333; background: #1b1b1b; }
+body.dark .buyer-top-pick-image { background: #232323; }
+body.dark .buyer-category-sidebar { border-color: #333333; background: #1b1b1b; }
+body.dark .buyer-category-sidebar nav a { color: #a3a3a3; }
+body.dark .buyer-category-sidebar nav a:hover, body.dark .buyer-category-sidebar nav a.is-active { background: #371e15; }
+body.dark .buyer-category-empty { border-color: #333333; }
+body.dark .deals-viewall-card { background: #1b1b1b; }
+
+/* css/views/buyer-layout.css */
+body.dark .user-dropdown a:hover, body.dark .user-dropdown button:hover { background: #371c15; }
+body.dark .user-dropdown hr { border-top-color: #333333; }
+body.dark .notif-dropdown { background: #1b1b1b; border-color: #333333; }
+body.dark .notif-header { border-bottom-color: #333333; }
+body.dark .notif-item { border-bottom-color: #333333; }
+body.dark button.notif-item:hover { background: #371c15; }
+body.dark .notification-detail-card { border-color: #333333; background: #1b1b1b; }
+body.dark .notification-detail-message { color: #a3a3a3; }
+body.dark .cat-bar { background: #1b1b1b; border-bottom-color: #333333; }
+body.dark .product-img-wrap { background: #232323; }
+body.dark .product-card-actions { background: #1b1b1b; }
+body.dark .card-add-btn { background: #1b1b1b; }
+body.dark .card-add-btn:hover { background: #371c15; }
+body.dark .alert-success { background: #153720; border-color: #27683e; color: #a3ebbe; }
+body.dark .alert-error { background: #371a15; border-color: #683127; }
+body.dark .btn-outline { border-color: #333333; color: #b9c3d5; }
+body.dark .card-header { border-bottom-color: #333333; }
+body.dark .form-control:focus { background: #1b1b1b; }
+body.dark .badge-pending { background: #372f15; color: #f7c097; }
+body.dark .badge-processing { background: #152437; }
+body.dark .badge-shipped { background: #153720; color: #9cf2bc; }
+body.dark .badge-completed { background: #153720; color: #9cf2bc; }
+body.dark .badge-cancelled { background: #371a15; }
+body.dark th { border-bottom-color: #333333; }
+body.dark td { border-bottom-color: #333333; }
+body.dark .buyer-category { background: #1b1b1b; border-color: #333333; color: #c2c6cc; }
+body.dark .buyer-category:hover { background: #1b1b1b; }
+body.dark .buyer-category-icon { background: #371e15; }
+body.dark .announcement-banner.announcement-maintenance { background: #371c15; color: #e7aea7; }
+body.dark .announcement-banner.announcement-urgent { background: #371515; color: #eca2a2; }
+body.dark .quick-add .variation-label span { color: #a3a3a3; }
+
+/* css/views/buyer-orders.css */
+body.dark .status-tabs { border-bottom-color: #333333; }
+body.dark .order-card { background: #1b1b1b; border-color: #333333; }
+body.dark .order-toggle { border-color: #333333; background: #1b1b1b; color: #a3a3a3; }
+body.dark .order-details { border-top-color: #333333; }
+body.dark .order-breakdown { border-color: #333333; background: #1b1b1b; }
+body.dark .order-breakdown dd { color: #e5e7eb; }
+body.dark .order-card-header { background: #1b1b1b; border-bottom-color: #333333; }
+body.dark .track-icon { background: #232323; border-color: #333333; }
+body.dark .track-icon.done { background: #371e15; }
+body.dark .track-line { background: #232323; }
+body.dark .modal { background: #1b1b1b; }
+body.dark .rate-photo-previews img { border-color: #333333; }
+body.dark .return-request-panel, body.dark .return-request-summary { border-color: #333333; background: #1b1b1b; }
+body.dark .return-request-summary p { color: #a3a3a3; }
+body.dark .tracking-event:not(:last-child)::before { background: #232323; }
+body.dark .tracking-event-marker { background: #1b1b1b; }
+body.dark .tracking-event-content p { color: #a3a3a3; }
+body.dark .tracking-assurance { background: #1b1b1b; color: #a3a3a3; }
+body.dark .cancel-confirm-box { background: #1b1b1b; }
+body.dark .cancel-confirm-box p { color: #a3a3a3; }
+body.dark .tracking-cancel-hint { color: #a3a3a3; }
+body.dark .tracking-cancel-rated p { color: #a3a3a3; }
+body.dark .return-attachment-thumb { border-color: #333333; background: #232323; }
+body.dark .return-attachment-lightbox { background: #1b1b1b; }
+body.dark .return-lightbox-close { background: #232323; color: #e5e7eb; }
+body.dark .orders-thumb-placeholder { background: #232323 !important; }
+
+/* css/views/buyer-product-detail.css */
+body.dark .product-detail-img { background: #232323; }
+body.dark .var-btn { background: #1b1b1b; }
+body.dark .var-btn:hover, body.dark .var-btn.selected { background: #371c15; }
+body.dark .var-btn:disabled:hover { background: #1b1b1b; }
+body.dark .qty-btn { background: #232323; }
+body.dark .qty-btn:hover { background: #232323; }
+body.dark .product-detail-img { border-color: #333333; }
+body.dark .product-reviews { border-color: #333333; background: #1b1b1b; }
+body.dark .reviews-header { border-bottom-color: #333333; }
+body.dark .reviews-empty strong { color: #b9c3d5; }
+body.dark .review-helpful:hover { background: #371c15; }
+body.dark .product-detail-img { background: #232323; }
+body.dark .product-thumbnail { border-color: #333333; background: #232323; }
+body.dark .product-heading h1 { color: #b9c3d5; }
+body.dark .product-seller-line strong { color: #b9c3d5; }
+body.dark .seller-verified { background: #232323; color: #b2dcd7; }
+body.dark .product-voucher { background: #372f15; color: #f7d897; }
+body.dark .seller-avatar img { background: #1b1b1b; }
+body.dark .product-information-grid { border-top-color: #333333; }
+body.dark .detail-list div { border-bottom-color: #333333; }
+body.dark .related-card { border-color: #333333; background: #1b1b1b; }
+body.dark .related-card img { background: #232323; }
+body.dark .wishlist-toggle { border-color: #333333; }
+body.dark .wishlist-toggle:hover, body.dark .wishlist-toggle.is-saved { background: #371c15; }
+
+/* css/views/buyer-recommended.css */
+body.dark .rec-header h1 { color: #e5e7eb; }
+body.dark .wishlist-remove-btn { border-color: #333333; }
+body.dark .wishlist-remove-btn:hover { background: #371c15; }
+
+/* css/views/buyer-storefront.css */
+body.dark .seller-storefront-hero { border-color: #683527; background: #372115; }
+body.dark .seller-storefront-status { color: #b2dcd7; }
+body.dark .seller-storefront-count { border-left-color: #5e4231; }
+body.dark .storefront-empty { border-color: #333333; background: #1b1b1b; }
+body.dark .seller-storefront-banner { background: #371f15; }
+body.dark .seller-storefront-avatar img { background: #1b1b1b; }
+
+/* css/components/pickrush-tracking.css */
+body.dark .pickrush-tracking { border-color: #333333; background: #1b1b1b; }
+body.dark .pickrush-tracking-list li:not(:last-child)::before { background: #232323; }
+body.dark .order-card-total { border-top-color: #333333; }
+body.dark .order-card-total-meta { color: #9ca3af; }
+body.dark .order-card-total-amount { background: #2a1814; border-color: #4a2a22; }
+body.dark .order-card-total-amount span { color: #f3a594; }
+body.dark .orders-price-text { color: #9ca3af !important; }

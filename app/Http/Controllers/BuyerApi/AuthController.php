@@ -193,7 +193,8 @@ class AuthController extends Controller
             'postal_code'    => $data['postal_code'] ?: null,
             'id_upload'      => $idPath,
         ]);
-        $applicant->forceFill(['email_verified_at' => now()])->save();
+        // They ticked the Terms and Privacy box (validated above): keep which version and when.
+        $applicant->forceFill(['email_verified_at' => now()] + \App\Support\LegalConsent::stamp())->save();
         Cache::forget($this->verifiedKey($data['registration_token']));
 
         app(AdminNotificationService::class)->notifyAdmins(

@@ -101,6 +101,8 @@ class RiderApplication
                 'on_probation' => true,
                 'created_by' => null,
             ]);
+            // The app's "I agree" box (RiderApplicationController requires it): which version, when.
+            $rider->forceFill(\App\Support\LegalConsent::stamp())->save();
             $this->storeDocuments($rider, $data, $files);
 
             return $rider;

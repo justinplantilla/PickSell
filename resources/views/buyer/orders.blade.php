@@ -34,6 +34,16 @@
             </button>
         </div>
     </div>
+    @php
+        $unitPrice = $order->quantity > 0 ? $order->amount / $order->quantity : $order->amount;
+        // One delivery fee per store parcel, which may also carry the buyer's other items from that store.
+        $shipment = $order->shipment;
+        $shippingFee = $shipment ? (float) $shipment->delivery_fee : 0.0;
+        $sharedWith = $shipment ? $shipment->orders->where('status', '!=', 'cancelled')->count() : 1;
+        // PickSell vouchers come off the parcel; store vouchers are already in each order's amount.
+        $pickSellOff = $shipment ? (float) $shipment->platform_discount + (float) $shipment->shipping_discount : 0.0;
+        $orderTotal = $sharedWith > 1 ? (float) $order->amount : max(0, $order->amount + $shippingFee - $pickSellOff);
+    @endphp
     <div class="order-card-body">
         @if($order->product)
             <a href="{{ route('buyer.product', $order->product) }}" class="orders-thumb-link" aria-label="View {{ $order->product_name }}">
@@ -45,7 +55,7 @@
         <div class="orders-grow">
             <div class="orders-strong">@if($order->product)<a href="{{ route('buyer.product', $order->product) }}" class="orders-product-link">{{ $order->product_name }}</a>@else{{ $order->product_name }}@endif</div>
             <div class="orders-muted-text">@if($order->variation_label){{ $order->variation_label }} · @endif Qty: {{ $order->quantity }}</div>
-            <div class="orders-accent-text">₱{{ number_format($order->amount, 2) }}</div>
+            <div class="orders-price-text">₱{{ number_format($unitPrice, 2) }}</div>
         </div>
         <div class="orders-stack">
             @if($tracking[$order->id] ?? null)
@@ -90,6 +100,20 @@
             @endif
         </div>
     </div>
+    <div class="order-card-total">
+        <div class="order-card-total-meta">
+            {{ $order->quantity }} {{ Str::plural('item', $order->quantity) }}
+            @if($sharedWith > 1)
+                · shipping is on the parcel total in Details
+            @elseif($shipment)
+                · Shipping ₱{{ number_format($shippingFee, 2) }}@if($pickSellOff > 0) · Voucher −₱{{ number_format($pickSellOff, 2) }}@endif
+            @endif
+        </div>
+        <div class="order-card-total-amount">
+            <span>{{ $sharedWith > 1 ? 'Item Total' : 'Order Total' }}</span>
+            <strong>₱{{ number_format($orderTotal, 2) }}</strong>
+        </div>
+    </div>
 
     {{-- Tracking Steps --}}
     @php
@@ -129,15 +153,6 @@
     @include('partials.pickrush-tracking', ['tracking' => $tracking[$order->id] ?? null, 'open' => true])
     @include('partials.delivery-proof', ['order' => $order])
 
-    @php
-        $unitPrice = $order->quantity > 0 ? $order->amount / $order->quantity : $order->amount;
-        // One delivery fee per store parcel, which may also carry the buyer's other items from that store.
-        $shipment = $order->shipment;
-        $shippingFee = $shipment ? (float) $shipment->delivery_fee : 0.0;
-        $sharedWith = $shipment ? $shipment->orders->where('status', '!=', 'cancelled')->count() : 1;
-        // PickSell vouchers come off the parcel; store vouchers are already in each order's amount.
-        $pickSellOff = $shipment ? (float) $shipment->platform_discount + (float) $shipment->shipping_discount : 0.0;
-    @endphp
     <dl class="order-breakdown">
         <div><dt>Order #</dt><dd>{{ $order->order_number }}</dd></div>
         <div><dt>Item price</dt><dd>₱{{ number_format($unitPrice, 2) }}</dd></div>
@@ -154,7 +169,7 @@
         <div class="order-breakdown-total"><dt>Total (this item)</dt><dd>₱{{ number_format($order->amount, 2) }}</dd></div>
         <div><dt>Parcel total (COD)</dt><dd>₱{{ number_format(max(0, $shipment->orders->where('status', '!=', 'cancelled')->sum('amount') + $shippingFee - $pickSellOff), 2) }}</dd></div>
         @else
-        <div class="order-breakdown-total"><dt>Total</dt><dd>₱{{ number_format(max(0, $order->amount + $shippingFee - $pickSellOff), 2) }}</dd></div>
+        <div class="order-breakdown-total"><dt>Total</dt><dd>₱{{ number_format($orderTotal, 2) }}</dd></div>
         @endif
     </dl>
     </div>

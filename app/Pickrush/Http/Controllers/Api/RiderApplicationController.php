@@ -60,7 +60,9 @@ class RiderApplicationController extends Controller
             }],
             'password' => ['required', 'string', 'max:72', Password::min(8)->mixedCase()->numbers()->symbols()],
             'email_verification_token' => 'required|string',
-        ]);
+            // The "I agree to the Terms of Service and Data Privacy Policy" box in the app.
+            'terms' => 'accepted',
+        ], ['terms.accepted' => 'You must agree to the Terms of Service and Privacy Policy to apply.']);
 
         if (! $verification->consume($data['email'], $data['email_verification_token'])) {
             $message = 'Your email verification has expired. Please verify your email again.';

@@ -75,6 +75,55 @@ if (addressConfig && provinceSelect && municipalitySelect && barangaySelect) {
             fallback(barangaySelect, address.barangay, '-- Select Barangay --');
         }
     };
+    /**
+     * The selects have no name: the hidden fields are what the form posts. Keep them in step with
+     * each pick, and tell the page ("profile-address:change", e.g. to move the shop-pin map there).
+     */
+    const sync = () => {
+        hiddenFields.province && (hiddenFields.province.value = provinceSelect.value);
+        hiddenFields.municipality && (hiddenFields.municipality.value = municipalitySelect.value);
+        hiddenFields.barangay && (hiddenFields.barangay.value = barangaySelect.value);
+        const place = [barangaySelect.value, municipalitySelect.value, provinceSelect.value].filter(Boolean).join(', ');
+        addressConfig.dispatchEvent(new CustomEvent('profile-address:change', {
+            bubbles: true,
+            detail: { province: provinceSelect.value, municipality: municipalitySelect.value, barangay: barangaySelect.value, place },
+        }));
+    };
+    const reload = async (select, url, cacheKey, placeholder) => {
+        select.disabled = true;
+        select.innerHTML = '<option value="">Loading...</option>';
+        try {
+            setOptions(select, await fetchJson(url, cacheKey), placeholder, '');
+        } catch {
+            fallback(select, '', 'Could not load the list. Try again later.');
+        }
+    };
+    // A new province empties the town and barangay and loads that province's towns; a new town
+    // loads its barangays.
+    provinceSelect.addEventListener('change', async () => {
+        fallback(municipalitySelect, '', '-- Select Municipality --');
+        fallback(barangaySelect, '', '-- Select Barangay --');
+        sync();
+        const code = provinceSelect.selectedOptions[0]?.dataset.code;
+        if (code) await reload(municipalitySelect, citiesUrl(code), `picksell.psgc.municipalities.${code}`, '-- Select Municipality --');
+    });
+    municipalitySelect.addEventListener('change', async () => {
+        fallback(barangaySelect, '', '-- Select Barangay --');
+        sync();
+        const code = municipalitySelect.selectedOptions[0]?.dataset.code;
+        if (code) await reload(barangaySelect, `${baseUrl}/cities-municipalities/${code}/barangays/`, `picksell.psgc.barangays.${code}`, '-- Select Barangay --');
+    });
+    barangaySelect.addEventListener('change', sync);
+    // An address missing its town or barangay cannot be saved: the selects lead to the hidden fields.
+    hiddenFields.barangay?.form?.addEventListener('submit', event => {
+        if (!municipalitySelect.value || !barangaySelect.value) {
+            event.preventDefault();
+            event.stopPropagation();
+            window.notify?.error('Choose your municipality and barangay before saving.');
+            (municipalitySelect.value ? barangaySelect : municipalitySelect).focus();
+        }
+    });
+
     [provinceSelect, municipalitySelect, barangaySelect].forEach(select => {
         select.disabled = true;
         select.classList.add('profile-address-select');

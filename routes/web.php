@@ -103,6 +103,7 @@ Route::get('/shop', function (Request $request) {
     return view('pages.shop', compact('products', 'categories', 'sort'));
 })->name('shop');
 Route::get('/about', fn () => view('pages.about'))->name('about');
+Route::get('/help', fn () => view('pages.help'))->name('help');
 Route::get('/contact', fn () => view('pages.contact'))->name('contact');
 Route::get('/terms', fn () => view('pages.terms'))->name('terms');
 Route::get('/privacy', fn () => view('pages.privacy'))->name('privacy');

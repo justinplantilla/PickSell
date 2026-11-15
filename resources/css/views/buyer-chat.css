@@ -35,6 +35,8 @@
     .msg-bubble { padding: 0.6rem 0.9rem; border-radius: 12px; font-size: 0.88rem; line-height: 1.5; }
     .msg.sent .msg-bubble { background: var(--coral); color: #fff; border-bottom-right-radius: 4px; }
     .msg.received .msg-bubble { background: #fff; border: 1px solid #e8e2d8; border-bottom-left-radius: 4px; }
+    .msg.auto-reply .msg-bubble { background: #f4f3f1; border-color: #ebe8e3; color: #77736e; padding: 0.5rem 0.75rem; font-size: 0.82rem; }
+    .msg-auto-reply-label { display: block; margin-bottom: 0.12rem; color: #a29b93; font-size: 0.65rem; font-weight: 600; line-height: 1.2; }
     .msg-time { font-size: 0.72rem; color: #aaa; margin-top: 0.2rem; }
     .msg.sent .msg-time { text-align: right; }
     .chat-input-area { flex: 0 0 auto; padding: 1rem; border-top: 1px solid #f0ebe0; display: flex; gap: 0.6rem; flex-direction: column; background:#fff; }
@@ -97,5 +99,7 @@
 .chat-thread-product-copy strong { font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .chat-thread-product-kicker { font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; color:#b45309; font-weight:700; }
 .chat-thread-product-price { font-size:.8rem; color:#e8472a; font-weight:700; }
-.chat-thread-product-link { font-size:.78rem; font-weight:700; color:#e8472a; white-space:nowrap; }
+a.chat-thread-product { color:inherit; text-decoration:none; cursor:pointer; }
+a.chat-thread-product:hover { border-color:#e8472a; }
+a.chat-thread-product:focus-visible { outline:2px solid #e8472a; outline-offset:3px; }
 body.dark .chat-thread-product { background:#2a1d12; border-color:#5a3a1a; }

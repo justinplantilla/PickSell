@@ -375,6 +375,9 @@ class SellerController extends Controller
             $sort = 'newest';
         }
         $query = Product::where('seller_id', $this->seller()->id)->with('latestStatusModeration', 'variations');
+        if ($request->filled('product')) {
+            $query->whereKey($request->integer('product'));
+        }
         if ($stockFilter === 'low') {
             $status = 'active';
             $query->lowStock();
@@ -1418,11 +1421,21 @@ class SellerController extends Controller
             'barangay' => 'required|string|max:120',
             'street' => 'nullable|string|max:255',
             'house_no' => 'nullable|string|max:100',
-        ]);
-        auth()->user()->update($request->only(
+            // A shop pin moved on the map but saved with this form instead of "Save Pin".
+            'pickup_lat' => 'nullable|required_with:pickup_lng|numeric|between:4,22',
+            'pickup_lng' => 'nullable|required_with:pickup_lat|numeric|between:116,127',
+        ], ['pickup_lat.between' => 'Pin a spot inside the Philippines.', 'pickup_lng.between' => 'Pin a spot inside the Philippines.']);
+        $seller = auth()->user();
+        $seller->update($request->only(
             'first_name', 'last_name', 'middle_initial', 'sex', 'birthday', 'email', 'contact_no',
             'business_name', 'line_of_business', 'province', 'municipality', 'barangay', 'street', 'house_no'
         ));
+        if ($request->filled('pickup_lat')) {
+            $seller->update(['pickup_lat' => $request->input('pickup_lat'), 'pickup_lng' => $request->input('pickup_lng')]);
+            \App\Pickrush\Bridge\PicksellBridge::sellerPinned($seller);
+
+            return back()->with('success', 'Account and shop pin updated.');
+        }
 
         return back()->with('success', 'Account updated successfully.');
     }

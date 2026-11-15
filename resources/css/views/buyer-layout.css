@@ -41,6 +41,9 @@
         body.dark .cat-pill { border-color: #444; }
         .dm-toggle { position: fixed; bottom: 1.2rem; right: 1.2rem; width: 42px; height: 42px; border-radius: 50%; background: #2D2D2D; color: #fff; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 12px rgba(0,0,0,0.25); z-index: 9999; }
         .dm-toggle:hover { background: var(--coral); }
+        .dm-toggle:focus-visible { outline: 2px solid var(--coral); outline-offset: 3px; }
+        .dm-toggle .dm-icon-sun, body.dark .dm-toggle .dm-icon-moon { display: none; }
+        body.dark .dm-toggle .dm-icon-sun { display: block; }
         a { text-decoration: none; color: inherit; }
 
         /* Navbar */
@@ -369,13 +372,6 @@
         }
         .buyer-pagination { margin-top: 1.4rem; }
         .buyer-pagination nav { position: static; height: auto; background: transparent; padding: 0; }
-        .buyer-layout-footer { background: #fff; color: #8b8580; border-top: 1px solid #eee9e4; margin-top: 0; }
-        .buyer-layout-footer .footer-main { padding-top: 2rem; padding-bottom: 1.5rem; }
-        .buyer-layout-footer .footer-logo span { color: var(--charcoal); }
-        .buyer-layout-footer .footer-col h4 { color: var(--charcoal); }
-        .buyer-layout-footer .footer-col a, .buyer-layout-footer .footer-bottom-links a { color: #8b8580; }
-        .buyer-layout-footer .footer-bottom { border-top-color: #eee9e4; }
-        .buyer-layout-footer .footer-bottom-links a:hover, .buyer-layout-footer .footer-col a:hover { color: var(--coral); }
         .announcement-stack { display: grid; gap: 0.65rem; margin-bottom: 1rem; }
         .announcement-banner { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; border: 1px solid #f5d58b; border-left: 4px solid #e6a91a; border-radius: 8px; background: #fff9e8; color: #6d4c0b; box-shadow: 0 3px 12px rgba(95, 69, 15, 0.06); animation: announcement-in 0.35s ease both; }
         .announcement-banner.announcement-maintenance { border-color: #f2c2b9; border-left-color: var(--coral); background: #fff3f0; color: #7e2d22; }

@@ -26,9 +26,8 @@ return [
     // The portal itself serves every logistics company, so its public pages carry this name.
     'portal_name' => env('PICKRUSH_PORTAL_NAME', 'PickSell Logistics'),
 
-    // Company registration: the Terms and Privacy Policy version an applicant accepts.
+    // Company registration. The Terms / Privacy version it accepts is config('legal.version').
     'registration' => [
-        'terms_version' => '2026-11-09',
         'lockout_minutes' => 15,     // after 5 wrong codes, no new code for this long
     ],
 

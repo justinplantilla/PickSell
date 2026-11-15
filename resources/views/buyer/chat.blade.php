@@ -54,8 +54,16 @@
                 @include('partials.chat-product-card', ['product' => $msg->product, 'link' => '/buyer/product/'.$msg->product_id, 'mine' => $msg->sender_id === auth()->id()])
             @endif
             @php($lastProductId = $msg->product_id ?? $lastProductId)
-            <div class="msg {{ $msg->sender_id === auth()->id() ? 'sent' : 'received' }}">
-                <div class="msg-bubble">{{ $msg->body }}</div>
+            @php($isAutoReply = $msg->sender_id !== auth()->id() && str_starts_with($msg->body, \App\Models\Message::AUTO_REPLY_PREFIX))
+            <div class="msg {{ $msg->sender_id === auth()->id() ? 'sent' : 'received' }} {{ $isAutoReply ? 'auto-reply' : '' }}">
+                <div class="msg-bubble">
+                    @if($isAutoReply)
+                    <span class="msg-auto-reply-label">Auto-reply</span>
+                    {{ ltrim(substr($msg->body, strlen(\App\Models\Message::AUTO_REPLY_PREFIX))) }}
+                    @else
+                    {{ $msg->body }}
+                    @endif
+                </div>
                 <div class="msg-time">{{ $msg->created_at->format('M d, h:i A') }}</div>
             </div>
             @empty

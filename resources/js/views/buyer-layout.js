@@ -84,10 +84,21 @@ document.addEventListener('click', e => {
         btn.classList.remove('is-open');
     }
 });
+/** The corner button shows the moon in light mode and the sun in dark mode. */
+function syncThemeToggle() {
+    const dark = document.body.classList.contains('dark');
+    document.querySelectorAll('[data-theme-toggle]').forEach(button => {
+        button.setAttribute('aria-pressed', String(dark));
+        button.title = dark ? 'Light mode' : 'Dark mode';
+    });
+}
+/** Buyers start in light mode; the choice is remembered on this browser (applied before paint in the layout). */
 function toggleDark() {
     document.body.classList.toggle('dark');
-    localStorage.setItem('darkMode', document.body.classList.contains('dark'));
+    try { localStorage.setItem('darkMode', document.body.classList.contains('dark')); } catch (e) { /* private mode */ }
+    syncThemeToggle();
 }
+window.addEventListener('picksell:theme-toggle', toggleDark);
 function dismissAnnouncement(id, button) {
     const banner = button.closest('.announcement-banner');
     const dismissed = JSON.parse(localStorage.getItem('dismissedAnnouncements') || '[]');
@@ -174,9 +185,7 @@ document.querySelectorAll('.announcement-banner').forEach(banner => {
     const dismissed = JSON.parse(localStorage.getItem('dismissedAnnouncements') || '[]');
     if (dismissed.includes(Number(banner.dataset.announcementId))) banner.remove();
 });
-if (localStorage.getItem('darkMode') === 'true') {
-    document.body.classList.add('dark');
-}
+syncThemeToggle();
 fetch('/buyer/notifications').then(response => {
     const unread = Number(response.headers.get('X-Unread-Count') || 0);
     document.getElementById('buyerNotifDot').style.display = unread ? 'block' : 'none';

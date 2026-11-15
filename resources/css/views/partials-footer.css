@@ -1,9 +1,10 @@
-footer {
+footer, .site-footer {
     background: var(--charcoal);
     color: #aaa;
     font-size: 0.85rem;
     margin-top: 4rem;
     width: 100%;
+    border-top: 3px solid var(--coral);
 }
 .footer-inner {
     max-width: 1200px;
@@ -18,7 +19,7 @@ footer {
 }
 .footer-main {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
+    grid-template-columns: 1.6fr repeat(4, 1fr);
     gap: 2rem;
     padding: 3rem 0 2rem;
 }
@@ -48,3 +49,33 @@ footer {
 .footer-bottom-links { display: flex; gap: 1.2rem; }
 .footer-bottom-links a { color: #aaa; text-decoration: none; }
 .footer-bottom-links a:hover { color: var(--coral); }
+
+/* Payment and delivery badges under the brand blurb */
+.footer-badges { list-style: none; display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 1rem 0 0; padding: 0; }
+.footer-badges li { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.6rem; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; font-size: 0.75rem; font-weight: 600; color: #d4d4d4; }
+.footer-badges svg { width: 15px; height: 15px; color: var(--coral); flex-shrink: 0; }
+.footer-brand p { max-width: 38ch; }
+.footer-col a, .footer-bottom-links a { width: fit-content; }
+.footer-col a:focus-visible, .footer-bottom-links a:focus-visible, .footer-logo:focus-visible { outline: 2px solid var(--coral); outline-offset: 3px; border-radius: 3px; }
+.footer-top-link { font-weight: 600; }
+@media (max-width: 700px) {
+    .footer-main { gap: 1.5rem 1rem; padding: 2.25rem 0 1.5rem; }
+    .footer-bottom { flex-direction: column; align-items: flex-start; }
+    .footer-bottom-links { flex-wrap: wrap; gap: 0.6rem 1.2rem; }
+}
+@media (max-width: 380px) {
+    .footer-main { grid-template-columns: 1fr; }
+}
+/* The public layout's bare "footer" rule centres text and pads it; this footer lays itself out. */
+.site-footer { text-align: left; padding: 0; }
+
+/* Five columns get tight on tablets: brand on its own row, links in a row of four. */
+@media (min-width: 701px) and (max-width: 1000px) {
+    .footer-main { grid-template-columns: repeat(4, 1fr); }
+    .footer-brand { grid-column: 1 / -1; }
+}
+.footer-col h4 { position: relative; padding-bottom: .5rem; }
+.footer-col h4::after { content: ""; position: absolute; left: 0; bottom: 0; width: 22px; height: 2px; border-radius: 2px; background: var(--coral); }
+.footer-col a { position: relative; transition: color .2s, transform .2s; }
+.footer-col a:hover { transform: translateX(3px); }
+@media (prefers-reduced-motion: reduce) { .footer-col a:hover { transform: none; } }

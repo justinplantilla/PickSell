@@ -86,7 +86,7 @@ class CompanyRegistration
             'street_address' => $data['street_address'],
             'submitted_at' => now(),
             'terms_accepted_at' => now(),
-            'terms_version' => config('pickrush.registration.terms_version'),
+            'terms_version' => config('legal.version'),
         ];
     }
 

@@ -37,8 +37,10 @@ class AuthController extends Controller
         $registrationToken = (string) Str::uuid();
         $email = strtolower(trim((string) $request->query('email', '')));
         $registrationRoles = ['buyer', 'seller'];
+        // "Sell on PickSell" links here with ?role=seller so the form opens on Seller.
+        $defaultRole = in_array($request->query('role'), $registrationRoles, true) ? $request->query('role') : $registrationRoles[0];
 
-        return view('auth.access', compact('mode', 'registrationRoles', 'email', 'registrationToken'));
+        return view('auth.access', compact('mode', 'registrationRoles', 'defaultRole', 'email', 'registrationToken'));
     }
 
     public function login(Request $request)
@@ -240,6 +242,8 @@ class AuthController extends Controller
             'postal_code'    => $data['postal_code'] ?: null,
             'id_upload'      => $idPath,
         ], $extra));
+        // They ticked the Terms and Privacy box (validated above): keep which version and when.
+        $applicant->forceFill(\App\Support\LegalConsent::stamp())->save();
         if (in_array($role, self::EMAIL_VERIFIED_ROLES, true)) {
             $applicant->forceFill(['email_verified_at' => now()])->save();
         }
@@ -421,15 +425,14 @@ class AuthController extends Controller
             return back()->withErrors(['password' => 'The password is incorrect.']);
         }
 
-        DB::transaction(function () use ($user): void {
-            app(\App\Services\AuditLogger::class)->record(
-                'user.deleted',
-                $user,
-                [],
-                ['deleted_actor_id' => $user->id],
-            );
-            $user->delete();
-        });
+        // Refused while orders or returns are open; otherwise the person's details are erased but
+        // the order and money records the other party relies on are kept (AccountDeletion).
+        $deletion = app(\App\Services\AccountDeletion::class);
+        if ($blocker = $deletion->blocker($user)) {
+            return back()->withErrors(['password' => $blocker]);
+        }
+        app(\App\Services\AuditLogger::class)->record('user.deleted', $user, [], ['deleted_actor_id' => $user->id]);
+        $deletion->delete($user);
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

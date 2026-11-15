@@ -95,7 +95,7 @@ class CompanyRegistrationTest extends TestCase
         $this->assertNull($company->tracking_prefix);
         $this->assertSame('041029000', $company->municipality_code);
         $this->assertSame('041029001', $company->barangay_code);
-        $this->assertSame(config('pickrush.registration.terms_version'), $company->terms_version);
+        $this->assertSame(config('legal.version'), $company->terms_version);
 
         $owner = $company->owner;
         $this->assertSame(StaffRole::SuperAdmin, $owner->role);

@@ -31,8 +31,6 @@ class AdminSettingsController extends Controller
             'announcements' => $announcements,
             'settingChanges' => $settingChanges,
             'settingHistoryAvailable' => $settingHistoryAvailable,
-            'tos' => PlatformSetting::get('terms_of_service'),
-            'privacy' => PlatformSetting::get('privacy_policy'),
             'platformName' => PlatformSetting::get('platform_name', 'PickSell'),
             'supportEmail' => PlatformSetting::get('support_email', 'support@picksell.ph'),
             'commissionRate' => PlatformSetting::get('commission_rate', '10'),

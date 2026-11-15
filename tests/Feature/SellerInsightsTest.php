@@ -63,9 +63,31 @@ class SellerInsightsTest extends TestCase
         Message::create(['sender_id' => $this->seller->id, 'receiver_id' => $this->buyer->id, 'body' => 'Yes, it is coated.']);
 
         $this->actingAs($this->seller)->get($this->url("/seller/chat?user={$this->buyer->id}"))->assertOk()
+            ->assertSee('href="'.e(route('seller.inventory', ['product' => $tote->id, 'status' => 'all'])).'"', false)
             ->assertSeeInOrder(['chat-thread-product', 'Asking about', 'Canvas Tote', 'Is the tote waterproof?', 'Yes, it is coated.'], false);
+        $tote->update(['status' => 'archived']);
+        $this->get($this->url("/seller/inventory?product={$tote->id}&status=all"))->assertOk()
+            ->assertViewHas('products', fn ($products) => $products->count() === 1 && $products->first()->id === $tote->id);
+        $otherSeller = $this->user('seller');
+        $this->actingAs($otherSeller)->get($this->url("/seller/inventory?product={$tote->id}&status=all"))->assertOk()
+            ->assertViewHas('products', fn ($products) => $products->isEmpty());
         $this->actingAs($this->buyer)->get($this->url("/buyer/chat?user={$this->seller->id}"))->assertOk()
             ->assertSeeInOrder(['chat-thread-product', 'Canvas Tote', 'Is the tote waterproof?'], false);
+    }
+
+    public function test_seller_auto_reply_is_subtle_in_buyer_chat(): void
+    {
+        Message::create([
+            'sender_id' => $this->seller->id,
+            'receiver_id' => $this->buyer->id,
+            'body' => Message::AUTO_REPLY_PREFIX.' '.User::DEFAULT_THANK_YOU_MESSAGE,
+        ]);
+
+        $this->actingAs($this->buyer)->get($this->url("/buyer/chat?user={$this->seller->id}"))->assertOk()
+            ->assertSee('class="msg received auto-reply"', false)
+            ->assertSee('msg-auto-reply-label', false)
+            ->assertSee(User::DEFAULT_THANK_YOU_MESSAGE)
+            ->assertDontSee(Message::AUTO_REPLY_PREFIX);
     }
 
     private function order(array $attributes = []): Order

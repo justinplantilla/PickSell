@@ -3,7 +3,7 @@
 
 
         <form method="POST" action="/register" enctype="multipart/form-data" id="registerForm">
-            <div data-register-config data-role="{{ old('role', $registrationRoles[0]) }}" data-region="{{ old('region') }}" data-province="{{ old('province') }}" data-municipality="{{ old('municipality') }}" data-barangay="{{ old('barangay') }}" hidden></div>
+            <div data-register-config data-role="{{ old('role', $defaultRole ?? $registrationRoles[0]) }}" data-region="{{ old('region') }}" data-province="{{ old('province') }}" data-municipality="{{ old('municipality') }}" data-barangay="{{ old('barangay') }}" hidden></div>
             @csrf
             <input type="hidden" name="registration_token" value="{{ old('registration_token', $registrationToken) }}">
 
@@ -19,16 +19,16 @@
             {{-- Role Selector --}}
             <div class="role-selector">
                 @if(in_array('buyer', $registrationRoles, true))
-                <label class="role-btn {{ old('role', $registrationRoles[0]) === 'buyer' ? 'active' : '' }}" id="role-buyer">
-                    <input type="radio" name="role" value="buyer" {{ old('role', $registrationRoles[0]) === 'buyer' ? 'checked' : '' }}>
+                <label class="role-btn {{ old('role', $defaultRole ?? $registrationRoles[0]) === 'buyer' ? 'active' : '' }}" id="role-buyer">
+                    <input type="radio" name="role" value="buyer" {{ old('role', $defaultRole ?? $registrationRoles[0]) === 'buyer' ? 'checked' : '' }}>
                     <span class="role-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM5.2 5H2V3H0v2h2l3.6 7.59L4.25 15A2 2 0 0 0 6 18h14v-2H6.42a.25.25 0 0 1-.25-.25l.03-.12L7.1 14h9.45c.75 0 1.41-.41 1.75-1.03L21.7 6.5A1 1 0 0 0 20.83 5H5.2z"/></svg></span>
                     <span class="role-label">Buyer</span>
                     <span class="role-description">Shop and order products</span>
                 </label>
                 @endif
                 @if(in_array('seller', $registrationRoles, true))
-                <label class="role-btn {{ old('role', $registrationRoles[0]) === 'seller' ? 'active' : '' }}" id="role-seller">
-                    <input type="radio" name="role" value="seller" {{ old('role', $registrationRoles[0]) === 'seller' ? 'checked' : '' }}>
+                <label class="role-btn {{ old('role', $defaultRole ?? $registrationRoles[0]) === 'seller' ? 'active' : '' }}" id="role-seller">
+                    <input type="radio" name="role" value="seller" {{ old('role', $defaultRole ?? $registrationRoles[0]) === 'seller' ? 'checked' : '' }}>
                     <span class="role-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-9 3h2v2h-2V7zm0 4h2v6h-2v-6zM7 7h2v2H7V7zm0 4h2v6H7v-6zm10 6h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg></span>
                     <span class="role-label">Seller</span>
                     <span class="role-description">Sell products on PickSell</span>

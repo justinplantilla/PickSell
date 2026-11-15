@@ -27,13 +27,16 @@
             <div class="section-label">FAQ</div>
             <h2 class="section-title">Common Questions</h2>
             <div class="faq-list">
+                {{-- Kept in step with the Terms of Service: same numbers, from the same settings. --}}
                 @php
+                $returnDays = config('pickrush.policies.return_window_days');
                 $faqs = [
-                    ['q'=>'How do I track my order?','a'=>'Go to your Dashboard → Orders and click "Track" next to your order. You\'ll get real-time updates from our delivery partners.'],
-                    ['q'=>'What is the return policy?','a'=>'You can return eligible items within 30 days of delivery. Items must be unused and in original packaging. Initiate returns from your Orders page.'],
+                    ['q'=>'How do I track my order?','a'=>'Open My Orders and choose the order: it shows each step from packing to your door, with the latest update from the delivery partner.'],
+                    ['q'=>'What is the return policy?','a'=>"You can ask for a return within {$returnDays} days after delivery if the item is damaged, wrong, the wrong size or not as described. Start it from the order in My Orders; the seller reviews it, and PickSell steps in if you cannot agree."],
+                    ['q'=>'How do I pay?','a'=>'Orders are Cash on Delivery: pay the rider in cash the amount shown on your order when it arrives. Pay only that amount, and only to the rider delivering your PickSell parcel.'],
                     ['q'=>'How do I get help with an order?','a'=>'Choose the closest issue type above and send us the order details. Our support team will guide you through the next steps.'],
-                    ['q'=>'Is it safe to buy on PickSell?','a'=>'Yes! All sellers are verified and every purchase is covered by our Buyer Protection Program. We hold payment until you confirm receipt.'],
-                    ['q'=>'How do I become a seller?','a'=>'Register for a free account, go to your Dashboard, and click "Start Selling". Setup takes less than 5 minutes.'],
+                    ['q'=>'Is it safe to buy on PickSell?','a'=>'Every seller is reviewed, with ID and business checks, before they can sell. Contact details are hidden in chat so deals stay on PickSell, and returns and disputes are handled through your order. See the Terms of Service for the full rules.'],
+                    ['q'=>'How do I become a seller?','a'=>'Register as a seller with your ID and business documents. PickSell reviews every application; once approved, you can list products from your seller portal.'],
                 ];
                 @endphp
                 @foreach($faqs as $faq)

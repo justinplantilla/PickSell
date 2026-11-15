@@ -20,7 +20,7 @@
 <div class="cart-layout">
     {{-- LEFT: cart table --}}
     <div>
-        <div class="card">
+        <div class="card cart-items-card">
             <div class="card-header">
                 <label class="cart-row">
                     <input type="checkbox" id="selectAll" data-cart-select-all> Select All
@@ -32,6 +32,8 @@
                     {{-- One block per store: each store ships its items as one parcel. --}}
                     @foreach($items->groupBy(fn ($item) => $item->product->seller_id) as $storeItems)
                     @php $store = $storeItems->first()->product->seller; @endphp
+                    {{-- An empty strip of page background, so each store reads as its own card. --}}
+                    <tbody class="cart-store-gap" aria-hidden="true"><tr><td colspan="7"></td></tr></tbody>
                     <tbody class="cart-store" data-cart-store>
                     <tr class="cart-store-head">
                         <td><input type="checkbox" data-cart-select-store aria-label="Select all items from {{ $store->business_name ?? $store->full_name }}"></td>

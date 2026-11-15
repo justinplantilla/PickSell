@@ -6,3 +6,7 @@
 .legal-page ul { padding-left:1.2rem; }
 .legal-page a { color:var(--coral,#E8472A);font-weight:600; }
 body.dark .legal-page { color:#d6d3cd; }
+.legal-page h3 { font-size:1rem;margin:1.2rem 0 .35rem; }
+.legal-page li { margin-bottom:.35rem; }
+body.dark .legal-page h1, body.dark .legal-page h2, body.dark .legal-page h3, body.dark .legal-page strong { color:#f3f4f6; }
+body.dark .legal-updated { color:#a3a3a3; }

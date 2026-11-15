@@ -17,3 +17,7 @@
     .settings-fields { grid-template-columns:1fr; }
     .settings-history-row { flex-direction:column; }
 }
+
+/* Platform Policies: the legal documents are managed in code; this card links to them. */
+.settings-hint { margin: 0 0 .6rem; font-size: .88rem; line-height: 1.55; }
+.settings-policy-links { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .4rem; }

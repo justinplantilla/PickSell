@@ -44,7 +44,7 @@
             @forelse($messages as $msg)
             {{-- The product the buyer asks about sits in the conversation where each inquiry starts. --}}
             @if($msg->product && $msg->product_id !== $lastProductId)
-                @include('partials.chat-product-card', ['product' => $msg->product, 'link' => null, 'mine' => $msg->sender_id === auth()->id()])
+                @include('partials.chat-product-card', ['product' => $msg->product, 'link' => route('seller.inventory', ['product' => $msg->product_id, 'status' => 'all']), 'mine' => $msg->sender_id === auth()->id()])
             @endif
             @php($lastProductId = $msg->product_id ?? $lastProductId)
             <div class="msg {{ $msg->sender_id === auth()->id() ? 'sent' : 'received' }}">

@@ -51,13 +51,24 @@ class NotificationController extends Controller
         return response()->json(['message' => 'All caught up.', 'unread_count' => 0]);
     }
 
-    /** GET /legal/{terms|privacy} — text managed in the website's admin panel. */
+    /**
+     * GET /legal/{terms|privacy}: the same documents the website shows (App\Support\LegalDocuments).
+     * body is plain text for the app's text view; html, version and url come along for newer builds.
+     */
     public function legal(string $document)
     {
-        $key = ['terms' => 'terms_of_service', 'privacy' => 'privacy_policy'][$document] ?? abort(404);
-        $title = $document === 'terms' ? 'Terms of Service' : 'Privacy Policy';
+        $title = \App\Support\LegalDocuments::DOCUMENTS[$document] ?? abort(404);
 
-        return response()->json(['title' => $title, 'body' => PlatformSetting::get($key)]);
+        return response()->json([
+            'title' => $title,
+            'version' => config('legal.version'),
+            'effective_date' => config('legal.effective_date'),
+            'url' => route($document),
+            'body' => "Version ".config('legal.version')."
+
+".\App\Support\LegalDocuments::text($document),
+            'html' => \App\Support\LegalDocuments::html($document),
+        ]);
     }
 
     /** The website stores some notification data JSON-encoded twice; accept both. */

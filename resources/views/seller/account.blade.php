@@ -7,6 +7,7 @@
 
 @section('content')
 <div class="account-page grid-2">
+    {{-- Left: the seller's own account. Right: their store. --}}
     <div class="account-column">
         <div class="card">
             <div class="card-header profile-card-header">
@@ -17,7 +18,7 @@
                 </div>
             </div>
             <div class="card-body">
-                <form method="POST" action="/seller/account">
+                <form method="POST" action="/seller/account" data-seller-profile-form>
                     @csrf @method('PATCH')
                     <div class="grid-2">
                         <div class="form-group">
@@ -61,6 +62,29 @@
                     </div>
                     <div class="form-group"><label class="form-label">Street</label><input type="text" name="street" class="form-control" value="{{ auth()->user()->street }}"></div>
                     <button type="submit" class="btn btn-coral">Save Changes</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card" id="change-password">
+            <div class="card-header"><span class="card-title">Change Password</span></div>
+            <div class="card-body">
+                <form method="POST" action="/seller/account/password">
+                    @csrf @method('PATCH')
+                    <div class="form-group">
+                        <label class="form-label">Current Password *</label>
+                        <input type="password" name="current_password" class="form-control" required>
+                        @error('current_password')<div class="account-danger-text">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">New Password *</label>
+                        <input type="password" name="password" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Confirm New Password *</label>
+                        <input type="password" name="password_confirmation" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-coral">Update Password</button>
                 </form>
             </div>
         </div>
@@ -182,45 +206,24 @@
                 </form>
             </div>
         </div>
+    </div>
 
-        <div class="card" id="pickup-location">
-            <div class="card-header"><span class="card-title">Shop Pin for Pickups</span></div>
-            <div class="card-body">
-                <p class="account-muted-text">Pin where riders collect your parcels. Riders can only confirm they arrived when they are near this pin, so place it at your shop's door.</p>
-                @if(auth()->user()->pickup_lat === null)
-                    <div class="alert alert-warning">No pin yet. Riders will rely on your typed address until you set one.</div>
-                @endif
-                <form method="POST" action="{{ route('seller.account.pickup-location') }}">
-                    @csrf @method('PATCH')
-                    @include('partials.map-pin', ['id' => 'seller-pin', 'lat' => auth()->user()->pickup_lat, 'lng' => auth()->user()->pickup_lng])
-                    @error('lat')<div class="account-danger-text">{{ $message }}</div>@enderror
-                    @error('lng')<div class="account-danger-text">{{ $message }}</div>@enderror
-                    <button type="submit" class="btn btn-coral account-pin-save">Save Pin</button>
-                </form>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header"><span class="card-title">Change Password</span></div>
-            <div class="card-body">
-                <form method="POST" action="/seller/account/password">
-                    @csrf @method('PATCH')
-                    <div class="form-group">
-                        <label class="form-label">Current Password *</label>
-                        <input type="password" name="current_password" class="form-control" required>
-                        @error('current_password')<div class="account-danger-text">{{ $message }}</div>@enderror
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">New Password *</label>
-                        <input type="password" name="password" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Confirm New Password *</label>
-                        <input type="password" name="password_confirmation" class="form-control" required>
-                    </div>
-                    <button type="submit" class="btn btn-coral">Update Password</button>
-                </form>
-            </div>
+    {{-- Full width under both columns: the map needs the room. --}}
+    <div class="card account-wide" id="pickup-location">
+        <div class="card-header"><span class="card-title">Shop Pin for Pickups</span></div>
+        <div class="card-body">
+            <p class="account-muted-text">Pin where riders collect your parcels. Riders can only confirm they arrived when they are near this pin, so place it at your shop's door.</p>
+            @if(auth()->user()->pickup_lat === null)
+                <div class="alert alert-warning">No pin yet. Riders will rely on your typed address until you set one.</div>
+            @endif
+            <div class="alert alert-warning" role="status" hidden data-pin-address-note>Your address changed, so the map moved there. Tap your shop's door to move the pin, then save.</div>
+            <form method="POST" action="{{ route('seller.account.pickup-location') }}">
+                @csrf @method('PATCH')
+                @include('partials.map-pin', ['id' => 'seller-pin', 'lat' => auth()->user()->pickup_lat, 'lng' => auth()->user()->pickup_lng])
+                @error('lat')<div class="account-danger-text">{{ $message }}</div>@enderror
+                @error('lng')<div class="account-danger-text">{{ $message }}</div>@enderror
+                <button type="submit" class="btn btn-coral account-pin-save">Save Pin</button>
+            </form>
         </div>
     </div>
 </div>
@@ -228,4 +231,5 @@
 
 @section('scripts')
 @include('partials.profile-address-script')
+@vite('resources/js/views/seller-account.js')
 @endsection

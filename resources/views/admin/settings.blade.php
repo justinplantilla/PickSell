@@ -112,23 +112,14 @@
 <section class="card" id="policies">
     <div class="card-header"><span class="card-title">Platform Policies</span></div>
     <div class="card-body">
-        <form method="POST" action="{{ route('admin.settings.save') }}">
-            @csrf
-            <input type="hidden" name="section" value="policies">
-            <fieldset class="settings-fieldset" @disabled(! $settingHistoryAvailable)>
-            <div class="settings-fields">
-                <div class="form-group">
-                    <label class="form-label" for="terms-policy">Terms of Service</label>
-                    <textarea id="terms-policy" name="policy" class="form-control" rows="8" maxlength="100000">{{ old('policy', $tos) }}</textarea>
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="privacy-policy">Privacy Policy</label>
-                    <textarea id="privacy-policy" name="privacy" class="form-control" rows="8" maxlength="100000">{{ old('privacy', $privacy) }}</textarea>
-                </div>
-            </div>
-            <button type="submit" class="btn btn-coral">Save policies</button>
-            </fieldset>
-        </form>
+        {{-- The documents live in resources/views/legal/ so the website, buyer app and rider app show
+             one text whose numbers follow the settings above; they are no longer edited here. --}}
+        <p class="settings-hint">The Terms of Service and Privacy Policy are the same on the website, the buyer app and the rider app, and their numbers (return window, delivery attempts, commission) follow these settings automatically.</p>
+        <p class="settings-hint">Current version: <strong>{{ config('legal.version') }}</strong>, effective {{ \Illuminate\Support\Carbon::parse(config('legal.effective_date'))->format('F j, Y') }}. Every account records the version it agreed to.</p>
+        <div class="settings-policy-links">
+            <a href="{{ route('terms') }}" class="btn btn-outline btn-sm" target="_blank" rel="noopener">View Terms of Service</a>
+            <a href="{{ route('privacy') }}" class="btn btn-outline btn-sm" target="_blank" rel="noopener">View Privacy Policy</a>
+        </div>
     </div>
 </section>
 

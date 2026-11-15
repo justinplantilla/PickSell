@@ -1,5 +1,9 @@
 {{-- The product a message asks about, shown in the conversation where the inquiry starts. Needs $product, $link (nullable), $mine (bool). --}}
+@if($link)
+<a href="{{ $link }}" class="chat-thread-product {{ $mine ? 'is-mine' : '' }}" aria-label="View {{ $product->name }}">
+@else
 <div class="chat-thread-product {{ $mine ? 'is-mine' : '' }}" role="note" aria-label="Asking about {{ $product->name }}">
+@endif
     @if($product->primary_image)
         <img src="{{ Storage::url($product->primary_image) }}" alt="" loading="lazy">
     @else
@@ -10,5 +14,8 @@
         <strong>{{ $product->name }}</strong>
         <span class="chat-thread-product-price">₱{{ number_format($product->effective_price, 2) }}</span>
     </div>
-    @if($link)<a href="{{ $link }}" class="chat-thread-product-link">View</a>@endif
+@if($link)
+</a>
+@else
 </div>
+@endif
