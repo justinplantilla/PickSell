@@ -100,6 +100,7 @@ function refreshBulkbar() {
     if (pageToggle) {
         pageToggle.checked = boxes.length > 0 && ids.length === boxes.length;
         pageToggle.indeterminate = ids.length > 0 && ids.length < boxes.length;
+        pageToggle.title = `${ids.length} of ${boxes.length} on this page selected. ${pageToggle.checked ? 'Clear page selection' : 'Select all on this page'}.`;
     }
     boxes.forEach(box => box.closest('tr')?.classList.toggle('is-selected', box.checked));
     if (!ids.length) allMatching = false;
@@ -109,7 +110,7 @@ function refreshBulkbar() {
     const count = allMatching ? matchingCount : ids.length;
     bulkbar.querySelector('[data-bulk-count]').textContent = allMatching
         ? `All ${count.toLocaleString()} matching ${plural(count)} selected`
-        : `${count.toLocaleString()} selected`;
+        : `${count.toLocaleString()} of ${boxes.length.toLocaleString()} on this page selected`;
     const selectAll = bulkbar.querySelector('[data-select-all-matching]');
     if (selectAll) selectAll.hidden = allMatching || ids.length !== boxes.length;
 

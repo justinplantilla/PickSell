@@ -34,10 +34,12 @@
                     @endforeach
                 </select>
             </div>
+            <div class="report-filter-actions">
             <button type="submit" class="btn btn-coral">Generate report</button>
             @can(\App\Auth\Permission::REPORTS_EXPORT)
                 <a class="btn btn-outline" href="{{ route('admin.reports.export', array_merge($filters, ['type' => $tab])) }}">Export PDF</a>
             @endcan
+            </div>
         </form>
     </div>
 </div>

@@ -246,9 +246,11 @@ body.ad-theme .notification-title { color: var(--ad-ink); }
 body.ad-theme .notification-message { color: var(--ad-ink-soft); }
 
 /* Page specifics that use their own vocabulary */
-body.ad-theme .settings-sections { position: sticky; top: 84px; z-index: 30; gap: .25rem; width: fit-content; max-width: 100%; padding: .3rem; border: 1px solid var(--ad-line); border-radius: 12px; background: var(--ad-surface); }
-body.ad-theme .settings-sections a { padding: .5rem .9rem; border-radius: 9px; color: var(--ad-ink-soft); font-size: .86rem; font-weight: 600; transition: background .2s, color .2s; }
-body.ad-theme .settings-sections a:hover, body.ad-theme .settings-sections a:focus-visible { background: var(--ad-brand-soft); color: var(--ad-brand-dark); }
+body.ad-theme :is(.settings-sections, .report-tabs) { position:static; display:flex; flex-wrap:wrap; align-items:center; gap:.25rem; width:fit-content; max-width:100%; padding:.3rem; border:0; border-radius:12px; background:var(--ad-sunken); }
+body.ad-theme :is(.settings-sections, .report-tabs) a { display:inline-flex; align-items:center; justify-content:center; min-height:38px; padding:.5rem .9rem; box-sizing:border-box; border:0; border-radius:9px; color:var(--ad-ink-soft); font-size:.86rem; line-height:1.25; font-weight:600; text-decoration:none; white-space:nowrap; transition:background .2s, color .2s; }
+body.ad-theme :is(.settings-sections, .report-tabs) a:hover { color:var(--ad-brand-dark); }
+body.ad-theme :is(.settings-sections, .report-tabs) a:focus-visible { outline:2px solid var(--ad-brand); outline-offset:2px; }
+body.ad-theme :is(.settings-sections, .report-tabs) a:is(.is-active, .active, [aria-current="page"]) { background:var(--ad-surface); color:var(--ad-brand-dark); border:0; box-shadow:none; text-decoration:none; }
 body.ad-theme .settings-history, body.ad-theme .settings-history-row { border-color: var(--ad-line-soft); }
 body.ad-theme .settings-history-row small, body.ad-theme .settings-audience { color: var(--ad-muted); }
 body.ad-theme .account-role-badge { background: var(--ad-brand-tint); color: var(--ad-brand-dark); }

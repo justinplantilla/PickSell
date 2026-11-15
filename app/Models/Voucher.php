@@ -50,12 +50,39 @@ class Voucher extends Model
     /** "₱50 off · min. spend ₱500", "10% off up to ₱100", "Free shipping". */
     public function getSummaryAttribute(): string
     {
-        $what = match ($this->type) {
-            self::FIXED => '₱'.number_format((float) $this->amount, 0).' off',
-            self::PERCENT => rtrim(rtrim(number_format((float) $this->amount, 2), '0'), '.').'% off'.($this->max_discount ? ' up to ₱'.number_format((float) $this->max_discount, 0) : ''),
-            default => 'Free shipping'.($this->max_discount ? ' up to ₱'.number_format((float) $this->max_discount, 0) : ''),
-        };
+        return $this->discount_label.((float) $this->min_spend > 0 ? ' · min. spend ₱'.self::displayNumber($this->min_spend) : '');
+    }
 
-        return $what.((float) $this->min_spend > 0 ? ' · min. spend ₱'.number_format((float) $this->min_spend, 0) : '');
+    private static function displayNumber(mixed $value): string
+    {
+        return rtrim(rtrim(number_format((float) $value, 2), '0'), '.');
+    }
+
+    public function getDiscountLabelAttribute(): string
+    {
+        return match ($this->type) {
+            self::FIXED => '₱'.self::displayNumber($this->amount).' off',
+            self::PERCENT => self::displayNumber($this->amount).'% off'.($this->max_discount ? ' up to ₱'.self::displayNumber($this->max_discount) : ''),
+            default => 'Free shipping'.($this->max_discount ? ' up to ₱'.self::displayNumber($this->max_discount) : ''),
+        };
+    }
+
+    public function getBuyerConditionsAttribute(): string
+    {
+        $parts = [
+            (float) $this->min_spend > 0 ? 'Minimum spend ₱'.self::displayNumber($this->min_spend) : 'No minimum spend',
+            (int) $this->per_buyer_limit === 1 ? 'Once per buyer' : $this->per_buyer_limit.' uses per buyer',
+        ];
+        if ($this->usage_limit !== null) {
+            $parts[] = $this->usage_limit.' total uses';
+        }
+        if ($this->starts_at) {
+            $parts[] = 'Starts '.$this->starts_at->format('M j, Y g:i A');
+        }
+        if ($this->ends_at) {
+            $parts[] = 'Ends '.$this->ends_at->format('M j, Y g:i A');
+        }
+
+        return implode(' · ', $parts);
     }
 }

@@ -67,6 +67,42 @@ body.dark .browse-sort-select { background: #2a2a2a; color: #f3f4f6; border-colo
 body.dark .browse-filters { background: #1a1a1a; border-color: #2a2a2a; }
 body.dark .browse-filter select, body.dark .browse-filter input { background: #121212; border-color: #333; color: #e5e7eb; }
 body.dark .browse-filter label { color: #a3a3a3; }
+.search-stores { margin-bottom:1.5rem; }
+.search-stores h2 { font-size:1rem; margin-bottom:.75rem; }
+.search-stores h2 small { color:#777; font-weight:400; }
+.search-store-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap:.75rem; margin-bottom:1rem; }
+.search-store-card { display:grid; grid-template-columns:minmax(240px, 35%) minmax(0,1fr); align-items:start; gap:1rem; padding:1rem; border:1px solid #e8e2d8; border-radius:12px; background:#fff; color:inherit; box-shadow:0 4px 16px rgba(45,45,45,.04); }
+.search-store-card:hover { border-color:var(--coral); }
+.search-store-avatar { display:grid; place-items:center; width:64px; height:64px; flex:0 0 64px; border-radius:16px; overflow:hidden; background:var(--coral); color:#fff; font-size:1.5rem; font-weight:700; text-decoration:none; }
+.search-store-avatar img { width:100%; height:100%; object-fit:cover; }
+.search-store-heading { display:grid; grid-template-columns:64px minmax(0,1fr); align-items:center; gap:.75rem; min-width:0; }
+.search-store-details { min-width:0; display:flex; flex-direction:column; gap:.6rem; padding-left:1rem; border-left:1px solid #eee8de; }
+.search-store-about { display:flex; flex-wrap:wrap; align-items:center; gap:.35rem .6rem; }
+.search-store-identity { min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:.25rem; }
+.search-store-name { color:inherit; font-size:.95rem; line-height:1.4; font-weight:800; text-decoration:none; white-space:normal; word-break:normal; overflow-wrap:break-word; }
+.search-store-name:hover { color:var(--coral); }
+.search-store-verified { font-size:.7rem; color:#246c49; background:#edf7f0; padding:.2rem .5rem; border-radius:999px; font-weight:700; }
+.search-store-location, .search-store-description { color:#777; font-size:.8rem; line-height:1.5; }
+.search-store-description { margin:0; }
+.search-store-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.65rem .6rem; padding:.65rem 0; margin:0; border-block:1px solid #eee8de; }
+.search-store-metrics dt { font-size:.7rem; color:#777; margin-bottom:.35rem; }
+.search-store-metrics dd { margin:0; font-size:.95rem; font-weight:750; overflow-wrap:anywhere; }
+.search-store-metrics small { display:block; font-size:.65rem; font-weight:400; color:#777; margin-top:.2rem; }
+.search-store-no-data { font-size:.78rem; font-weight:500; color:#777; }
+.search-store-chat-note { margin:0; font-size:.67rem; color:#777; line-height:1.5; }
+.search-store-status { margin:0; color:#9a6200; font-size:.75rem; }
+.search-store-actions { grid-column:1 / -1; display:flex; flex-direction:column; align-items:stretch; gap:.4rem; width:100%; }
+.search-store-actions form { margin:0; }
+.search-store-actions .btn { width:100%; justify-content:center; padding:.4rem .65rem; font-size:.75rem; }
+.search-store-visit { text-align:center; font-size:.75rem; font-weight:700; color:var(--coral); text-decoration:none; padding:.2rem 0; }
+.search-store-card a:focus-visible { outline:2px solid var(--coral); outline-offset:3px; }
+body.dark .search-store-card { background:#1b1b1b; border-color:#333; }
+body.dark .search-store-metrics { border-color:#333; }
+body.dark .search-store-details { border-color:#333; }
+body.dark :is(.search-store-location, .search-store-description, .search-store-metrics dt, .search-store-metrics small, .search-store-no-data, .search-store-chat-note) { color:#aaa; }
+body.dark .search-store-verified { color:#a4dfbc; background:#183326; }
+body.dark .search-store-status { color:#e6bc6d; }
+@media(max-width:600px) { .search-store-card { grid-template-columns:minmax(0,1fr); gap:.75rem; padding:.85rem; } .search-store-details { padding-left:0; padding-top:.75rem; border-left:0; border-top:1px solid #eee8de; } .search-store-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .search-store-heading { grid-template-columns:48px minmax(0,1fr); } .search-store-avatar { width:48px; height:48px; flex-basis:48px; border-radius:12px; } }
 @media (max-width: 700px) {
     .browse-filter, .browse-filter-actions { flex: 1 1 100%; margin-left: 0; }
     .browse-price-range input { flex: 1; width: auto; }

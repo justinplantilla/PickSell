@@ -212,7 +212,7 @@
 .kpi-item {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "label value" "hint hint";
+    grid-template-areas: "label value";
     align-items: center;
     column-gap: 0.5rem;
     row-gap: 0.12rem;
@@ -267,7 +267,7 @@
 }
 
 .kpi-item small {
-    grid-area: hint;
+    grid-column: 1 / -1;
     font-size: 0.68rem;
     line-height: 1.4;
 }

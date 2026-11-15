@@ -126,8 +126,8 @@
             </table>
         </div>
         <div class="command-links">
-            @can(\App\Auth\Permission::REPORTS_VIEW)<a href="{{ route('admin.reports') }}">Financial reports</a>@endcan
-            @can(\App\Auth\Permission::COMMISSION_VIEW)<a href="{{ route('admin.commission') }}">Commission</a>@endcan
+            @can(\App\Auth\Permission::REPORTS_VIEW)<a href="{{ route('admin.reports', ['tab' => 'financial']) }}" class="btn btn-outline btn-sm">Financial reports</a>@endcan
+            @can(\App\Auth\Permission::COMMISSION_VIEW)<a href="{{ route('admin.commission') }}" class="btn btn-outline btn-sm">Commission</a>@endcan
         </div>
     </section>
     @endif

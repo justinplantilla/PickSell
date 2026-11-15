@@ -18,7 +18,7 @@ inputs.forEach(input => {
 
     const showSuggestions = (data) => {
         dropdown.replaceChildren();
-        [...(data.products || []), ...(data.categories || []).map(category => ({ name: category, category: 'Category' }))]
+        [...(data.stores || []), ...(data.products || []), ...(data.categories || []).map(category => ({ name: category, category: 'Category' }))]
             .slice(0, 8)
             .forEach(item => {
                 const button = document.createElement('button');
@@ -55,12 +55,18 @@ inputs.forEach(input => {
                     button.appendChild(price);
                 }
                 button.addEventListener('click', () => {
+                    if (item.url) {
+                        window.location.href = item.url;
+                        return;
+                    }
                     const formAction = form.action || '/buyer/shop';
-                    const params = new URLSearchParams();
+                    const params = new URLSearchParams(new FormData(form));
+                    params.delete('search');
+                    params.delete('q');
                     if (item.category === 'Category') {
                         params.set('category', item.name);
                     } else {
-                        params.set('search', item.name);
+                        params.set(input.name || 'search', item.name);
                     }
 
                     const targetUrl = new URL(formAction, window.location.origin);
@@ -75,16 +81,25 @@ inputs.forEach(input => {
 
     input.addEventListener('input', () => {
         clearTimeout(timer);
+        const currentRequest = ++requestId;
         const query = input.value.trim();
         if (query.length < 2) { hideSuggestions(); return; }
         timer = setTimeout(async () => {
-            const currentRequest = ++requestId;
             try {
-                const response = await fetch(`/api/search-suggestions?q=${encodeURIComponent(query)}`, { headers: { Accept: 'application/json' } });
+                const params = new URLSearchParams({ q: query });
+                if (form.elements.scope?.value === 'store') params.set('seller_id', form.elements.seller_id.value);
+                const response = await fetch(`/api/search-suggestions?${params}`, { headers: { Accept: 'application/json' } });
                 if (!response.ok || currentRequest !== requestId) return;
-                showSuggestions(await response.json());
-            } catch { hideSuggestions(); }
+                const data = await response.json();
+                if (currentRequest === requestId) showSuggestions(data);
+            } catch { if (currentRequest === requestId) hideSuggestions(); }
         }, 180);
+    });
+
+    form.querySelector('[name="scope"]')?.addEventListener('change', event => {
+        input.placeholder = event.target.value === 'store' ? 'Search this store...' : 'Search products or sellers...';
+        hideSuggestions();
+        input.dispatchEvent(new Event('input'));
     });
 
     input.addEventListener('focus', () => {

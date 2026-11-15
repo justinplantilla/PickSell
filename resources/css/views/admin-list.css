@@ -60,6 +60,9 @@ td.list-amount, td.list-number { line-height: var(--list-line-1); font-size: 0.8
 .list-age { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .list-check { width: 2.2rem; padding-right: 0; }
 .list-check input { display: block; width: 1rem; height: 1rem; margin: calc((var(--list-line-1) - 1rem) / 2) 0 0; accent-color: var(--coral); cursor: pointer; }
+/* Partial selection stays neutral; the filled check is reserved for the whole page. */
+.list-check input[data-select-page]:indeterminate { appearance: none; border: 1px solid var(--ad-muted, #777); border-radius: 3px; background-color: var(--ad-surface, #fff); background-image: linear-gradient(var(--ad-muted, #777), var(--ad-muted, #777)); background-repeat: no-repeat; background-position: center; background-size: 8px 2px; }
+.list-check input[data-select-page]:focus-visible { outline: 2px solid var(--coral); outline-offset: 3px; }
 .list-chevron { width: 1.5rem; color: #b5ada0; padding-left: 0; }
 .list-chevron svg { display: block; margin-top: calc((var(--list-line-1) - 16px) / 2); }
 .list-row { cursor: pointer; transition: background 0.12s; }

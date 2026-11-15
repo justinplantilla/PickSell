@@ -19,7 +19,7 @@
     </div>
 </div>
 
-<div class="stat-grid">
+<div class="stat-grid analytics-stats">
     <div class="stat-card"><div class="stat-card-num oversight-number">{{ number_format($ordersPlaced) }}</div><div class="stat-card-label">Orders placed</div></div>
     <div class="stat-card"><div class="stat-card-num oversight-number">{{ number_format($completedOrders) }}</div><div class="stat-card-label">Completed (buyer confirmed)</div></div>
     <div class="stat-card"><div class="stat-card-num oversight-number">{{ $deliverySuccessRate !== null ? $deliverySuccessRate . '%' : '—' }}</div><div class="stat-card-label">Delivery success rate</div></div>

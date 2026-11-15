@@ -440,9 +440,24 @@ class SellerController extends Controller
 
     private const PRODUCT_EXTRAS = ['gallery', 'gallery_cover', 'gallery_managed', 'gallery_alt', 'variations_managed', 'option_names', 'variation_type', 'variations'];
 
+    private function productData(Request $request): array
+    {
+        $data = $request->validate(self::PRODUCT_RULES, self::PRODUCT_MESSAGES);
+
+        // Clearing an optional discount means no discount, not a SQL NULL.
+        // Leave omitted fields untouched when editing an existing product.
+        foreach (['discount', 'voucher_discount'] as $field) {
+            if (array_key_exists($field, $data) && $data[$field] === null) {
+                $data[$field] = 0;
+            }
+        }
+
+        return $this->withVariationStock($this->withCombinations($data));
+    }
+
     public function storeProduct(Request $request, ProductGallery $gallery)
     {
-        $data = $this->withVariationStock($this->withCombinations($request->validate(self::PRODUCT_RULES, self::PRODUCT_MESSAGES)));
+        $data = $this->productData($request);
         $data['seller_id'] = $this->seller()->id;
 
         $managed = $request->boolean('gallery_managed');
@@ -465,7 +480,7 @@ class SellerController extends Controller
     {
         abort_if($product->seller_id !== $this->seller()->id, 403);
 
-        $data = $this->withVariationStock($this->withCombinations($request->validate(self::PRODUCT_RULES, self::PRODUCT_MESSAGES)));
+        $data = $this->productData($request);
 
         $managed = $request->boolean('gallery_managed');
         DB::transaction(function () use ($product, $data, $gallery, $managed) {
@@ -676,11 +691,28 @@ class SellerController extends Controller
         return view('seller.order-detail', compact('order', 'commissionRate', 'commission', 'netEarnings'));
     }
 
-    public function packOrder(Order $order, OrderLifecycleService $lifecycle)
+    /** Confirming starts preparing the parcel and generates its waybill in one step. */
+    public function packOrder(Order $order, OrderLifecycleService $lifecycle, PicksellBridge $pickrush)
     {
         $count = $this->prepareParcel($order, $lifecycle);
+        $parcel = $this->tryWaybill($order, $pickrush);
+        $confirmed = $count > 1 ? "{$count} orders confirmed." : 'Order confirmed.';
 
-        return back()->with('success', $count > 1 ? "{$count} orders in this parcel confirmed and now being prepared." : 'Order confirmed and now being prepared.');
+        return back()->with('success', $confirmed.($parcel ? ' Waybill generated.' : ' Waybill not generated.'));
+    }
+
+    /** The waybill right after confirming; a failure leaves the order preparing with Generate Waybill as the fallback. */
+    private function tryWaybill(Order $order, PicksellBridge $pickrush)
+    {
+        try {
+            return $this->waybillFor($order, $pickrush);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException) {
+            return null;
+        } catch (\Throwable $e) {
+            report($e);
+
+            return null;
+        }
     }
 
     /** Confirms the order and the rest of its parcel; returns how many orders started preparing. */
@@ -705,15 +737,16 @@ class SellerController extends Controller
     }
 
     /**
-     * Several orders at once from the orders list: start preparing them, generate their waybills,
-     * or print their labels in one PDF. Orders that are not at that step are skipped and counted.
+     * Several orders at once from the orders list: confirm them (which also generates their waybills),
+     * generate missing waybills, print their labels in one PDF, or hand their parcels over for pickup.
+     * Orders that are not at that step are skipped and counted.
      */
     public function bulkOrders(Request $request, OrderLifecycleService $lifecycle, PicksellBridge $pickrush)
     {
         $data = $request->validate([
             'order_ids' => 'required|array|min:1|max:100',
             'order_ids.*' => 'integer',
-            'action' => 'required|in:prepare,waybills,print',
+            'action' => 'required|in:confirm,waybills,print,handover',
         ], ['order_ids.required' => 'Select at least one order first.']);
         $orders = Order::where('seller_id', $this->seller()->id)->whereIn('id', $data['order_ids'])->orderBy('id')->get();
 
@@ -728,6 +761,8 @@ class SellerController extends Controller
 
         $done = 0;
         $skipped = 0;
+        $labelled = 0;
+        $unlabelled = 0;
         $handled = [];
         foreach ($orders as $order) {
             // An earlier order in the same parcel already covered this one.
@@ -735,8 +770,12 @@ class SellerController extends Controller
                 continue;
             }
             try {
-                if ($data['action'] === 'prepare') {
+                if ($data['action'] === 'confirm') {
                     $done += $this->prepareParcel($order, $lifecycle);
+                    $this->tryWaybill($order, $pickrush) ? $labelled++ : $unlabelled++;
+                } elseif ($data['action'] === 'handover') {
+                    $this->handOverParcel($order, $lifecycle, $pickrush);
+                    $done++;
                 } else {
                     PicksellBridge::hasParcel($order) ? $skipped++ : ($this->waybillFor($order, $pickrush) && $done++);
                 }
@@ -746,7 +785,16 @@ class SellerController extends Controller
             }
         }
 
-        $what = $data['action'] === 'prepare' ? ($done === 1 ? 'order is now being prepared' : 'orders are now being prepared') : ($done === 1 ? 'waybill generated' : 'waybills generated');
+        if ($data['action'] === 'confirm') {
+            return back()->with('success', "{$done} ".($done === 1 ? 'order' : 'orders').' confirmed.'
+                .($labelled ? " {$labelled} ".($labelled === 1 ? 'waybill' : 'waybills').' generated.' : '')
+                .($unlabelled ? " {$unlabelled} ".($unlabelled === 1 ? 'waybill' : 'waybills').' not generated.' : '')
+                .($skipped ? " {$skipped} skipped." : ''));
+        }
+
+        $what = $data['action'] === 'handover'
+            ? ($done === 1 ? 'parcel handed over for pickup' : 'parcels handed over for pickup')
+            : ($done === 1 ? 'waybill generated' : 'waybills generated');
 
         return back()->with('success', "{$done} {$what}.".($skipped ? " {$skipped} skipped: not at that step yet or already done." : ''));
     }
@@ -807,6 +855,14 @@ class SellerController extends Controller
     /** Step 2: the parcel is packed and labelled; Pickrush schedules the pickup. */
     public function handoverOrder(Order $order, OrderLifecycleService $lifecycle, PicksellBridge $pickrush)
     {
+        $parcel = $this->handOverParcel($order, $lifecycle, $pickrush);
+
+        return back()->with('success', 'Order handed over to Pickrush. A rider will pick up waybill '.$parcel->tracking_no.'.');
+    }
+
+    /** Requests the pickup, moves the parcel's items to ready for pickup and notifies the buyer and admins. */
+    private function handOverParcel(Order $order, OrderLifecycleService $lifecycle, PicksellBridge $pickrush)
+    {
         $parcel = DB::transaction(function () use ($order, $lifecycle, $pickrush) {
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             abort_if($locked->seller_id !== $this->seller()->id, 403);
@@ -832,7 +888,7 @@ class SellerController extends Controller
         User::where('role', 'admin')->where('status', 'approved')->get()
             ->each(fn (User $admin) => $this->notifyUser($admin, 'Parcel handed over', $message, $order));
 
-        return back()->with('success', 'Order handed over to Pickrush. A rider will pick up waybill '.$waybillNumber.'.');
+        return $parcel;
     }
 
     private function notifyUser(?User $user, string $title, string $message, Order $order): void

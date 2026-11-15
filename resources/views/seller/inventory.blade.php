@@ -111,8 +111,13 @@
 
 <!-- Add Product Modal -->
 <div class="modal-overlay" id="addModal">
-    <div class="modal">
-        <div class="modal-title">Add New Product</div>
+    <div class="modal inventory-product-modal">
+        <div class="inventory-modal-header">
+            <div class="modal-title">Add New Product</div>
+            <button type="button" class="inventory-modal-close" data-close-modal="addModal" aria-label="Close Add Product">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+            </button>
+        </div>
         <form method="POST" action="/seller/inventory" enctype="multipart/form-data">
             @csrf
             @include('seller._product-form')
@@ -126,8 +131,13 @@
 
 <!-- Edit Product Modal -->
 <div class="modal-overlay" id="editModal">
-    <div class="modal">
-        <div class="modal-title">Edit Product</div>
+    <div class="modal inventory-product-modal">
+        <div class="inventory-modal-header">
+            <div class="modal-title">Edit Product</div>
+            <button type="button" class="inventory-modal-close" data-close-modal="editModal" aria-label="Close Edit Product">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+            </button>
+        </div>
         <form method="POST" id="editForm" enctype="multipart/form-data">
             @csrf @method('PATCH')
             @include('seller._product-form', ['edit' => true])

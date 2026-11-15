@@ -15,11 +15,12 @@
         </div>
         <div class="chat-list" id="userList">
             @forelse($contacts as $user)
-            <a href="/buyer/chat?user={{ $user->id }}" class="chat-item {{ $activeUser && $activeUser->id === $user->id ? 'active' : '' }}" data-name="{{ strtolower($user->full_name) }}">
-                <div class="chat-avatar {{ $user->role }}">{{ strtoupper(substr($user->first_name, 0, 1)) }}</div>
+            @php($contactName = $user->role === 'admin' ? 'PickSell Support' : ($user->business_name ?: $user->full_name))
+            <a href="/buyer/chat?user={{ $user->id }}" class="chat-item {{ $activeUser && $activeUser->id === $user->id ? 'active' : '' }}" data-name="{{ mb_strtolower($contactName.' '.$user->full_name) }}">
+                <div class="chat-avatar {{ $user->role }}">@if($user->role === 'seller' && $user->store_logo_url)<img src="{{ $user->store_logo_url }}" alt="">@else{{ mb_strtoupper(mb_substr($contactName, 0, 1)) }}@endif</div>
                 <div class="chat-item-info">
-                    <div class="chat-item-name">{{ $user->full_name }}</div>
-                    <div class="chat-item-preview">{{ $user->role === 'admin' ? 'PickSell Support' : ($user->business_name ?? 'Seller') }}</div>
+                    <div class="chat-item-name">{{ $contactName }}</div>
+                    <div class="chat-item-preview">{{ $user->role === 'admin' ? 'Customer support' : $user->full_name }}</div>
                 </div>
                 @if($user->unread > 0)
                 <span class="unread-badge">{{ $user->unread }}</span>
@@ -38,11 +39,18 @@
 
     <div class="chat-main">
         @if($activeUser)
+        @php($activeContactName = $activeUser->role === 'admin' ? 'PickSell Support' : ($activeUser->business_name ?: $activeUser->full_name))
         <div class="chat-header">
-            <div class="chat-avatar {{ $activeUser->role }}">{{ strtoupper(substr($activeUser->first_name, 0, 1)) }}</div>
+            @if($activeUser->role === 'seller')
+            <a href="{{ route('buyer.seller', $activeUser) }}" class="chat-avatar seller chat-profile-link" aria-label="View {{ $activeContactName }} store">@if($activeUser->store_logo_url)<img src="{{ $activeUser->store_logo_url }}" alt="">@else{{ mb_strtoupper(mb_substr($activeContactName, 0, 1)) }}@endif</a>
+            @else
+            <div class="chat-avatar {{ $activeUser->role }}">{{ mb_strtoupper(mb_substr($activeContactName, 0, 1)) }}</div>
+            @endif
             <div class="buyer-chat-grow">
-                <div class="buyer-chat-title">{{ $activeUser->full_name }}</div>
-                <div class="buyer-chat-muted-text">{{ $activeUser->role === 'admin' ? 'PickSell Support' : ($activeUser->business_name ?? 'Seller') }}</div>
+                @if($activeUser->role === 'seller')<a href="{{ route('buyer.seller', $activeUser) }}" class="chat-profile-link">@endif
+                <div class="buyer-chat-title">{{ $activeContactName }}</div>
+                <div class="buyer-chat-muted-text">{{ $activeUser->role === 'admin' ? 'Customer support' : $activeUser->full_name }}</div>
+                @if($activeUser->role === 'seller')</a>@endif
                 <div class="chat-presence"><span></span>{{ $activeUser->role === 'admin' ? 'Support team' : 'Verified seller' }}</div>
             </div>
         </div>
@@ -73,8 +81,7 @@
         <div class="chat-input-area">
             @if(isset($product) && $product)
             <div class="product-context">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="#b45309" viewBox="0 0 24 24"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.36C18 2.06 15.94 0 13.36 0c-1.3 0-2.48.52-3.36 1.36C9.12.52 7.94 0 6.64 0 4.06 0 2 2.06 2 4.64c0 .48.11.92.18 1.36H0v14c0 1.1.9 2 2 2h20c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>
-                <span>Asking about: <strong>{{ $product->name }}</strong></span>
+                @include('partials.chat-product-card', ['product' => $product, 'link' => '/buyer/product/'.$product->id, 'mine' => false])
                 <button type="button" class="product-context-close" data-clear-product-context aria-label="Stop asking about {{ $product->name }}">
                     <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
                 </button>

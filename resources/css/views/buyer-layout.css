@@ -52,6 +52,10 @@
         .navbar-brand img { width: 29px; height: 29px; object-fit: contain; display: block; mix-blend-mode: lighten; }
         .navbar-brand span { color: #fff; }
         .navbar-search { flex: 1; max-width: 480px; height: 38px; display: flex; }
+        .navbar-search input { min-width:0; }
+        .navbar-search .search-scope { max-width:125px; flex-shrink:0; border:0; border-right:1px solid #e8e2d8; border-radius:6px 0 0 6px; padding:0 .5rem; background:#fff8f0; color:var(--charcoal); font:inherit; font-size:.78rem; }
+        .navbar-search .search-scope + input { border-radius:0; }
+        body.dark .navbar-search .search-scope { background:#242424; color:#e5e7eb; border-color:#444; }
         .navbar-search input { flex: 1; padding: 0.5rem 1rem; border: none; border-radius: 6px 0 0 6px; font-size: 0.9rem; outline: none; background: #fff; color: var(--charcoal); }
         .navbar-search button { padding: 0.5rem 1rem; background: var(--coral); border: none; border-radius: 0 6px 6px 0; color: #fff; cursor: pointer; }
         .navbar-search button:hover { background: var(--coral-dark); }

@@ -15,7 +15,7 @@ class SellerBulkActionsTest extends TestCase
 {
     use BuildsMarketplace, RefreshDatabase;
 
-    public function test_sellers_start_preparing_several_orders_at_once(): void
+    public function test_sellers_confirm_several_orders_at_once_and_get_their_waybills(): void
     {
         $seller = $this->seller();
         $buyer = $this->buyer();
@@ -25,14 +25,15 @@ class SellerBulkActionsTest extends TestCase
         $done = $this->order($buyer, $lamp, 'delivered');
         $notMine = $this->order($buyer, $this->product($this->seller()), 'placed');
 
-        $this->actingAs($seller)->post(route('seller.orders.bulk'), ['action' => 'prepare', 'order_ids' => [$a->id, $b->id, $done->id, $notMine->id]])
-            ->assertSessionHas('success', '2 orders are now being prepared. 1 skipped: not at that step yet or already done.');
+        $this->actingAs($seller)->post(route('seller.orders.bulk'), ['action' => 'confirm', 'order_ids' => [$a->id, $b->id, $done->id, $notMine->id]])
+            ->assertSessionHas('success', '2 orders confirmed. 2 waybills generated. 1 skipped.');
 
         $this->assertSame(['preparing', 'preparing', 'delivered', 'placed'], [$a->fresh()->status, $b->fresh()->status, $done->fresh()->status, $notMine->fresh()->status]);
-        $this->actingAs($seller)->post(route('seller.orders.bulk'), ['action' => 'print', 'order_ids' => [$a->id]])
+        $this->assertNotNull($a->fresh()->waybill_number, 'confirming generates the waybill');
+        $this->actingAs($seller)->post(route('seller.orders.bulk'), ['action' => 'print', 'order_ids' => [$done->id]])
             ->assertSessionHasErrors('order_ids');
-        $this->actingAs($seller)->post(route('seller.orders.bulk'), ['action' => 'prepare'])->assertSessionHasErrors('order_ids');
-        $this->actingAs($seller)->get(route('seller.orders'))->assertOk()->assertSee('data-bulk-order', false)->assertSee('Print waybills');
+        $this->actingAs($seller)->post(route('seller.orders.bulk'), ['action' => 'confirm'])->assertSessionHasErrors('order_ids');
+        $this->actingAs($seller)->get(route('seller.orders'))->assertOk()->assertSee('data-bulk-order="print handover"', false)->assertSee('Confirm orders')->assertSee('Print waybills');
     }
 
     public function test_duplicating_a_product_copies_its_details_options_and_photos(): void

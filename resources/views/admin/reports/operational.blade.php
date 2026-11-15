@@ -12,7 +12,7 @@
 
 @include('admin.reports._filters', ['tab' => 'operational'])
 
-<div class="stat-grid">
+<div class="stat-grid report-operational-stats">
     <div class="stat-card blue"><div class="stat-card-num">{{ number_format($data['order_count']) }}</div><div class="stat-card-label">Orders in report</div></div>
     <div class="stat-card"><div class="stat-card-num">{{ number_format($data['average_fulfillment_hours'], 2) }} h</div><div class="stat-card-label">Average fulfillment time</div></div>
     <div class="stat-card coral"><div class="stat-card-num">{{ number_format($data['delivery_failures']) }}</div><div class="stat-card-label">Delivery failures</div></div>
@@ -21,7 +21,7 @@
     <div class="stat-card"><div class="stat-card-num">{{ number_format($data['sorting_backlog']) }}</div><div class="stat-card-label">Sorting backlog</div></div>
 </div>
 
-<div class="grid-2">
+<div class="report-operational-status">
     <section class="card">
         <div class="card-header"><span class="card-title">Orders by Status</span></div>
         <div class="table-responsive">

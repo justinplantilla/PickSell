@@ -70,6 +70,7 @@ export default defineConfig({
                 'resources/css/views/seller-reports.css',
                 'resources/js/views/admin-chat.js',
                 'resources/js/views/admin-layout.js',
+                'resources/js/views/admin-settings.js',
                 'resources/css/views/pages-legal.css',
                 'resources/css/views/pages-help.css',
                 'resources/js/views/buyer-chat.js',

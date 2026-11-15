@@ -47,8 +47,16 @@
                 @include('partials.chat-product-card', ['product' => $msg->product, 'link' => route('seller.inventory', ['product' => $msg->product_id, 'status' => 'all']), 'mine' => $msg->sender_id === auth()->id()])
             @endif
             @php($lastProductId = $msg->product_id ?? $lastProductId)
-            <div class="msg {{ $msg->sender_id === auth()->id() ? 'sent' : 'received' }}">
-                <div class="msg-bubble">{{ $msg->body }}</div>
+            @php($isAutoReply = str_starts_with($msg->body, \App\Models\Message::AUTO_REPLY_PREFIX))
+            <div class="msg {{ $msg->sender_id === auth()->id() ? 'sent' : 'received' }} {{ $isAutoReply ? 'auto-reply' : '' }}">
+                <div class="msg-bubble">
+                    @if($isAutoReply)
+                    <span class="msg-auto-reply-label">Auto-reply</span>
+                    {{ ltrim(substr($msg->body, strlen(\App\Models\Message::AUTO_REPLY_PREFIX))) }}
+                    @else
+                    {{ $msg->body }}
+                    @endif
+                </div>
                 <div class="msg-time">{{ $msg->created_at->format('M d, h:i A') }}</div>
             </div>
             @empty
@@ -56,7 +64,7 @@
             @endforelse
         </div>
         <div class="chat-input-area">
-            <form method="POST" action="/seller/chat/send" class="seller-chat-row-2">
+            <form method="POST" action="/seller/chat/send" class="seller-chat-row-2" data-no-confirm>
                 @csrf
                 <input type="hidden" name="receiver_id" value="{{ $activeUser->id }}">
                 <input type="text" name="body" class="chat-input" placeholder="Type a message… (phone numbers, links &amp; payment details are hidden: keep deals on PickSell)" title="For your protection, contact details are hidden. Orders, payments and delivery stay on PickSell." required autocomplete="off">

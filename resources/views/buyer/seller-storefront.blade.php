@@ -13,27 +13,44 @@
     <div class="seller-storefront-banner" style="background-image:url('{{ $seller->store_banner_url }}')" role="img" aria-label="{{ $seller->business_name ?? $seller->full_name }} banner"></div>
     @endif
     <section class="seller-storefront-hero {{ $seller->store_banner_url ? 'has-banner' : '' }}">
+        <div class="storefront-profile">
         <div class="seller-storefront-avatar">@if($seller->store_logo_url)<img src="{{ $seller->store_logo_url }}" alt="{{ $seller->business_name ?? $seller->full_name }} logo">@else{{ strtoupper(substr($seller->business_name ?: $seller->first_name, 0, 1)) }}@endif</div>
         <div class="seller-storefront-copy">
             <span class="seller-storefront-kicker">PickSell seller store</span>
             <h1>{{ $seller->business_name ?? $seller->full_name }}</h1>
             <p>{{ $seller->store_description ?: "Browse this seller's available products and find something made for you." }}</p>
-            <span class="seller-storefront-status"><i></i> Verified seller</span>
-            <x-seller-stats :seller="$seller" class="seller-storefront-stats" />
+            <span class="seller-storefront-status"><x-store-icon name="check" /> Approved PickSell seller</span>
+            @if($storeStats['preferred'])<span class="seller-storefront-status"><x-store-icon name="star" /> Preferred Seller</span>@endif
+            @if($seller->municipality || $seller->province)<span class="storefront-location"><x-store-icon name="pin" /> {{ collect([$seller->municipality, $seller->province])->filter()->join(', ') }}</span>@endif
             <div class="seller-storefront-actions">
                 <x-follow-seller-button :seller="$seller" />
-                <a href="/buyer/chat?user={{ $seller->id }}" class="btn btn-outline btn-sm">Chat</a>
+                <a href="/buyer/chat?user={{ $seller->id }}" class="btn btn-outline btn-sm"><x-store-icon name="chat" /> Message</a>
             </div>
             @if($seller->isOnVacation())<div class="alert alert-warning" role="note">On vacation until {{ $seller->vacation_ends_at?->format('M j') }}: browse freely, but orders are paused until the seller is back.</div>@endif
             @if($seller->isSellingHeld())<div class="alert alert-warning" role="note">This shop is not taking orders right now. You can still browse its products.</div>@endif
         </div>
-        <div class="seller-storefront-count"><strong>{{ $products->total() }}</strong><span>products</span></div>
+        </div>
+        <div class="storefront-standing">
+            <h2>Store at a glance</h2>
+            <dl class="storefront-metrics">
+                <div><dt><x-store-icon name="star" /> Seller rating</dt><dd>{{ $storeStats['rating']['count'] ? number_format($storeStats['rating']['average'], 1).' / 5' : 'No ratings yet' }}<small>{{ number_format($storeStats['rating']['count']) }} buyer ratings</small></dd></div>
+                <div><dt><x-store-icon name="people" /> Followers</dt><dd>{{ number_format($storeStats['followers']) }}<small>Following this store</small></dd></div>
+                <div><dt><x-store-icon name="calendar" /> Joined PickSell</dt><dd>{{ $seller->created_at?->format('M Y') ?? 'Not available' }}</dd></div>
+                <div><dt><x-store-icon name="box" /> Products</dt><dd>{{ number_format($storeStats['products']) }}<small>Active listings</small></dd></div>
+                <div><dt><x-store-icon name="check" /> Completed orders</dt><dd>{{ number_format($storeStats['completed']) }}</dd></div>
+                <div><dt><x-store-icon name="chat" /> Replies within 24h</dt><dd>{{ $storeStats['chat']['rate'] !== null ? $storeStats['chat']['rate'].'%' : 'Not enough data' }}<small>Last 30 days · auto-replies excluded</small></dd></div>
+            </dl>
+            <p class="storefront-trust-note"><x-store-icon name="check" /> Seller account approved by PickSell. Ratings and activity come from platform records.</p>
+        </div>
     </section>
 
     <section class="seller-storefront-products">
+        @if($search !== '' || request()->filled('category'))
+        <p class="storefront-search-summary">Results in this store for <strong>{{ $search ?: request('category') }}</strong> · <a href="{{ route('buyer.seller', $seller) }}">Clear search</a></p>
+        @endif
         <div class="seller-storefront-heading"><div><span class="detail-eyebrow">Seller catalog</span><h2>Available products</h2></div><span class="seller-storefront-range">{{ $products->firstItem() ?? 0 }}-{{ $products->lastItem() ?? 0 }} of {{ $products->total() }}</span></div>
         @if($products->isEmpty())
-            <div class="storefront-empty"><strong>No products available yet</strong><span>Check back soon for new listings from this seller.</span><a href="/buyer/shop" class="btn btn-coral">Continue shopping</a></div>
+            <div class="storefront-empty"><strong>{{ $search !== '' || request()->filled('category') ? 'No matching products in this store' : 'No products available yet' }}</strong><span>{{ $search !== '' || request()->filled('category') ? 'Try another search or choose All PickSell to search other stores.' : 'Check back soon for new listings from this seller.' }}</span><a href="/buyer/shop" class="btn btn-coral">Continue shopping</a></div>
         @else
             <div class="product-grid">
                 @foreach($products as $product)

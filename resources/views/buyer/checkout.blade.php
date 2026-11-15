@@ -211,8 +211,9 @@
                            @if($isPicked) aria-current="true" @endif @if($option['problem']) aria-disabled="true" @endif>
                             <div class="checkout-voucher-badge">{{ $option['voucher']->code }}</div>
                             <div class="checkout-voucher-info">
-                                <span class="checkout-voucher-label">{{ $option['voucher']->title }}</span>
-                                <span class="checkout-voucher-desc">{{ $option['problem'] ?? $option['voucher']->summary }}</span>
+                                <span class="checkout-voucher-label">{{ $option['voucher']->discount_label }}</span>
+                                <span class="checkout-voucher-desc">{{ $option['voucher']->buyer_conditions }}</span>
+                                @if($option['problem'])<span class="checkout-voucher-desc">{{ $option['problem'] }}</span>@endif
                             </div>
                             <span class="checkout-voucher-savings">{{ $isPicked ? 'Remove' : ($option['problem'] ? '' : '−₱'.number_format($option['discount'], 2)) }}</span>
                         </a>
@@ -231,8 +232,9 @@
                            @if($isPicked) aria-current="true" @endif @if($option['problem']) aria-disabled="true" @endif>
                             <div class="checkout-voucher-badge checkout-voucher-badge--platform">{{ $option['voucher']->code }}</div>
                             <div class="checkout-voucher-info">
-                                <span class="checkout-voucher-label">{{ $option['voucher']->title }}</span>
-                                <span class="checkout-voucher-desc">{{ $option['problem'] ?? $option['voucher']->summary }}</span>
+                                <span class="checkout-voucher-label">{{ $option['voucher']->discount_label }}</span>
+                                <span class="checkout-voucher-desc">{{ $option['voucher']->buyer_conditions }}</span>
+                                @if($option['problem'])<span class="checkout-voucher-desc">{{ $option['problem'] }}</span>@endif
                             </div>
                             <span class="checkout-voucher-savings">{{ $isPicked ? 'Remove' : ($option['problem'] ? '' : '−₱'.number_format($option['discount'], 2)) }}</span>
                         </a>

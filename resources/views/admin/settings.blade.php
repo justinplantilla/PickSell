@@ -3,6 +3,9 @@
 @vite('resources/css/views/admin-settings.css')
 @endsection
 @section('title', 'Platform Settings')
+@section('scripts')
+@vite('resources/js/views/admin-settings.js')
+@endsection
 
 @section('content')
 @unless($settingHistoryAvailable)
@@ -11,16 +14,18 @@
     </div>
 @endunless
 
-<nav class="settings-sections" aria-label="Platform settings sections">
-    <a href="#general">General</a>
-    <a href="#financial">Financial</a>
-    <a href="#uploads">Uploads</a>
-    <a href="#policies">Policies</a>
-    <a href="#announcements">Announcements</a>
-    <a href="#history">Setting history</a>
+@php
+    $tabs = ['general' => 'General', 'financial' => 'Financial', 'uploads' => 'Uploads', 'off-platform' => 'Off-platform', 'policies' => 'Policies', 'announcements' => 'Announcements', 'history' => 'Setting history'];
+    $requestedTab = str_replace('_', '-', (string) old('section', request('tab', 'general')));
+    $activeTab = array_key_exists($requestedTab, $tabs) ? $requestedTab : 'general';
+@endphp
+<nav class="settings-sections" aria-label="Platform settings sections" data-settings-tabs>
+    @foreach($tabs as $tab => $label)
+    <a class="{{ $activeTab === $tab ? 'is-active' : '' }}" href="{{ route('admin.settings.index', ['tab' => $tab]) }}" data-settings-tab="{{ $tab }}" @if($activeTab === $tab) aria-current="page" @endif>{{ $label }}</a>
+    @endforeach
 </nav>
 
-<section class="card" id="general">
+<section class="card settings-panel" id="general" data-settings-panel @if($activeTab !== 'general') hidden @endif>
     <div class="card-header"><span class="card-title">General Settings</span></div>
     <div class="card-body">
         <form method="POST" action="{{ route('admin.settings.save') }}">
@@ -43,7 +48,7 @@
     </div>
 </section>
 
-<section class="card" id="financial">
+<section class="card settings-panel" id="financial" data-settings-panel @if($activeTab !== 'financial') hidden @endif>
     <div class="card-header"><span class="card-title">Financial Settings</span></div>
     <div class="card-body">
         <form method="POST" action="{{ route('admin.settings.save') }}">
@@ -73,7 +78,7 @@
     </div>
 </section>
 
-<section class="card" id="uploads">
+<section class="card settings-panel" id="uploads" data-settings-panel @if($activeTab !== 'uploads') hidden @endif>
     <div class="card-header"><span class="card-title">Upload Settings</span></div>
     <div class="card-body">
         <form method="POST" action="{{ route('admin.settings.save') }}">
@@ -91,7 +96,7 @@
     </div>
 </section>
 
-<section class="card" id="off-platform">
+<section class="card settings-panel" id="off-platform" data-settings-panel @if($activeTab !== 'off-platform') hidden @endif>
     <div class="card-header"><span class="card-title">Off-Platform Monitoring</span></div>
     <div class="card-body">
         <form method="POST" action="{{ route('admin.settings.save') }}">
@@ -109,7 +114,7 @@
     </div>
 </section>
 
-<section class="card" id="policies">
+<section class="card settings-panel" id="policies" data-settings-panel @if($activeTab !== 'policies') hidden @endif>
     <div class="card-header"><span class="card-title">Platform Policies</span></div>
     <div class="card-body">
         {{-- The documents live in resources/views/legal/ so the website, buyer app and rider app show
@@ -123,11 +128,12 @@
     </div>
 </section>
 
-<section class="card" id="announcements">
+<section class="card settings-panel" id="announcements" data-settings-panel @if($activeTab !== 'announcements') hidden @endif>
     <div class="card-header"><span class="card-title">Announcements</span></div>
     <div class="card-body">
         <form method="POST" action="{{ route('admin.announcements.store') }}">
             @csrf
+            <input type="hidden" name="section" value="announcements">
             <div class="settings-fields">
                 <div class="form-group">
                     <label class="form-label" for="announcement-title">Announcement title</label>
@@ -179,7 +185,7 @@
     </div>
 </section>
 
-<section class="card" id="history">
+<section class="card settings-panel" id="history" data-settings-panel @if($activeTab !== 'history') hidden @endif>
     <div class="card-header"><span class="card-title">Setting History</span></div>
     <div class="table-responsive">
         <table>

@@ -29,7 +29,7 @@ class CheckoutVouchersTest extends TestCase
         $buyer = $this->actingAsBuyer();
         $lamp = $this->cartLine($buyer, $this->product($seller, ['name' => 'Lamp', 'price' => 600]));
         $mug = $this->cartLine($buyer, $this->product($seller, ['name' => 'Mug', 'price' => 400]));
-        $save100 = $this->voucher(['seller_id' => $seller->id, 'code' => 'SAVE100', 'title' => '₱100 off', 'amount' => 100, 'min_spend' => 500]);
+        $save100 = $this->voucher(['seller_id' => $seller->id, 'code' => 'SAVE100', 'title' => 'Misleading ₱999 off', 'amount' => 100, 'min_spend' => 500]);
         $big = $this->voucher(['seller_id' => $seller->id, 'code' => 'BIG', 'min_spend' => 5000]);
         $tenPct = $this->voucher(['code' => 'PICK10', 'title' => '10% off', 'type' => Voucher::PERCENT, 'amount' => 10, 'max_discount' => 50]);
 
@@ -37,11 +37,11 @@ class CheckoutVouchersTest extends TestCase
         $v = $this->postJson('/api/mobile/buyer/checkout/quote', ['item_ids' => [$lamp->id, $mug->id]])->assertOk()->json('vouchers');
         $this->assertSame($seller->id, $v['stores'][0]['seller_id']);
         $this->assertSame([
-            'id' => $save100->id, 'code' => 'SAVE100', 'title' => '₱100 off', 'summary' => '₱100 off · min. spend ₱500',
+            'id' => $save100->id, 'code' => 'SAVE100', 'title' => '₱100 off', 'summary' => 'Minimum spend ₱500 · Once per buyer',
             'type' => 'fixed', 'discount' => 100, 'problem' => null, 'ends_at' => null,
         ], $v['stores'][0]['options'][0]);
         $this->assertSame([$big->id, 'Spend ₱4,000.00 more to use this voucher.'], [$v['stores'][0]['options'][1]['id'], $v['stores'][0]['options'][1]['problem']]);
-        $this->assertSame([$tenPct->id, 50, '10% off up to ₱50'], [$v['platform'][0]['id'], $v['platform'][0]['discount'], $v['platform'][0]['summary']]);
+        $this->assertSame([$tenPct->id, 50, '10% off up to ₱50'], [$v['platform'][0]['id'], $v['platform'][0]['discount'], $v['platform'][0]['title']]);
         $this->assertSame(['stores' => [], 'platform' => null], $v['picked']);
         $this->assertSame([0, null], [$v['total'], $v['error']]);
 

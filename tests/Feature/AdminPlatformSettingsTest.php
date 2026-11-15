@@ -45,6 +45,42 @@ class AdminPlatformSettingsTest extends TestCase
         ]);
     }
 
+    public function test_settings_show_only_the_requested_panel_and_invalid_tabs_fall_back(): void
+    {
+        foreach (['general', 'financial', 'uploads', 'off-platform', 'policies', 'announcements', 'history'] as $tab) {
+            $response = $this->actingAs($this->admin)->get(route('admin.settings.index', ['tab' => $tab]))->assertOk();
+            preg_match_all('/<section[^>]*data-settings-panel[^>]*>/', $response->getContent(), $panels);
+            $visible = array_values(array_filter($panels[0], fn ($panel) => !str_contains($panel, ' hidden')));
+            $this->assertCount(1, $visible);
+            $this->assertStringContainsString('id="'.$tab.'"', $visible[0]);
+        }
+        $this->get(route('admin.settings.index', ['tab' => 'unknown']))->assertOk()
+            ->assertSee('data-settings-tab="general"  aria-current="page"', false);
+    }
+
+    public function test_financial_save_and_validation_return_to_financial_tab(): void
+    {
+        $target = route('admin.settings.index', ['tab' => 'financial']);
+        $this->actingAs($this->admin)->post(route('admin.settings.save'), [
+            'section' => 'financial', 'commission_rate' => 12,
+        ])->assertRedirect($target)->assertSessionHasNoErrors();
+        $this->post(route('admin.settings.save'), [
+            'section' => 'financial', 'commission_rate' => 101,
+        ])->assertRedirect($target)->assertSessionHasErrors('commission_rate');
+        $this->get($target)->assertOk()->assertSee('value="101"', false)
+            ->assertSee('id="financial" data-settings-panel >', false);
+    }
+
+    public function test_announcement_validation_and_monitoring_save_keep_their_tabs(): void
+    {
+        $this->actingAs($this->admin)->post(route('admin.announcements.store'), [
+            'title' => '', 'message' => '', 'audience' => 'all',
+        ])->assertRedirect(route('admin.settings.index', ['tab' => 'announcements']))->assertSessionHasErrors('title');
+        $this->post(route('admin.settings.save'), [
+            'section' => 'off_platform', 'off_platform_keywords' => 'outside payment',
+        ])->assertRedirect(route('admin.settings.index', ['tab' => 'off-platform']))->assertSessionHasNoErrors();
+    }
+
     public function test_settings_are_grouped_and_setting_changes_record_old_and_new_values(): void
     {
         PlatformSetting::set('platform_name', 'PickSell');

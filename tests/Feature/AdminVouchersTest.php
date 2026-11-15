@@ -14,6 +14,7 @@ class AdminVouchersTest extends TestCase
 
     public function test_admins_run_pickSell_vouchers_and_campaigns(): void
     {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-06 12:00:00'));
         $admin = $this->admin();
 
         $this->actingAs($admin)->post(route('admin.vouchers.store'), [

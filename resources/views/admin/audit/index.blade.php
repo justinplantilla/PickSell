@@ -80,11 +80,11 @@
                         <td>
                             <ul class="audit-changes">
                                 @foreach($log->changes ?? [] as $field => $change)
-                                    <li><code>{{ $field }}</code>: {{ json_encode($change['from'] ?? null) }} → {{ json_encode($change['to'] ?? null) }}</li>
+                                    <li><strong>{{ \App\Support\AuditDetailFormatter::label($field) }}:</strong> {{ \App\Support\AuditDetailFormatter::value($change['from'] ?? null) }} → {{ \App\Support\AuditDetailFormatter::value($change['to'] ?? null) }}</li>
                                 @endforeach
                                 @foreach($log->metadata ?? [] as $key => $value)
                                     @continue($value === null || $value === '' || $value === [])
-                                    <li><code>{{ $key }}</code>: {{ is_scalar($value) ? \Illuminate\Support\Str::limit((string) $value, 140) : \Illuminate\Support\Str::limit(json_encode($value), 140) }}</li>
+                                    <li><strong>{{ \App\Support\AuditDetailFormatter::label($key) }}:</strong> {{ $key === 'moderation_log_id' ? '#' : '' }}{{ \Illuminate\Support\Str::limit(\App\Support\AuditDetailFormatter::value($value), 140) }}</li>
                                 @endforeach
                             </ul>
                         </td>

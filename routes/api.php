@@ -54,9 +54,11 @@ Route::get('/ping', function (Request $request) {
 
 Route::get('/search-suggestions', function (Request $request) {
     $query = trim((string) $request->get('q', ''));
-    if (mb_strlen($query) < 2) return response()->json(['products' => [], 'categories' => []]);
+    if (mb_strlen($query) < 2) return response()->json(['products' => [], 'categories' => [], 'stores' => []]);
+    $sellerId = $request->integer('seller_id');
 
-    $products = Product::query()
+    $products = Product::showcased()
+        ->when($sellerId, fn ($builder) => $builder->where('seller_id', $sellerId))
         ->where('status', 'active')
         ->where('stock', '>', 0)
         ->where(function ($builder) use ($query) {
@@ -73,7 +75,8 @@ Route::get('/search-suggestions', function (Request $request) {
             'price' => $product->effective_price,
         ]);
 
-    $categories = Product::query()
+    $categories = Product::showcased()
+        ->when($sellerId, fn ($builder) => $builder->where('seller_id', $sellerId))
         ->where('status', 'active')
         ->where('stock', '>', 0)
         ->whereLike('category', "%{$query}%")
@@ -83,5 +86,15 @@ Route::get('/search-suggestions', function (Request $request) {
         ->limit(3)
         ->pluck('category');
 
-    return response()->json(['products' => $products, 'categories' => $categories]);
+    $stores = $sellerId ? collect() : \App\Models\User::where('role', 'seller')->where('status', 'approved')
+        ->where(fn ($builder) => $builder->whereLike('business_name', "%{$query}%")
+            ->orWhereLike('first_name', "%{$query}%")->orWhereLike('last_name', "%{$query}%"))
+        ->orderBy('business_name')->limit(3)->get()->map(fn ($seller) => [
+            'name' => $seller->business_name ?: $seller->full_name,
+            'category' => 'Store',
+            'image' => $seller->store_logo_url,
+            'url' => route('buyer.seller', $seller),
+        ]);
+
+    return response()->json(['products' => $products, 'categories' => $categories, 'stores' => $stores]);
 });

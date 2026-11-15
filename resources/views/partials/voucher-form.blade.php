@@ -9,8 +9,9 @@
             <input type="text" id="voucher-{{ $key }}-code" name="code" class="form-control voucher-code-input" maxlength="30" required placeholder="SAVE50" value="{{ old('code', $voucher?->code) }}">
         </div>
         <div class="form-group">
-            <label class="form-label" for="voucher-{{ $key }}-title">Title *</label>
-            <input type="text" id="voucher-{{ $key }}-title" name="title" class="form-control" maxlength="80" required placeholder="₱50 off orders over ₱500" value="{{ old('title', $voucher?->title) }}">
+            <label class="form-label" for="voucher-{{ $key }}-title">Promo name *</label>
+            <input type="text" id="voucher-{{ $key }}-title" name="title" class="form-control" maxlength="80" required placeholder="Weekend Sale" value="{{ old('title', $voucher?->title) }}">
+            <small class="form-hint">For your reference. Buyers see the actual discount and conditions generated from these settings.</small>
         </div>
         <div class="form-group">
             <label class="form-label" for="voucher-{{ $key }}-type">Kind *</label>
@@ -23,7 +24,7 @@
         <div class="form-group">
             <label class="form-label" for="voucher-{{ $key }}-amount">Amount (₱ or %)</label>
             <input type="number" id="voucher-{{ $key }}-amount" name="amount" class="form-control" min="0" step="0.01" placeholder="50" value="{{ old('amount', $voucher && $voucher->type !== \App\Models\Voucher::FREE_SHIPPING ? $voucher->amount : null) }}">
-            <small class="form-hint">Leave empty for free shipping.</small>
+            <small class="form-hint">{{ array_key_exists(\App\Models\Voucher::FREE_SHIPPING, $types) ? 'Leave empty for free shipping.' : 'Enter the peso amount or percentage to deduct.' }}</small>
         </div>
         <div class="form-group">
             <label class="form-label" for="voucher-{{ $key }}-min">Minimum spend (₱)</label>
@@ -32,7 +33,7 @@
         <div class="form-group">
             <label class="form-label" for="voucher-{{ $key }}-cap">Maximum discount (₱)</label>
             <input type="number" id="voucher-{{ $key }}-cap" name="max_discount" class="form-control" min="0" step="0.01" placeholder="No cap" value="{{ old('max_discount', $voucher?->max_discount) }}">
-            <small class="form-hint">For % off and free shipping.</small>
+            <small class="form-hint">{{ array_key_exists(\App\Models\Voucher::FREE_SHIPPING, $types) ? 'For % off and free shipping.' : 'For % off vouchers only.' }}</small>
         </div>
         <div class="form-group">
             <label class="form-label" for="voucher-{{ $key }}-limit">Total uses</label>
@@ -51,6 +52,9 @@
             <input type="datetime-local" id="voucher-{{ $key }}-end" name="ends_at" class="form-control" value="{{ old('ends_at', $voucher?->ends_at?->format('Y-m-d\TH:i')) }}">
         </div>
     </div>
+    @if($voucher)
+        <p class="form-hint"><strong>Current buyer offer:</strong> {{ $voucher->discount_label }} · {{ $voucher->buyer_conditions }}. Updates when you save.</p>
+    @endif
     <label class="voucher-active"><input type="hidden" name="is_active" value="0"><input type="checkbox" name="is_active" value="1" @checked(old('is_active', $voucher?->is_active ?? true))> Active</label>
     <button type="submit" class="btn btn-coral btn-sm">{{ $voucher ? 'Save voucher' : 'Create voucher' }}</button>
 </form>

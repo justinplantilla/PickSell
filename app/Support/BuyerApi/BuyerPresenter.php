@@ -224,8 +224,8 @@ final class BuyerPresenter
         $option = fn (array $o) => [
             'id'       => $o['voucher']->id,
             'code'     => $o['voucher']->code,
-            'title'    => $o['voucher']->title,
-            'summary'  => $o['voucher']->summary,
+            'title'    => $o['voucher']->discount_label,
+            'summary'  => $o['voucher']->buyer_conditions,
             'type'     => $o['voucher']->type,
             'discount' => self::money($o['discount']),
             'problem'  => $o['problem'],

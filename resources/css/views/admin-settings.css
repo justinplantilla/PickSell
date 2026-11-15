@@ -5,6 +5,7 @@
 .settings-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; }
 .settings-single-field { max-width:420px; }
 .settings-fieldset { width:100%; min-width:0; margin:0; padding:0; border:0; }
+.settings-panel[hidden] { display:none; }
 .settings-history { margin-top:1.5rem; border-top:1px solid #f0ebe0; padding-top:1.2rem; }
 .settings-history h3 { font-size:.9rem; margin:0 0 .7rem; }
 .settings-history-row { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; padding:.8rem 0; border-bottom:1px solid #f8f4ee; }

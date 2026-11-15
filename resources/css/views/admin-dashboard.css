@@ -56,7 +56,7 @@
 .dashboard-finance-table thead th { color: #8a8a8a; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.03em; }
 .dashboard-finance-table tbody th { color: #464646; font-weight: 600; white-space: nowrap; }
 .dashboard-finance-table tbody td { color: #333; white-space: nowrap; }
-.dashboard-panel .command-links { margin-top: auto; padding: 0.65rem 1rem 0.8rem; }
+.dashboard-panel .command-links { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-top: auto; padding: 1rem; }
 
 .dashboard-bottom-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr); gap: 0.9rem; align-items: stretch; }
 .dashboard-applications { overflow: hidden; }

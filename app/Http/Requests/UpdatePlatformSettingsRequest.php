@@ -6,6 +6,18 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UpdatePlatformSettingsRequest extends FormRequest
 {
+    public function settingsTab(): string
+    {
+        $section = (string) $this->input('section', 'general');
+        return in_array($section, ['general', 'financial', 'uploads', 'policies', 'off_platform'], true)
+            ? str_replace('_', '-', $section) : 'general';
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return route('admin.settings.index', ['tab' => $this->settingsTab()]);
+    }
+
     public function authorize(): bool
     {
         return $this->user()?->can('update', \App\Models\PlatformSetting::class) ?? false;
@@ -14,7 +26,7 @@ class UpdatePlatformSettingsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'section' => ['nullable', 'string', 'in:general,financial,uploads,policies'],
+            'section' => ['nullable', 'string', 'in:general,financial,uploads,policies,off_platform'],
             'platform_name' => ['sometimes', 'required', 'string', 'max:100'],
             'support_email' => ['sometimes', 'required', 'email', 'max:255'],
             'commission_rate' => ['sometimes', 'required', 'numeric', 'decimal:0,2', 'min:0', 'max:100'],

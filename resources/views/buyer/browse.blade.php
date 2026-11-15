@@ -29,6 +29,48 @@
         </div>
     </div>
 
+    @if($stores->isNotEmpty())
+    <section class="search-stores" aria-label="Matching sellers">
+        <h2>Stores <small>({{ $stores->total() }})</small></h2>
+        <div class="search-store-grid">
+            @foreach($stores as $store)
+            @php($chatPerformance = app(\App\Services\SellerChatPerformance::class)->for($store))
+            <article class="search-store-card">
+                <div class="search-store-heading">
+                    <a class="search-store-avatar" href="{{ route('buyer.seller', $store) }}" aria-label="View {{ $store->business_name ?: $store->full_name }}">@if($store->store_logo_url)<img src="{{ $store->store_logo_url }}" alt="" loading="lazy">@else{{ mb_strtoupper(mb_substr($store->business_name ?: $store->first_name, 0, 1)) }}@endif</a>
+                    <div class="search-store-identity">
+                        <a class="search-store-name" href="{{ route('buyer.seller', $store) }}">{{ $store->business_name ?: $store->full_name }}</a>
+                    </div>
+                    <div class="search-store-actions">
+                        <x-follow-seller-button :seller="$store" />
+                        <a class="btn btn-outline btn-sm" href="{{ route('buyer.chat', ['user' => $store->id]) }}">Message</a>
+                        <a class="search-store-visit" href="{{ route('buyer.seller', $store) }}">View store →</a>
+                    </div>
+                </div>
+                <div class="search-store-details">
+                <div class="search-store-about">
+                    <span class="search-store-verified">✓ Verified seller</span>
+                    @if($store->municipality || $store->province)<span class="search-store-location">{{ collect([$store->municipality, $store->province])->filter()->join(', ') }}</span>@endif
+                </div>
+                @if($store->store_description)<p class="search-store-description">{{ Str::limit($store->store_description, 180) }}</p>@endif
+                <dl class="search-store-metrics">
+                    <div><dt>Products</dt><dd>{{ number_format($store->active_products_count) }}</dd></div>
+                    <div><dt>Followers</dt><dd>{{ number_format($store->followers_count) }}</dd></div>
+                    <div><dt>Following</dt><dd>{{ number_format($store->followed_sellers_count) }}</dd></div>
+                    <div><dt>Seller rating</dt><dd>@if($store->seller_ratings_count)★ {{ number_format($store->seller_rating_average, 1) }}<small>{{ number_format($store->seller_ratings_count) }} ratings</small>@else<span class="search-store-no-data">No ratings yet</span>@endif</dd></div>
+                    <div><dt>On PickSell since</dt><dd>{{ $store->created_at?->format('M Y') ?? 'Not available' }}</dd></div>
+                    <div><dt>Replies within 24h</dt><dd>@if($chatPerformance['rate'] !== null){{ $chatPerformance['rate'] }}%<small>{{ $chatPerformance['conversations'] }} conversations · 30 days</small>@else<span class="search-store-no-data">Not enough data</span>@endif</dd></div>
+                </dl>
+                <p class="search-store-chat-note">Chat rate uses the first inquiry per buyer in the last 30 days, with a full day to respond. Auto-replies excluded.</p>
+                @if($store->isOnVacation())<p class="search-store-status">On vacation · orders paused</p>@elseif($store->isSellingHeld())<p class="search-store-status">Currently not taking orders</p>@endif
+                </div>
+            </article>
+            @endforeach
+        </div>
+        {{ $stores->links() }}
+    </section>
+    @endif
+
     {{-- One GET form for every filter and the sort, so they combine and survive paging. --}}
     <form class="browse-filters" method="GET" action="{{ route('buyer.browse') }}" aria-label="Filter products">
         @if($search) <input type="hidden" name="search" value="{{ $search }}"> @endif

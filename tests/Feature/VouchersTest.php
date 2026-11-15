@@ -43,6 +43,23 @@ class VouchersTest extends TestCase
         $this->assertModelMissing($voucher);
     }
 
+    public function test_buyers_see_actual_terms_instead_of_a_misleading_promo_name(): void
+    {
+        $seller = $this->seller();
+        $buyer = $this->buyer();
+        $line = $this->cartLine($buyer, $this->product($seller));
+        $voucher = $this->voucher([
+            'seller_id' => $seller->id, 'code' => 'WEEKEND', 'title' => 'Guaranteed 100% FREE',
+            'amount' => 10.25, 'min_spend' => 500.50, 'usage_limit' => 25,
+        ]);
+
+        $this->actingAs($buyer)->get(route('buyer.checkout.start', ['item_ids' => [$line->id]]))
+            ->assertOk()->assertDontSee('Guaranteed 100% FREE')
+            ->assertSee('₱10.25 off')->assertSee('Minimum spend ₱500.5 · Once per buyer · 25 total uses');
+
+        $this->assertSame('Guaranteed 100% FREE', $voucher->fresh()->title);
+    }
+
     public function test_a_store_voucher_comes_off_the_sellers_orders(): void
     {
         config()->set('app.platform_commission_rate', 10);

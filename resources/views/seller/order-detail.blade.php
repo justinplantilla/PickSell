@@ -85,7 +85,7 @@
                             If it is not handed to {{ $order->carrierName() }} by then, the order is cancelled automatically and counts against your seller performance.
                         </div>
                     @elseif($canConfirm)
-                        <p class="order-detail-muted-label">Once you confirm, you have {{ $order->product?->preorder_days ? $order->product->preorder_days.' days (pre-order)' : \App\Models\Order::SHIP_WITHIN_HOURS.' hours' }} to hand the parcel to the courier.</p>
+                        <p class="order-detail-muted-label">Once you confirm, you have {{ $order->product?->preorder_days ? $order->product->preorder_days.' days (pre-order)' : \App\Models\Order::SHIP_WITHIN_HOURS.' hours' }} to hand the parcel to the courier. Confirming also generates the waybill, so you can print it right away.</p>
                     @endif
                     @if($canCancel || $canConfirm || $isPreparing)
                     <div class="order-detail-actions">

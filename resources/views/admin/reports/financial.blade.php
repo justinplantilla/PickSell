@@ -12,7 +12,7 @@
 
 @include('admin.reports._filters', ['tab' => 'financial'])
 
-<div class="stat-grid">
+<div class="stat-grid report-financial-stats">
     <div class="stat-card blue"><div class="stat-card-num">{{ number_format($data['completed_orders']) }}</div><div class="stat-card-label">Orders posted</div></div>
     <div class="stat-card green"><div class="stat-card-num">₱{{ number_format($data['gross_sales'], 2) }}</div><div class="stat-card-label">Gross sales</div></div>
     <div class="stat-card coral"><div class="stat-card-num">₱{{ number_format($data['commission'], 2) }}</div><div class="stat-card-label">Commission net of reversals</div><small>Current new-order rate: {{ number_format($data['current_commission_rate'], 2) }}%</small></div>
@@ -31,7 +31,7 @@
     <strong>₱{{ number_format($data['financial_total'], 2) }}</strong>
 </div>
 
-<div class="grid-2">
+<div class="report-financial-panels">
     <section class="card">
         <div class="card-header"><span class="card-title">Weekly Sales Performance</span></div>
         <div class="card-body"><div id="salesChart"></div></div>

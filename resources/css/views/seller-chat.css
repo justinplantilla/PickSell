@@ -28,6 +28,9 @@
     .msg-bubble { padding: 0.6rem 0.9rem; border-radius: 12px; font-size: 0.88rem; line-height: 1.5; }
     .msg.sent .msg-bubble { background: var(--coral); color: #fff; border-bottom-right-radius: 4px; }
     .msg.received .msg-bubble { background: #fff; border: 1px solid #e8e2d8; border-bottom-left-radius: 4px; }
+    .msg.auto-reply .msg-bubble,
+    body.sl-theme .msg.auto-reply:is(.sent, .received) .msg-bubble { background: #f4f3f1; border-color: #ebe8e3; color: #77736e; padding: 0.5rem 0.75rem; font-size: 0.82rem; }
+    .msg-auto-reply-label { display: block; margin-bottom: 0.12rem; color: #a29b93; font-size: 0.65rem; font-weight: 600; line-height: 1.2; }
     .msg-time { font-size: 0.72rem; color: #aaa; margin-top: 0.2rem; }
     .msg.sent .msg-time { text-align: right; }
     .chat-input-area { flex: 0 0 auto; padding: 1rem; border-top: 1px solid #f0ebe0; display: flex; gap: 0.6rem; }
@@ -60,6 +63,9 @@ body.dark .chat-messages, body.dark .chat-empty { background: #151515; }
 body.dark .chat-empty strong { color: #f3f4f6; }
 body.dark .chat-item:hover, body.dark .chat-item.active { background: #2a1b18; }
 body.dark .msg.received .msg-bubble { background: #242424; border-color: #3a3a3a; }
+body.dark .msg.auto-reply .msg-bubble,
+body.dark.sl-theme .msg.auto-reply:is(.sent, .received) .msg-bubble { background: #202020; border-color: #303030; color: #a3a3a3; }
+body.dark .msg-auto-reply-label { color: #737373; }
 body.dark .chat-search, body.dark .chat-input { background: #2a2a2a; border-color: #444; color: #f3f4f6; }
 
 @media (max-width: 720px) {

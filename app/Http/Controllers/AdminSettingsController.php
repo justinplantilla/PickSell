@@ -47,8 +47,9 @@ class AdminSettingsController extends Controller
         CommissionService $commission,
     ): RedirectResponse {
         $values = $request->validated();
+        $returnUrl = route('admin.settings.index', ['tab' => $request->settingsTab()]);
         if (! Schema::hasTable('setting_change_logs')) {
-            return back()->with('warning', 'Settings are read-only until the setting history migration is applied. Please contact the platform administrator.');
+            return redirect($returnUrl)->with('warning', 'Settings are read-only until the setting history migration is applied. Please contact the platform administrator.');
         }
 
         $actorId = $request->user()->id;
@@ -126,10 +127,10 @@ class AdminSettingsController extends Controller
         }
 
         if ($saved === []) {
-            return back()->withErrors(['settings' => 'Choose at least one setting to update.']);
+            return redirect($returnUrl)->withInput()->withErrors(['settings' => 'Choose at least one setting to update.']);
         }
 
-        return back()->with('success', implode(', ', $saved).' saved successfully.');
+        return redirect($returnUrl)->with('success', implode(', ', $saved).' saved successfully.');
     }
 
     public function createAnnouncement(
@@ -138,7 +139,7 @@ class AdminSettingsController extends Controller
     ): RedirectResponse {
         $settings->postAnnouncement($request->validated());
 
-        return back()->with('success', 'Announcement posted successfully.');
+        return redirect()->route('admin.settings.index', ['tab' => 'announcements'])->with('success', 'Announcement posted successfully.');
     }
 
     public function toggleAnnouncement(Announcement $announcement, PlatformSettingsService $settings): RedirectResponse
@@ -146,7 +147,7 @@ class AdminSettingsController extends Controller
         Gate::authorize('update', PlatformSetting::class);
         $settings->toggleAnnouncement($announcement);
 
-        return back()->with('success', 'Announcement updated.');
+        return redirect()->route('admin.settings.index', ['tab' => 'announcements'])->with('success', 'Announcement updated.');
     }
 
     public function deleteAnnouncement(Announcement $announcement, PlatformSettingsService $settings): RedirectResponse
@@ -154,6 +155,6 @@ class AdminSettingsController extends Controller
         Gate::authorize('update', PlatformSetting::class);
         $settings->deleteAnnouncement($announcement);
 
-        return back()->with('success', 'Announcement deleted.');
+        return redirect()->route('admin.settings.index', ['tab' => 'announcements'])->with('success', 'Announcement deleted.');
     }
 }

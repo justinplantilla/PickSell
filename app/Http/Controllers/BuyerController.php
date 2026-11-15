@@ -214,7 +214,20 @@ class BuyerController extends Controller
             ->filter()->unique()->sort()->values();
         $cartCount = CartItem::whereHas('cart', fn ($q) => $q->where('buyer_id', $this->buyer()->id))->count();
 
-        return view('buyer.browse', compact('products', 'categories', 'search', 'category', 'sort', 'dealsOnly', 'cartCount', 'provinces', 'filters'));
+        $stores = User::where('role', 'seller')->where('status', 'approved')
+            ->withCount(['followers', 'followedSellers',
+                'products as active_products_count' => fn ($q) => $q->where('status', 'active'),
+                'ordersAsSeller as seller_ratings_count' => fn ($q) => $q->whereNotNull('seller_rating')])
+            ->withAvg('ordersAsSeller as seller_rating_average', 'seller_rating')
+            ->where(function ($query) use ($search) {
+                $query->whereLike('business_name', "%{$search}%")
+                    ->orWhereLike('first_name', "%{$search}%")
+                    ->orWhereLike('last_name', "%{$search}%");
+            })
+            ->when($search === '', fn ($query) => $query->whereRaw('1 = 0'))
+            ->orderBy('business_name')->paginate(8, ['*'], 'store_page')->withQueryString();
+
+        return view('buyer.browse', compact('products', 'stores', 'categories', 'search', 'category', 'sort', 'dealsOnly', 'cartCount', 'provinces', 'filters'));
     }
 
     public function categories(Request $request)
@@ -247,7 +260,10 @@ class BuyerController extends Controller
     // Search Results: the browse page has the filters and sorts, so searches land there.
     public function search(Request $request)
     {
-        return redirect()->route('buyer.browse', $request->query());
+        if ($request->query('scope') === 'store' && $request->integer('seller_id')) {
+            return redirect()->route('buyer.seller', ['seller' => $request->integer('seller_id')] + $request->only('search', 'category'));
+        }
+        return redirect()->route('buyer.browse', $request->except('scope', 'seller_id'));
     }
 
     /**
@@ -288,18 +304,31 @@ class BuyerController extends Controller
         return view('buyer.product-detail', compact('product', 'cartCount', 'reviewCount', 'reviewAverage', 'wishlisted', 'helpfulIds'));
     }
 
-    public function sellerStorefront(User $seller)
+    public function sellerStorefront(Request $request, User $seller)
     {
         abort_unless($seller->role === 'seller' && $seller->status === 'approved', 404);
 
+        $storeStats = [
+            'rating' => $seller->sellerRating(),
+            'followers' => $seller->followers()->count(),
+            'products' => $seller->products()->where('status', 'active')->count(),
+            'completed' => $seller->ordersAsSeller()->where('status', 'completed')->count(),
+            'chat' => app(\App\Services\SellerChatPerformance::class)->for($seller),
+            'preferred' => app(\App\Services\SellerPerformance::class)->isPreferred($seller),
+        ];
+
+        $search = trim((string) $request->query('search', ''));
         $products = $seller->products()
             ->where('status', 'active')
             ->where('stock', '>', 0)
+            ->when($search !== '', fn ($query) => $query->where(fn ($match) => $match
+                ->whereLike('name', "%{$search}%")->orWhereLike('category', "%{$search}%")))
+            ->when($request->filled('category'), fn ($query) => $query->where('category', $request->query('category')))
             ->latest()
-            ->paginate(12);
+            ->paginate(12)->withQueryString();
         $cartCount = CartItem::whereHas('cart', fn ($q) => $q->where('buyer_id', $this->buyer()->id))->count();
 
-        return view('buyer.seller-storefront', compact('seller', 'products', 'cartCount'));
+        return view('buyer.seller-storefront', compact('seller', 'products', 'cartCount', 'search', 'storeStats'));
     }
 
     /** The stores this buyer follows, most recently followed first. */

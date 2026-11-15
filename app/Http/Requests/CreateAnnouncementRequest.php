@@ -6,6 +6,11 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class CreateAnnouncementRequest extends FormRequest
 {
+    protected function getRedirectUrl(): string
+    {
+        return route('admin.settings.index', ['tab' => 'announcements']);
+    }
+
     public function authorize(): bool
     {
         return $this->user()?->can('update', \App\Models\PlatformSetting::class) ?? false;

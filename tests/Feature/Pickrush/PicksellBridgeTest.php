@@ -122,6 +122,52 @@ class PicksellBridgeTest extends TestCase
         $this->assertSame('application/pdf', $pdf->headers->get('content-type'));
     }
 
+    public function test_confirming_an_order_generates_its_waybill_without_calling_a_rider(): void
+    {
+        $order = $this->preparing();
+        $order->update(['status' => 'placed']);
+
+        $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$order->id}/pack")
+            ->assertSessionHasNoErrors()->assertSessionHas('success', 'Order confirmed. Waybill generated.');
+        $parcel = PicksellBridge::parcelFor($order);
+        $this->assertSame(ParcelStatus::LabelCreated, $parcel->current_status);
+        $this->assertSame(['preparing', $parcel->tracking_no], [$order->fresh()->status, $order->fresh()->waybill_number]);
+        $this->actingAs($this->seller)->get(config('app.url').'/seller/orders')->assertOk()
+            ->assertSee('data-bulk-order="print handover"', false)->assertDontSee('>Generate Waybill<', false);
+    }
+
+    public function test_a_failed_waybill_still_confirms_and_leaves_generate_waybill_as_the_fallback(): void
+    {
+        $order = $this->preparing();
+        $order->update(['status' => 'placed']);
+        $this->mock(PicksellBridge::class)->shouldReceive('book')->andThrow(new \RuntimeException('Pickrush is down'));
+
+        $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$order->id}/pack")
+            ->assertSessionHas('success', 'Order confirmed. Waybill not generated.');
+        $this->assertSame(['preparing', null], [$order->fresh()->status, $order->fresh()->waybill_number]);
+        $this->actingAs($this->seller)->get(config('app.url').'/seller/orders')->assertOk()
+            ->assertSee('data-bulk-order="waybills"', false)->assertSee('Generate Waybill');
+    }
+
+    public function test_sellers_confirm_and_hand_over_several_orders_at_once(): void
+    {
+        $first = $this->preparing();
+        $second = $this->preparing();
+        $unlabelled = $this->preparing();
+        Order::whereIn('id', [$first->id, $second->id])->update(['status' => 'placed']);
+
+        $this->actingAs($this->seller)->post(config('app.url').'/seller/orders/bulk', ['action' => 'confirm', 'order_ids' => [$first->id, $second->id]])
+            ->assertSessionHas('success', '2 orders confirmed. 2 waybills generated.');
+        $this->assertNotNull(PicksellBridge::parcelFor($first));
+        $this->assertNotNull(PicksellBridge::parcelFor($second));
+
+        $this->actingAs($this->seller)->post(config('app.url').'/seller/orders/bulk', ['action' => 'handover', 'order_ids' => [$first->id, $second->id, $unlabelled->id]])
+            ->assertSessionHas('success', '2 parcels handed over for pickup. 1 skipped: not at that step yet or already done.');
+        $this->assertSame(['ready_for_pickup', 'ready_for_pickup', 'preparing'], [$first->fresh()->status, $second->fresh()->status, $unlabelled->fresh()->status]);
+        $this->assertSame(ParcelStatus::WaitingPickup, PicksellBridge::parcelFor($first)->current_status);
+        $this->assertSame(2, $this->buyer->notifications()->count());
+    }
+
     public function test_a_labelled_order_can_still_be_cancelled_before_handover(): void
     {
         $order = $this->preparing();
