@@ -180,7 +180,7 @@ class HqPortalTest extends TestCase
         $remittance = HubRemittance::withoutGlobalScopes()->create(['station_hub_id' => $this->sanJose->id, 'expected_amount' => 5000, 'remitted_amount' => 5000,
             'variance' => 0, 'reference_no' => 'BDO-9911', 'reference_key' => 'BDO9911', 'slip_path' => 'pickrush/deposit-slips/slip.pdf', 'submitted_by' => $manager->id]);
 
-        $this->as($this->finance)->get($this->pickrushUrl('/hq/finance'))->assertSee('View deposit slip');
+        $this->as($this->finance)->get($this->pickrushUrl('/hq/finance'))->assertSee('Original deposit slip');
         $this->as($this->finance)->get($this->pickrushUrl("/hq/finance/remittances/{$remittance->id}/slip"))->assertOk();
         // No amount typed: confirming records that the bank shows what the station declared.
         $this->as($this->finance)->post($this->pickrushUrl("/hq/finance/remittances/{$remittance->id}"), ['decision' => 'confirm'])

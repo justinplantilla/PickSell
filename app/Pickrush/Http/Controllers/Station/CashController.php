@@ -58,11 +58,20 @@ class CashController extends StationController
     {
         $data = $request->validate([
             'expected_amount' => 'nullable|numeric|min:0',
+            // Which button was pressed: the cash matches the system total, or it was counted and differs.
+            'outcome' => 'nullable|in:matches,differs',
             // Left empty when the staff member confirms the expected total; typed only when the cash differs.
-            'received_amount' => 'nullable|numeric|min:0|max:10000000',
+            'received_amount' => 'nullable|required_if:outcome,differs|numeric|min:0|max:10000000',
             'second_counter_id' => 'nullable|integer',
-            'note' => 'nullable|string|max:500',
+            'note' => 'nullable|required_if:outcome,differs|string|max:500',
+        ], [
+            'received_amount.required_if' => 'Type the cash you actually counted.',
+            'note.required_if' => 'Say what happened (e.g. rider short ₱50, gave change to a buyer).',
         ]);
+        // "Confirm received" records the system total even if an amount was typed and left behind.
+        if (($data['outcome'] ?? null) === 'matches') {
+            $data['received_amount'] = null;
+        }
         $second = empty($data['second_counter_id']) ? null : Staff::find($data['second_counter_id']);
 
         return $this->attempt(

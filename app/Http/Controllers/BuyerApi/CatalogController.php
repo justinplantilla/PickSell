@@ -104,6 +104,9 @@ class CatalogController extends Controller
             'min_price' => 'nullable|numeric|min:0',
             'max_price' => 'nullable|numeric|min:0',
             'seller_id' => 'nullable|integer',
+            // Website browse filters: 3★ / 4★ and up, and a province ("near" = the buyer's own).
+            'rating'    => 'nullable|integer|in:3,4',
+            'location'  => 'nullable|string|max:100',
             'per_page'  => 'nullable|integer|min:1|max:50',
         ]);
 
@@ -111,13 +114,20 @@ class CatalogController extends Controller
         $query = self::listable();
 
         if ($s = $data['search'] ?? null) {
-            $query->where(fn ($q) => $q->where('name', 'like', "%{$s}%")->orWhere('category', 'like', "%{$s}%"));
+            $query->where(fn ($q) => $q->where('name', 'like', "%{$s}%")->orWhere('category', 'like', "%{$s}%")
+                ->orWhereHas('seller', fn ($seller) => $seller->where('business_name', 'like', "%{$s}%")));
         }
         if ($c = $data['category'] ?? null) $query->where('category', $c);
         if (! empty($data['on_sale'])) $query->onSale();
         if (isset($data['min_price'])) $query->whereRaw("{$priceSql} >= ?", [$data['min_price']]);
         if (isset($data['max_price'])) $query->whereRaw("{$priceSql} <= ?", [$data['max_price']]);
         if ($sid = $data['seller_id'] ?? null) $query->where('seller_id', $sid);
+        if ($minRating = (int) ($data['rating'] ?? 0)) {
+            $query->whereRaw('(select avg(rating) from product_reviews where product_reviews.product_id = products.id and product_reviews.hidden_at is null) >= ?', [$minRating]);
+        }
+        $location = trim((string) ($data['location'] ?? ''));
+        $province = $location === 'near' ? $this->buyer()?->province : ($location ?: null);
+        if ($province) $query->whereHas('seller', fn ($seller) => $seller->where('province', $province));
 
         match ($data['sort'] ?? 'newest') {
             'price_asc'  => $query->orderByRaw("{$priceSql} asc"),
@@ -129,9 +139,23 @@ class CatalogController extends Controller
 
         $page = $query->paginate($data['per_page'] ?? 20)->withQueryString();
 
+        $search = trim((string) ($data['search'] ?? ''));
+
         return response()->json([
             'products' => $this->cards($page->getCollection()),
             'meta'     => ['current_page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'total' => $page->total()],
+            // Stores matching the search, as the website's browse page lists them (first page only).
+            'stores'   => $search !== '' && $page->currentPage() === 1
+                ? User::where('role', 'seller')->where('status', 'approved')
+                    ->where(fn ($q) => $q->where('business_name', 'like', "%{$search}%")
+                        ->orWhere('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%"))
+                    ->orderBy('business_name')->take(8)->get()
+                    ->map(fn (User $seller) => $this->sellerSummary($seller))->values()
+                : [],
+            // Provinces with stores selling something (the website's location filter).
+            'provinces' => User::where('role', 'seller')->where('status', 'approved')
+                ->whereHas('products', fn ($p) => $p->showcased())
+                ->whereNotNull('province')->distinct()->orderBy('province')->pluck('province'),
         ]);
     }
 
@@ -228,6 +252,10 @@ class CatalogController extends Controller
             'positive_rate' => $count ? (int) round((clone $rated)->where('rating', '>=', 4)->count() * 100 / $count) : null,
             'product_count' => Product::showcased()->where('stock', '>', 0)->where('seller_id', $seller->id)->count(),
             'joined_at'     => BuyerPresenter::date($seller->created_at),
+            // The storefront's look (website: seller-storefront page); null shows the initials / a plain header.
+            'logo'          => $seller->store_logo_url,
+            'banner'        => $seller->store_banner_url,
+            'description'   => $seller->store_description,
             // Following (website: the store page's Follow button); false when not signed in.
             'followers'     => $seller->followers()->count(),
             'is_following'  => $viewer?->role === 'buyer' && app(SellerFollows::class)->follows($viewer, $seller),

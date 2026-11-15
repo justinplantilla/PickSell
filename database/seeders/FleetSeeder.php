@@ -44,40 +44,51 @@ class FleetSeeder extends Seeder
                     continue;
                 }
 
-                for ($i = 1; $i <= Vehicle::limitFor($hub); $i++) {
-                    $n++;
-                    $driver = Driver::withoutGlobalScopes()->create([
-                        'hub_id' => $hub->id,
-                        'first_name' => strtok(self::DRIVERS[($n - 1) % count(self::DRIVERS)], ' '),
-                        'last_name' => substr(strrchr(self::DRIVERS[($n - 1) % count(self::DRIVERS)], ' '), 1),
-                        'birthdate' => today()->subYears(28 + $n % 20)->subDays($n * 11)->toDateString(),
-                        'mobile_no' => sprintf('0918%07d', $hub->id * 10 + $i),
-                        'license_no' => sprintf('D%02d-%02d-%06d', $i, 20 + $i, $hub->id),
-                        'license_codes' => $hub->isProvince() ? 'B,B2,C,CE' : 'B,B2,C',
-                        'license_expiry' => today()->addYears(3)->toDateString(),
-                        'is_active' => true,
-                    ]);
-                    Vehicle::withoutGlobalScopes()->create([
-                        'hub_id' => $hub->id,
-                        'plate_no' => sprintf('PR%s %04d', chr(64 + $i), $hub->id),
-                        'vehicle_type' => 'truck',
-                        'registered_owner' => $companies[$hub->company_id] ?? null,
-                        'capacity_parcels' => $hub->isProvince() ? 1500 : 500,
-                        // Sample LTO papers; the OR runs a year from now.
-                        'cr_no' => sprintf('%09d', 310000000 + $hub->id * 10 + $i),
-                        'mv_file_no' => sprintf('0401-%011d', 22000000000 + $hub->id * 10 + $i),
-                        'engine_no' => sprintf('4HK1-%06d', 600000 + $hub->id * 10 + $i),
-                        'chassis_no' => sprintf('JALFRR90L%08d', 8000000 + $hub->id * 10 + $i),
-                        'or_no' => sprintf('%09d', 810000000 + $hub->id * 10 + $i),
-                        'registration_expiry' => today()->addYear()->endOfMonth()->toDateString(),
-                        'default_driver_id' => $driver->id,
-                        'is_active' => true,
-                    ]);
-                }
+                $n = $this->seedHub($hub, $companies[$hub->company_id] ?? null, $n);
                 $seeded++;
             }
         });
 
         $this->command?->info("Seeded {$n} trucks and drivers across {$seeded} hubs.");
+    }
+
+    /**
+     * The hub's full allowance of trucks, each with its own default driver. [$n] numbers the
+     * drivers seeded so far (it picks their names); the new count is returned.
+     */
+    public function seedHub(Hub $hub, ?string $owner, int $n = 0): int
+    {
+        for ($i = 1; $i <= Vehicle::limitFor($hub); $i++) {
+            $n++;
+            $driver = Driver::withoutGlobalScopes()->create([
+                'hub_id' => $hub->id,
+                'first_name' => strtok(self::DRIVERS[($n - 1) % count(self::DRIVERS)], ' '),
+                'last_name' => substr(strrchr(self::DRIVERS[($n - 1) % count(self::DRIVERS)], ' '), 1),
+                'birthdate' => today()->subYears(28 + $n % 20)->subDays($n * 11)->toDateString(),
+                'mobile_no' => sprintf('0918%07d', $hub->id * 10 + $i),
+                'license_no' => sprintf('D%02d-%02d-%06d', $i, 20 + $i, $hub->id),
+                'license_codes' => $hub->isProvince() ? 'B,B2,C,CE' : 'B,B2,C',
+                'license_expiry' => today()->addYears(3)->toDateString(),
+                'is_active' => true,
+            ]);
+            Vehicle::withoutGlobalScopes()->create([
+                'hub_id' => $hub->id,
+                'plate_no' => sprintf('PR%s %04d', chr(64 + $i), $hub->id),
+                'vehicle_type' => 'truck',
+                'registered_owner' => $owner,
+                'capacity_parcels' => $hub->isProvince() ? 1500 : 500,
+                // Sample LTO papers; the OR runs a year from now.
+                'cr_no' => sprintf('%09d', 310000000 + $hub->id * 10 + $i),
+                'mv_file_no' => sprintf('0401-%011d', 22000000000 + $hub->id * 10 + $i),
+                'engine_no' => sprintf('4HK1-%06d', 600000 + $hub->id * 10 + $i),
+                'chassis_no' => sprintf('JALFRR90L%08d', 8000000 + $hub->id * 10 + $i),
+                'or_no' => sprintf('%09d', 810000000 + $hub->id * 10 + $i),
+                'registration_expiry' => today()->addYear()->endOfMonth()->toDateString(),
+                'default_driver_id' => $driver->id,
+                'is_active' => true,
+            ]);
+        }
+
+        return $n;
     }
 }

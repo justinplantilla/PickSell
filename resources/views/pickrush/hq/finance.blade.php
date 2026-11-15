@@ -128,14 +128,37 @@
                     <td class="pr-num">{{ $peso($r->expected_amount) }}</td>
                     <td class="pr-num">{{ $peso($r->remitted_amount) }}</td>
                     <td class="pr-num">@if((float) $r->variance != 0)<span class="pr-badge pr-badge-bad">{{ $peso($r->variance) }}</span>@else — @endif</td>
-                    <td>{{ $r->reference_no }}
+                    @php
+                        // HQ's dispute note is appended to the station's note on its own line, so on a
+                        // deposit HQ disputed the last line is HQ's latest note.
+                        $notes = $r->note ? preg_split('/\R/', $r->note) : [];
+                        $hqNote = $r->bank_amount !== null && $r->confirmed_at ? array_pop($notes) : null;
+                    @endphp
+                    <td class="pr-ref-trail">
+                        <strong>{{ $r->reference_no }}</strong>
                         @if($r->settles)<div><span class="pr-badge pr-badge-warn">Top-up</span> for disputed ref {{ $r->settles->reference_no }}</div>@endif
-                        @if($r->contested_at)<div><span class="pr-badge pr-badge-warn">Contested</span> {{ $r->contested_at->format('M d, g:i A') }}: “{{ $r->station_response }}”@if($r->bank_amount !== null) · you saw {{ $peso($r->bank_amount) }} before @endif
-                            @if($r->contest_path) · <a href="{{ route('pickrush.hq.finance.evidence', $r) }}" target="_blank" rel="noopener">evidence</a>@endif</div>@endif
-                        @if($r->slip_path)<div><a href="{{ route('pickrush.hq.finance.slip', $r) }}" target="_blank" rel="noopener">View deposit slip</a></div>@else<div class="pr-muted">No slip (before slips were required)</div>@endif
-                        @if($r->note)<div class="pr-muted">{{ $r->note }}</div>@endif</td>
+                        <div class="pr-ref-step">
+                            <span class="pr-ref-label">Station deposit · {{ $r->created_at->format('M d, g:i A') }}</span>
+                            @if($r->slip_path)<a href="{{ route('pickrush.hq.finance.slip', $r) }}" target="_blank" rel="noopener">Original deposit slip</a>@else<span class="pr-muted">No slip (before slips were required)</span>@endif
+                            @foreach($notes as $line)<span class="pr-muted">{{ $line }}</span>@endforeach
+                        </div>
+                        @if($hqNote !== null)
+                            <div class="pr-ref-step">
+                                <span class="pr-ref-label">HQ disputed · {{ $r->confirmed_at->format('M d, g:i A') }}</span>
+                                <span>Bank statement showed {{ $peso($r->bank_amount) }}</span>
+                                @if(filled($hqNote))<span class="pr-muted">“{{ $hqNote }}”</span>@endif
+                            </div>
+                        @endif
+                        @if($r->contested_at)
+                            <div class="pr-ref-step">
+                                <span class="pr-ref-label"><span class="pr-badge pr-badge-warn">Contested</span> by station · {{ $r->contested_at->format('M d, g:i A') }}</span>
+                                <span>“{{ $r->station_response }}”</span>
+                                @if($r->contest_path)<a href="{{ route('pickrush.hq.finance.evidence', $r) }}" target="_blank" rel="noopener">Station's evidence</a>@else<span class="pr-muted">No evidence attached</span>@endif
+                            </div>
+                        @endif
+                    </td>
                     @if($canConfirm)
-                        <td>
+                        <td class="pr-decision">
                             <form method="POST" action="{{ route('pickrush.hq.finance.confirm', $r) }}" class="pr-inline">
                                 @csrf
                                 <input type="hidden" name="decision" value="confirm">

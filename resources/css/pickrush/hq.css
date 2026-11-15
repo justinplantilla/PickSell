@@ -157,6 +157,16 @@ body.pr-hq {
 .pr-hq .pr-input:disabled, .pr-hq .pr-select:disabled { opacity: .6; cursor: not-allowed; }
 .pr-hq .pr-input[type="file"] { height: auto; padding: .55rem .8rem; }
 .pr-hq .pr-inline .pr-input, .pr-hq .pr-inline .pr-select { height: 36px; border-radius: 8px; font-size: .85rem; }
+.pr-hq .pr-inline .pr-btn-sm { height: 36px; }
+/* Confirm on top, "Does not match?" under it; opened, the amount, note and Dispute sit in one row. */
+.pr-hq .pr-decision { min-width: 380px; }
+/* The deposit's story in order: the station's deposit, HQ's dispute, the station's contest. */
+.pr-hq .pr-ref-trail { min-width: 240px; }
+.pr-hq .pr-ref-step { display: flex; flex-direction: column; gap: .15rem; margin-top: .55rem; padding-left: .6rem; border-left: 2px solid rgba(246, 243, 238, .15); }
+.pr-hq .pr-ref-label { display: flex; align-items: center; gap: .35rem; font-size: .72rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: #a8a29a; }
+.pr-hq .pr-decision .pr-cash-differs { display: block; margin-top: .5rem; }
+.pr-hq .pr-decision .pr-cash-differs > summary { white-space: nowrap; }
+.pr-hq .pr-decision .pr-cash-differs > form { margin-top: .5rem; flex-wrap: nowrap; }
 .pr-hq .pr-field label { color: #d6d1c8; font-size: .82rem; }
 .pr-hq .pr-field small { font-size: .76rem; line-height: 1.45; }
 .pr-hq .pr-field-error { color: var(--pr-bad); }

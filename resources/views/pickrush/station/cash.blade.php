@@ -169,11 +169,12 @@
                                         @foreach($colleagues as $c)<option value="{{ $c->id }}">{{ $c->full_name }}</option>@endforeach
                                     </select>
                                 @endif
-                                <button type="submit" class="pr-btn pr-btn-primary pr-btn-sm">Confirm ₱{{ number_format($row->expected, 2) }} received</button>
+                                <button type="submit" name="outcome" value="matches" class="pr-btn pr-btn-primary pr-btn-sm">Confirm ₱{{ number_format($row->expected, 2) }} received</button>
                                 <details class="pr-cash-differs">
                                     <summary class="pr-muted">Cash doesn't match?</summary>
                                     <input name="received_amount" type="number" step="0.01" min="0" class="pr-input" placeholder="Actual ₱ counted" aria-label="Actual cash counted" style="width:140px">
                                     <input name="note" class="pr-input" placeholder="What happened" aria-label="Note" style="width:160px">
+                                    <button type="submit" name="outcome" value="differs" class="pr-btn pr-btn-outline pr-btn-sm">Record counted amount</button>
                                 </details>
                             </form>
                         </td>

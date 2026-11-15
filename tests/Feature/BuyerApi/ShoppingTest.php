@@ -140,4 +140,42 @@ class ShoppingTest extends TestCase
         $this->patchJson("/api/mobile/buyer/cart/{$line->id}", ['quantity' => 3])->assertNotFound();
         $this->assertSame(1, $line->fresh()->quantity);
     }
+
+    public function test_browse_filters_match_the_website(): void
+    {
+        $cebu = $this->seller(['business_name' => 'Cebu Crafts', 'province' => 'Cebu']);
+        $laguna = $this->seller(['business_name' => 'Laguna Lamps', 'province' => 'Laguna']);
+        $vase = $this->product($cebu, ['name' => 'Clay Vase']);
+        $this->product($laguna, ['name' => 'Desk Lamp']);
+        $buyer = $this->actingAsBuyer($this->buyer(['province' => 'Cebu']));
+        $order = $this->order($buyer, $vase, 'completed');
+        \App\Models\ProductReview::create(['product_id' => $vase->id, 'buyer_id' => $buyer->id, 'order_id' => $order->id, 'rating' => 4]);
+
+        $names = fn (array $q) => collect($this->getJson('/api/mobile/products?'.http_build_query($q))->assertOk()->json('products'))->pluck('name')->sort()->values()->all();
+        $this->assertSame(['Clay Vase'], $names(['rating' => 4]));
+        $this->assertSame(['Desk Lamp'], $names(['location' => 'Laguna']));
+        $this->assertSame(['Clay Vase'], $names(['location' => 'near']));
+        // The search also finds products by the store's name, and lists matching stores.
+        $this->assertSame(['Desk Lamp'], $names(['search' => 'Laguna']));
+        $res = $this->getJson('/api/mobile/products?search=Laguna')->assertOk();
+        $this->assertSame(['Laguna Lamps'], collect($res->json('stores'))->pluck('name')->all());
+        $this->assertSame(['Cebu', 'Laguna'], $res->json('provinces'));
+        $this->getJson('/api/mobile/products?rating=5')->assertStatus(422);
+    }
+
+    public function test_stores_show_their_logo_and_banner_and_turn_up_in_search(): void
+    {
+        $juan = $this->seller(['business_name' => "Juan's Store", 'store_logo' => 'stores/juan-logo.png', 'store_banner' => 'stores/juan-banner.jpg', 'store_description' => 'Gear for every day.']);
+        $this->product($juan, ['name' => 'Backpack']);
+
+        $seller = $this->getJson("/api/mobile/sellers/{$juan->id}")->assertOk()->json('seller');
+        $this->assertStringEndsWith('/storage/stores/juan-logo.png', $seller['logo']);
+        $this->assertStringEndsWith('/storage/stores/juan-banner.jpg', $seller['banner']);
+        $this->assertSame('Gear for every day.', $seller['description']);
+
+        $this->getJson('/api/mobile/search-suggestions?q=juan')->assertOk()
+            ->assertJsonPath('stores.0.id', $juan->id)
+            ->assertJsonPath('stores.0.name', "Juan's Store");
+        $this->assertStringEndsWith('/storage/stores/juan-logo.png', $this->getJson('/api/mobile/products?search=juan')->json('stores.0.logo'));
+    }
 }

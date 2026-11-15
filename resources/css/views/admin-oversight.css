@@ -154,3 +154,22 @@ body.dark .notification-row.is-unread { background: #241a18; }
 .branch-workload-outbound { background: #2563eb; }
 body.dark .saved-filter-controls [role="status"] { color: #a3a3a3; }
 body.dark .saved-filter-controls .filter-select { background: #2a2a2a; border-color: #3a3a3a; color: #f3f4f6; }
+
+/* Logistics settlements: the deposit's story in order (company deposit, PickSell's dispute, the company's contest),
+   and the decision with Confirm on top and the dispute form in one row under "Does not match?". */
+.settle-trail { min-width: 15rem; }
+.settle-trail > strong { display: block; }
+.settle-step { display: flex; flex-direction: column; gap: 0.1rem; margin-top: 0.5rem; padding-left: 0.6rem; border-left: 2px solid #ece6db; font-size: 0.82rem; }
+.settle-step .oversight-meta { margin-top: 0; }
+.settle-step-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #8a8a8a; }
+.settle-decision { min-width: 23rem; }
+.settle-decision details { margin-top: 0.5rem; }
+.settle-decision summary { display: inline-block; cursor: pointer; white-space: nowrap; }
+.settle-dispute { display: flex; gap: 0.4rem; align-items: center; margin-top: 0.5rem; }
+.settle-dispute input { height: 34px; padding: 0 0.6rem; border: 1px solid #e0d9cd; border-radius: 6px; background: #fff; font: inherit; font-size: 0.8rem; color: var(--charcoal); }
+.settle-dispute input:focus { outline: none; border-color: var(--coral); box-shadow: 0 0 0 3px rgba(232, 71, 42, 0.15); }
+.settle-dispute input[name="bank_amount"] { width: 9.5rem; }
+.settle-dispute input[name="note"] { flex: 1; min-width: 9rem; }
+.settle-dispute .btn { height: 34px; flex-shrink: 0; }
+body.dark .settle-step { border-left-color: #333; }
+body.dark .settle-dispute input { background: #1a1a1a; border-color: #3a3a3a; color: #e5e7eb; }

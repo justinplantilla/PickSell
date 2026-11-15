@@ -58,6 +58,7 @@ class PaeteRiderSeeder extends Seeder
             'plate_number' => 'NAB 4181',
             'license_no' => 'D04-18-000181',
             'license_expiry' => now()->addYears(3)->toDateString(),
+            'orcr_expiry' => now()->addYear()->toDateString(),
         ], [
             'license_front' => UploadedFile::fake()->create('license-front.jpg', 40, 'image/jpeg'),
             'license_back' => UploadedFile::fake()->create('license-back.jpg', 40, 'image/jpeg'),

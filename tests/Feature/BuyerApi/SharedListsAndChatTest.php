@@ -89,4 +89,16 @@ class SharedListsAndChatTest extends TestCase
         $this->postJson('/api/mobile/chat/send', ['receiver_id' => $admin->id, 'body' => 'Help please'])->assertCreated();
         $this->assertContains('PickSell Support', collect($this->getJson('/api/mobile/chat/contacts')->json('contacts'))->pluck('name'));
     }
+
+    public function test_a_buyer_who_ordered_but_never_chatted_sees_the_seller(): void
+    {
+        $seller = $this->seller();
+        $buyer = $this->actingAsBuyer();
+        $this->order($buyer, $this->product($seller));
+
+        // No messages yet: this used to fail with "getKey() on int" (server error).
+        $this->getJson('/api/mobile/chat/contacts')->assertOk()
+            ->assertJsonCount(1, 'contacts')
+            ->assertJsonPath('contacts.0.id', $seller->id);
+    }
 }

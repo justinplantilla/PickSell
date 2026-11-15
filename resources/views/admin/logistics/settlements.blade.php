@@ -24,12 +24,37 @@
                     <td>{{ $s->created_at->format('M d, g:i A') }}</td>
                     <td class="oversight-number">{{ $s->settles_id ? '—' : number_format($s->parcel_count) }}</td>
                     <td class="oversight-number"><strong>{{ $peso($s->amount) }}</strong>@if((float) $s->claims_amount > 0)<span class="oversight-meta">incl. {{ $peso($s->claims_amount) }} claims</span>@endif</td>
-                    <td>{{ $s->reference_no }} · <a href="{{ route('admin.logistics.settlements.slip', $s) }}" target="_blank" rel="noopener">View slip</a>
-                        @if($s->settles)<div class="oversight-meta">Top-up for disputed ref {{ $s->settles->reference_no }}</div>@endif
-                        @if($s->contested_at)<div class="oversight-meta">Contested {{ $s->contested_at->format('M d, g:i A') }}: “{{ $s->company_response }}”@if($s->contest_path) · <a href="{{ route('admin.logistics.settlements.evidence', $s) }}" target="_blank" rel="noopener">evidence</a>@endif</div>@endif
-                        @if($s->note)<div class="oversight-meta">{{ $s->note }}</div>@endif</td>
+                    @php
+                        // PickSell's dispute note is appended to the company's note on its own line, so on a
+                        // settlement PickSell disputed the last line is PickSell's latest note.
+                        $notes = $s->note ? preg_split('/\R/', $s->note) : [];
+                        $ourNote = $s->bank_amount !== null && $s->confirmed_at ? array_pop($notes) : null;
+                    @endphp
+                    <td class="settle-trail">
+                        <strong>{{ $s->reference_no }}</strong>
+                        @if($s->settles)<span class="oversight-meta">Top-up for disputed ref {{ $s->settles->reference_no }}</span>@endif
+                        <div class="settle-step">
+                            <span class="settle-step-label">Company deposit · {{ $s->created_at->format('M d, g:i A') }}</span>
+                            <a href="{{ route('admin.logistics.settlements.slip', $s) }}" target="_blank" rel="noopener">Original deposit slip</a>
+                            @foreach($notes as $line)<span class="oversight-meta">{{ $line }}</span>@endforeach
+                        </div>
+                        @if($ourNote !== null)
+                            <div class="settle-step">
+                                <span class="settle-step-label">PickSell disputed · {{ $s->confirmed_at->format('M d, g:i A') }}</span>
+                                <span>Bank statement showed {{ $peso($s->bank_amount) }}</span>
+                                @if(filled($ourNote))<span class="oversight-meta">“{{ $ourNote }}”</span>@endif
+                            </div>
+                        @endif
+                        @if($s->contested_at)
+                            <div class="settle-step">
+                                <span class="settle-step-label">Contested by company · {{ $s->contested_at->format('M d, g:i A') }}</span>
+                                <span>“{{ $s->company_response }}”</span>
+                                @if($s->contest_path)<a href="{{ route('admin.logistics.settlements.evidence', $s) }}" target="_blank" rel="noopener">Company's evidence</a>@else<span class="oversight-meta">No evidence attached</span>@endif
+                            </div>
+                        @endif
+                    </td>
                     @if($canManage)
-                        <td>
+                        <td class="settle-decision">
                             <form method="POST" action="{{ route('admin.logistics.settlements.review', $s) }}">
                                 @csrf @method('PATCH')
                                 <input type="hidden" name="decision" value="confirm">
@@ -37,7 +62,7 @@
                             </form>
                             <details>
                                 <summary class="oversight-meta">Does not match?</summary>
-                                <form method="POST" action="{{ route('admin.logistics.settlements.review', $s) }}">
+                                <form method="POST" action="{{ route('admin.logistics.settlements.review', $s) }}" class="settle-dispute">
                                     @csrf @method('PATCH')
                                     <input type="hidden" name="decision" value="dispute">
                                     <input name="bank_amount" type="number" step="0.01" min="0" class="form-input" placeholder="₱ on bank statement" aria-label="Amount on the bank statement" required>

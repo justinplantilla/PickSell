@@ -117,4 +117,26 @@ class SecurityTest extends TestCase
         $this->actingAsBuyer();
         $this->getJson('/api/mobile/buyer/vouchers')->assertNotFound();
     }
+
+    public function test_a_buyer_can_delete_their_account_from_the_app(): void
+    {
+        $buyer = $this->buyer();
+        $token = $this->postJson('/api/mobile/login', ['email' => $buyer->email, 'password' => 'Password1!'])->json('token');
+
+        $this->withToken($token)->deleteJson('/api/mobile/buyer/account', ['password' => 'wrong'])
+            ->assertStatus(422)->assertJsonPath('errors.password.0', 'The password is incorrect.');
+
+        // An open order blocks it, as on the website.
+        $order = $this->order($buyer, $this->product($this->seller()));
+        $this->withToken($token)->deleteJson('/api/mobile/buyer/account', ['password' => 'Password1!'])
+            ->assertStatus(422)->assertJsonPath('message', fn ($m) => str_contains($m, 'in progress'));
+
+        $order->update(['status' => 'completed']);
+        $this->withToken($token)->deleteJson('/api/mobile/buyer/account', ['password' => 'Password1!'])
+            ->assertOk()->assertJsonPath('message', 'Your account has been deleted.');
+        $this->assertSame(0, $buyer->tokens()->count());
+        $this->app['auth']->forgetGuards();
+        $this->withToken($token)->getJson('/api/mobile/buyer/profile')->assertUnauthorized();
+        $this->postJson('/api/mobile/login', ['email' => $buyer->email, 'password' => 'Password1!'])->assertUnauthorized();
+    }
 }

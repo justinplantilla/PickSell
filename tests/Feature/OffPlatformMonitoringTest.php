@@ -178,4 +178,22 @@ class OffPlatformMonitoringTest extends TestCase
             'house_no' => '12', 'street' => 'Rizal St',
         ], $extra));
     }
+
+    public function test_the_buyer_app_reports_a_seller_asking_to_go_off_platform(): void
+    {
+        $order = $this->order('confirmed');
+        \Laravel\Sanctum\Sanctum::actingAs($this->buyer);
+
+        $this->postJson("/api/mobile/buyer/orders/{$order->id}/report-off-platform", ['details' => 'short'])
+            ->assertStatus(422)->assertJsonValidationErrors('details');
+        $this->postJson("/api/mobile/buyer/orders/{$order->id}/report-off-platform", ['details' => 'Seller told me to cancel and pay by GCash instead'])
+            ->assertCreated();
+        $this->postJson("/api/mobile/buyer/orders/{$order->id}/report-off-platform", ['details' => 'Reporting the same thing again'])
+            ->assertStatus(422)->assertJsonPath('message', 'You already reported this. PickSell is looking into it.');
+
+        $this->assertSame(['report', 'buyer_report'], [OffPlatformFlag::sole()->kind, OffPlatformFlag::sole()->signal]);
+
+        \Laravel\Sanctum\Sanctum::actingAs($this->user('buyer'));
+        $this->postJson("/api/mobile/buyer/orders/{$order->id}/report-off-platform", ['details' => 'Not even my order here'])->assertNotFound();
+    }
 }

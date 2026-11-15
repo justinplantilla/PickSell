@@ -53,6 +53,7 @@ Route::prefix('mobile')->name('buyer-api.')->group(function () {
             Route::patch('/password', [ProfileController::class, 'password'])->name('password.update');
             Route::patch('/delivery-location', [ProfileController::class, 'deliveryLocation'])->middleware('throttle:30,1,buyer-api-delivery-location')->name('delivery-location.update');
             Route::post('/logout', [ProfileController::class, 'logout'])->name('logout');
+            Route::delete('/account', [ProfileController::class, 'destroy'])->middleware('throttle:5,1,buyer-api-account-delete')->name('account.destroy');
 
             Route::get('/addresses', [AddressController::class, 'index'])->name('addresses.index');
             Route::post('/addresses', [AddressController::class, 'store'])->name('addresses.store');
@@ -92,6 +93,8 @@ Route::prefix('mobile')->name('buyer-api.')->group(function () {
             Route::post('/orders/{order}/received', [OrderController::class, 'received'])->name('orders.received');
             Route::post('/orders/{order}/rate', [OrderController::class, 'rate'])->name('orders.rate');
             Route::post('/orders/{order}/report', [OrderController::class, 'report'])->middleware('throttle:10,1,buyer-api-report')->name('orders.report');
+            Route::post('/orders/{order}/delivery-problem', [OrderController::class, 'deliveryProblem'])->middleware('throttle:10,1,buyer-api-delivery-problem')->name('orders.delivery-problem');
+            Route::post('/orders/{order}/report-off-platform', [OrderController::class, 'reportOffPlatform'])->middleware('throttle:10,1,buyer-api-off-platform')->name('orders.report-off-platform');
             Route::post('/orders/{order}/return', [OrderController::class, 'requestReturn'])->middleware('throttle:10,1,buyer-api-return')->name('orders.return');
             Route::post('/orders/{order}/reorder', [OrderController::class, 'reorder'])->name('orders.reorder');
             Route::get('/reorder', [OrderController::class, 'reorderCandidates'])->name('reorder');
@@ -110,7 +113,7 @@ Route::prefix('mobile')->name('buyer-api.')->group(function () {
 
     Route::middleware('throttle:60,1,buyer-api-suggestions')->get('/search-suggestions', function (Request $request) {
         $query = trim((string) $request->get('q', ''));
-        if (mb_strlen($query) < 2) return response()->json(['products' => [], 'categories' => []]);
+        if (mb_strlen($query) < 2) return response()->json(['products' => [], 'categories' => [], 'stores' => []]);
 
         $products = Product::without('images')->showcased()->where('stock', '>', 0)
             ->where(fn ($builder) => $builder->where('name', 'like', "%{$query}%")->orWhere('category', 'like', "%{$query}%"))
@@ -120,6 +123,13 @@ Route::prefix('mobile')->name('buyer-api.')->group(function () {
             ->where('category', 'like', "%{$query}%")->whereNotNull('category')
             ->distinct()->orderBy('category')->limit(3)->pluck('category');
 
-        return response()->json(['products' => $products, 'categories' => $categories]);
+        // Stores whose name matches, so a seller's profile can be opened straight from search.
+        $stores = \App\Models\User::where('role', 'seller')->where('status', 'approved')
+            ->where(fn ($q) => $q->where('business_name', 'like', "%{$query}%")
+                ->orWhere('first_name', 'like', "%{$query}%")->orWhere('last_name', 'like', "%{$query}%"))
+            ->orderBy('business_name')->take(3)->get()
+            ->map(fn ($s) => \App\Support\BuyerApi\BuyerPresenter::sellerBrief($s) + ['logo' => $s->store_logo_url])->values();
+
+        return response()->json(['products' => $products, 'categories' => $categories, 'stores' => $stores]);
     })->name('search-suggestions');
 });

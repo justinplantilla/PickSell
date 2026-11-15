@@ -5,19 +5,24 @@ namespace App\Http\Controllers\BuyerApi;
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Http\Controllers\DeliveryProblemController;
 use App\Models\Complaint;
+use App\Models\LogisticsIssue;
 use App\Models\Order;
 use App\Models\ProductReview;
 use App\Models\ProductReviewPhoto;
 use App\Models\ReturnRequest;
 use App\Models\ReturnRequestEvent;
 use App\Services\AdminNotificationService;
+use App\Services\Logistics\LogisticsIssueDesk;
+use App\Services\OffPlatform\OffPlatformMonitor;
 use App\Services\Orders\OrderCancellationService;
 use App\Services\Orders\OrderRating;
 use App\Services\Orders\OrderReceipt;
 use App\Support\BuyerApi\BuyerPresenter;
 use App\Support\BuyerApi\OrderStatus;
 use App\Support\OrderDelivery;
+use DomainException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -150,6 +155,49 @@ class OrderController extends Controller
     }
 
     /**
+     * POST /buyer/orders/{id}/delivery-problem {type, description, evidence?} — the website's
+     * "Report a delivery problem" (DeliveryProblemController): goes to the logistics company
+     * carrying the parcel as a logistics issue, not to the seller.
+     */
+    public function deliveryProblem(Request $request, Order $order, LogisticsIssueDesk $desk)
+    {
+        $this->find($request, $order);
+        abort_unless(in_array($order->status, DeliveryProblemController::REPORTABLE, true), 422, 'You can report a delivery problem once the order is with the logistics company.');
+        $data = $request->validate([
+            'type'        => ['required', Rule::in(LogisticsIssue::BUYER_REPORTS)],
+            'description' => 'required|string|min:10|max:2000',
+            'evidence'    => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+        ], ['description.min' => 'Describe what happened (at least 10 characters).']);
+
+        try {
+            $desk->report($request->user(), $order, $data['type'], $data['description'], $request->file('evidence'));
+        } catch (DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => 'Thanks, PickSell received your report and will follow it up with the logistics company.'], 201);
+    }
+
+    /**
+     * POST /buyer/orders/{id}/report-off-platform {details} — the website's "Seller asked you to pay
+     * or ship outside PickSell?" (OffPlatformReportController): a flag for admins to review the
+     * seller; the seller isn't told who reported.
+     */
+    public function reportOffPlatform(Request $request, Order $order, OffPlatformMonitor $monitor)
+    {
+        $this->find($request, $order);
+        $data = $request->validate(['details' => 'required|string|min:10|max:2000'], ['details.min' => 'Tell us what the seller asked (at least 10 characters).']);
+
+        try {
+            $monitor->buyerReport($request->user(), $order, $data['details']);
+        } catch (DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => 'Thank you. PickSell will review this seller. Keep paying and chatting on PickSell so your order stays protected.'], 201);
+    }
+
+    /**
      * POST /buyer/orders/{id}/return {reason, details, quantity?, evidence[]?} — the website's
      * return request (BuyerReturnRequestController): the seller reviews it first.
      */
@@ -276,6 +324,8 @@ class OrderController extends Controller
         return response()->json([
             'cancel_reasons'     => config('buyer-api.cancel_reasons'),
             'report_categories'  => config('buyer-api.report_categories'),
+            'delivery_problem_types' => collect(LogisticsIssue::BUYER_REPORTS)
+                ->map(fn ($t) => ['value' => $t, 'label' => LogisticsIssue::TYPES[$t]])->values(),
             'return_reasons'     => array_values(ReturnRequest::REASONS),
             'refund_methods'     => [],
         ]);

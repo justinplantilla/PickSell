@@ -346,6 +346,42 @@ class StationOperationsTest extends TestCase
         $this->assertSame(1500.0, app(CashHandling::class)->stationCashOnHand($this->sanJose));
     }
 
+    public function test_the_mismatch_button_records_the_counted_cash_and_confirm_records_the_total(): void
+    {
+        $rider = $this->rider($this->sanJose);
+        $this->as($this->sanJoseManager);
+        $parcel = $this->bringToSanJose($this->parcel());
+        $task = app(DispatchService::class)->assign($parcel->fresh(), $rider, $this->sanJoseManager);
+        app(RiderTaskService::class)->startDelivery($task);
+        app(RiderTaskService::class)->deliver($task->fresh(), 1500, 'proof.jpg');
+        $url = $this->pickrushUrl("/station/cash/riders/{$rider->id}");
+
+        $this->as($this->sanJoseManager)->get($this->pickrushUrl('/station/cash'))->assertSee('Record counted amount');
+        $this->as($this->sanJoseManager)->post($url, ['expected_amount' => '1500.00', 'outcome' => 'differs'])
+            ->assertSessionHasErrors(['received_amount', 'note']);
+        $this->assertSame(0, CodRemittance::count(), 'a mismatch needs the counted cash and what happened');
+
+        // An amount typed and left in the "doesn't match" box is not recorded by "Confirm received".
+        $this->as($this->sanJoseManager)->post($url, ['expected_amount' => '1500.00', 'outcome' => 'matches', 'received_amount' => '1400'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(['1500.00', '0.00'], [CodRemittance::sole()->received_amount, CodRemittance::sole()->variance]);
+    }
+
+    public function test_a_counted_mismatch_is_recorded_with_its_variance(): void
+    {
+        $rider = $this->rider($this->sanJose);
+        $this->as($this->sanJoseManager);
+        $parcel = $this->bringToSanJose($this->parcel());
+        $task = app(DispatchService::class)->assign($parcel->fresh(), $rider, $this->sanJoseManager);
+        app(RiderTaskService::class)->startDelivery($task);
+        app(RiderTaskService::class)->deliver($task->fresh(), 1500, 'proof.jpg');
+
+        $this->as($this->sanJoseManager)->post($this->pickrushUrl("/station/cash/riders/{$rider->id}"),
+            ['expected_amount' => '1500.00', 'outcome' => 'differs', 'received_amount' => '1400', 'note' => 'Rider is ₱100 short'])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(['1400.00', '-100.00'], [CodRemittance::sole()->received_amount, CodRemittance::sole()->variance]);
+    }
+
     public function test_a_rider_who_rejects_the_count_gets_the_cash_counted_again(): void
     {
         $rider = $this->rider($this->sanJose);
@@ -711,6 +747,15 @@ class StationOperationsTest extends TestCase
         $this->assertTrue($picksell->holdsBack($other));
         $late->update(['status' => 'confirmed']);
         $this->assertFalse($picksell->holdsBack($other));
+
+        // A contested settlement reads in order: the company's deposit, PickSell's dispute, the company's contest.
+        CompanySettlement::withoutGlobalScopes()->create(['company_id' => $other->id, 'amount' => 700, 'reference_no' => 'BH-2', 'reference_key' => 'BH2',
+            'slip_path' => 'x.pdf', 'status' => 'submitted', 'submitted_by' => $finance->id, 'note' => "Week 46 settlement\nOnly ₱600 arrived",
+            'bank_amount' => 600, 'confirmed_at' => now()->subHour(), 'company_response' => 'The bank posted ₱100 late', 'contested_at' => now()]);
+        $this->actingAs($admin)->get($adminUrl('/admin/logistics/settlements'))
+            ->assertSeeInOrder(['BH-2', 'Company deposit', 'Original deposit slip', 'Week 46 settlement',
+                'PickSell disputed', 'Bank statement showed ₱600.00', 'Only ₱600 arrived',
+                'Contested by company', 'The bank posted ₱100 late', 'No evidence attached']);
     }
 
     public function test_cash_counted_after_the_cutoff_is_due_the_next_day_and_longer_cycles_add_days(): void

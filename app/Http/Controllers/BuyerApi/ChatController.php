@@ -40,6 +40,9 @@ class ChatController extends Controller
         $buyer = $request->user();
         $chattedIds = Message::where(fn ($q) => $q->where('sender_id', $buyer->id)->orWhere('receiver_id', $buyer->id))
             ->get(['sender_id', 'receiver_id'])
+            // Plain ids from here on: with no messages yet, an Eloquent collection would stay
+            // Eloquent and its merge() below would call getKey() on the ordered sellers' ids.
+            ->toBase()
             ->map(fn ($m) => $m->sender_id === $buyer->id ? $m->receiver_id : $m->sender_id)->unique();
         $orderedSellerIds = Order::where('buyer_id', $buyer->id)->pluck('seller_id');
 

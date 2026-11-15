@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\CartItem;
 use App\Models\Order;
 use App\Models\WishlistItem;
+use App\Services\AccountDeletion;
+use App\Services\AuditLogger;
 use App\Services\DeliveryPin;
 use App\Support\BuyerApi\BuyerPresenter;
 use App\Support\BuyerApi\OrderStatus;
@@ -103,6 +105,32 @@ class ProfileController extends Controller
         $request->user()->tokens()->when($currentId, fn ($q) => $q->whereKeyNot($currentId))->delete();
 
         return response()->json(['message' => 'Password changed.']);
+    }
+
+    /**
+     * DELETE /buyer/account {password} — the website's "Delete account" (AuthController::deleteAccount):
+     * refused while orders or returns are open; otherwise the buyer's details are erased, the order
+     * records the seller relies on are kept, and every token is revoked.
+     */
+    public function destroy(Request $request, AccountDeletion $deletion, AuditLogger $audit)
+    {
+        $request->validate(['password' => 'required|string']);
+        $user = $request->user();
+
+        if (! Hash::check($request->input('password'), $user->password)) {
+            return response()->json([
+                'message' => 'The password is incorrect.',
+                'errors'  => ['password' => ['The password is incorrect.']],
+            ], 422);
+        }
+        if ($blocker = $deletion->blocker($user)) {
+            return response()->json(['message' => $blocker, 'errors' => ['password' => [$blocker]]], 422);
+        }
+
+        $audit->record('user.deleted', $user, [], ['deleted_actor_id' => $user->id]);
+        $deletion->delete($user);
+
+        return response()->json(['message' => 'Your account has been deleted.']);
     }
 
     public function logout(Request $request)

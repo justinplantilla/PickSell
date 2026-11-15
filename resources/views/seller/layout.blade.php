@@ -93,7 +93,13 @@
         <div class="sidebar-footer">
             <div class="admin-card">
                 <div class="admin-info">
-                    <a href="/seller/account" class="admin-avatar">{{ strtoupper(substr(auth()->user()->first_name, 0, 1)) }}</a>
+                    <a href="/seller/account" class="admin-avatar" aria-label="Open seller account">
+                        @if(auth()->user()->store_logo_url)
+                            <img src="{{ auth()->user()->store_logo_url }}" alt="">
+                        @else
+                            {{ mb_strtoupper(mb_substr(auth()->user()->business_name ?: auth()->user()->first_name, 0, 1)) }}
+                        @endif
+                    </a>
                     <div class="admin-text">
                         <a href="/seller/account" class="seller-profile-link">
                             <div class="admin-name">{{ auth()->user()->full_name }}</div>

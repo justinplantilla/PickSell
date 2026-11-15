@@ -4,6 +4,8 @@
 
 /* ---------- Shell ---------- */
 body.sl-theme .seller-profile-link { color: inherit; text-decoration: none; }
+body.sl-theme .admin-avatar { overflow:hidden; }
+body.sl-theme .admin-avatar img { display:block; width:100%; height:100%; object-fit:cover; background:#fff; }
 body.sl-theme .seller-announcement { align-items: center; padding: .8rem 1rem; border: 1px solid #fde68a; border-radius: 12px; background: #fffbeb; color: #92400e; font-size: .88rem; animation: ad-rise .35s var(--ad-ease) both; }
 body.sl-theme .seller-announcement .announcement-dismiss { color: inherit; opacity: .7; }
 body.sl-theme .seller-announcement .announcement-dismiss:hover { opacity: 1; }

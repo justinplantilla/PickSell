@@ -196,4 +196,24 @@ class LogisticsIssuesTest extends TestCase
             'house_no' => '12', 'street' => 'Rizal St',
         ], $extra));
     }
+
+    public function test_the_buyer_app_reports_delivery_problems_to_the_logistics_desk(): void
+    {
+        [$order] = $this->shippedOrder();
+        \Laravel\Sanctum\Sanctum::actingAs($this->buyer);
+
+        $this->getJson("/api/mobile/buyer/orders/{$order->id}")->assertOk()->assertJsonPath('order.actions.can_report_delivery', true);
+        $this->assertContains('rider_conduct', collect($this->getJson('/api/mobile/buyer/orders/options')->json('delivery_problem_types'))->pluck('value'));
+
+        $this->postJson("/api/mobile/buyer/orders/{$order->id}/delivery-problem", ['type' => 'pickup_missed', 'description' => 'Not a buyer option at all'])
+            ->assertStatus(422)->assertJsonValidationErrors('type');
+        $this->postJson("/api/mobile/buyer/orders/{$order->id}/delivery-problem", ['type' => 'late', 'description' => 'Still not here after a week'])
+            ->assertCreated();
+        // The same open report twice is refused, as on the website.
+        $this->postJson("/api/mobile/buyer/orders/{$order->id}/delivery-problem", ['type' => 'late', 'description' => 'Still not here after a week'])
+            ->assertStatus(422);
+
+        $issue = LogisticsIssue::where('type', 'late')->sole();
+        $this->assertSame(['report', 'buyer', $this->buyer->id, $order->id], [$issue->source, $issue->reporter_role, $issue->reported_by, $issue->order_id]);
+    }
 }

@@ -326,6 +326,8 @@ final class BuyerPresenter
                 'can_return'  => in_array($status, OrderStatus::RETURNABLE, true) && ! $return && $o->returnWindowOpen(),
                 'return_until' => $return ? null : self::date($o->returnWindowOpen() ? $o->returnWindowEndsAt() : null),
                 'can_report'  => ! in_array($status, ['placed', 'cancelled'], true),
+                // Problems with the courier (website: "Report a delivery problem").
+                'can_report_delivery' => in_array($o->status, \App\Http\Controllers\DeliveryProblemController::REPORTABLE, true),
                 'can_reorder' => in_array($status, ['delivered', 'completed', 'cancelled', 'returned'], true),
                 'can_track'   => $status !== 'cancelled',
             ],
