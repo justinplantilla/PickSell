@@ -10,6 +10,7 @@
  * On submit the form posts gallery[] = ordered "existing:{id}" / "upload:{token}" keys, the
  * gallery_cover key, and gallery_alt[key] for custom alt text. The image at position 1 is the
  * cover unless another was chosen; empty alt text falls back to "[Product Name] - Image [N]".
+ * Every render fires "gallery:change" with the finished images, for the options' image pickers.
  *
  * Accessibility (WCAG 2.1 AA): every action is a native button (no drag-and-drop), changes are
  * announced through a polite live region, and focus survives re-renders, including re-renders
@@ -364,6 +365,16 @@ export class ProductGallery {
         this.count.textContent = `${total} / ${this.max}`;
 
         this.restoreFocus(focus, add);
+        // The options editor lets each option pick one of these images.
+        this.root.dispatchEvent(new CustomEvent('gallery:change', { detail: { images: this.images } }));
+    }
+
+    /** Finished images in order, as { key, url, alt }: the ones an option can point at. */
+    get images() {
+        return this.items
+            .map((item, index) => ({ item, index }))
+            .filter(({ item }) => item.state === 'uploaded')
+            .map(({ item, index }) => ({ key: item.key, url: item.url || item.preview, alt: item.customAlt || this.fallbackAlt(index) }));
     }
 
     /** Remember which control inside the grid has focus so a background re-render does not drop it. */

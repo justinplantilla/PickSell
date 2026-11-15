@@ -10,7 +10,6 @@
     </div>
 </div>
 
-@if($errors->has('operation'))<div class="pr-alert pr-alert-bad">{{ $errors->first('operation') }}</div>@endif
 
 <section class="pr-card pr-section">
     <h2>Report a return the seller did not take back</h2>

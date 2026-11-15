@@ -1,9 +1,6 @@
         <h1 class="auth-title" id="registerTitle" tabindex="-1">Create your account</h1>
         <p class="auth-sub">How will you use PickSell?</p>
 
-        @if($errors->any())
-            <div class="alert-error">{{ $errors->first() }}</div>
-        @endif
 
         <form method="POST" action="/register" enctype="multipart/form-data" id="registerForm">
             <div data-register-config data-role="{{ old('role', $registrationRoles[0]) }}" data-region="{{ old('region') }}" data-province="{{ old('province') }}" data-municipality="{{ old('municipality') }}" data-barangay="{{ old('barangay') }}" hidden></div>

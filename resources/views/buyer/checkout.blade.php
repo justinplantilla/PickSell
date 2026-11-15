@@ -91,13 +91,17 @@
                     <tr>
                         <td class="cell-main">
                             <div class="cart-row-2">
-                                @if($item->product->primary_image)
-                                    <img src="{{ Storage::url($item->product->primary_image) }}" class="cart-thumb">
+                                {{-- An archived product has no page to open, so it is not a link. --}}
+                                @php $productUrl = $item->product->status === 'active' ? route('buyer.product', array_filter([$item->product, 'option' => $item->variation_id])) : null; @endphp
+                                @if($productUrl)<a href="{{ $productUrl }}" class="cart-thumb-link" tabindex="-1" aria-hidden="true">@endif
+                                @if($thumb = $item->product->imageFor($item->variation))
+                                    <img src="{{ Storage::url($thumb) }}" class="cart-thumb" alt="">
                                 @else
                                     <div class="cart-thumb-placeholder"></div>
                                 @endif
+                                @if($productUrl)</a>@endif
                                 <div>
-                                    <div class="cart-title">{{ $item->product->name }}</div>
+                                    @if($productUrl)<a href="{{ $productUrl }}" class="cart-title cart-title-link">{{ $item->product->name }}</a>@else<div class="cart-title">{{ $item->product->name }}</div>@endif
                                 </div>
                             </div>
                         </td>

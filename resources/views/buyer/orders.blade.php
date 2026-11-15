@@ -37,7 +37,7 @@
     <div class="order-card-body">
         @if($order->product)
             <a href="{{ route('buyer.product', $order->product) }}" class="orders-thumb-link" aria-label="View {{ $order->product_name }}">
-                @if($order->product->primary_image)<img src="{{ Storage::url($order->product->primary_image) }}" class="orders-thumb" alt="">@else<div class="orders-thumb-placeholder"></div>@endif
+                @if($thumb = $order->product->imageFor($order->variation))<img src="{{ Storage::url($thumb) }}" class="orders-thumb" alt="">@else<div class="orders-thumb-placeholder"></div>@endif
             </a>
         @else
             <div class="orders-thumb-placeholder"></div>
@@ -74,7 +74,7 @@
             @if($order->status === 'completed' && !$order->rating)
             <button class="btn btn-coral btn-sm" type="button" data-open-feedback="{{ $order->id }}"
                 data-product="{{ $order->product_name }}" data-option="{{ $order->variation_label }}"
-                data-image="{{ $order->product?->primary_image ? Storage::url($order->product->primary_image) : '' }}"
+                data-image="{{ ($reviewThumb = $order->product?->imageFor($order->variation)) ? Storage::url($reviewThumb) : '' }}"
                 data-store="{{ $order->seller?->business_name ?? $order->seller?->full_name }}">Rate & Review</button>
             @endif
             @if($order->status === 'completed' && $order->product_id)

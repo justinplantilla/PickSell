@@ -65,7 +65,7 @@
                 box.closest('details')?.addEventListener('toggle', () => map.invalidateSize());
 
                 box.querySelector('[data-map-pin-locate]').addEventListener('click', () => {
-                    if (!navigator.geolocation) return alert('This browser cannot share its location.');
+                    if (!navigator.geolocation) return window.notify ? window.notify.error('This browser cannot share its location.') : alert('This browser cannot share its location.');
                     label.textContent = 'Finding you…';
                     navigator.geolocation.getCurrentPosition(
                         (pos) => place(L.latLng(pos.coords.latitude, pos.coords.longitude), 18),

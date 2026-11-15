@@ -1,3 +1,5 @@
+import '../components/notify.js';
+
 // Sign out asks first. Without JS (or <dialog> support) the form simply submits as before.
 const dialog = document.getElementById('logoutDialog');
 

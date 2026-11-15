@@ -1,15 +1,6 @@
 <h1 class="auth-title" id="loginTitle" tabindex="-1">Welcome back</h1>
 <p class="auth-sub">Log in to your PickSell account</p>
 
-@if(session('success'))
-    <div class="alert-success">{{ session('success') }}</div>
-@endif
-@if(session('error'))
-    <div class="alert-error">{{ session('error') }}</div>
-@endif
-@if($errors->any())
-    <div class="alert-error">{{ $errors->first() }}</div>
-@endif
 
 <form method="POST" action="/login" id="loginForm">
     @csrf

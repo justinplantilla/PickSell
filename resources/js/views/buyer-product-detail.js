@@ -9,6 +9,7 @@ function selectVariation(btn, typeSlug) {
     if (parseInt(qty.value) > parseInt(qty.max)) qty.value = qty.max;
     document.getElementById('stockAvailable').textContent = `${btn.dataset.stock} available`;
     if (btn.dataset.price) document.getElementById('detailPrice').textContent = btn.dataset.price;
+    if (btn.dataset.image) showGalleryImage(btn.dataset.image, btn.dataset.value);
 }
 function changeQty(delta) {
     const input = document.getElementById('qtyInput');
@@ -19,7 +20,7 @@ function changeQty(delta) {
     input.value = val;
 }
 
-const showToast = (...args) => window.showToast(...args);
+const showToast = (...args) => window.notify(...args);
 
 function updateCartBadge(delta = 1) {
     const badge = document.querySelector('.cart-badge');
@@ -100,9 +101,8 @@ function confirmCartAction(button, message, options) {
     });
 }
 
-document.getElementById('addToCartBtn')?.addEventListener('click', event => {
-    confirmCartAction(event.currentTarget, 'Add this product to your cart?');
-});
+// Adding to the cart is undone from the cart, so it needs no confirmation; Buy Now still asks.
+document.getElementById('addToCartBtn')?.addEventListener('click', () => addProductToCart());
 document.getElementById('buyNowBtn')?.addEventListener('click', event => {
     confirmCartAction(event.currentTarget, 'Add this product and continue to checkout?', { redirectToCheckout: true });
 });
@@ -112,32 +112,30 @@ window.changeQty = changeQty;
 window.addProductToCart = addProductToCart;
 
 const galleryMain = document.querySelector('[data-gallery-main]');
+/** Show one gallery photo as the main image and mark its thumbnail. */
+function showGalleryImage(src, alt) {
+    if (!galleryMain) return;
+    const thumbs = [...document.querySelectorAll('[data-gallery-thumb]')];
+    const match = thumbs.find(t => t.dataset.src === src);
+    galleryMain.src = src;
+    galleryMain.alt = match?.dataset.alt || alt || galleryMain.alt;
+    thumbs.forEach(t => t.classList.toggle('is-active', t === match));
+}
 document.querySelectorAll('[data-gallery-thumb]').forEach(thumb => {
-    thumb.addEventListener('click', () => {
-        if (!galleryMain) return;
-        galleryMain.src = thumb.dataset.src;
-        galleryMain.alt = thumb.dataset.alt;
-        document.querySelectorAll('[data-gallery-thumb]').forEach(t => t.classList.toggle('is-active', t === thumb));
-    });
+    thumb.addEventListener('click', () => showGalleryImage(thumb.dataset.src, thumb.dataset.alt));
 });
 
 document.querySelectorAll('.var-btn[data-type-slug]').forEach(button => button.addEventListener('click', () => selectVariation(button, button.dataset.typeSlug)));
+// Coming from the cart or checkout (?option=ID): that option starts picked, if it is still in stock.
+const preselected = new URLSearchParams(window.location.search).get('option');
+const preselectedButton = preselected && document.querySelector(`.var-btn[data-type-slug][data-id="${CSS.escape(preselected)}"]:not(:disabled)`);
+if (preselectedButton) selectVariation(preselectedButton, preselectedButton.dataset.typeSlug);
 document.querySelectorAll('[data-qty-step]').forEach(button => button.addEventListener('click', () => changeQty(Number(button.dataset.qtyStep))));
 
-// Zoom: hovering magnifies under the pointer (mouse only); clicking opens the photo full size.
+// Zoom: clicking opens the photo full size.
 const zoom = document.querySelector('[data-zoom]');
 if (zoom) {
     const img = zoom.querySelector('img');
-    const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (finePointer && !still) {
-        zoom.addEventListener('mousemove', event => {
-            const box = zoom.getBoundingClientRect();
-            img.style.transformOrigin = `${((event.clientX - box.left) / box.width) * 100}% ${((event.clientY - box.top) / box.height) * 100}%`;
-            img.style.transform = 'scale(2)';
-        });
-        zoom.addEventListener('mouseleave', () => { img.style.transform = ''; });
-    }
     zoom.addEventListener('click', () => {
         const overlay = document.createElement('div');
         overlay.className = 'zoom-lightbox';

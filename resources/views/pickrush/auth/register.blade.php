@@ -6,7 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ ($mode ?? 'register') === 'resubmit' ? 'Resubmit your registration' : 'Register your company' }} | {{ config('pickrush.portal_name') }}</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('images/pickrush-logo.svg') }}">
-    @vite(['resources/css/pickrush/public.css', 'resources/js/pickrush/register.js'])
+    @vite(['resources/css/pickrush/public.css', 'resources/js/components/notify.js', 'resources/js/pickrush/register.js'])
 </head>
 <body class="prp">
 @php
@@ -48,9 +48,7 @@
             @if($resubmit && $rejectionReason)
                 <div class="prr-alert"><strong>Why it was not approved:</strong> {{ $rejectionReason }}</div>
             @endif
-            @if($errors->any())
-                <div class="prr-alert" role="alert">Please check the highlighted fields.{{ $resubmit ? ' Attach any replacement documents again.' : ' For your security, attach your documents and enter your password again.' }}</div>
-            @endif
+            @include('partials.flash-toasts', ['errorMessage' => $errors->any() ? 'Please check the highlighted fields.'.($resubmit ? ' Attach any replacement documents again.' : ' For your security, attach your documents and enter your password again.') : null])
 
             <fieldset class="prr-section">
                 <legend><span>1</span> Personal information</legend>

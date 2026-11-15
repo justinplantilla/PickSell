@@ -6,9 +6,10 @@
     <meta name="robots" content="noindex">
     <title>Application status | {{ config('pickrush.portal_name') }}</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('images/pickrush-logo.svg') }}">
-    @vite(['resources/css/pickrush/public.css'])
+    @vite(['resources/css/pickrush/public.css', 'resources/js/components/notify.js'])
 </head>
 <body class="prp">
+@include('partials.flash-toasts')
 @php($status = $company?->status ?? 'pending')
 <div class="prl">
     @include('pickrush.auth.partials.panel', [
@@ -23,10 +24,7 @@
     <main class="prl-main">
         <div class="prl-form prr-status">
             <span class="prr-status-icon {{ $status === 'pending' ? '' : 'is-alert' }}" aria-hidden="true">
-                @if(session('success'))
-                <p class="prr-note" role="status"><strong>{{ session('success') }}</strong></p>
-            @endif
-
+    
             @if($status === 'pending')
                     <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                 @else

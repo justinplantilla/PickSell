@@ -40,8 +40,7 @@
         </aside>
     @endif
     <main class="pr-main">
-        @if(session('success'))<div class="pr-alert pr-alert-ok" role="status">{{ session('success') }}</div>@endif
-        @if($errors->any())<div class="pr-alert pr-alert-bad" role="alert">{{ $errors->first() }}</div>@endif
+        @include('partials.flash-toasts')
         @yield('content')
     </main>
 </div>

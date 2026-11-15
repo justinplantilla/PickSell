@@ -36,7 +36,7 @@
             <h1>{{ $product->name }}</h1>
             <div class="product-seller-line">Sold by <a href="{{ route('buyer.seller', $product->seller) }}"><strong>{{ $product->seller->business_name ?? $product->seller->full_name }}</strong></a><span class="seller-verified">Verified seller</span></div>
             <a href="#reviews" class="product-rating-link"><x-star-rating :value="$reviewAverage" /> {{ $reviewAverage ?: 'New' }} · {{ $reviewCount }} {{ $reviewCount === 1 ? 'review' : 'reviews' }}</a>
-            <form method="POST" action="{{ $wishlisted ? route('buyer.wishlist.destroy', $product) : route('buyer.wishlist.store', $product) }}" class="wishlist-toggle-form">
+            <form method="POST" action="{{ $wishlisted ? route('buyer.wishlist.destroy', $product) : route('buyer.wishlist.store', $product) }}" class="wishlist-toggle-form" data-no-confirm>
                 @csrf
                 @if($wishlisted) @method('DELETE') @endif
                 <button type="submit" class="wishlist-toggle {{ $wishlisted ? 'is-saved' : '' }}" aria-pressed="{{ $wishlisted ? 'true' : 'false' }}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.1A4.4 4.4 0 0 1 12 7.6a4.4 4.4 0 0 1 7.5 2.8c0 5.5-7.5 10.1-7.5 10.1Z" fill="{{ $wishlisted ? 'currentColor' : 'none' }}" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> {{ $wishlisted ? 'Saved to wishlist' : 'Add to wishlist' }}</button>
@@ -56,7 +56,7 @@
             @foreach($grouped as $type => $options)
             <div class="variation-group">
                 <div class="variation-label">{{ ucfirst($type) }} <span id="selected_{{ Str::slug($type) }}">—</span></div>
-                <div class="variation-options">@foreach($options as $opt)<button type="button" class="var-btn" data-type="{{ $type }}" data-id="{{ $opt->id }}" data-value="{{ $opt->value }}" data-stock="{{ min($opt->stock, $product->stock) }}" data-price="₱{{ number_format($product->priceFor($opt), 2) }}" data-type-slug="{{ Str::slug($type) }}" @disabled($opt->stock <= 0) @if($opt->stock <= 0) title="Out of stock" @endif>{{ $opt->value }}</button>@endforeach</div>
+                <div class="variation-options">@foreach($options as $opt)<button type="button" class="var-btn" data-type="{{ $type }}" data-id="{{ $opt->id }}" data-value="{{ $opt->value }}" data-stock="{{ min($opt->stock, $product->stock) }}" data-price="₱{{ number_format($product->priceFor($opt), 2) }}" data-type-slug="{{ Str::slug($type) }}" @if($optImage = $product->images->firstWhere('id', $opt->image_id)) data-image="{{ $optImage->url }}" @endif @disabled($opt->stock <= 0) @if($opt->stock <= 0) title="Out of stock" @endif>{{ $opt->value }}</button>@endforeach</div>
             </div>
             @endforeach
             <input type="hidden" name="variation_id" id="variation_id" data-required="{{ $grouped->isNotEmpty() ? '1' : '0' }}">

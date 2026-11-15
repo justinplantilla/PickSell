@@ -1,12 +1,7 @@
-/* Shared toasts and confirm dialog (resources/js/components/form-behaviors.js), in both themes. */
-:root { --ui-dialog-bg: #ffffff; --ui-dialog-fg: #1f2328; --ui-dialog-line: #ddd6c8; --ui-toast-ok: #15803d; --ui-toast-bad: #c0392b; }
-body.dark { --ui-dialog-bg: #1c1f24; --ui-dialog-fg: #e5e7eb; --ui-dialog-line: #3a3f47; --ui-toast-ok: #166534; --ui-toast-bad: #991b1b; }
+/* Shared confirm dialog (resources/js/components/form-behaviors.js), in both themes. Toasts: toasts.css. */
+:root { --ui-dialog-bg: #ffffff; --ui-dialog-fg: #1f2328; --ui-dialog-line: #ddd6c8; }
+body.dark { --ui-dialog-bg: #1c1f24; --ui-dialog-fg: #e5e7eb; --ui-dialog-line: #3a3f47; }
 
-.ui-toasts { position: fixed; right: max(1.2rem, env(safe-area-inset-right, 0px)); bottom: max(1.2rem, env(safe-area-inset-bottom, 0px)); z-index: 10000; display: grid; gap: .5rem; pointer-events: none; }
-.ui-toast { max-width: min(340px, calc(100vw - 2rem)); padding: .75rem 1rem; border-radius: 9px; color: #fff; background: var(--ui-toast-ok); box-shadow: 0 12px 28px rgba(0,0,0,.2); font-size: .82rem; font-weight: 700; animation: ui-toast-in .22s ease both; pointer-events: auto; }
-.ui-toast-error { background: var(--ui-toast-bad); }
-.ui-toast.is-leaving { opacity: 0; transform: translateY(8px); transition: opacity .22s, transform .22s; }
-@keyframes ui-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 .ui-dialog-overlay { position: fixed; inset: 0; z-index: 9998; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(0,0,0,.45); }
 .ui-dialog { width: 100%; max-width: 360px; padding: 1.5rem; border-radius: 12px; background: var(--ui-dialog-bg); color: var(--ui-dialog-fg); box-shadow: 0 8px 32px rgba(0,0,0,.25); }
@@ -16,8 +11,6 @@ body.dark { --ui-dialog-bg: #1c1f24; --ui-dialog-fg: #e5e7eb; --ui-dialog-line: 
 .ui-dialog-cancel { border: 1.5px solid var(--ui-dialog-line); background: transparent; color: inherit; }
 .ui-dialog-ok { border: 0; background: #dc2626; color: #fff; }
 .ui-dialog-actions button:focus-visible { outline: 2px solid var(--coral, #E8472A); outline-offset: 2px; }
-
-@media (prefers-reduced-motion: reduce) { .ui-toast { animation: none; } .ui-toast.is-leaving { transition: none; } }
 
 /* Loading placeholders: skeleton lines, and a shimmer behind product photos until they load */
 :root { --ui-skeleton-a: #f1ede6; --ui-skeleton-b: #f9f7f3; }

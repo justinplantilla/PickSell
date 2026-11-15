@@ -16,6 +16,7 @@
         @include('partials.navbar')
     @endif
 
+    @include('partials.flash-toasts')
     @yield('content')
 
     @sectionMissing('bare')

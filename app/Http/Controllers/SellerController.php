@@ -424,6 +424,8 @@ class SellerController extends Controller
         'variations.*.value' => 'required|string|max:50|distinct:ignore_case',
         'variations.*.price' => 'nullable|numeric|min:0',
         'variations.*.stock' => 'required|integer|min:0',
+        // A gallery entry ("existing:{id}" / "upload:{token}") the option shows when picked.
+        'variations.*.image' => 'nullable|string|max:64',
     ];
 
     private const PRODUCT_EXTRAS = ['gallery', 'gallery_cover', 'gallery_managed', 'gallery_alt', 'variations_managed', 'variation_type', 'variations'];
@@ -436,11 +438,7 @@ class SellerController extends Controller
         $managed = $request->boolean('gallery_managed');
         $product = DB::transaction(function () use ($data, $gallery, $managed) {
             $product = Product::create(collect($data)->except(self::PRODUCT_EXTRAS)->all());
-            $this->syncVariations($product, $data);
-            // Only the JS gallery control sets gallery_managed, so a no-JS submit never wipes images.
-            if ($managed) {
-                $gallery->sync($product, $data['gallery'] ?? [], $data['gallery_cover'] ?? null, $data['gallery_alt'] ?? []);
-            }
+            $this->syncVariations($product, $data, $this->syncGallery($product, $data, $gallery, $managed));
 
             return $product;
         });
@@ -462,11 +460,7 @@ class SellerController extends Controller
         $managed = $request->boolean('gallery_managed');
         DB::transaction(function () use ($product, $data, $gallery, $managed) {
             $product->update(collect($data)->except(self::PRODUCT_EXTRAS)->all());
-            $this->syncVariations($product, $data);
-            // Only the JS gallery control sets gallery_managed, so a no-JS submit never wipes images.
-            if ($managed) {
-                $gallery->sync($product, $data['gallery'] ?? [], $data['gallery_cover'] ?? null, $data['gallery_alt'] ?? []);
-            }
+            $this->syncVariations($product, $data, $this->syncGallery($product, $data, $gallery, $managed));
         });
 
         return back()->with('success', 'Product updated.');
@@ -493,10 +487,28 @@ class SellerController extends Controller
     }
 
     /**
+     * Save the gallery before the options so they can point at its images. Only the JS gallery
+     * control sets gallery_managed, so a no-JS submit never wipes images.
+     *
+     * @return array<string, int>  gallery entry => image id
+     */
+    private function syncGallery(Product $product, array $data, ProductGallery $gallery, bool $managed): array
+    {
+        if ($managed) {
+            return $gallery->sync($product, $data['gallery'] ?? [], $data['gallery_cover'] ?? null, $data['gallery_alt'] ?? []);
+        }
+
+        return $product->images()->pluck('id')->mapWithKeys(fn ($id) => ["existing:{$id}" => $id])->all();
+    }
+
+    /**
      * Make the product's options match the form: keep the rows it still lists (by id), add new
      * ones, delete the rest. Only the JS options editor sets variations_managed, like the gallery.
+     * An option's image must be one of this product's gallery entries, else it has none.
+     *
+     * @param  array<string, int>  $imageIds  gallery entry => image id
      */
-    private function syncVariations(Product $product, array $data): void
+    private function syncVariations(Product $product, array $data, array $imageIds): void
     {
         if (empty($data['variations_managed'])) {
             return;
@@ -507,7 +519,8 @@ class SellerController extends Controller
         // validate() lists rows that have an id first; the keys keep the form's order.
         foreach (collect($data['variations'] ?? [])->sortKeys() as $row) {
             $values = ['type' => trim($data['variation_type']), 'value' => trim($row['value']), 'stock' => (int) $row['stock'],
-                'price' => isset($row['price']) && $row['price'] !== '' ? $row['price'] : null];
+                'price' => isset($row['price']) && $row['price'] !== '' ? $row['price'] : null,
+                'image_id' => $imageIds[$row['image'] ?? ''] ?? null];
             $variation = isset($row['id']) ? $existing->get((int) $row['id']) : null;
             if ($variation) {
                 $variation->update($values);
@@ -531,14 +544,16 @@ class SellerController extends Controller
         $copy = DB::transaction(function () use ($product) {
             $copy = $product->replicate(['is_featured']);
             $copy->fill(['name' => Str::limit($product->name, 240, '').' (copy)', 'status' => 'archived', 'stock' => 0])->save();
-            foreach ($product->variations as $variation) {
-                $copy->variations()->create($variation->only(['type', 'value', 'price']) + ['stock' => 0]);
-            }
+            // Photos first, so each copied option can point at the copy of its image.
+            $copiedImages = [];
             foreach ($product->images as $image) {
                 $path = 'products/'.Str::uuid().'.'.pathinfo($image->image_url, PATHINFO_EXTENSION);
                 if (Storage::disk('public')->exists($image->image_url) && Storage::disk('public')->copy($image->image_url, $path)) {
-                    $copy->images()->create(['image_url' => $path] + $image->only(['display_order', 'is_primary', 'alt_text']));
+                    $copiedImages[$image->id] = $copy->images()->create(['image_url' => $path] + $image->only(['display_order', 'is_primary', 'alt_text']))->id;
                 }
+            }
+            foreach ($product->variations as $variation) {
+                $copy->variations()->create($variation->only(['type', 'value', 'price']) + ['stock' => 0, 'image_id' => $copiedImages[$variation->image_id] ?? null]);
             }
 
             return $copy;

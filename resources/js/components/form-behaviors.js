@@ -1,4 +1,5 @@
 import '../../css/components/ui-feedback.css';
+import './notify.js';
 import '../../css/components/table-cards.css';
 
 /** Confirm dialog for every portal; resolves true on OK. Escape or a click outside cancels. */
@@ -26,26 +27,6 @@ function showConfirm(message, { okText = 'Confirm', cancelText = 'Cancel' } = {}
 }
 window.showConfirm = showConfirm;
 
-/** Short status message in the corner; type is 'success' or 'error'. */
-function showToast(message, type = 'success') {
-    let container = document.querySelector('.ui-toasts');
-    if (!container) {
-        container = document.createElement('div');
-        container.className = 'ui-toasts';
-        container.setAttribute('role', 'status');
-        container.setAttribute('aria-live', 'polite');
-        document.body.appendChild(container);
-    }
-    const toast = document.createElement('div');
-    toast.className = `ui-toast ui-toast-${type}`;
-    toast.textContent = message;
-    container.appendChild(toast);
-    setTimeout(() => {
-        toast.classList.add('is-leaving');
-        setTimeout(() => toast.remove(), 220);
-    }, 2800);
-}
-window.showToast = showToast;
 
 document.addEventListener('change', event => {
     if (event.target.matches('[data-submit-on-change]')) event.target.form?.submit();
@@ -107,8 +88,10 @@ document.addEventListener('submit', event => {
 });
 
 document.addEventListener('click', event => {
+    // Links and stand-alone buttons only. A form with data-confirm (or a button inside one) is asked
+    // by the submit handler above; catching its click here would cancel the submit for good.
     const confirmTarget = event.target.closest('[data-confirm]');
-    if (confirmTarget && !confirmTarget.form) {
+    if (confirmTarget && confirmTarget.tagName !== 'FORM' && !confirmTarget.form) {
         event.preventDefault();
         showConfirm(confirmTarget.dataset.confirm).then(confirmed => {
             if (!confirmed) return;

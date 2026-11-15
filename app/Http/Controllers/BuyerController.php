@@ -33,6 +33,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -249,6 +250,35 @@ class BuyerController extends Controller
         return redirect()->route('buyer.browse', $request->query());
     }
 
+    /**
+     * A product's options for the quick-add modal on product cards: a card has no option picker,
+     * so a product sold in options is added from this list instead.
+     */
+    public function productOptions(Product $product)
+    {
+        abort_if($product->status !== 'active', 404);
+        $product->load('variations');
+        $imageUrl = fn (?string $path) => $path ? Storage::url($path) : null;
+
+        return response()->json([
+            'id' => $product->id,
+            'name' => $product->name,
+            'image' => $imageUrl($product->primary_image),
+            'price' => $product->effective_price,
+            'stock' => (int) $product->stock,
+            'purchasable' => $product->isPurchasable(),
+            'url' => route('buyer.product', $product),
+            'options' => $product->variations->map(fn ($v) => [
+                'id' => $v->id,
+                'type' => $v->type,
+                'value' => $v->value,
+                'stock' => min((int) $v->stock, (int) $product->stock),
+                'price' => $product->priceFor($v),
+                'image' => $v->image_id ? $imageUrl($product->imageFor($v)) : null,
+            ])->values(),
+        ]);
+    }
+
     // Product Detail
     public function productDetail(Product $product, RecentlyViewed $recentlyViewed)
     {
@@ -463,7 +493,7 @@ class BuyerController extends Controller
     public function orders(Request $request)
     {
         $status = $request->get('status', 'all');
-        $query = Order::where('buyer_id', $this->buyer()->id)->with('product', 'seller', 'returnRequest', 'shipment.orders');
+        $query = Order::where('buyer_id', $this->buyer()->id)->with('product', 'variation', 'seller', 'returnRequest', 'shipment.orders');
         $statusGroups = [
             'pending' => ['pending', 'placed', 'confirmed'],
             'processing' => ['processing', 'preparing', 'ready_for_pickup'],

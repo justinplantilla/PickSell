@@ -1,6 +1,6 @@
 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-const showToast = (...args) => window.showToast(...args);
+const showToast = (...args) => window.notify(...args);
 
 function updateSummary() {
     const checked = document.querySelectorAll('.item-check:checked');

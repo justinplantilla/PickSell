@@ -6,11 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class ProductVariation extends Model
 {
-    protected $fillable = ['product_id', 'type', 'value', 'price', 'stock'];
+    protected $fillable = ['product_id', 'type', 'value', 'price', 'stock', 'image_id'];
 
     protected $casts = ['price' => 'decimal:2'];
 
     public function product() { return $this->belongsTo(Product::class); }
+    /** One of the product's gallery images, shown when a buyer picks this option. */
+    public function image()   { return $this->belongsTo(ProductImage::class, 'image_id'); }
 
     /** How carts and orders name the choice, e.g. "Size: XL". */
     public function getLabelAttribute(): string

@@ -53,8 +53,9 @@ class ProductGallery
      *
      * @param  string[]  $entries
      * @param  array<string, ?string>  $alts  custom alt text keyed by gallery entry
+     * @return array<string, int>  each entry's image id, so options can point at an image
      */
-    public function sync(Product $product, array $entries, ?string $cover, array $alts = []): void
+    public function sync(Product $product, array $entries, ?string $cover, array $alts = []): array
     {
         $entries = array_values(array_unique($entries));
         if (count($entries) > Product::MAX_IMAGES) {
@@ -93,7 +94,8 @@ class ProductGallery
         $keepIds = collect($plan)->where(0, 'existing')->map(fn ($step) => (int) $step[1]);
         $removed = $existing->except($keepIds->all());
 
-        DB::transaction(function () use ($product, $plan, $moved, $cover, $removed, $alts) {
+        $ids = [];
+        DB::transaction(function () use ($product, $plan, $moved, $cover, $removed, $alts, &$ids) {
             $product->images()->whereIn('id', $removed->modelKeys())->delete();
 
             foreach ($plan as $index => [$type, $ref, $entry]) {
@@ -104,8 +106,9 @@ class ProductGallery
                 ];
                 if ($type === 'existing') {
                     $product->images()->whereKey((int) $ref)->update($attributes);
+                    $ids[$entry] = (int) $ref;
                 } else {
-                    $product->images()->create($attributes + ['image_url' => $moved[$ref]]);
+                    $ids[$entry] = $product->images()->create($attributes + ['image_url' => $moved[$ref]])->id;
                 }
             }
         });
@@ -113,6 +116,8 @@ class ProductGallery
         Storage::disk('public')->delete($removed->pluck('image_url')->all());
         session([self::SESSION_KEY => array_diff_key($pending, $moved)]);
         $product->unsetRelation('images');
+
+        return $ids;
     }
 
     public static function fallbackAlt(Product $product, int $position): string

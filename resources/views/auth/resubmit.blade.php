@@ -13,9 +13,6 @@
         <h1 class="auth-title">Resubmit your {{ $applicant->role === 'buyer' ? 'buyer sign-up' : 'seller application' }}</h1>
         <p class="auth-sub">{{ $applicant->business_name ?: trim($applicant->first_name.' '.$applicant->last_name) }} · {{ $applicant->email }}</p>
 
-        @if($errors->any())
-            <div class="alert-error">{{ $errors->first() }}</div>
-        @endif
 
         <div class="notice-box">
             <strong>Why it was not approved:</strong>

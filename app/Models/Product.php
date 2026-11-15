@@ -190,4 +190,12 @@ class Product extends Model
 
         return $image?->image_url;
     }
+
+    /** The picked option's own image, else the cover: what carts and orders show for this choice. */
+    public function imageFor(?ProductVariation $variation): ?string
+    {
+        $own = $variation?->image_id ? $this->images->firstWhere('id', $variation->image_id) : null;
+
+        return $own?->image_url ?? $this->primary_image;
+    }
 }

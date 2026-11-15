@@ -19,7 +19,7 @@
             @foreach($products as $product)
             <div class="wishlist-entry">
                 @include('buyer.partials.product-cards', ['products' => [$product]])
-                <form method="POST" action="{{ route('buyer.wishlist.destroy', $product) }}">
+                <form method="POST" action="{{ route('buyer.wishlist.destroy', $product) }}" data-no-confirm>
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="wishlist-remove-btn">Remove from wishlist</button>

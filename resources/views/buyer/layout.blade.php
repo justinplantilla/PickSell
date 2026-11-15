@@ -110,12 +110,7 @@
             </div>
         @endforeach
         </div>
-        @if(session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
-        @endif
-        @if($errors->any())
-            <div class="alert alert-error">{{ $errors->first() }}</div>
-        @endif
+        @include('partials.flash-toasts')
         @include('partials.page-intro')
         @yield('content')
     </div>

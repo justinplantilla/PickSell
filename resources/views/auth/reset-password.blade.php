@@ -12,9 +12,6 @@
         <h1 class="auth-title">Reset Password</h1>
         <p class="auth-sub">Enter your new password below.</p>
 
-        @if($errors->any())
-            <div class="alert-error">{{ $errors->first() }}</div>
-        @endif
 
         <form method="POST" action="/reset-password">
             @csrf

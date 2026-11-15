@@ -28,8 +28,9 @@ function openEditModal(id, p) {
     f.querySelector('[name=stock]').value = p.stock;
     f.querySelector('[name=weight_kg]').value = p.weight_kg ?? '';
     f.querySelector('[name=preorder_days]').value = p.preorder_days ?? '';
-    f.querySelector('[data-product-variations]').productVariations?.load(p.variations || []);
+    // Gallery first: each option's image must be one of the loaded images.
     f.querySelector('[data-product-gallery]').productGallery?.load(p.images || [], p.name);
+    f.querySelector('[data-product-variations]').productVariations?.load(p.variations || []);
     openModal('editModal');
 }
 

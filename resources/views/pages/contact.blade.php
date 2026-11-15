@@ -51,9 +51,6 @@
         <div id="form" class="support-form">
             <h2>Send Us a Message</h2>
 
-            @if(session('success'))
-                <div class="alert-success">{{ session('success') }}</div>
-            @endif
 
             <form method="POST" action="/contact">
                 @csrf

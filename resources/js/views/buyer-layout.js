@@ -1,3 +1,5 @@
+import { openQuickAdd } from '../components/quick-add.js';
+
 function toggleUserMenu() {
     const open = document.getElementById('userDropdown').classList.toggle('open');
     document.querySelector('[data-user-menu]')?.setAttribute('aria-expanded', String(open));
@@ -94,7 +96,7 @@ function dismissAnnouncement(id, button) {
     banner.remove();
 }
 
-const showBuyerToast = (...args) => window.showToast(...args);
+const showBuyerToast = (...args) => window.notify(...args);
 
 function incrementBuyerCartBadge() {
     const badge = document.querySelector('.cart-badge');
@@ -110,27 +112,50 @@ function incrementBuyerCartBadge() {
     cartWrap.appendChild(badgeNode);
 }
 
-async function handleBuyerCardCartAction(button) {
-    const action = button.dataset.cardCartAction;
-    if (!action || button.disabled) return;
+/** Card button → its product's options URL ("/buyer/cart/12" → "/buyer/product/12/options"). */
+function cardOptionsUrl(button) {
+    const id = button.dataset.cardCartAction.match(/\/cart\/(\d+)/)?.[1];
+    return id ? `/buyer/product/${id}/options` : null;
+}
+
+async function addCardProduct(button, { variationId = null, quantity = 1 } = {}) {
     const buyNowPath = button.dataset.cardBuyNow;
+    const formData = new FormData();
+    formData.append('quantity', String(quantity));
+    if (variationId) formData.append('variation_id', String(variationId));
+    const response = await fetch(button.dataset.cardCartAction, {
+        method: 'POST',
+        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, Accept: 'application/json' },
+        body: formData,
+    });
+    if (!response.ok) throw new Error('Unable to add product');
+    const payload = await response.json();
+    incrementBuyerCartBadge();
+    if (buyNowPath && payload.item_id) {
+        window.location.href = `${buyNowPath}?item_ids[]=${encodeURIComponent(payload.item_id)}`;
+        return;
+    }
+    showBuyerToast('Added to cart successfully.');
+}
+
+/**
+ * Add to Cart goes straight in; Buy Now asks first. A product sold in options opens the
+ * quick-add modal so the buyer picks one (and a quantity) before either happens.
+ */
+async function handleBuyerCardCartAction(button) {
+    if (!button.dataset.cardCartAction || button.disabled) return;
+    const buyNow = Boolean(button.dataset.cardBuyNow);
     button.disabled = true;
     try {
-        const formData = new FormData();
-        formData.append('quantity', '1');
-        const response = await fetch(action, {
-            method: 'POST',
-            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, Accept: 'application/json' },
-            body: formData,
-        });
-        if (!response.ok) throw new Error('Unable to add product');
-        const payload = await response.json();
-        incrementBuyerCartBadge();
-        if (buyNowPath && payload.item_id) {
-            window.location.href = `${buyNowPath}?item_ids[]=${encodeURIComponent(payload.item_id)}`;
-            return;
+        let choice = {};
+        const optionsUrl = cardOptionsUrl(button);
+        const product = optionsUrl ? await fetch(optionsUrl, { headers: { Accept: 'application/json' } }).then(r => (r.ok ? r.json() : null)) : null;
+        if (product?.options?.length) {
+            choice = await openQuickAdd(product, { buyNow });
+            if (!choice) return;
         }
-        showBuyerToast('Added to cart successfully.');
+        if (buyNow && !(await window.showConfirm('Add this product and continue to checkout?'))) return;
+        await addCardProduct(button, choice);
     } catch (error) {
         showBuyerToast('Unable to add this product. Please try again.', 'error');
     } finally {
@@ -140,22 +165,10 @@ async function handleBuyerCardCartAction(button) {
 
 document.addEventListener('click', event => {
     const button = event.target.closest('[data-card-cart-action]');
-    if (button) {
-        event.preventDefault();
-        event.stopPropagation();
-        if (button.disabled) return;
-        if (button.dataset.cardBuyNow) {
-            if (button.dataset.confirmPending === 'true') return;
-            button.dataset.confirmPending = 'true';
-            window.showConfirm('Add this product and continue to checkout?').then(confirmed => {
-                delete button.dataset.confirmPending;
-                if (confirmed) handleBuyerCardCartAction(button);
-                else button.removeAttribute('disabled');
-            });
-        } else {
-            handleBuyerCardCartAction(button);
-        }
-    }
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    handleBuyerCardCartAction(button);
 });
 document.querySelectorAll('.announcement-banner').forEach(banner => {
     const dismissed = JSON.parse(localStorage.getItem('dismissedAnnouncements') || '[]');

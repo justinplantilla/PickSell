@@ -94,7 +94,7 @@
     </div>
     <div class="product-variation-rows" data-variation-rows></div>
     <button type="button" class="btn btn-outline btn-sm" data-add-variation>+ Add option</button>
-    <small class="product-images-hint">For products sold in options, e.g. Size: S, M, L. Each option has its own stock (the product's stock becomes their total) and can have its own price; leave the price blank to use the product's.</small>
+    <small class="product-images-hint">For products sold in options, e.g. Size: S, M, L. Each option has its own stock (the product's stock becomes their total) and can have its own price; leave the price blank to use the product's. Tap an option's image box to pick which product image buyers see when they choose it.</small>
 </div>
 
 <div class="form-group product-gallery"data-product-gallery data-max="{{ \App\Models\Product::MAX_IMAGES }}" data-upload-url="{{ route('seller.inventory.images.store') }}" data-discard-url="{{ url('/seller/inventory/images') }}">

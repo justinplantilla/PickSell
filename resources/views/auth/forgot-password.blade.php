@@ -12,12 +12,6 @@
         <h1 class="auth-title">Forgot Password</h1>
         <p class="auth-sub">Enter your email and we'll send you a reset link.</p>
 
-        @if(session('success'))
-            <div class="alert-success">{{ session('success') }}</div>
-        @endif
-        @if($errors->any())
-            <div class="alert-error">{{ $errors->first() }}</div>
-        @endif
 
         <form method="POST" action="/forgot-password">
             @csrf

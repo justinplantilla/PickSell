@@ -44,7 +44,9 @@ class AuthSplitPageTest extends TestCase
         $login = $this->from('/login')->followingRedirects()
             ->post('/login', ['email' => 'nobody@example.com', 'password' => 'wrong-password'])
             ->assertOk()->getContent();
-        $this->assertStringContainsString('Invalid email or password.', $this->between($login, 'id="loginTitle"', 'id="loginForm"'));
+        // The message is a toast now (partials/flash-toasts), not a banner inside the form.
+        $this->assertStringContainsString('<p data-flash="error">Invalid email or password.</p>', $login);
+        $this->assertStringNotContainsString('alert-error', $this->between($login, 'id="loginTitle"', 'id="loginForm"'));
         $this->assertStringNotContainsString('field-error', $this->between($login, 'id="registerTitle"', '</form>'));
 
         $register = $this->from('/register')->followingRedirects()
