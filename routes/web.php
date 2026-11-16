@@ -61,8 +61,12 @@ Route::get('/', function () {
     $featuredProducts = Product::showcased()->where('stock', '>', 0)
         ->with('seller')->orderByDesc('is_featured')->latest()->take(8)->get();
 
-    return view('welcome', compact('featuredProducts'));
+    $apps = \App\Http\Controllers\AppDownloadController::apps();
+
+    return view('welcome', compact('featuredProducts', 'apps'));
 });
+// The Android apps from the landing page's "Get the app" QR codes (config/mobile-apps.php).
+Route::get('/download/{app}', \App\Http\Controllers\AppDownloadController::class)->whereIn('app', ['picksell', 'pickrush'])->middleware('throttle:20,1')->name('app.download');
 Route::get('/shop', function (Request $request) {
     $query = Product::showcased()->where('stock', '>', 0)->whereHas('images')->with('seller')
         ->withAvg('reviews', 'rating')->withCount('reviews');

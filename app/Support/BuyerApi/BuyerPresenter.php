@@ -239,9 +239,11 @@ final class BuyerPresenter
         ];
 
         return [
-            'stores'         => collect($v['stores'])->map(fn ($options, $sellerId) => ['seller_id' => (int) $sellerId, 'options' => $options->map($option)->values()])->values(),
+            // Each store's sheet: its store vouchers and its items' product vouchers; one of them per store.
+            'stores'         => collect($v['stores'])->map(fn ($options, $sellerId) => ['seller_id' => (int) $sellerId, 'options' => $options->map($option)->values(),
+                'product_options' => collect($v['productOptions'][$sellerId] ?? [])->map(fn ($p) => ['code' => $p['code'], 'percent' => $p['percent'], 'product' => $p['product'], 'discount' => self::money($p['discount'])])->values()])->values(),
             'platform'       => $v['platform']->map($option)->values(),
-            'picked'         => ['stores' => (object) $v['picked']['stores'], 'platform' => $v['picked']['platform']],
+            'picked'         => ['stores' => (object) $v['picked']['stores'], 'products' => (object) $v['products'], 'platform' => $v['picked']['platform']],
             'store_savings'  => (object) array_map(fn ($amount) => self::money($amount), $v['storeSavings']),
             'platform_saving' => self::money($v['platformSaving']),
             'total'          => self::money($v['total']),

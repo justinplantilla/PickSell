@@ -26,13 +26,19 @@ class LandingPageTest extends TestCase
             ->assertDontSee('>PR<', false);
     }
 
-    public function test_the_rider_app_button_shows_only_when_a_link_is_configured(): void
+    public function test_both_apps_download_from_the_marketplace_address(): void
     {
-        config(['pickrush.rider_app_url' => null]);
-        $this->get($this->pickrushUrl('/'))->assertDontSee('Get the rider app');
+        \Illuminate\Support\Facades\Storage::fake('local');
+        \Illuminate\Support\Facades\Storage::disk('local')->put('apps/pickrush.apk', 'apk');
+        \Illuminate\Support\Facades\Storage::disk('local')->put('apps/picksell.apk', 'apk');
+        config(['app.url' => 'https://pick-sell.shop']);
 
-        config(['pickrush.rider_app_url' => 'https://example.com/rider-app']);
-        $this->get($this->pickrushUrl('/'))->assertSee('href="https://example.com/rider-app"', false);
+        // The QR codes and buttons point at APP_URL, not the logistics host the page is on.
+        $this->get($this->pickrushUrl('/'))->assertOk()
+            ->assertSee('href="#apps"', false)
+            ->assertSeeInOrder(['Pickrush', 'PickSell'])
+            ->assertSee('href="https://pick-sell.shop/download/pickrush"', false)
+            ->assertSee('href="https://pick-sell.shop/download/picksell"', false);
     }
 
     public function test_signed_in_staff_skip_the_landing_page(): void

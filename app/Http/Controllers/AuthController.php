@@ -410,10 +410,12 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        // A buyer signing out goes straight to the login page (with its sign-up link), not the marketing page.
+        $wasBuyer = $request->user()?->role === 'buyer';
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        return redirect('/');
+        return redirect($wasBuyer ? '/login' : '/');
     }
 
     public function deleteAccount(Request $request)

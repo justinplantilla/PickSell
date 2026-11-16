@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex">
     <title>Application status | {{ config('pickrush.portal_name') }}</title>
-    <link rel="icon" type="image/svg+xml" href="{{ asset('images/pickrush-logo.svg') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('images/psl-logo.svg') }}">
     @vite(['resources/css/pickrush/public.css', 'resources/js/components/notify.js'])
 </head>
 <body class="prp">

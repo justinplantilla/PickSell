@@ -175,3 +175,10 @@ body.dark .order-card-total-meta { color: #9ca3af; }
 body.dark .order-card-total-amount { background: #2a1814; border-color: #4a2a22; }
 body.dark .order-card-total-amount span { color: #f3a594; }
 body.dark .orders-price-text { color: #9ca3af !important; }
+body.dark .checkout-store-vouchers { border-color: #333333; }
+body.dark .checkout-store-summary { background: #1c1c1c; border-color: #2e2e2e; }
+body.dark .checkout-store-line > span:last-child, body.dark .checkout-store-line.is-total, body.dark .checkout-store-voucher-label { color: #e5e5e5; }
+body.dark .checkout-store-line.is-saving > span:last-child { color: #4ade80; }
+body.dark .checkout-store-line.is-total { border-top-color: #333333; }
+body.dark .checkout-store-vouchers { background: #232323; border-color: #5a3a30; }
+body.dark .checkout-store-voucher-label code { background: #3a2520; }

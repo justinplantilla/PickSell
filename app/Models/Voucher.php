@@ -15,7 +15,8 @@ class Voucher extends Model
     public const FREE_SHIPPING = 'free_shipping';
 
     public const STORE_TYPES = [self::FIXED => '₱ off', self::PERCENT => '% off'];
-    public const PLATFORM_TYPES = [self::FIXED => '₱ off', self::PERCENT => '% off', self::FREE_SHIPPING => 'Free shipping'];
+    // Free shipping is no longer offered for new vouchers; FREE_SHIPPING stays so any old one still prices.
+    public const PLATFORM_TYPES = [self::FIXED => '₱ off', self::PERCENT => '% off'];
 
     protected $fillable = [
         'seller_id', 'code', 'title', 'type', 'amount', 'min_spend', 'max_discount',

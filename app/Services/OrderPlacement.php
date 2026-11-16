@@ -89,10 +89,16 @@ class OrderPlacement
         return CartItem::where('cart_id', $cart->id)->whereIn('id', $ids)->with('product.seller', 'product.variations', 'variation')->when(DB::transactionLevel() > 0, fn ($q) => $q->lockForUpdate())->get();
     }
 
-    /** What one cart line costs per unit (at its option's price), with the product voucher applied when [$voucherCode] matches. */
-    public static function unitPrice(Product $product, ?string $voucherCode, ?ProductVariation $variation = null): float
+    /**
+     * What one cart line costs per unit (at its option's price), with the product voucher applied when [$voucherCode] matches.
+     * $voucherCode is one code, or the product voucher picked per store (seller id => code).
+     */
+    public static function unitPrice(Product $product, string|array|null $voucherCode, ?ProductVariation $variation = null): float
     {
         $price = $product->priceFor($variation);
+        if (is_array($voucherCode)) {
+            $voucherCode = $voucherCode[$product->seller_id] ?? null;
+        }
         if (! empty($voucherCode) && $product->voucher_code === $voucherCode) {
             $price = $price * (1 - $product->voucher_discount / 100);
         }
@@ -101,7 +107,35 @@ class OrderPlacement
     }
 
     /**
+     * The product voucher used per store (seller id => code): the codes picked per store, plus a single code
+     * (from a product page) for each store with an item it is for. A code that fits none of a store's items is dropped.
+     *
+     * @param  array<int|string, string|null>  $perStore
+     * @return array<int, string>
+     */
+    public static function productCodes(Collection $items, ?string $code = null, array $perStore = []): array
+    {
+        $fits = fn ($sellerId, $code) => $code !== '' && $items->contains(fn ($item) => $item->product?->seller_id == $sellerId
+            && $item->product->voucher_code === $code && $item->product->voucher_discount > 0);
+        $codes = [];
+        foreach ($perStore as $sellerId => $storeCode) {
+            if ($fits($sellerId, $storeCode = trim((string) $storeCode))) {
+                $codes[(int) $sellerId] = $storeCode;
+            }
+        }
+        $code = trim((string) $code);
+        foreach ($items->pluck('product.seller_id')->unique() as $sellerId) {
+            if (! isset($codes[$sellerId]) && $fits($sellerId, $code)) {
+                $codes[(int) $sellerId] = $code;
+            }
+        }
+
+        return $codes;
+    }
+
+    /**
      * @param  DeliveryAddress|null  $to  where to ship; the buyer's profile (default) address when null
+     * @param  string|array<int|string, string>|null  $voucherCode  the product voucher: one code, or one per store (seller id => code)
      * @param  array<int|string, string|null>  $notes  the buyer's note to each seller, keyed by seller id
      * @param  array{stores?: array<int|string, int>, platform?: ?int}  $vouchers  voucher ids: one per store (keyed by seller id) and one platform voucher
      * @param  array<int|string, int|string>  $carriers  the logistics company chosen per seller id (Pickrush when absent)
@@ -109,7 +143,7 @@ class OrderPlacement
      *
      * @throws ValidationException (field item_ids, address or vouchers) when the checkout cannot go ahead
      */
-    public function place(User $buyer, array $itemIds, ?string $voucherCode, ?DeliveryAddress $to = null, array $notes = [], array $vouchers = [], array $carriers = [], ?string $checkoutKey = null): Collection
+    public function place(User $buyer, array $itemIds, string|array|null $voucherCode, ?DeliveryAddress $to = null, array $notes = [], array $vouchers = [], array $carriers = [], ?string $checkoutKey = null): Collection
     {
         $ids = array_values(array_unique(array_map('intval', $itemIds)));
         sort($ids);
@@ -144,7 +178,7 @@ class OrderPlacement
         }
     }
 
-    private function placeLocked(User $buyer, array $itemIds, ?string $voucherCode, ?DeliveryAddress $to, array $notes, array $vouchers, array $carriers, string $checkoutKey, string $hash): Collection
+    private function placeLocked(User $buyer, array $itemIds, string|array|null $voucherCode, ?DeliveryAddress $to, array $notes, array $vouchers, array $carriers, string $checkoutKey, string $hash): Collection
     {
         $to ??= DeliveryAddress::fromProfile($buyer);
         if (! $to->isComplete()) {
@@ -193,6 +227,12 @@ class OrderPlacement
                 }
             }
             $shipping = $this->priceShipping($buyer, $items, $to, $carriers);
+
+            // A store takes either its store voucher or one product voucher, never both.
+            $voucherCode = is_array($voucherCode) ? self::productCodes($items, null, $voucherCode) : self::productCodes($items, $voucherCode);
+            if (array_intersect_key(array_filter($vouchers['stores'] ?? []), $voucherCode)) {
+                throw ValidationException::withMessages(['vouchers' => 'A store voucher and a product voucher can’t be used together for the same store.']);
+            }
 
             // Each line's price (with its product voucher), then the checkout vouchers on top.
             $lineAmounts = $items->mapWithKeys(fn (CartItem $item) => [$item->id => round(self::unitPrice(

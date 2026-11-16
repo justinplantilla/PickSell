@@ -43,14 +43,14 @@ class CheckoutVouchersTest extends TestCase
         ], $v['stores'][0]['options'][0]);
         $this->assertSame([$big->id, 'Spend ₱4,000.00 more to use this voucher.'], [$v['stores'][0]['options'][1]['id'], $v['stores'][0]['options'][1]['problem']]);
         $this->assertSame([$tenPct->id, 50, '10% off up to ₱50'], [$v['platform'][0]['id'], $v['platform'][0]['discount'], $v['platform'][0]['title']]);
-        $this->assertSame(['stores' => [], 'platform' => null], $v['picked']);
+        $this->assertSame(['stores' => [], 'products' => [], 'platform' => null], $v['picked']);
         $this->assertSame([0, null], [$v['total'], $v['error']]);
 
         // Picking both: ₱100 off the store, then 10% of the ₱900 left, capped at ₱50.
         $v = $this->postJson('/api/mobile/buyer/checkout/quote', [
             'item_ids' => [$lamp->id, $mug->id], 'store_vouchers' => [$seller->id => $save100->id], 'platform_voucher' => $tenPct->id,
         ])->assertOk()->json('vouchers');
-        $this->assertSame(['stores' => [(string) $seller->id => $save100->id], 'platform' => $tenPct->id], $v['picked']);
+        $this->assertSame(['stores' => [(string) $seller->id => $save100->id], 'products' => [], 'platform' => $tenPct->id], $v['picked']);
         $this->assertSame([(string) $seller->id => 100], $v['store_savings']);
         $this->assertSame([50, 150], [$v['platform_saving'], $v['total']]);
 

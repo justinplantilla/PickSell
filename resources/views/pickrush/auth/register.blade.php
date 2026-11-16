@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ ($mode ?? 'register') === 'resubmit' ? 'Resubmit your registration' : 'Register your company' }} | {{ config('pickrush.portal_name') }}</title>
-    <link rel="icon" type="image/svg+xml" href="{{ asset('images/pickrush-logo.svg') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('images/psl-logo.svg') }}">
     @vite(['resources/css/pickrush/public.css', 'resources/js/components/notify.js', 'resources/js/pickrush/register.js'])
 </head>
 <body class="prp">

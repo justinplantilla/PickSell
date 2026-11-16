@@ -15,7 +15,7 @@ class DashboardController extends Controller
     {
         $staff = Actor::staff();
         if (! $staff) {
-            return view('pickrush.landing');
+            return view('pickrush.landing', ['apps' => \App\Http\Controllers\AppDownloadController::apps()]);
         }
 
         if (! $staff->company?->isApproved()) {

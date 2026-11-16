@@ -488,3 +488,32 @@
 /* Page helpers (formerly inline styles); !important keeps them above the theme layers, as inline styles were. */
 .landing-accent { color:var(--coral) !important }
 .landing-ink { color:#fff !important }
+
+/* Get the app: two app cards, each with its download QR (stacked on phones, where the button matters more). */
+.apps-section { max-width:1100px; margin:4rem auto; padding:0 1.5rem; }
+.apps-heading { text-align:center; max-width:640px; margin:0 auto 2rem; }
+.apps-heading .section-title { margin:0 auto .8rem; }
+.apps-heading .section-note { margin:0 auto; }
+.apps-status { display:inline-block; margin-top:1rem; padding:.45rem .9rem; border-radius:999px; background:var(--green-bg); color:var(--green); font-size:.85rem; font-weight:700; }
+.apps-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:1.25rem; }
+.app-card { position:relative; display:flex; gap:1.5rem; align-items:center; padding:1.5rem; border:1px solid var(--line); border-radius:20px; background:#fff; box-shadow:0 14px 32px rgba(31,35,40,.08); overflow:hidden; transition:transform .25s, box-shadow .25s; }
+.app-card:hover { transform:translateY(-4px); box-shadow:0 20px 40px rgba(31,35,40,.12); }
+.app-card:before { content:''; position:absolute; inset:0 0 auto 0; height:5px; background:var(--coral); }
+.app-card--pickrush:before { background:var(--ink); }
+.app-card-qr { position:relative; flex-shrink:0; width:150px; padding:10px; border-radius:14px; background:#fff; border:1px solid var(--line); }
+.app-card-qr svg { display:block; width:100%; height:auto; }
+.app-card-soon { position:absolute; inset:0; display:grid; place-items:center; border-radius:14px; background:rgba(255,255,255,.88); color:var(--gray-600); font-size:.75rem; font-weight:800; text-transform:uppercase; letter-spacing:.1em; }
+.app-card-body { min-width:0; display:flex; flex-direction:column; align-items:flex-start; gap:.35rem; }
+.app-card-tag { color:var(--coral); font-size:.68rem; font-weight:800; text-transform:uppercase; letter-spacing:.14em; }
+.app-card--pickrush .app-card-tag { color:var(--ink); }
+.app-card-body h3 { margin:0; font-size:1.5rem; font-weight:900; letter-spacing:-.04em; }
+.app-card-body p { margin:0 0 .5rem; color:var(--gray-600); font-size:.9rem; line-height:1.5; }
+.app-card-download { display:inline-flex; align-items:center; gap:.5rem; padding:.65rem 1.1rem; border-radius:999px; background:var(--coral); color:#fff; font-weight:800; font-size:.88rem; text-decoration:none; box-shadow:0 6px 16px rgba(255,111,97,.3); transition:background .2s, transform .2s; }
+.app-card-download:hover { background:var(--coral-dark); transform:translateY(-1px); color:#fff; }
+.app-card--pickrush .app-card-download { background:var(--ink); box-shadow:0 6px 16px rgba(27,27,27,.25); }
+.app-card--pickrush .app-card-download:hover { background:#000; }
+.app-card-download.is-disabled { background:var(--gray-100); color:var(--gray-600); box-shadow:none; cursor:default; }
+.app-card-meta { color:var(--gray-400); font-size:.75rem; font-weight:600; }
+.apps-hint { margin:1.25rem auto 0; max-width:640px; text-align:center; color:var(--gray-600); font-size:.8rem; }
+@media (max-width: 900px) { .apps-grid { grid-template-columns:1fr; } }
+@media (max-width: 520px) { .app-card { flex-direction:column; align-items:stretch; text-align:left; } .app-card-qr { width:140px; } .apps-section { padding:0 1rem; } }

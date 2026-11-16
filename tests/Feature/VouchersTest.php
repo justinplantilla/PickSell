@@ -109,6 +109,41 @@ class VouchersTest extends TestCase
         $this->assertSame(0, Order::count());
     }
 
+    public function test_each_store_takes_a_store_voucher_or_a_product_voucher_on_its_own_card(): void
+    {
+        $a = $this->seller(['business_name' => 'Lamp Shop']);
+        $b = $this->seller(['business_name' => 'Mug Shop']);
+        $buyer = $this->buyer();
+        $lamp = $this->cartLine($buyer, $this->product($a, ['price' => 1000, 'voucher_code' => 'Lamp10', 'voucher_discount' => 10]));
+        $mug = $this->cartLine($buyer, $this->product($b, ['price' => 500]));
+        $storeA = $this->voucher(['seller_id' => $a->id, 'code' => 'LAMPSHOP', 'amount' => 30]);
+        $storeB = $this->voucher(['seller_id' => $b->id, 'code' => 'MUGSHOP', 'amount' => 50]);
+        $ids = [$lamp->id, $mug->id];
+
+        // Each store's card lists its own vouchers; the bottom card is PickSell's only.
+        $this->actingAs($buyer)->get(route('buyer.checkout.start', ['item_ids' => $ids]))->assertOk()
+            ->assertSee('id="store-vouchers-'.$a->id.'"', false)->assertSee('id="store-vouchers-'.$b->id.'"', false)
+            ->assertSee('Lamp10')->assertSee('Have a PickSell voucher code?')->assertDontSee('Product vouchers</p>', false);
+
+        // A product code typed on its store's card picks it (case-sensitive) and drops that store's store voucher.
+        $this->actingAs($buyer)->get(route('buyer.checkout.start', ['item_ids' => $ids, 'store_voucher' => [$a->id => $storeA->id, $b->id => $storeB->id], 'code' => 'Lamp10', 'code_for' => $a->id]))
+            ->assertOk()->assertSee('Product voucher <code>Lamp10</code>', false)->assertSee('-&#8369;100.00', false)->assertSee('name="product_vouchers['.$a->id.']" value="Lamp10"', false)
+            ->assertDontSee('name="store_vouchers['.$a->id.']"', false)->assertSee('name="store_vouchers['.$b->id.']"', false);
+        $this->actingAs($buyer)->get(route('buyer.checkout.start', ['item_ids' => $ids, 'code' => 'Lamp10', 'code_for' => $b->id]))
+            ->assertOk()->assertSee('Lamp10 is not a voucher for this store.');
+        $this->actingAs($buyer)->get(route('buyer.checkout.start', ['item_ids' => $ids, 'code' => 'MUGSHOP', 'code_for' => 'platform']))
+            ->assertOk()->assertSee('MUGSHOP is not a PickSell voucher.');
+
+        // Placing with both for one store is refused; a product voucher on A and a store voucher on B is fine.
+        $this->actingAs($buyer)->post(route('buyer.checkout'), ['item_ids' => $ids, 'product_vouchers' => [$a->id => 'Lamp10'], 'store_vouchers' => [$a->id => $storeA->id]])
+            ->assertSessionHasErrors('vouchers');
+        $this->actingAs($buyer)->post(route('buyer.checkout'), ['item_ids' => $ids, 'product_vouchers' => [$a->id => 'Lamp10'], 'store_vouchers' => [$b->id => $storeB->id]])
+            ->assertRedirect(route('buyer.orders'));
+        $orders = Order::all()->keyBy('seller_id');
+        $this->assertEquals(900, (float) $orders[$a->id]->amount);
+        $this->assertEquals(450, (float) $orders[$b->id]->amount);
+    }
+
     public function test_pickSell_vouchers_lower_what_the_rider_collects_not_the_sellers_sale(): void
     {
         $seller = $this->seller();
@@ -116,7 +151,7 @@ class VouchersTest extends TestCase
         $line = $this->cartLine($buyer, $this->product($seller, ['price' => 1000]));
         $voucher = $this->voucher(['seller_id' => null, 'code' => 'PICK200', 'amount' => 200]);
 
-        $this->actingAs($buyer)->get(route('buyer.checkout.start', ['item_ids' => [$line->id]]))->assertOk()->assertSee('PickSell vouchers')->assertSee('PICK200');
+        $this->actingAs($buyer)->get(route('buyer.checkout.start', ['item_ids' => [$line->id]]))->assertOk()->assertSee('PickSell Vouchers')->assertSee('PICK200');
         $this->actingAs($buyer)->post(route('buyer.checkout'), ['item_ids' => [$line->id], 'platform_voucher' => $voucher->id])->assertRedirect(route('buyer.orders'));
 
         $this->assertEquals(1000, (float) Order::sole()->amount, 'the seller is paid in full');

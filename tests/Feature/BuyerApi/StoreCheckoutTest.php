@@ -52,15 +52,26 @@ class StoreCheckoutTest extends TestCase
         $one = $this->cartLine($buyer, $this->product($a, ['price' => 600, 'voucher_code' => 'ITEM10', 'voucher_discount' => 10]));
         $two = $this->cartLine($buyer, $this->product($a, ['price' => 400]));
         $three = $this->cartLine($buyer, $this->product($b, ['price' => 250]));
-        $store = Voucher::create(['seller_id' => $a->id, 'code' => 'STORE10', 'title' => '10%', 'type' => 'percent', 'amount' => 10, 'is_active' => true, 'per_buyer_limit' => 1]);
+        $storeA = Voucher::create(['seller_id' => $a->id, 'code' => 'STOREA', 'title' => '10%', 'type' => 'percent', 'amount' => 10, 'is_active' => true, 'per_buyer_limit' => 1]);
+        $store = Voucher::create(['seller_id' => $b->id, 'code' => 'STORE10', 'title' => '10%', 'type' => 'percent', 'amount' => 10, 'is_active' => true, 'per_buyer_limit' => 1]);
         $platform = Voucher::create(['code' => 'PLATFORM', 'title' => '50 off', 'type' => 'fixed', 'amount' => 50, 'is_active' => true, 'per_buyer_limit' => 1]);
-        $data = ['item_ids' => [$one->id, $two->id, $three->id], 'voucher_code' => 'ITEM10', 'store_vouchers' => [$a->id => $store->id], 'platform_voucher' => $platform->id];
+        $ids = [$one->id, $two->id, $three->id];
+
+        // A store takes its store voucher or a product voucher, not both.
+        $this->postJson('/api/mobile/buyer/checkout', ['item_ids' => $ids, 'product_vouchers' => [$a->id => 'ITEM10'], 'store_vouchers' => [$a->id => $storeA->id]])
+            ->assertUnprocessable()->assertJsonValidationErrors('vouchers');
+        $this->assertSame([], $this->postJson('/api/mobile/buyer/checkout/quote', ['item_ids' => $ids, 'product_vouchers' => [$a->id => 'ITEM10'], 'store_vouchers' => [$a->id => $storeA->id]])
+            ->assertOk()->json('vouchers.picked.products'));
+
+        // Store A's product voucher, store B's store voucher and a PickSell voucher all count.
+        $data = ['item_ids' => $ids, 'product_vouchers' => [$a->id => 'ITEM10'], 'store_vouchers' => [$b->id => $store->id], 'platform_voucher' => $platform->id];
         $quote = $this->postJson('/api/mobile/buyer/checkout/quote', $data)->assertOk()->json('quote');
         $this->postJson('/api/mobile/buyer/checkout', $data)->assertCreated();
         $orders = Order::with('shipment', 'payment')->get()->keyBy('seller_id');
-        $this->assertEquals(846, $orders[$a->id]->amount);
-        $this->assertEquals(250, $orders[$b->id]->amount);
-        $this->assertEquals(94, $orders[$a->id]->store_discount);
+        $this->assertEquals(940, $orders[$a->id]->amount);
+        $this->assertEquals(225, $orders[$b->id]->amount);
+        $this->assertEquals(0, $orders[$a->id]->store_discount);
+        $this->assertEquals(25, $orders[$b->id]->store_discount);
         foreach ($quote['groups'] as $group) $this->assertEquals($group['total'], $orders[$group['seller']['id']]->payment->amount_due);
         $this->assertDatabaseCount('voucher_redemptions', 2);
         $this->postJson('/api/mobile/buyer/checkout', $data)->assertCreated();

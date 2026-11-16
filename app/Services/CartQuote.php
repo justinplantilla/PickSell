@@ -24,12 +24,15 @@ class CartQuote
     /** @param Collection<int, CartItem> $items lines with product.seller and variation loaded */
     /** $to: where it ships (an address-book entry); the buyer's profile address when null. */
     /** $carriers: the logistics company chosen per seller id; Pickrush (pre-selected) when absent. */
-    public function quote(Collection $items, ?string $voucherCode = null, array $wishlistIds = [], ?User $buyer = null, ?DeliveryAddress $to = null, array $carriers = []): array
+    /** $voucherCode: one product voucher code, or the one picked per store (seller id => code). */
+    public function quote(Collection $items, string|array|null $voucherCode = null, array $wishlistIds = [], ?User $buyer = null, ?DeliveryAddress $to = null, array $carriers = []): array
     {
         $choices = $buyer ? $this->placement->carrierChoices($buyer, $items->filter(fn (CartItem $item) => $item->product), $to, $carriers) : collect();
         $shipping = $choices->map(fn (array $choice) => $choice['quote']);
 
-        $voucherCode = $voucherCode !== null ? trim($voucherCode) : null;
+        // A product voucher counts once per store, on that store's items.
+        $asked = array_filter(is_array($voucherCode) ? array_map('trim', array_map('strval', $voucherCode)) : [trim((string) $voucherCode)]);
+        $voucherCode = OrderPlacement::productCodes($items, is_array($voucherCode) ? null : $voucherCode, is_array($voucherCode) ? $voucherCode : []);
         // Several lines (variations) can draw on the same product's stock, as on the website.
         $wanted = $items->groupBy('product_id')->map(fn ($lines) => $lines->sum('quantity'));
         $wantedOption = $items->whereNotNull('variation_id')->groupBy('variation_id')->map(fn ($lines) => $lines->sum('quantity'));
@@ -74,6 +77,7 @@ class CartQuote
                 'items'        => $sellerLines->map(fn ($line) => collect($line)->except('seller')->all())->values(),
                 'subtotal'     => round($sellerLines->sum('line_total'), 2),
                 'discount'     => round($sellerLines->sum('discount'), 2),
+                'product_voucher' => $voucherCode[$sellerId] ?? null,
                 'shipping_fee' => $quote?->ok() ? (float) $quote->deliveryFee : 0.0,
                 'shipping'     => $quote ? self::shipping($quote, $sellerItems, $choice['company_id']) : null,
                 // The logistics companies this parcel can go with (Pickrush first); 'carrier' is the chosen one.
@@ -91,8 +95,8 @@ class CartQuote
         return [
             'groups'          => $groups,
             'shipping_option' => null,
-            'voucher'         => $matched ? ['code' => $voucherCode, 'title' => 'Product voucher', 'discount' => $discount] : null,
-            'voucher_error'   => $voucherCode && ! $matched ? 'That voucher doesn’t apply to the selected items. Product vouchers are case-sensitive.' : null,
+            'voucher'         => $matched ? ['code' => implode(', ', array_unique($voucherCode)), 'title' => 'Product voucher', 'discount' => $discount] : null,
+            'voucher_error'   => array_diff($asked, $voucherCode) ? 'That voucher doesn’t apply to the selected items. Product vouchers are case-sensitive.' : null,
             'has_issues'      => $shippingProblem || $lines->contains(fn ($line) => $line['issue'] !== null),
             'item_count'      => (int) $lines->sum('quantity'),
             'totals'          => [

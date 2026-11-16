@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Track a Parcel | {{ config('pickrush.portal_name') }}</title>
-    <link rel="icon" type="image/svg+xml" href="{{ asset('images/pickrush-logo.svg') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('images/psl-logo.svg') }}">
     @vite('resources/css/pickrush/public.css')
 </head>
 <body class="prp">

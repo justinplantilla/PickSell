@@ -10,8 +10,16 @@
 @php
     // Every checkout link keeps the items, address and vouchers picked so far, changing only what it says.
     $keep = fn ($v) => $v !== null && $v !== [];
-    $checkoutQuery = array_filter(['item_ids' => $itemIds, 'address_id' => $addressId, 'store_voucher' => $vouchers['picked']['stores'], 'platform_voucher' => $vouchers['picked']['platform'], 'carrier' => $carriers, 'voucher_code' => $productCode], $keep);
+    $checkoutQuery = array_filter(['item_ids' => $itemIds, 'address_id' => $addressId, 'store_voucher' => $vouchers['picked']['stores'], 'platform_voucher' => $vouchers['picked']['platform'], 'carrier' => $carriers, 'product_voucher' => $vouchers['products']], $keep);
     $checkoutLink = fn (array $changes) => route('buyer.checkout.start', array_filter(array_replace($checkoutQuery, $changes), $keep));
+    // A store takes one voucher: its own store voucher or one of its items' product vouchers.
+    $storeLink = fn ($sellerId, ?int $voucherId, ?string $productCode) => $checkoutLink([
+        'store_voucher' => array_filter(array_replace($vouchers['picked']['stores'], [$sellerId => $voucherId])),
+        'product_voucher' => array_filter(array_replace($vouchers['products'], [$sellerId => $productCode])),
+    ]).'#store-vouchers-'.$sellerId;
+    // A typed code form; code_for says whose vouchers it was typed into, so its error shows there.
+    $codeTypedFor = fn ($codeFor) => (string) request('code_for') === (string) $codeFor;
+    $codeQuery = collect($checkoutQuery)->except('code')->all();
 @endphp
 
 <div class="checkout-layout">
@@ -112,13 +120,63 @@
                     </tr>
                     @endforeach
                     @php $storeTotal = $storeTotals[$sellerId]; @endphp
-                    <tr><td colspan="5">
-                        <div class="checkout-ship-total"><span>Store subtotal</span><strong>&#8369;{{ number_format($storeTotal['subtotal'], 2) }}</strong></div>
-                        @if($storeTotal['product_discount'] > 0)<div>Product voucher: -&#8369;{{ number_format($storeTotal['product_discount'], 2) }}</div>@endif
-                        <div>Store voucher: -&#8369;{{ number_format($storeTotal['store_discount'], 2) }} <a href="#store-vouchers-{{ $sellerId }}">Choose voucher</a></div>
-                        <div>Shipping: &#8369;{{ number_format($storeTotal['shipping_fee'], 2) }}</div>
-                        @if($storeTotal['platform_discount'] + $storeTotal['shipping_discount'] > 0)<div>PickSell savings: -&#8369;{{ number_format($storeTotal['platform_discount'] + $storeTotal['shipping_discount'], 2) }}</div>@endif
-                        <div class="checkout-ship-total"><span>Store total / COD</span><strong>&#8369;{{ number_format($storeTotal['total'], 2) }}</strong></div>
+                    <tr class="checkout-store-summary-row"><td colspan="5">
+                        {{-- The store's money: subtotal, its voucher (opens its vouchers), shipping, PickSell savings, then what the rider collects. --}}
+                        <div class="checkout-store-summary">
+                        <div class="checkout-store-line"><span>Store subtotal</span><span>&#8369;{{ number_format($storeTotal['subtotal'], 2) }}</span></div>
+                        @php
+                            $storeOptions = $vouchers['stores'][$sellerId] ?? collect();
+                            $productOptions = $vouchers['productOptions'][$sellerId] ?? collect();
+                            $pickedStore = $vouchers['picked']['stores'][$sellerId] ?? null;
+                            $pickedProduct = $vouchers['products'][$sellerId] ?? null;
+                            $storeName = $store->business_name ?? $store->full_name;
+                        @endphp
+                        {{-- This store's vouchers: its store vouchers and its items' product vouchers, one of them at a time. --}}
+                        <details class="checkout-store-vouchers" id="store-vouchers-{{ $sellerId }}" @if($codeTypedFor($sellerId)) open @endif>
+                            <summary>
+                                <span class="checkout-store-voucher-label">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.41 11.58l-9-9A2 2 0 0 0 11 2H4a2 2 0 0 0-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58s1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41s-.23-1.06-.59-1.42zM5.5 7A1.5 1.5 0 1 1 7 5.5 1.5 1.5 0 0 1 5.5 7z"/></svg>
+                                    @if($pickedProduct) Product voucher <code>{{ $pickedProduct }}</code>
+                                    @elseif($pickedStore) Store voucher <code>{{ $storeOptions->first(fn ($o) => $o['voucher']->id === $pickedStore)['voucher']->code ?? '' }}</code>
+                                    @else Store voucher @endif
+                                </span>
+                                @if($pickedProduct)
+                                    <span class="checkout-store-voucher-picked">-&#8369;{{ number_format($storeTotal['product_discount'], 2) }}</span>
+                                @elseif($pickedStore)
+                                    <span class="checkout-store-voucher-picked">-&#8369;{{ number_format($storeTotal['store_discount'], 2) }}</span>
+                                @else
+                                    <span class="checkout-store-voucher-none">{{ $storeOptions->isEmpty() && $productOptions->isEmpty() ? 'Enter code' : 'Choose voucher' }}</span>
+                                @endif
+                                <svg class="checkout-store-voucher-chevron" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+                            </summary>
+                            <div class="checkout-store-vouchers-body">
+                                @include('buyer.partials.checkout-voucher-code', ['query' => $codeQuery, 'codeFor' => $sellerId, 'label' => 'Have a '.$storeName.' voucher code?', 'placeholder' => 'Store or product code',
+                                    'error' => $codeTypedFor($sellerId) ? $vouchers['error'] : null, 'typed' => $codeTypedFor($sellerId) ? request('code') : null])
+                                <p class="checkout-voucher-hint">One voucher per store: a store voucher or a product voucher.</p>
+                                <div class="checkout-voucher-list">
+                                    @foreach($storeOptions as $option)
+                                    @php $isPicked = $pickedStore === $option['voucher']->id; @endphp
+                                    @include('buyer.partials.voucher-option', ['option' => $option, 'isPicked' => $isPicked, 'scope' => 'for '.$storeName.' items only',
+                                        'href' => $isPicked ? $storeLink($sellerId, null, null) : ($option['problem'] ? '#store-vouchers-'.$sellerId : $storeLink($sellerId, $option['voucher']->id, null))])
+                                    @endforeach
+                                    @foreach($productOptions as $product)
+                                    @php $isPicked = $pickedProduct === $product['code']; @endphp
+                                    <a class="checkout-voucher-option voucher-ticket {{ $isPicked ? 'selected' : '' }}" href="{{ $isPicked ? $storeLink($sellerId, null, null) : $storeLink($sellerId, null, $product['code']) }}" @if($isPicked) aria-current="true" @endif>
+                                        <div class="checkout-voucher-info">
+                                            <span class="voucher-ticket-amount">{{ rtrim(rtrim(number_format($product['percent'], 2), '0'), '.') }}% off · {{ $product['code'] }}</span>
+                                            <span class="checkout-voucher-desc">Product voucher for <strong>{{ $product['product'] }}</strong></span>
+                                        </div>
+                                        <div class="voucher-ticket-side"><span class="checkout-voucher-savings">{{ $isPicked ? 'Remove' : '−₱'.number_format($product['discount'], 2) }}</span></div>
+                                    </a>
+                                    @endforeach
+                                </div>
+                                @if($storeOptions->isEmpty() && $productOptions->isEmpty())<p class="checkout-voucher-empty">No vouchers from this store for these items.</p>@endif
+                            </div>
+                        </details>
+                        <div class="checkout-store-line"><span>Shipping</span><span>&#8369;{{ number_format($storeTotal['shipping_fee'], 2) }}</span></div>
+                        @if($storeTotal['platform_discount'] + $storeTotal['shipping_discount'] > 0)<div class="checkout-store-line is-saving"><span>PickSell savings</span><span>-&#8369;{{ number_format($storeTotal['platform_discount'] + $storeTotal['shipping_discount'], 2) }}</span></div>@endif
+                        <div class="checkout-store-line is-total"><span>Store total <small>Cash on Delivery</small></span><strong>&#8369;{{ number_format($storeTotal['total'], 2) }}</strong></div>
+                        </div>
                     </td></tr>
                     <tr class="checkout-note-row">
                         <td colspan="5">
@@ -183,47 +241,17 @@
             </div>
         </div>
 
-        {{-- Voucher Picker --}}
-        @php
-            $voucherProducts = $items->filter(fn($i) => $i->product->voucher_code && $i->product->voucher_discount > 0);
-        @endphp
+        {{-- PickSell vouchers: one per checkout, paid by PickSell (store and product vouchers are on each store above). --}}
         <div class="card checkout-voucher-card" id="vouchers">
             <div class="card-header">
-                <span class="card-title checkout-card-title"><svg class="checkout-title-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 10V6c0-1.11-.9-2-2-2H4c-1.1 0-1.99.89-1.99 2v4c1.1 0 1.99.9 1.99 2s-.89 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2zm-9 7.5h-2v-2h2v2zm0-4.5h-2v-2h2v2zm0-4.5h-2v-2h2v2z"/></svg> Vouchers</span>
+                <span class="card-title checkout-card-title"><svg class="checkout-title-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 10V6c0-1.11-.9-2-2-2H4c-1.1 0-1.99.89-1.99 2v4c1.1 0 1.99.9 1.99 2s-.89 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2zm-9 7.5h-2v-2h2v2zm0-4.5h-2v-2h2v2zm0-4.5h-2v-2h2v2z"/></svg> PickSell Vouchers</span>
             </div>
             <div class="card-body">
-                {{-- A typed code picks the store or PickSell voucher it belongs to. --}}
-                <form method="GET" action="{{ route('buyer.checkout.start') }}" class="checkout-voucher-code">
-                    @foreach(collect($checkoutQuery)->except('code') as $key => $value)
-                        @foreach((array) $value as $sub => $v)
-                            <input type="hidden" name="{{ is_array($value) ? $key.'['.$sub.']' : $key }}" value="{{ $v }}">
-                        @endforeach
-                    @endforeach
-                    <label for="voucherCode" class="checkout-voucher-hint">Have a voucher code?</label>
-                    <div class="checkout-voucher-code-row">
-                        <input type="text" id="voucherCode" name="code" class="form-control" maxlength="30" placeholder="e.g. SAVE50" value="{{ request('code') }}">
-                        <button type="submit" class="btn btn-outline btn-sm">Apply</button>
-                    </div>
-                    @if($vouchers['error'])<p class="checkout-voucher-error" role="alert">{{ $vouchers['error'] }}</p>@endif
-                </form>
-
-                {{-- Store vouchers: one per store, paid by the store. --}}
-                @foreach($vouchers['stores'] as $sellerId => $options)
-                    @continue($options->isEmpty())
-                    @php $store = $items->firstWhere('product.seller_id', $sellerId)->product->seller; $pickedId = $vouchers['picked']['stores'][$sellerId] ?? null; @endphp
-                    <p id="store-vouchers-{{ $sellerId }}" class="checkout-voucher-hint">{{ $store->business_name ?? $store->full_name }} vouchers</p>
-                    <div class="checkout-voucher-list">
-                        @foreach($options as $option)
-                        @php $isPicked = $pickedId === $option['voucher']->id; @endphp
-                        @include('buyer.partials.voucher-option', ['option' => $option, 'isPicked' => $isPicked, 'scope' => 'for '.($store->business_name ?? $store->full_name).' items only',
-                            'href' => $isPicked ? $checkoutLink(['store_voucher' => array_diff_key($vouchers['picked']['stores'], [$sellerId => 0])]) : ($option['problem'] ? '#vouchers' : $checkoutLink(['store_voucher' => array_replace($vouchers['picked']['stores'], [$sellerId => $option['voucher']->id])]))])
-                        @endforeach
-                    </div>
-                @endforeach
-
-                {{-- PickSell vouchers: one per checkout, paid by PickSell. --}}
+                @include('buyer.partials.checkout-voucher-code', ['query' => $codeQuery, 'codeFor' => 'platform', 'label' => 'Have a PickSell voucher code?', 'placeholder' => 'e.g. SAVE50',
+                    'error' => $codeTypedFor('platform') ? $vouchers['error'] : null, 'typed' => $codeTypedFor('platform') ? request('code') : null])
+                {{-- Any other voucher problem (e.g. a picked voucher no longer usable). --}}
+                @if($vouchers['error'] && ! request('code_for'))<p class="checkout-voucher-error" role="alert">{{ $vouchers['error'] }}</p>@endif
                 @if($vouchers['platform']->isNotEmpty())
-                    <p class="checkout-voucher-hint">PickSell vouchers</p>
                     <div class="checkout-voucher-list">
                         @foreach($vouchers['platform'] as $option)
                         @php $isPicked = $vouchers['picked']['platform'] === $option['voucher']->id; @endphp
@@ -231,38 +259,8 @@
                             'href' => $isPicked ? $checkoutLink(['platform_voucher' => null]) : ($option['problem'] ? '#vouchers' : $checkoutLink(['platform_voucher' => $option['voucher']->id]))])
                         @endforeach
                     </div>
-                @endif
-
-                @if($voucherProducts->isEmpty())
-                    @if($vouchers['stores']->every->isEmpty() && $vouchers['platform']->isEmpty())
-                    <p class="checkout-voucher-empty">No vouchers available for your selected items.</p>
-                    @endif
                 @else
-                    <p class="checkout-voucher-hint">Product vouchers</p>
-                    <div class="checkout-voucher-list" id="voucherList">
-                        <label class="checkout-voucher-option checkout-voucher-none">
-                            <input type="radio" name="voucher_pick" value="" @checked(! $productCode) data-url="{{ $checkoutLink(['voucher_code' => null]) }}" data-discount="0" data-base-total="{{ $total + $shippingTotal - $vouchers['total'] - $productSaving }}">
-                            <div class="checkout-voucher-info">
-                                <span class="checkout-voucher-label">No voucher</span>
-                                <span class="checkout-voucher-desc">Use full price</span>
-                            </div>
-                        </label>
-                        @foreach($voucherProducts as $item)
-                        <label class="checkout-voucher-option">
-                            <input type="radio" name="voucher_pick"
-                                value="{{ $item->product->voucher_code }}" @checked($productCode === $item->product->voucher_code) data-url="{{ $checkoutLink(['voucher_code' => $item->product->voucher_code]) }}"
-                                data-discount="{{ $item->product->voucher_discount }}"
-                                data-item-subtotal="{{ $item->subtotal }}"
-                                data-base-total="{{ $total + $shippingTotal - $vouchers['total'] - $productSaving }}">
-                            <div class="checkout-voucher-badge">{{ $item->product->voucher_discount }}% OFF</div>
-                            <div class="checkout-voucher-info">
-                                <span class="checkout-voucher-label">{{ $item->product->voucher_code }}</span>
-                                <span class="checkout-voucher-desc">{{ $item->product->voucher_discount }}% off on <strong>{{ $item->product->name }}</strong></span>
-                            </div>
-                            <span class="checkout-voucher-savings">−₱{{ number_format($item->subtotal * $item->product->voucher_discount / 100, 2) }}</span>
-                        </label>
-                        @endforeach
-                    </div>
+                    <p class="checkout-voucher-empty">No PickSell vouchers right now.</p>
                 @endif
             </div>
         </div>
@@ -280,7 +278,9 @@
                     @foreach($itemIds as $id)
                         <input type="hidden" name="item_ids[]" value="{{ $id }}">
                     @endforeach
-                    <input type="hidden" name="voucher_code" id="voucherCodeInput" value="{{ $productCode }}">
+                    @foreach($vouchers['products'] as $sellerId => $code)
+                        <input type="hidden" name="product_vouchers[{{ $sellerId }}]" value="{{ $code }}">
+                    @endforeach
                     @if($addressId)<input type="hidden" name="address_id" value="{{ $addressId }}">@endif
                     @foreach($vouchers['picked']['stores'] as $sellerId => $voucherId)
                         <input type="hidden" name="store_vouchers[{{ $sellerId }}]" value="{{ $voucherId }}">
@@ -318,13 +318,14 @@
                         <span class="checkout-discount-val">−₱{{ number_format($vouchers['platformSaving'], 2) }}</span>
                     </div>
                     @endif
-                    <div class="checkout-summary-row checkout-discount-row" id="discountRow" style="display:none">
-                        <span>Product voucher</span>
-                        <span class="checkout-discount-val" id="summaryDiscount"></span>
+                    @if($productSaving > 0)
+                    <div class="checkout-summary-row checkout-discount-row">
+                        <span>Product vouchers</span>
+                        <span class="checkout-discount-val">−₱{{ number_format($productSaving, 2) }}</span>
                     </div>
+                    @endif
                     <hr class="cart-divider">
-                    @if($productSaving > 0)<div class="cart-row"><span>Product voucher</span><span>-&#8369;{{ number_format($productSaving, 2) }}</span></div>@endif
-                    <p class="form-hint">Each store has a separate order and COD amount. Pay only for parcels delivered.</p>
+                    <p class="form-hint checkout-cod-note">Each store has a separate order and COD amount. Pay only for parcels delivered.</p>
                     <div class="cart-row-5">
                         <span>Total</span>
                         <span class="cart-accent" id="summaryTotal">₱{{ number_format($total + $shippingTotal - $vouchers['total'] - $productSaving, 2) }}</span>
@@ -378,10 +379,14 @@ document.addEventListener('click', (event) => {
     update();
 })();
 
-document.querySelectorAll('input[name="voucher_pick"]').forEach(radio => {
-    radio.addEventListener('change', function () {
-        window.location.assign(this.dataset.url);
-    });
-});
+// A store's vouchers stay open after picking one there (its links end in #store-vouchers-{seller}).
+(function () {
+    const open = () => {
+        const panel = location.hash.startsWith('#store-vouchers-') && document.querySelector(location.hash);
+        if (panel) { panel.open = true; panel.scrollIntoView({ block: 'center' }); }
+    };
+    window.addEventListener('hashchange', open);
+    open();
+})();
 </script>
 @endsection

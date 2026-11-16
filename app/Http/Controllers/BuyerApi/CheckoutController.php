@@ -26,16 +26,18 @@ class CheckoutController extends Controller
         return response()->json(['payment_methods' => config('buyer-api.payment_methods')]);
     }
 
-    /** POST /buyer/checkout/quote {item_ids[], voucher_code?, address_id?, store_vouchers?: {seller_id: id}, platform_voucher?, code?, carriers?: {seller_id: company_id}} */
+    /** POST /buyer/checkout/quote {item_ids[], voucher_code?, product_vouchers?: {seller_id: code}, address_id?, store_vouchers?: {seller_id: id}, platform_voucher?, code?, code_for?: platform|seller_id, carriers?: {seller_id: company_id}} */
     public function quote(Request $request)
     {
-        $data = $request->validate($this->rules($request) + ['code' => 'nullable|string|max:30']);
+        $data = $request->validate($this->rules($request) + ['code' => 'nullable|string|max:30', 'code_for' => ['nullable', 'regex:/^(platform|\d+)$/']]);
         $buyer = $request->user();
         $to = DeliveryAddress::forBuyer($buyer, $data['address_id'] ?? null);
         $items = $this->placement->items($buyer, $data['item_ids']);
-        $quote = $this->quote->quote($items, $data['voucher_code'] ?? null, buyer: $buyer, to: $to, carriers: $data['carriers'] ?? []);
-        $vouchers = $this->vouchers->pick($buyer, $items->filter(fn ($item) => $item->product), (float) $quote['totals']['shipping_total'],
-            ['stores' => $data['store_vouchers'] ?? [], 'platform' => $data['platform_voucher'] ?? null], $data['code'] ?? null, $data['voucher_code'] ?? null);
+        $priced = $items->filter(fn ($item) => $item->product);
+        $resolved = $this->vouchers->resolve($priced, ['stores' => $data['store_vouchers'] ?? [], 'platform' => $data['platform_voucher'] ?? null],
+            $data['code'] ?? null, $data['product_vouchers'] ?? [], $data['voucher_code'] ?? null, $data['code_for'] ?? null);
+        $quote = $this->quote->quote($items, $resolved['products'], buyer: $buyer, to: $to, carriers: $data['carriers'] ?? []);
+        $vouchers = $this->vouchers->pick($buyer, $priced, (float) $quote['totals']['shipping_total'], $resolved);
         $storeTotals = $this->vouchers->storeTotals($quote, $vouchers);
         $quote['groups'] = collect($quote['groups'])->map(fn ($g) => array_merge($g, $storeTotals[$g['seller']['id']]));
 
@@ -47,7 +49,7 @@ class CheckoutController extends Controller
         ]);
     }
 
-    /** POST /buyer/checkout {item_ids[], voucher_code?, address_id?, store_vouchers?, platform_voucher?, carriers?, payment_method?: cod} — one order per cart line. */
+    /** POST /buyer/checkout {item_ids[], voucher_code?, product_vouchers?, address_id?, store_vouchers?, platform_voucher?, carriers?, payment_method?: cod} — one order per cart line. */
     public function place(Request $request)
     {
         $data = $request->validate($this->rules($request) + [
@@ -65,7 +67,7 @@ class CheckoutController extends Controller
         }
 
         // The vouchers are checked again here (a 422 on "vouchers" when one can no longer be used).
-        $orders = $this->placement->place($buyer, $data['item_ids'], $data['voucher_code'] ?? null, $to, [],
+        $orders = $this->placement->place($buyer, $data['item_ids'], isset($data['product_vouchers']) ? array_filter($data['product_vouchers']) : ($data['voucher_code'] ?? null), $to, [],
             ['stores' => $data['store_vouchers'] ?? [], 'platform' => $data['platform_voucher'] ?? null], $data['carriers'] ?? [], $data['checkout_key'] ?? null);
         $orders->load('seller', 'product', 'shipment');
         $shipments = $orders->pluck('shipment')->filter()->unique('id');
@@ -89,6 +91,9 @@ class CheckoutController extends Controller
             'item_ids.*'       => 'integer|distinct',
             'checkout_key' => 'nullable|string|max:100',
             'voucher_code'     => 'nullable|string|max:50',
+            // The product voucher picked per store (seller id => code), instead of a store voucher.
+            'product_vouchers'   => 'nullable|array',
+            'product_vouchers.*' => 'nullable|string|max:50',
             // Null or absent: the profile (default) address. Only the buyer's own address-book entries.
             'address_id'       => ['nullable', 'integer', Rule::exists('buyer_addresses', 'id')->where('user_id', $request->user()->id)],
             // One store voucher per store, keyed by seller id, and one PickSell voucher (as on the website).

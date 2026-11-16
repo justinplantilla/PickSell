@@ -18,17 +18,21 @@ class AdminVouchersTest extends TestCase
         $admin = $this->admin();
 
         $this->actingAs($admin)->post(route('admin.vouchers.store'), [
-            'code' => 'freeship-weekend', 'title' => 'Free shipping weekend', 'type' => 'free_shipping', 'max_discount' => 150,
+            'code' => 'weekend10', 'title' => 'Weekend sale', 'type' => 'percent', 'amount' => 10, 'max_discount' => 150,
             'per_buyer_limit' => 2, 'starts_at' => '2026-11-07 00:00', 'ends_at' => '2026-11-08 23:59', 'is_active' => 1,
         ])->assertSessionHasNoErrors();
 
         $voucher = Voucher::sole();
         $this->assertNull($voucher->seller_id);
-        $this->assertSame(['FREESHIP-WEEKEND', 'free_shipping', '0.00'], [$voucher->code, $voucher->type, $voucher->amount]);
+        $this->assertSame(['WEEKEND10', 'percent', '10.00'], [$voucher->code, $voucher->type, $voucher->amount]);
         $this->assertSame(1, AuditLog::where('action', 'voucher.created')->count());
 
         $this->actingAs($admin)->get(route('admin.vouchers'))->assertOk()
-            ->assertSee('FREESHIP-WEEKEND')->assertSee('Free shipping up to ₱150')->assertSee('Starts Nov 7');
+            ->assertSee('WEEKEND10')->assertSee('Starts Nov 7')->assertDontSee('value="free_shipping"', false);
+
+        // Free shipping is not a kind admins can pick any more.
+        $this->actingAs($admin)->post(route('admin.vouchers.store'), ['code' => 'FREESHIP', 'title' => 'Free', 'type' => 'free_shipping', 'per_buyer_limit' => 1])
+            ->assertSessionHasErrors('type');
 
         // A store voucher is the seller's, not editable here.
         $store = Voucher::create(['seller_id' => $this->seller()->id, 'code' => 'MINE', 'title' => 'Mine', 'type' => 'fixed', 'amount' => 10, 'per_buyer_limit' => 1]);

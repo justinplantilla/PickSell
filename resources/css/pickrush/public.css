@@ -465,3 +465,24 @@ select.prp-input:disabled, .prp-input[readonly] { opacity: .65; cursor: not-allo
     .prr-section { padding: 18px 16px; }
 }
 .prr-status .prp-btn-dark { border: 1.5px solid rgba(246, 243, 238, .35); }
+
+/* Get the apps: a card per app with its download QR on a white tile (scanners need light around dark). */
+.prp-apps { padding-bottom: 96px; }
+.prp-apps .prp-section-head { display: flex; flex-direction: column; gap: 12px; margin-bottom: 32px; }
+.prp-apps-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.prp-app { position: relative; display: flex; align-items: center; gap: 24px; padding: 24px; border: 1px solid var(--prp-line); border-radius: 18px; background: var(--prp-surface); overflow: hidden; transition: transform .25s var(--prp-ease-out), border-color .25s; }
+.prp-app:hover { transform: translateY(-4px); border-color: rgba(246, 243, 238, .22); }
+.prp-app::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 4px; background: var(--prp-coral); }
+.prp-app--picksell::before { background: var(--prp-bone); }
+.prp-app-qr { position: relative; flex-shrink: 0; width: 148px; padding: 10px; border-radius: 12px; background: #fff; }
+.prp-app-qr svg { display: block; width: 100%; height: auto; }
+.prp-app-soon { position: absolute; inset: 0; display: grid; place-items: center; border-radius: 12px; background: rgba(255, 255, 255, .9); color: #57534e; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.prp-app-body { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.prp-app-tag { color: var(--prp-coral-text); font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.prp-app--picksell .prp-app-tag { color: var(--prp-muted); }
+.prp-app-body h3 { margin: 0; font-size: 26px; letter-spacing: -.02em; }
+.prp-app-body p { margin: 0 0 8px; color: var(--prp-text-soft); font-size: 15px; line-height: 1.55; }
+.prp-app-meta { color: var(--prp-muted); font-size: 13px; }
+.prp-apps-hint { margin: 20px 0 0; color: var(--prp-muted); font-size: 14px; }
+@media (max-width: 900px) { .prp-apps-grid { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .prp-app { flex-direction: column; align-items: stretch; } .prp-app-qr { width: 140px; } }

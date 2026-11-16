@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('pickrush.portal_name') }} | Delivery partners of PickSell</title>
-    <link rel="icon" type="image/svg+xml" href="{{ asset('images/pickrush-logo.svg') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('images/psl-logo.svg') }}">
     <meta name="description" content="Logistics companies deliver PickSell orders through their province and station hubs, then a local rider brings each one home.">
     @vite(['resources/css/pickrush/public.css', 'resources/js/pickrush/landing.js'])
 </head>
@@ -19,6 +19,7 @@
             <a href="#how">How it works</a>
             <a href="#track">Track a parcel</a>
             <a href="#partners">Partners</a>
+            <a href="#apps">Get the app</a>
             <a href="{{ route('pickrush.register') }}">Register</a>
             <a class="prp-btn prp-btn-sm" href="{{ route('pickrush.login') }}">Staff sign-in <svg class="prp-btn-arrow" aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg></a>
         </nav>
@@ -96,11 +97,7 @@
             <p>Register your logistics company. Once a PickSell administrator approves it, you run your own hubs, staff and riders, set your own rates, and buyers can choose you at checkout.</p>
             <div class="prp-actions">
                 <a class="prp-btn" href="{{ route('pickrush.register') }}">Register your company</a>
-                @if(config('pickrush.rider_app_url'))
-                    <a class="prp-btn-ghost" href="{{ config('pickrush.rider_app_url') }}" rel="noopener">Get the rider app</a>
-                @else
-                    <a class="prp-btn-ghost" href="#how">See how it works</a>
-                @endif
+                <a class="prp-btn-ghost" href="#apps">Get the rider app</a>
             </div>
         </div>
         <ul class="prp-perks" data-reveal style="--reveal-delay: .15s">
@@ -108,6 +105,39 @@
             <li><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21V9l9-6 9 6v12M9 21v-6h6v6"/></svg>Your own hubs, staff and riders</li>
             <li><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M10 17h4"/></svg>Riders apply to your company in the rider app</li>
         </ul>
+    </section>
+
+    {{-- Get the apps: Pickrush (riders) first here, then the PickSell marketplace; scan or tap to download the APK. --}}
+    <section class="prp-wrap prp-section prp-apps" id="apps">
+        <div class="prp-section-head" data-reveal>
+            <h2>Get the apps</h2>
+            <p>Scan a code with your phone camera to download the Android app, or tap Download APK on your phone.</p>
+        </div>
+        <div class="prp-apps-grid">
+            @foreach(collect($apps)->sortBy(fn ($app) => $app['key'] === 'pickrush' ? 0 : 1) as $app)
+            <article class="prp-app prp-app--{{ $app['key'] }}" data-reveal style="--reveal-delay: {{ $loop->index * .12 }}s">
+                <div class="prp-app-qr">
+                    {!! $app['qr'] !!}
+                    @unless($app['available'])<span class="prp-app-soon">Coming soon</span>@endunless
+                </div>
+                <div class="prp-app-body">
+                    <span class="prp-app-tag">{{ $app['tagline'] }}</span>
+                    <h3>{{ $app['name'] }}</h3>
+                    <p>{{ $app['description'] }}</p>
+                    @if($app['available'])
+                        <a class="prp-btn prp-btn-sm" href="{{ $app['url'] }}" download>
+                            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>
+                            Download APK
+                        </a>
+                        <small class="prp-app-meta">Android · {{ $app['size'] }}</small>
+                    @else
+                        <span class="prp-app-meta">Coming soon</span>
+                    @endif
+                </div>
+            </article>
+            @endforeach
+        </div>
+        <p class="prp-apps-hint">Open the downloaded file to install. If Android asks, allow installs from your browser. iPhone apps are not available yet.</p>
     </section>
 </main>
 

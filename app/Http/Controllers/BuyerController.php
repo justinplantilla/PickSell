@@ -443,21 +443,18 @@ class BuyerController extends Controller
         $carriers = $shipping->map(fn ($parcel) => $parcel['carrier'])->all();
         $shippingTotal = $shipping->where('ok', true)->sum(fn ($parcel) => (float) $parcel['delivery_fee']);
         $canPlace = $deliverTo->isComplete() && $shipping->every(fn ($parcel) => $parcel['ok']);
-        $productCode = $request->query('voucher_code');
-        $quote = app(CartQuote::class)->quote($items, $productCode, buyer: $this->buyer(), to: $deliverTo, carriers: $carriers);
-        $vouchers = $this->checkoutVouchers($request, $items, $shippingTotal);
-        $storeTotals = app(CheckoutVouchers::class)->storeTotals($quote, $vouchers);
+        // The checkout's vouchers from the page's store_voucher[seller], product_voucher[seller], platform_voucher
+        // and code (typed on a store's vouchers or PickSell's: code_for), plus a product page's voucher_code (CheckoutVouchers): one store or product voucher per store.
+        $checkoutVouchers = app(CheckoutVouchers::class);
+        $resolved = $checkoutVouchers->resolve($items, ['stores' => (array) $request->query('store_voucher', []), 'platform' => $request->query('platform_voucher')],
+            (string) $request->query('code', ''), array_filter((array) $request->query('product_voucher', []), 'is_string'), $request->query('voucher_code'),
+            in_array($codeFor = $request->query('code_for'), ['platform'], true) || ctype_digit((string) $codeFor) ? $codeFor : null);
+        $quote = app(CartQuote::class)->quote($items, $resolved['products'], buyer: $this->buyer(), to: $deliverTo, carriers: $carriers);
+        $vouchers = $checkoutVouchers->pick($this->buyer(), $items, $shippingTotal, $resolved);
+        $storeTotals = $checkoutVouchers->storeTotals($quote, $vouchers);
         $productSaving = $quote['totals']['discount_total'];
 
-        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount', 'shipping', 'shippingTotal', 'canPlace', 'addresses', 'addressId', 'deliverTo', 'vouchers', 'carriers', 'storeTotals', 'productCode', 'productSaving'));
-    }
-
-    /** The checkout's vouchers from the page's store_voucher[seller], platform_voucher and code (CheckoutVouchers). */
-    private function checkoutVouchers(Request $request, $items, float $shippingTotal): array
-    {
-        return app(CheckoutVouchers::class)->pick($this->buyer(), $items, $shippingTotal,
-            ['stores' => (array) $request->query('store_voucher', []), 'platform' => $request->query('platform_voucher')],
-            (string) $request->query('code', ''), $request->query('voucher_code'));
+        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount', 'shipping', 'shippingTotal', 'canPlace', 'addresses', 'addressId', 'deliverTo', 'vouchers', 'carriers', 'storeTotals', 'productSaving'));
     }
 
     public function updateCart(Request $request, CartItem $item)
@@ -489,6 +486,8 @@ class BuyerController extends Controller
             'item_ids.*' => 'integer|distinct',
             'checkout_key' => 'nullable|string|max:100',
             'voucher_code' => 'nullable|string',
+            'product_vouchers' => 'nullable|array',
+            'product_vouchers.*' => 'nullable|string|max:50',
             'address_id' => 'nullable|integer',
             'notes' => 'nullable|array',
             'notes.*' => 'nullable|string|max:300',
@@ -500,7 +499,7 @@ class BuyerController extends Controller
         ], ['notes.*.max' => 'Keep each note to the seller under 300 characters.']);
 
         try {
-            $placement->place($this->buyer(), $data['item_ids'], $data['voucher_code'] ?? null,
+            $placement->place($this->buyer(), $data['item_ids'], isset($data['product_vouchers']) ? array_filter($data['product_vouchers']) : ($data['voucher_code'] ?? null),
                 DeliveryAddress::forBuyer($this->buyer(), $data['address_id'] ?? null), $data['notes'] ?? [],
                 ['stores' => $data['store_vouchers'] ?? [], 'platform' => $data['platform_voucher'] ?? null], $data['carriers'] ?? [], $data['checkout_key'] ?? null);
         } catch (ValidationException $exception) {

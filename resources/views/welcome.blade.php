@@ -22,6 +22,40 @@
     <section id="why-it-works" class="trust-section reveal"><div class="trust-heading"><div class="section-kicker">Why it works</div><h2 class="section-title">Confidence built into every order.</h2><p class="section-note">Every part of the journey is designed to keep buyers, sellers, and couriers protected.</p></div><div class="trust-grid"><article class="trust-card"><div class="trust-icon">✓</div><strong class="trust-card-title">Verified Sellers</strong><p class="trust-card-desc">Sellers go through identity and business checks before listing.</p></article><article class="trust-card"><div class="trust-icon">▣</div><strong class="trust-card-title">Secure Checkout</strong><p class="trust-card-desc">Payments are handled through clear and protected checkout steps.</p></article><article class="trust-card"><div class="trust-icon">⌂</div><strong class="trust-card-title">Buyer Protection</strong><p class="trust-card-desc">Support is available if an order does not arrive as described.</p></article><article class="trust-card"><div class="trust-icon">◷</div><strong class="trust-card-title">Order Tracking</strong><p class="trust-card-desc">Follow an order from packing to sorting to your doorstep.</p></article><article class="trust-card"><div class="trust-icon">↗</div><strong class="trust-card-title">Integrated Sorting</strong><p class="trust-card-desc">A dedicated center routes every order to the right courier.</p></article><article class="trust-card"><div class="trust-icon">→</div><strong class="trust-card-title">Reliable Delivery</strong><p class="trust-card-desc">Couriers pick up straight from sorting for a direct route.</p></article></div></section>
     <section class="landing-section reveal"><div class="section-heading"><div><div class="section-kicker">Hand-picked for you</div><h2 class="section-title">Featured <span class="landing-accent">products.</span></h2></div><p class="section-note">A few good things to get you started. There is more waiting in the marketplace.</p></div><div class="landing-products">@forelse($featuredProducts as $product)<article class="landing-product"><div class="landing-product-image">@if($product->primary_image)<img src="{{ Storage::url($product->primary_image) }}" alt="{{ $product->name }}" loading="lazy">@else<span class="landing-product-placeholder" aria-hidden="true">{{ strtoupper(mb_substr($product->name, 0, 1)) }}</span>@endif<div class="landing-product-details"><small>{{ $product->category }}</small><strong>{{ $product->name }}</strong><span>₱{{ number_format($product->effective_price, 2) }} · Limited-time offer</span></div></div><div class="landing-product-body"><strong>{{ $product->name }}</strong><span class="landing-product-price">₱{{ number_format($product->effective_price, 2) }}</span>@if($product->discount > 0)<span class="landing-product-old">₱{{ number_format($product->price, 2) }}</span>@endif<a href="/shop?cat={{ urlencode(strtolower($product->category)) }}" class="landing-product-link">View product <span aria-hidden="true">→</span></a></div></article>@empty<p class="section-note">Featured products are coming soon.</p>@endforelse</div></section>
     <section class="browse-cta reveal"><div><div class="section-kicker">Ready to explore?</div><h2>Browse the marketplace before you sign in.</h2><p>Discover available products and categories without getting stuck on the landing page.</p></div><a href="/shop" class="landing-action landing-primary">Go to shop</a></section>
+    {{-- Get the app: scan a QR (or tap, on a phone) to download the Android apps as APKs. --}}
+    <section id="get-the-app" class="apps-section reveal">
+        <div class="apps-heading">
+            <div class="section-kicker">Get the app</div>
+            <h2 class="section-title">Scan, install, <span class="landing-accent">go.</span></h2>
+            <p class="section-note">Point your phone camera at a code to download the Android app. On your phone already? Tap the download button.</p>
+            @if(session('status'))<p class="apps-status" role="status">{{ session('status') }}</p>@endif
+        </div>
+        <div class="apps-grid">
+            @foreach($apps as $app)
+            <article class="app-card app-card--{{ $app['key'] }}">
+                <div class="app-card-qr">
+                    {!! $app['qr'] !!}
+                    @unless($app['available'])<span class="app-card-soon">Coming soon</span>@endunless
+                </div>
+                <div class="app-card-body">
+                    <span class="app-card-tag">{{ $app['tagline'] }}</span>
+                    <h3>{{ $app['name'] }}</h3>
+                    <p>{{ $app['description'] }}</p>
+                    @if($app['available'])
+                        <a href="{{ $app['url'] }}" class="app-card-download" download>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.6 9.48l1.84-3.18a.38.38 0 0 0-.66-.38l-1.86 3.22A11.4 11.4 0 0 0 12 8.15c-1.79 0-3.46.38-4.92 1-1.86-3.23-1.86-3.23-1.86-3.23a.38.38 0 0 0-.66.38L6.4 9.48A10.8 10.8 0 0 0 1 18h22a10.8 10.8 0 0 0-5.4-8.52zM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5z"/></svg>
+                            Download APK
+                        </a>
+                        <small class="app-card-meta">Android · {{ $app['size'] }}</small>
+                    @else
+                        <span class="app-card-download is-disabled" aria-disabled="true">Coming soon</span>
+                    @endif
+                </div>
+            </article>
+            @endforeach
+        </div>
+        <p class="apps-hint">Installing an APK: open the downloaded file and, if Android asks, allow installs from your browser. iPhone apps are not available yet.</p>
+    </section>
     <section id="get-started" class="cta-section reveal"><div class="section-kicker landing-ink">Your next move starts here</div><h2>Be part of PickSell.</h2><p>Enter your email once and continue with a prefilled buyer or seller application.</p><form class="cta-form" action="/register" method="GET" data-normalize-email style="position:relative;z-index:3;pointer-events:auto"><input type="email" name="email" placeholder="Enter your email address" aria-label="Email address" required style="color:#1b1b1b!important;background:#fff!important;caret-color:#e8472a!important;-webkit-text-fill-color:#1b1b1b!important"><button type="submit">Continue sign up</button></form></section>
 </main>
 @endsection

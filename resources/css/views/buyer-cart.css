@@ -184,7 +184,33 @@ a.checkout-voucher-option { text-decoration: none; color: inherit; }
 .checkout-voucher-code { margin-bottom: 1rem; }
 .checkout-voucher-code label { display: block; margin-bottom: 0.4rem; }
 .checkout-voucher-code-row { display: flex; gap: 0.5rem; }
-.checkout-voucher-code-row .form-control { flex: 1; min-width: 0; text-transform: uppercase; }
+.checkout-voucher-code-row .form-control { flex: 1; min-width: 0; }
+/* A store's totals under its items: a soft panel of label/amount lines, ending in its COD total. */
+.checkout-store-summary-row > td { padding-top: 0.5rem; padding-bottom: 0.75rem; }
+.checkout-store-summary { background: #faf8f4; border: 1px solid #efe8dd; border-radius: 14px; padding: 0.6rem 0.9rem; display: flex; flex-direction: column; gap: 0.15rem; }
+.checkout-store-line { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: 0.3rem 0; font-size: 0.86rem; color: #667085; }
+.checkout-store-line > span:last-child { color: var(--charcoal); font-weight: 600; font-variant-numeric: tabular-nums; }
+.checkout-store-line.is-saving > span:last-child { color: #16a34a; }
+.checkout-store-line.is-total { margin-top: 0.35rem; padding-top: 0.65rem; border-top: 1px dashed #e2d9cc; color: var(--charcoal); font-weight: 700; }
+.checkout-store-line.is-total small { display: block; font-weight: 500; font-size: 0.72rem; color: #98a2b3; }
+.checkout-store-line.is-total strong { color: var(--coral); font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+/* Each store's vouchers (store or product, one at a time), opened from its voucher line. */
+.checkout-store-vouchers { margin: 0.3rem 0; background: #fff; border: 1px dashed #f0b8a8; border-radius: 10px; transition: border-color 0.15s, box-shadow 0.15s; }
+.checkout-store-vouchers:hover, .checkout-store-vouchers[open] { border-color: var(--coral); border-style: solid; }
+.checkout-store-vouchers[open] { box-shadow: 0 0 0 3px rgba(232,71,42,0.08); }
+.checkout-store-vouchers > summary { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.75rem; cursor: pointer; font-size: 0.86rem; list-style: none; }
+.checkout-store-vouchers > summary::-webkit-details-marker { display: none; }
+.checkout-store-voucher-label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.45rem; font-weight: 600; color: var(--charcoal); }
+.checkout-store-voucher-label svg { color: var(--coral); flex-shrink: 0; }
+.checkout-store-voucher-label code { font-family: inherit; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em; color: var(--coral); background: #fff1ec; border-radius: 6px; padding: 0.1rem 0.4rem; }
+.checkout-store-voucher-picked { color: #16a34a; font-weight: 700; font-variant-numeric: tabular-nums; }
+.checkout-store-voucher-none { color: var(--coral); font-weight: 600; }
+.checkout-store-voucher-chevron { color: #98a2b3; flex-shrink: 0; transition: transform 0.15s; }
+.checkout-store-vouchers[open] .checkout-store-voucher-chevron { transform: rotate(180deg); }
+.checkout-store-vouchers-body { padding: 0 0.75rem 0.75rem; }
+/* Two vouchers per row inside a store's panel; one per row on narrow screens. */
+.checkout-store-vouchers-body .checkout-voucher-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; align-items: stretch; }
+@media (max-width: 640px) { .checkout-store-vouchers-body .checkout-voucher-list { grid-template-columns: 1fr; } }
 .checkout-voucher-error { margin: 0.4rem 0 0; color: #b91c1c; font-size: 0.8rem; font-weight: 600; }
 body.dark .checkout-voucher-option.is-unavailable:hover { background: transparent; }
 body.dark .checkout-voucher-badge--platform { background: #e5e7eb; color: #111; }
@@ -353,3 +379,5 @@ body.dark .cart-store-head td { background:#232323; }
     .cart-store + .cart-store-gap + .cart-store { margin-top:.6rem; }
     .cart-store td { border:0 !important; border-radius:0 !important; background:transparent; }
 }
+/* The one-order-per-store COD note above the total: small print. */
+.checkout-cod-note { font-size: 0.72rem; line-height: 1.35; margin: 0.25rem 0 0.5rem; }
