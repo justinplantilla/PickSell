@@ -272,14 +272,15 @@ class MarketplaceShippingTest extends TestCase
         $table = $this->product(['name' => 'Table', 'weight_kg' => 15, 'price' => 3000]);
         $chairs = $this->product(['name' => 'Chairs', 'weight_kg' => 5, 'price' => 1000]);
         $this->checkout($this->buyer, $this->cart($this->buyer, [[$table, 1], [$chairs, 2]]))->assertSessionHasNoErrors();
-        [$first, $second] = Order::orderBy('id')->get()->all();
+        $first = Order::sole();
+        $this->assertCount(2, $first->items);
 
         $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$first->id}/pack")->assertSessionHasNoErrors();
-        $this->assertSame('preparing', $second->fresh()->status, 'items sharing a parcel are packed together');
-        $this->actingAs($this->seller)->post(config('app.url')."/seller/orders/{$second->id}/waybill")->assertSessionHasNoErrors();
+        $this->assertSame('preparing', $first->fresh()->status);
+        $this->actingAs($this->seller)->post(config('app.url')."/seller/orders/{$first->id}/waybill")->assertSessionHasNoErrors();
         $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$first->id}/handover")->assertSessionHasNoErrors();
 
-        return [$first->fresh(), $second->fresh(), PicksellBridge::parcelFor($first)];
+        return [$first->fresh(), PicksellBridge::parcelFor($first)];
     }
 
     /** Pickup by one rider, then out for delivery with another, in Tanauan (same city). */
@@ -302,22 +303,23 @@ class MarketplaceShippingTest extends TestCase
 
     public function test_a_bulky_order_flows_from_checkout_to_delivered_and_is_credited_once(): void
     {
-        [$first, $second, $parcel] = $this->bulkyHandedOver();
+        [$first, $parcel] = $this->bulkyHandedOver();
         $shipment = $first->shipment;
 
         // 25 kg within South Luzon (local): 280 + 15 × 25 = 655; each rider earns 60 + 5 × 4 = 80.
         $this->assertSame(['EXTRA_BULKY', '25.00', '655.00', '80.00', '115.00', '460.00'], [$shipment->parcel_class, (string) $shipment->chargeable_weight_kg,
             (string) $shipment->delivery_fee, (string) $shipment->rider_pay, (string) $shipment->platform_commission, (string) $shipment->logistics_share]);
-        $this->assertSame($second->order_shipment_id, $shipment->id);
-        $this->assertSame(['ready_for_pickup', 'ready_for_pickup'], [$first->status, $second->status]);
+        $this->assertSame('ready_for_pickup', $first->status);
         $this->assertSame(['655.00', '5655.00', 'EXTRA_BULKY', '80.00'], [(string) $parcel->shipping_fee, (string) $parcel->cod_amount, $parcel->parcel_class, (string) $parcel->rider_pay]);
         $this->assertSame(['S_LUZON', 'S_LUZON', 'ORIGIN_DESTINATION'], [$parcel->origin_region, $parcel->destination_region, $parcel->price_source]);
-        $this->assertSame("{$first->order_number}, {$second->order_number}", PicksellBridge::orderNumbers([$parcel])[$parcel->id]);
+        $this->assertSame($first->order_number, PicksellBridge::orderNumbers([$parcel])[$parcel->id]);
 
         [$pickupRider, $deliveryRider, $task] = $this->outForDelivery($parcel);
         app(RiderTaskService::class)->deliver($task, 5655, 'proof.jpg');
 
-        $this->assertSame(['delivered', 'delivered'], [$first->fresh()->status, $second->fresh()->status]);
+        $this->assertSame('delivered', $first->fresh()->status);
+        $this->assertSame('paid', $first->payment->status);
+        $this->assertEquals(5655, $first->payment->amount_collected);
         $this->assertSame('delivered', $shipment->fresh()->status);
         $this->assertSame(['logistics' => '460.00', 'picksell' => '115.00', 'rider' => '80.00'],
             DB::table('shipment_earnings')->orderBy('party')->pluck('amount', 'party')->map(fn ($a) => number_format((float) $a, 2, '.', ''))->all());
@@ -336,7 +338,7 @@ class MarketplaceShippingTest extends TestCase
 
     public function test_a_failed_delivery_pays_the_rider_nothing_and_credits_no_one(): void
     {
-        [$first, , $parcel] = $this->bulkyHandedOver();
+        [$first, $parcel] = $this->bulkyHandedOver();
         [, $deliveryRider, $task] = $this->outForDelivery($parcel);
 
         app(RiderTaskService::class)->fail($task, 'buyer_unavailable', null, 'door.jpg');
@@ -352,12 +354,13 @@ class MarketplaceShippingTest extends TestCase
         $this->actingAs($this->seller)->get(config('app.url')."/seller/orders/{$first->id}")->assertOk()->assertSee('Attempt failed');
     }
 
-    public function test_cancelling_one_item_keeps_the_parcel_for_the_rest(): void
+    public function test_cancelling_a_store_order_cancels_its_parcel_and_restores_every_item(): void
     {
         $a = $this->product(['name' => 'Tote A']);
         $b = $this->product(['name' => 'Tote B', 'price' => 300]);
         $this->checkout($this->buyer, $this->cart($this->buyer, [[$a, 1], [$b, 1]]));
-        [$first, $second] = Order::orderBy('id')->get()->all();
+        $first = Order::sole();
+        $this->assertCount(2, $first->items);
         $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$first->id}/pack");
         $this->actingAs($this->seller)->post(config('app.url')."/seller/orders/{$first->id}/waybill");
         $parcel = PicksellBridge::parcelFor($first);
@@ -365,13 +368,9 @@ class MarketplaceShippingTest extends TestCase
 
         $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$first->id}/cancel", ['reason' => 'Out of stock'])->assertSessionHasNoErrors();
 
-        $parcel->refresh();
-        $this->assertSame(ParcelStatus::LabelCreated, $parcel->current_status);
-        $this->assertSame('Tote B × 1', $parcel->item_description);
-        $this->assertSame('395.00', (string) $parcel->cod_amount, 'the remaining item plus the unchanged fee');
-
-        $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$second->id}/cancel", ['reason' => 'Out of stock']);
         $this->assertSame(ParcelStatus::Cancelled, $parcel->fresh()->current_status);
+        $this->assertEquals(10, $a->fresh()->stock);
+        $this->assertEquals(10, $b->fresh()->stock);
         $this->assertSame('cancelled', $first->shipment->fresh()->status);
     }
 }

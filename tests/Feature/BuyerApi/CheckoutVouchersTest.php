@@ -137,17 +137,18 @@ class CheckoutVouchersTest extends TestCase
 
         // ₱100 spread 60/40 over the lines; PickSell's ₱50 comes off the parcel.
         $orders = Order::orderBy('id')->get();
-        $this->assertEquals([540, 360], $orders->pluck('amount')->map(fn ($a) => (float) $a)->all());
-        $this->assertEquals([60, 40], $orders->pluck('store_discount')->map(fn ($a) => (float) $a)->all());
+        $this->assertEquals([540, 360], $orders->first()->items->pluck('amount')->map(fn ($a) => (float) $a)->all());
+        $this->assertEquals([60, 40], $orders->first()->items->pluck('store_discount')->map(fn ($a) => (float) $a)->all());
         $this->assertEquals(50, (float) OrderShipment::sole()->platform_discount);
         $this->assertSame(2, VoucherRedemption::count());
         $this->assertEquals(1000 - 100 - 50 + $shipping, $placed['total'], 'what the rider collects');
 
         // The order page's breakdown.
         $this->getJson("/api/mobile/buyer/orders/{$orders[0]->id}")->assertOk()
-            ->assertJsonPath('order.store_discount', 60)
+            ->assertJsonPath('order.store_discount', 100)
             ->assertJsonPath('order.platform_discount', 50)
-            ->assertJsonPath('order.parcel_items', 2)
+            ->assertJsonPath('order.parcel_items', 1)
+            ->assertJsonCount(2, 'order.items')
             ->assertJsonPath('order.parcel_subtotal', 900)
             ->assertJsonPath('order.parcel_total', 900 - 50 + $shipping);
     }

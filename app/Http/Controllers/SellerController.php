@@ -1176,7 +1176,8 @@ class SellerController extends Controller
             ->whereIn('product_id', Product::where('seller_id', $sellerId)->select('id'))
             ->groupBy('product_id')->selectRaw('product_id, SUM(views) as views, SUM(cart_adds) as cart_adds')->get()->keyBy('product_id');
         $sales = Order::where('seller_id', $sellerId)->whereBetween('created_at', [$from, $to])->where('status', '!=', 'cancelled')
-            ->groupBy('product_id')->selectRaw('product_id, COUNT(*) as orders, SUM(quantity) as units, SUM(amount) as revenue')->get()->keyBy('product_id');
+            ->with('items')->get()->flatMap(fn ($order) => $order->lines())->groupBy('product_id')
+            ->map(fn ($lines) => (object) ['orders' => $lines->map(fn ($line) => $line->order_id ?? $line->id)->unique()->count(), 'units' => $lines->sum('quantity'), 'revenue' => $lines->sum('amount')]);
 
         $rows = Product::where('seller_id', $sellerId)->get()->map(function (Product $product) use ($stats, $sales) {
             $views = (int) ($stats[$product->id]->views ?? 0);

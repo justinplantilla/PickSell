@@ -49,7 +49,7 @@
                 <td class="cell-check"><input type="checkbox" name="order_ids[]" value="{{ $order->id }}" form="bulkOrdersForm" data-bulk-order="{{ $bulkSteps }}" aria-label="Select order {{ $order->order_number }}"></td>
                 <td class="cell-main"><a href="/seller/orders/{{ $order->id }}" class="seller-orders-accent-text">{{ $order->order_number }}</a></td>
                 <td data-label="Buyer">{{ $order->buyer->full_name ?? '—' }}</td>
-                <td data-label="Product">{{ $order->product_name }}@if($order->variation_label)<div class="seller-orders-muted-text">{{ $order->variation_label }}</div>@endif</td>
+                <td data-label="Product">@include('partials.order-items', ['order' => $order]){{ $order->product_name }}@if($order->variation_label)<div class="seller-orders-muted-text">{{ $order->variation_label }}</div>@endif</td>
                 <td data-label="Qty">{{ $order->quantity }}</td>
                 <td data-label="Amount">₱{{ number_format($order->amount, 2) }}</td>
                 <td data-label="Status"><x-order-status-badge :status="$order->status" />@if($order->status === 'ready_for_pickup' && $order->fulfillment === 'dropoff')<div class="seller-orders-muted-text">Drop off by {{ $order->dropoff_by?->format('M d, h:i A') }}</div>@endif</td>

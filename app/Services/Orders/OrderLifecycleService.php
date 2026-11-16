@@ -92,17 +92,20 @@ class OrderLifecycleService
         $extra['status'] = $to;
         // The hand-over clock starts when the seller starts preparing (pre-orders get their own days).
         if ($to === 'preparing' && ! $order->ship_by && ! array_key_exists('ship_by', $extra)) {
-            $extra['ship_by'] = Order::shipByFrom(now(), $order->product);
+            $extra['ship_by'] = $order->lines()->map(fn ($line) => Order::shipByFrom(now(), $line->product))->max();
         }
         $extra['tracking_status'] ??= self::label($to);
         $order->update($extra);
 
-        if (in_array($to, self::RESTOCK_ON, true) && $order->product_id) {
+        if (in_array($to, self::RESTOCK_ON, true)) {
+            foreach ($order->lines() as $line) {
             // Through the model, so buyers waiting on a sold-out product hear it is back (WishlistAlerts).
-            Product::find($order->product_id)?->increment('stock', (int) $order->quantity);
-            if ($order->variation_id) {
-                ProductVariation::whereKey($order->variation_id)->increment('stock', (int) $order->quantity);
+            Product::find($line->product_id)?->increment('stock', (int) $line->quantity);
+            if ($line->variation_id) {
+                ProductVariation::whereKey($line->variation_id)->increment('stock', (int) $line->quantity);
             }
+            }
+            $order->payment()->where('status', 'unpaid')->update(['status' => 'cancelled']);
         }
     }
 }

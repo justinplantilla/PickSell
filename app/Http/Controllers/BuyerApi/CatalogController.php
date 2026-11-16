@@ -26,7 +26,7 @@ class CatalogController extends Controller
         // Includes sellers on vacation: their products stay visible, and is_available tells the app they can't be ordered.
         return Product::showcased()->where('stock', '>', 0)->with('seller')
             ->withAvg('reviews', 'rating')->withCount('reviews')
-            ->withSum(['orders as sold_count' => fn ($orders) => $orders->whereIn('status', ['delivered', 'completed'])], 'quantity');
+            ->withSoldUnits();
     }
 
     private function buyer(): ?User
@@ -164,7 +164,7 @@ class CatalogController extends Controller
         abort_if($product->status !== 'active', 404, 'This product is no longer available.');
 
         $product->load(['seller', 'variations'])->loadAvg('reviews', 'rating')->loadCount('reviews');
-        $product->sold_count = (int) $product->orders()->whereIn('status', ['delivered', 'completed'])->sum('quantity');
+        $product->sold_count = (int) Product::whereKey($product->id)->withSoldUnits()->first()->sold_count;
         if ($buyer = $this->buyer()) {
             $recentlyViewed->record($buyer, $product);
         }

@@ -10,7 +10,7 @@
 @php
     // Every checkout link keeps the items, address and vouchers picked so far, changing only what it says.
     $keep = fn ($v) => $v !== null && $v !== [];
-    $checkoutQuery = array_filter(['item_ids' => $itemIds, 'address_id' => $addressId, 'store_voucher' => $vouchers['picked']['stores'], 'platform_voucher' => $vouchers['picked']['platform'], 'carrier' => $carriers], $keep);
+    $checkoutQuery = array_filter(['item_ids' => $itemIds, 'address_id' => $addressId, 'store_voucher' => $vouchers['picked']['stores'], 'platform_voucher' => $vouchers['picked']['platform'], 'carrier' => $carriers, 'voucher_code' => $productCode], $keep);
     $checkoutLink = fn (array $changes) => route('buyer.checkout.start', array_filter(array_replace($checkoutQuery, $changes), $keep));
 @endphp
 
@@ -111,6 +111,15 @@
                         <td class="cart-strong" data-label="Subtotal">₱{{ number_format($item->subtotal, 2) }}</td>
                     </tr>
                     @endforeach
+                    @php $storeTotal = $storeTotals[$sellerId]; @endphp
+                    <tr><td colspan="5">
+                        <div class="checkout-ship-total"><span>Store subtotal</span><strong>&#8369;{{ number_format($storeTotal['subtotal'], 2) }}</strong></div>
+                        @if($storeTotal['product_discount'] > 0)<div>Product voucher: -&#8369;{{ number_format($storeTotal['product_discount'], 2) }}</div>@endif
+                        <div>Store voucher: -&#8369;{{ number_format($storeTotal['store_discount'], 2) }} <a href="#store-vouchers-{{ $sellerId }}">Choose voucher</a></div>
+                        <div>Shipping: &#8369;{{ number_format($storeTotal['shipping_fee'], 2) }}</div>
+                        @if($storeTotal['platform_discount'] + $storeTotal['shipping_discount'] > 0)<div>PickSell savings: -&#8369;{{ number_format($storeTotal['platform_discount'] + $storeTotal['shipping_discount'], 2) }}</div>@endif
+                        <div class="checkout-ship-total"><span>Store total / COD</span><strong>&#8369;{{ number_format($storeTotal['total'], 2) }}</strong></div>
+                    </td></tr>
                     <tr class="checkout-note-row">
                         <td colspan="5">
                             <label class="form-label" for="note-{{ $sellerId }}">Note to {{ $store->business_name ?? $store->full_name }} <span class="cart-muted-text">(optional)</span></label>
@@ -202,7 +211,7 @@
                 @foreach($vouchers['stores'] as $sellerId => $options)
                     @continue($options->isEmpty())
                     @php $store = $items->firstWhere('product.seller_id', $sellerId)->product->seller; $pickedId = $vouchers['picked']['stores'][$sellerId] ?? null; @endphp
-                    <p class="checkout-voucher-hint">{{ $store->business_name ?? $store->full_name }} vouchers</p>
+                    <p id="store-vouchers-{{ $sellerId }}" class="checkout-voucher-hint">{{ $store->business_name ?? $store->full_name }} vouchers</p>
                     <div class="checkout-voucher-list">
                         @foreach($options as $option)
                         @php $isPicked = $pickedId === $option['voucher']->id; @endphp
@@ -232,7 +241,7 @@
                     <p class="checkout-voucher-hint">Product vouchers</p>
                     <div class="checkout-voucher-list" id="voucherList">
                         <label class="checkout-voucher-option checkout-voucher-none">
-                            <input type="radio" name="voucher_pick" value="" checked data-discount="0" data-base-total="{{ $total + $shippingTotal - $vouchers['total'] }}">
+                            <input type="radio" name="voucher_pick" value="" @checked(! $productCode) data-url="{{ $checkoutLink(['voucher_code' => null]) }}" data-discount="0" data-base-total="{{ $total + $shippingTotal - $vouchers['total'] - $productSaving }}">
                             <div class="checkout-voucher-info">
                                 <span class="checkout-voucher-label">No voucher</span>
                                 <span class="checkout-voucher-desc">Use full price</span>
@@ -241,10 +250,10 @@
                         @foreach($voucherProducts as $item)
                         <label class="checkout-voucher-option">
                             <input type="radio" name="voucher_pick"
-                                value="{{ $item->product->voucher_code }}"
+                                value="{{ $item->product->voucher_code }}" @checked($productCode === $item->product->voucher_code) data-url="{{ $checkoutLink(['voucher_code' => $item->product->voucher_code]) }}"
                                 data-discount="{{ $item->product->voucher_discount }}"
                                 data-item-subtotal="{{ $item->subtotal }}"
-                                data-base-total="{{ $total + $shippingTotal - $vouchers['total'] }}">
+                                data-base-total="{{ $total + $shippingTotal - $vouchers['total'] - $productSaving }}">
                             <div class="checkout-voucher-badge">{{ $item->product->voucher_discount }}% OFF</div>
                             <div class="checkout-voucher-info">
                                 <span class="checkout-voucher-label">{{ $item->product->voucher_code }}</span>
@@ -267,10 +276,11 @@
             <div class="card-body">
                 <form method="POST" action="/buyer/cart/checkout" id="checkoutPlaceForm">
                     @csrf
+                    <input type="hidden" name="checkout_key" value="{{ (string) Str::uuid() }}">
                     @foreach($itemIds as $id)
                         <input type="hidden" name="item_ids[]" value="{{ $id }}">
                     @endforeach
-                    <input type="hidden" name="voucher_code" id="voucherCodeInput" value="">
+                    <input type="hidden" name="voucher_code" id="voucherCodeInput" value="{{ $productCode }}">
                     @if($addressId)<input type="hidden" name="address_id" value="{{ $addressId }}">@endif
                     @foreach($vouchers['picked']['stores'] as $sellerId => $voucherId)
                         <input type="hidden" name="store_vouchers[{{ $sellerId }}]" value="{{ $voucherId }}">
@@ -313,9 +323,11 @@
                         <span class="checkout-discount-val" id="summaryDiscount"></span>
                     </div>
                     <hr class="cart-divider">
+                    @if($productSaving > 0)<div class="cart-row"><span>Product voucher</span><span>-&#8369;{{ number_format($productSaving, 2) }}</span></div>@endif
+                    <p class="form-hint">Each store has a separate order and COD amount. Pay only for parcels delivered.</p>
                     <div class="cart-row-5">
                         <span>Total</span>
-                        <span class="cart-accent" id="summaryTotal">₱{{ number_format($total + $shippingTotal - $vouchers['total'], 2) }}</span>
+                        <span class="cart-accent" id="summaryTotal">₱{{ number_format($total + $shippingTotal - $vouchers['total'] - $productSaving, 2) }}</span>
                     </div>
                     <button type="submit" class="btn btn-coral cart-block" @disabled(! $canPlace)>
                         Place Order
@@ -368,25 +380,7 @@ document.addEventListener('click', (event) => {
 
 document.querySelectorAll('input[name="voucher_pick"]').forEach(radio => {
     radio.addEventListener('change', function () {
-        const discount = parseFloat(this.dataset.discount) || 0;
-        const itemSubtotal = parseFloat(this.dataset.itemSubtotal) || 0;
-        const baseTotal = parseFloat(this.dataset.baseTotal) || 0;
-        const saving = itemSubtotal * discount / 100;
-        const finalTotal = baseTotal - saving;
-
-        document.getElementById('voucherCodeInput').value = this.value;
-        document.getElementById('summaryTotal').textContent = '₱' + finalTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 });
-
-        const discountRow = document.getElementById('discountRow');
-        if (saving > 0) {
-            discountRow.style.display = 'flex';
-            document.getElementById('summaryDiscount').textContent = '−₱' + saving.toLocaleString('en-PH', { minimumFractionDigits: 2 });
-        } else {
-            discountRow.style.display = 'none';
-        }
-
-        document.querySelectorAll('.checkout-voucher-option').forEach(el => el.classList.remove('selected'));
-        this.closest('.checkout-voucher-option').classList.add('selected');
+        window.location.assign(this.dataset.url);
     });
 });
 </script>

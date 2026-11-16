@@ -54,17 +54,21 @@ class ReturnFlow
         abort_unless($order->returnWindowOpen(), 422, 'Returns can only be requested within '.config('pickrush.policies.return_window_days').' days of delivery.');
         abort_if($order->returnRequest()->exists(), 409, 'A return request already exists for this order.');
 
-        $quantity = (int) ($data['quantity'] ?? $order->quantity);
-        $returnRequest = DB::transaction(function () use ($order, $data, $quantity, $files) {
+        $line = ! empty($data['order_item_id']) ? $order->items()->findOrFail($data['order_item_id']) : $order;
+        $quantity = (int) ($data['quantity'] ?? $line->quantity);
+        abort_unless($quantity >= 1 && $quantity <= $line->quantity, 422, 'Invalid return quantity.');
+        abort_if($line === $order && $order->items->count() > 1 && $quantity !== (int) $order->quantity, 422, 'Select an item for a partial return.');
+        $returnRequest = DB::transaction(function () use ($order, $line, $data, $quantity, $files) {
             $returnRequest = ReturnRequest::create([
                 'order_id' => $order->id,
+                'order_item_id' => $line === $order ? null : $line->id,
                 'buyer_id' => $order->buyer_id,
                 'seller_id' => $order->seller_id,
                 'reason' => $data['reason'],
                 'details' => $data['details'],
                 'quantity' => $quantity,
                 // The item price of what comes back; the delivery fee went to the riders.
-                'refund_amount' => round(((float) $order->amount / max((int) $order->quantity, 1)) * $quantity, 2),
+                'refund_amount' => round(((float) $line->amount / max((int) $line->quantity, 1)) * $quantity, 2),
                 'attachments' => collect($files)->map(fn (UploadedFile $file) => $file->store('return-requests', 'public'))->all(),
                 'refund_gcash_number' => $data['gcash_number'],
                 'refund_gcash_name' => $data['gcash_name'],

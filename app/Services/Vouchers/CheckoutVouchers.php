@@ -20,9 +20,9 @@ class CheckoutVouchers
      * @param  array{stores?: array<int|string, int|string>, platform?: int|string|null}  $picked
      * @return array{stores: Collection, platform: Collection, picked: array{stores: array<int, int>, platform: ?int}, error: ?string, storeSavings: array<int, float>, platformSaving: float, total: float}
      */
-    public function pick(User $buyer, Collection $items, float $shippingTotal, array $picked = [], ?string $code = null): array
+    public function pick(User $buyer, Collection $items, float $shippingTotal, array $picked = [], ?string $code = null, ?string $productCode = null): array
     {
-        $subtotals = $items->groupBy(fn ($item) => $item->product->seller_id)->map(fn ($lines) => $lines->sum(fn ($item) => $item->subtotal));
+        $subtotals = $items->groupBy(fn ($item) => $item->product->seller_id)->map(fn ($lines) => $lines->sum(fn ($item) => round(\App\Services\OrderPlacement::unitPrice($item->product, $productCode, $item->variation) * $item->quantity, 2)));
         $picked = ['stores' => array_map('intval', (array) ($picked['stores'] ?? [])), 'platform' => (int) ($picked['platform'] ?? 0) ?: null];
         $error = null;
 
@@ -69,4 +69,23 @@ class CheckoutVouchers
             'total' => round(array_sum($storeSavings) + $platformSaving, 2),
         ];
     }
+    /** The same proportional platform allocation as placement, exposed per store for both clients. */
+    public function storeTotals(array $quote, array $vouchers): array
+    {
+        $groups = collect($quote['groups'])->keyBy(fn ($g) => $g['seller']['id']);
+        $merch = $groups->map(fn ($g, $id) => round($g['subtotal'] - $g['discount'] - ($vouchers['storeSavings'][$id] ?? 0), 2));
+        $platform = $vouchers['platform']->first(fn ($o) => $o['voucher']->id === $vouchers['picked']['platform']);
+        $freeShipping = ($platform['voucher']->type ?? null) === Voucher::FREE_SHIPPING;
+        $shares = VoucherPricing::allocate($vouchers['platformSaving'], ($freeShipping ? $groups->pluck('shipping_fee', 'seller.id') : $merch)->all());
+        return $groups->map(fn ($g, $id) => [
+            'subtotal' => $g['subtotal'], 'product_discount' => $g['discount'],
+            'store_discount' => $vouchers['storeSavings'][$id] ?? 0,
+            'store_voucher_id' => $vouchers['picked']['stores'][$id] ?? null,
+            'shipping_fee' => $g['shipping_fee'],
+            'platform_discount' => $freeShipping ? 0 : ($shares[$id] ?? 0),
+            'shipping_discount' => $freeShipping ? ($shares[$id] ?? 0) : 0,
+            'total' => max(0, round($merch[$id] + $g['shipping_fee'] - ($shares[$id] ?? 0), 2)),
+        ])->all();
+    }
+
 }

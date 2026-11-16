@@ -65,7 +65,7 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $data = $request->validate(['tab' => ['nullable', Rule::in(['all', ...array_keys(OrderStatus::TABS)])]]);
-        $orders = Order::where('buyer_id', $request->user()->id)->with('seller', 'product')->latest()->get();
+        $orders = Order::where('buyer_id', $request->user()->id)->with('seller', 'product', 'items.product', 'payment')->latest()->get();
 
         $counts = collect(array_keys(OrderStatus::TABS))->mapWithKeys(fn ($tab) => [$tab => 0])->all();
         $orders->each(function (Order $o) use (&$counts) { $counts[OrderStatus::tab($o)]++; });
@@ -238,22 +238,11 @@ class OrderController extends Controller
     public function reorder(Request $request, Order $order)
     {
         $this->find($request, $order);
-        $product = $order->product()->with('seller', 'variations')->first();
-        abort_unless($product && $product->isPurchasable() && $product->stock > 0, 422, 'This product is no longer available.');
-        // The same option as before; if the seller has since removed it, the buyer picks again.
-        $variation = $product->variations->firstWhere('id', $order->variation_id);
-        abort_if($product->variations->isNotEmpty() && ! $variation, 422, 'Choose an option for this product on its page.');
-        abort_if($variation && $variation->stock <= 0, 422, 'That option is out of stock.');
-
         $cart = Cart::firstOrCreate(['buyer_id' => $request->user()->id]);
-        $item = CartItem::firstOrNew(['cart_id' => $cart->id, 'product_id' => $product->id, 'variation_id' => $variation?->id]);
-        $item->quantity = min((int) $item->quantity + (int) $order->quantity, (int) ($variation ? min($variation->stock, $product->stock) : $product->stock));
-        $item->save();
-
+        $ids = app(\App\Services\Orders\Reorder::class)->add($order, $cart);
         return response()->json([
-            'message'      => "{$product->name} is back in your cart.",
-            'cart_item_id' => $item->id,
-            'cart_count'   => (int) CartItem::where('cart_id', $cart->id)->count(),
+            'message' => 'Order items are back in your cart.', 'cart_item_id' => $ids[0], 'cart_item_ids' => $ids,
+            'cart_count' => (int) CartItem::where('cart_id', $cart->id)->count(),
         ]);
     }
 

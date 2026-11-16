@@ -19,6 +19,7 @@ class BuyerReturnRequestController extends Controller
             // Seller-fault reasons only; anything else goes through Contact Support.
             'reason' => ['required', Rule::in(ReturnRequest::BUYER_REASONS)],
             'details' => 'required|string|max:2000',
+            'order_item_id' => ['nullable', 'integer', Rule::exists('order_items', 'id')->where('order_id', $order->id)],
             'quantity' => 'sometimes|integer|min:1|max:'.$order->quantity,
             // Where PickSell sends the refund.
             'gcash_number' => ['required', 'string', 'regex:/^09\d{9}$/'],

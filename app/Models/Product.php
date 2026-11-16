@@ -39,6 +39,20 @@ class Product extends Model
     }
 
     public function seller()     { return $this->belongsTo(User::class, 'seller_id'); }
+    /** Counts item quantities for new store orders and the untouched legacy order lines. */
+    public function scopeWithSoldUnits($query, string $alias = 'sold_count')
+    {
+        if (! in_array($alias, ['sold_count', 'units_sold'], true)) throw new \InvalidArgumentException('Unknown sold units alias');
+        if ($query->getQuery()->columns === null) $query->select('products.*');
+        return $query->selectRaw("(
+            (select coalesce(sum(orders.quantity), 0) from orders where orders.product_id = products.id
+                and orders.status in ('delivered', 'completed')
+                and not exists (select 1 from order_items where order_items.order_id = orders.id))
+            + (select coalesce(sum(order_items.quantity), 0) from order_items join orders on orders.id = order_items.order_id
+                where order_items.product_id = products.id and orders.status in ('delivered', 'completed'))
+        ) as {$alias}");
+    }
+
     public function orders()     { return $this->hasMany(Order::class); }
     public function variations() { return $this->hasMany(ProductVariation::class)->orderBy('id'); }
     public function cartItems()  { return $this->hasMany(CartItem::class); }

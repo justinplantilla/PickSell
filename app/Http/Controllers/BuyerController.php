@@ -106,9 +106,7 @@ class BuyerController extends Controller
         $topCategoryProducts = Product::showcased()
             ->where('stock', '>', 0)
             ->with('seller')
-            ->withSum([
-                'orders as units_sold' => fn ($orders) => $orders->whereIn('status', ['delivered', 'completed']),
-            ], 'quantity')
+            ->withSoldUnits('units_sold')
             ->orderByDesc('units_sold')
             ->latest()
             ->get()
@@ -197,7 +195,7 @@ class BuyerController extends Controller
         }
 
         match ($sort) {
-            'popular' => $query->withSum(['orders as units_sold' => fn ($q) => $q->whereIn('status', ['delivered', 'completed'])], 'quantity')->orderByDesc('units_sold'),
+            'popular' => $query->withSoldUnits('units_sold')->orderByDesc('units_sold'),
             'rating' => $query->orderByDesc('reviews_avg_rating')->orderByDesc('reviews_count'),
             'price_asc' => $query->orderByRaw($priceSql.' asc', $priceBindings),
             'price_desc' => $query->orderByRaw($priceSql.' desc', $priceBindings),
@@ -445,9 +443,13 @@ class BuyerController extends Controller
         $carriers = $shipping->map(fn ($parcel) => $parcel['carrier'])->all();
         $shippingTotal = $shipping->where('ok', true)->sum(fn ($parcel) => (float) $parcel['delivery_fee']);
         $canPlace = $deliverTo->isComplete() && $shipping->every(fn ($parcel) => $parcel['ok']);
+        $productCode = $request->query('voucher_code');
+        $quote = app(CartQuote::class)->quote($items, $productCode, buyer: $this->buyer(), to: $deliverTo, carriers: $carriers);
         $vouchers = $this->checkoutVouchers($request, $items, $shippingTotal);
+        $storeTotals = app(CheckoutVouchers::class)->storeTotals($quote, $vouchers);
+        $productSaving = $quote['totals']['discount_total'];
 
-        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount', 'shipping', 'shippingTotal', 'canPlace', 'addresses', 'addressId', 'deliverTo', 'vouchers', 'carriers'));
+        return view('buyer.checkout', compact('items', 'itemIds', 'total', 'cartCount', 'shipping', 'shippingTotal', 'canPlace', 'addresses', 'addressId', 'deliverTo', 'vouchers', 'carriers', 'storeTotals', 'productCode', 'productSaving'));
     }
 
     /** The checkout's vouchers from the page's store_voucher[seller], platform_voucher and code (CheckoutVouchers). */
@@ -455,7 +457,7 @@ class BuyerController extends Controller
     {
         return app(CheckoutVouchers::class)->pick($this->buyer(), $items, $shippingTotal,
             ['stores' => (array) $request->query('store_voucher', []), 'platform' => $request->query('platform_voucher')],
-            (string) $request->query('code', ''));
+            (string) $request->query('code', ''), $request->query('voucher_code'));
     }
 
     public function updateCart(Request $request, CartItem $item)
@@ -484,7 +486,8 @@ class BuyerController extends Controller
     {
         $data = $request->validate([
             'item_ids' => 'required|array',
-            'item_ids.*' => 'exists:cart_items,id',
+            'item_ids.*' => 'integer|distinct',
+            'checkout_key' => 'nullable|string|max:100',
             'voucher_code' => 'nullable|string',
             'address_id' => 'nullable|integer',
             'notes' => 'nullable|array',
@@ -496,14 +499,10 @@ class BuyerController extends Controller
             'carriers.*' => 'nullable|integer',
         ], ['notes.*.max' => 'Keep each note to the seller under 300 characters.']);
 
-        if ($placement->items($this->buyer(), $data['item_ids'])->isEmpty()) {
-            return back()->withErrors(['item_ids' => 'No items selected.']);
-        }
-
         try {
             $placement->place($this->buyer(), $data['item_ids'], $data['voucher_code'] ?? null,
                 DeliveryAddress::forBuyer($this->buyer(), $data['address_id'] ?? null), $data['notes'] ?? [],
-                ['stores' => $data['store_vouchers'] ?? [], 'platform' => $data['platform_voucher'] ?? null], $data['carriers'] ?? []);
+                ['stores' => $data['store_vouchers'] ?? [], 'platform' => $data['platform_voucher'] ?? null], $data['carriers'] ?? [], $data['checkout_key'] ?? null);
         } catch (ValidationException $exception) {
             return redirect()->route('buyer.cart')->withErrors($exception->errors());
         }
@@ -618,6 +617,10 @@ class BuyerController extends Controller
     {
         abort_if($order->buyer_id !== $this->buyer()->id, 403);
         abort_unless($order->status === 'completed', 404);
+        if ($order->items->count() > 1) {
+            app(\App\Services\Orders\Reorder::class)->add($order, $this->getCart());
+            return redirect()->route('buyer.cart')->with('success', 'Order items are back in your cart.');
+        }
 
         $product = $order->product()->with('seller', 'variations')->first();
         if (! $product || ! $product->isPurchasable() || $product->stock <= 0) {
@@ -665,7 +668,7 @@ class BuyerController extends Controller
             'body' => 'nullable|string|max:1000',
         ]);
         $order = Order::where('buyer_id', $this->buyer()->id)
-            ->where('product_id', $product->id)
+            ->where(fn ($q) => $q->where('product_id', $product->id)->orWhereHas('items', fn ($items) => $items->where('product_id', $product->id)))
             ->where('status', 'completed')
             ->latest()
             ->firstOrFail();

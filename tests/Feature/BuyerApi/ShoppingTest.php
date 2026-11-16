@@ -88,13 +88,15 @@ class ShoppingTest extends TestCase
         $order = Order::where('product_id', $lamp->id)->sole();
         $this->assertMatchesRegularExpression('/^ORD-[A-Z0-9]{8}$/', $order->order_number);
         $this->assertSame(
-            ['placed', 'Order placed and awaiting seller preparation', 2, 1710.0, 171.0, '10.00', $seller->id],
+            ['placed', 'Order placed and awaiting seller preparation', 3, 1960.0, 196.0, '10.00', $seller->id],
             [$order->status, $order->tracking_status, $order->quantity, (float) $order->amount, (float) $order->commission, (string) $order->commission_rate, $order->seller_id],
         );
         $this->assertSame([3, 2], [$lamp->fresh()->stock, $mug->fresh()->stock]);
         // Both items ship in one parcel with one fee.
         $this->assertSame(1, OrderShipment::count());
-        $this->assertSame(2, $order->shipment->orders()->count());
+        $this->assertSame(1, $order->shipment->orders()->count());
+        $this->assertCount(2, $order->items);
+        $this->assertEquals([1710, 250], $order->items->pluck('amount')->all());
         $this->assertSame(['VISAYAS', '95.00', '15.00', '16.00', '64.00'], [$order->shipment->destination_region,
             (string) $order->shipment->delivery_fee, (string) $order->shipment->rider_pay, (string) $order->shipment->platform_commission, (string) $order->shipment->logistics_share]);
         $this->assertSame(0, CartItem::count());

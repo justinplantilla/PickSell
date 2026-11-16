@@ -51,6 +51,7 @@ class Order extends Model
     ];
 
     protected $fillable = [
+        'checkout_key', 'checkout_hash',
         'order_number', 'product_id', 'variation_id', 'buyer_id', 'seller_id', 'order_shipment_id',
         'product_name', 'variation_label', 'quantity', 'amount', 'store_discount', 'product_discount', 'commission', 'commission_rate', 'status',
         'waybill_number', 'tracking_status',
@@ -148,6 +149,22 @@ class Order extends Model
     public function buyer()
     {
         return $this->belongsTo(User::class, 'buyer_id');
+    }
+
+    public function items()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    public function payment()
+    {
+        return $this->hasOne(OrderPayment::class);
+    }
+
+    /** Historical orders remain single lines; no historical totals or shipments are rewritten. */
+    public function lines(): \Illuminate\Support\Collection
+    {
+        return $this->items->isNotEmpty() ? $this->items : collect([$this]);
     }
 
     /** The parcel this order travels in with the seller's other items from the same checkout (none on older orders). */

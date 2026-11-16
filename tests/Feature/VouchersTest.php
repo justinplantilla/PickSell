@@ -81,9 +81,9 @@ class VouchersTest extends TestCase
 
         // ₱100 spread 60/40 over the ₱600 and ₱400 lines; commission is on what the seller gets.
         $orders = Order::orderBy('id')->get();
-        $this->assertEquals([540, 360], $orders->pluck('amount')->map(fn ($a) => (float) $a)->all());
-        $this->assertEquals([60, 40], $orders->pluck('store_discount')->map(fn ($a) => (float) $a)->all());
-        $this->assertEquals(54, (float) $orders[0]->commission);
+        $this->assertEquals([540, 360], $orders->first()->items->pluck('amount')->map(fn ($a) => (float) $a)->all());
+        $this->assertEquals([60, 40], $orders->first()->items->pluck('store_discount')->map(fn ($a) => (float) $a)->all());
+        $this->assertEquals(90, (float) $orders[0]->commission);
         $this->assertEquals(100, (float) OrderShipment::sole()->store_discount);
         $this->assertSame(1, VoucherRedemption::count());
 

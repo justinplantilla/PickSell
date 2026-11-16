@@ -42,7 +42,7 @@ class ReturnRequest extends Model
     public const BACK_TO_BUYER_REF = 'RTB-';
 
     protected $fillable = [
-        'order_id', 'buyer_id', 'seller_id', 'reason', 'details', 'status',
+        'order_item_id', 'order_id', 'buyer_id', 'seller_id', 'reason', 'details', 'status',
         'seller_note', 'dispute_status', 'admin_notes', 'admin_decision',
         'resolved_by', 'approved_at', 'rejected_at', 'received_at',
         'refund_due_at', 'completed_at', 'admin_resolved_at', 'quantity',
@@ -76,6 +76,8 @@ class ReturnRequest extends Model
     {
         return self::PARCEL_REF.(is_int($returnRequest) ? $returnRequest : $returnRequest->id);
     }
+
+    public function item() { return $this->belongsTo(OrderItem::class, 'order_item_id'); }
 
     public function order()
     {

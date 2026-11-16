@@ -97,10 +97,12 @@ class OrderReceipt
             $this->lifecycle->transition($locked, 'completed', $actorId, $source, null, ['tracking_status' => $trackingStatus]);
             $this->ledger->postCompletedOrder($locked, $actor);
             if ($locked->rating && $locked->product_id) {
+                foreach ($locked->lines()->whereNotNull('product_id')->unique('product_id') as $line) {
                 ProductReview::firstOrCreate(
-                    ['product_id' => $locked->product_id, 'buyer_id' => $locked->buyer_id, 'order_id' => $locked->id],
+                    ['product_id' => $line->product_id, 'buyer_id' => $locked->buyer_id, 'order_id' => $locked->id],
                     ['rating' => $locked->rating, 'body' => $locked->feedback],
                 );
+                }
             }
             $confirmed = true;
 

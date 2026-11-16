@@ -24,17 +24,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
-/**
- * Places the buyer's selected cart lines as orders exactly like the website's checkout
- * (BuyerController::placeOrder): one order per cart line, price = product price minus its
- * discount and, if the code matches, the product's own voucher; Cash on Delivery to the buyer's
- * profile address. Keep the two in step.
- *
- * Each seller's lines ship together as one order shipment (one parcel) with the logistics company
- * the buyer chose for it (Pickrush pre-selected). Its delivery fee is priced here from that
- * company's rates, never taken from the browser or app, and saved with its split so later rate
- * or commission changes leave the order as it was.
- */
+/** One atomic checkout creates one order and one parcel per store (seller account ID). */
 class OrderPlacement
 {
     public function __construct(
@@ -96,7 +86,7 @@ class OrderPlacement
     {
         $cart = Cart::firstOrCreate(['buyer_id' => $buyer->id]);
 
-        return CartItem::where('cart_id', $cart->id)->whereIn('id', $ids)->with('product.seller', 'product.variations', 'variation')->get();
+        return CartItem::where('cart_id', $cart->id)->whereIn('id', $ids)->with('product.seller', 'product.variations', 'variation')->when(DB::transactionLevel() > 0, fn ($q) => $q->lockForUpdate())->get();
     }
 
     /** What one cart line costs per unit (at its option's price), with the product voucher applied when [$voucherCode] matches. */
@@ -119,14 +109,49 @@ class OrderPlacement
      *
      * @throws ValidationException (field item_ids, address or vouchers) when the checkout cannot go ahead
      */
-    public function place(User $buyer, array $itemIds, ?string $voucherCode, ?DeliveryAddress $to = null, array $notes = [], array $vouchers = [], array $carriers = []): Collection
+    public function place(User $buyer, array $itemIds, ?string $voucherCode, ?DeliveryAddress $to = null, array $notes = [], array $vouchers = [], array $carriers = [], ?string $checkoutKey = null): Collection
+    {
+        $ids = array_values(array_unique(array_map('intval', $itemIds)));
+        sort($ids);
+        $checkoutKey ??= 'cart-'.hash('sha256', json_encode($ids));
+        $normalize = function ($value) use (&$normalize) {
+            if (! is_array($value)) return $value;
+            ksort($value);
+            return array_map($normalize, $value);
+        };
+        $hash = hash('sha256', json_encode($normalize([$ids, $voucherCode, $to?->shipmentColumns(), $notes, $vouchers, $carriers])));
+
+        try {
+        return DB::transaction(function () use ($buyer, $ids, $voucherCode, $to, $notes, $vouchers, $carriers, $checkoutKey, $hash) {
+            // Serialize this buyer before reading cart lines, including callers without a request key.
+            User::whereKey($buyer->id)->lockForUpdate()->firstOrFail();
+            $existing = Order::where('buyer_id', $buyer->id)->where('checkout_key', $checkoutKey)->get();
+            if ($existing->isNotEmpty()) {
+                if ($existing->first()->checkout_hash !== $hash) {
+                    throw ValidationException::withMessages(['checkout_key' => 'This checkout was already submitted with different details. Start a new checkout.']);
+                }
+                return $existing;
+            }
+            return $this->placeLocked($buyer, $ids, $voucherCode, $to, $notes, $vouchers, $carriers, $checkoutKey, $hash);
+        }, 3);
+        } catch (ValidationException $e) {
+            if (str_contains($e->getMessage(), 'Our team has been alerted')) {
+                $this->admins->notifyAdmins('shipping.split_refused', 'Order refused: delivery fee too low',
+                    'A checkout delivery fee does not cover the rider pay. Check Pickrush rates and parcel classes.',
+                    route('admin.orders', [], false), priority: 'critical');
+            }
+            throw $e;
+        }
+    }
+
+    private function placeLocked(User $buyer, array $itemIds, ?string $voucherCode, ?DeliveryAddress $to, array $notes, array $vouchers, array $carriers, string $checkoutKey, string $hash): Collection
     {
         $to ??= DeliveryAddress::fromProfile($buyer);
         if (! $to->isComplete()) {
             throw ValidationException::withMessages(['address' => 'Add the province, city and barangay of your delivery address before placing an order.']);
         }
         $items = $this->items($buyer, $itemIds);
-        if ($items->isEmpty()) {
+        if ($items->isEmpty() || $items->count() !== count($itemIds)) {
             throw ValidationException::withMessages(['item_ids' => 'No items selected.']);
         }
 
@@ -139,11 +164,9 @@ class OrderPlacement
         if ($unchosen->isNotEmpty()) {
             throw ValidationException::withMessages(['item_ids' => self::missingOptionMessage($unchosen)]);
         }
-        $shipping = $this->priceShipping($buyer, $items, $to, $carriers);
-
-        $placed = DB::transaction(function () use ($buyer, $items, $voucherCode, $shipping, $to, $notes, $vouchers) {
+        $placed = DB::transaction(function () use ($buyer, $items, $voucherCode, $carriers, $to, $notes, $vouchers, $checkoutKey, $hash) {
             // Lock the products so moderation, other buyers and stock changes cannot interleave.
-            $products = Product::whereIn('id', $items->pluck('product_id'))->with('seller')->lockForUpdate()->get()->keyBy('id');
+            $products = Product::whereIn('id', $items->pluck('product_id'))->with('seller')->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             $unavailable = $items->filter(fn ($item) => ! $products->get($item->product_id)?->isPurchasable());
             if ($unavailable->isNotEmpty()) {
                 throw ValidationException::withMessages(['item_ids' => self::unavailableMessage($unavailable)]);
@@ -155,13 +178,21 @@ class OrderPlacement
                 throw ValidationException::withMessages(['item_ids' => 'Not enough stock for: '.$shortStock->keys()->map(fn ($productId) => $products[$productId]->name)->join(', ').'.']);
             }
             // Each option has its own stock too; lines whose option was deleted are caught above.
-            $variations = ProductVariation::whereIn('id', $items->pluck('variation_id')->filter())->lockForUpdate()->get()->keyBy('id');
+            $variations = ProductVariation::whereIn('id', $items->pluck('variation_id')->filter())->orderBy('id')->lockForUpdate()->get()->keyBy('id');
             $shortOption = $items->whereNotNull('variation_id')->groupBy('variation_id')
                 ->filter(fn ($lines, $variationId) => ($variations->get($variationId)?->stock ?? 0) < $lines->sum('quantity'));
             if ($shortOption->isNotEmpty()) {
                 throw ValidationException::withMessages(['item_ids' => 'Not enough stock for: '.$shortOption->map(fn ($lines, $variationId) => $products[$lines->first()->product_id]->name
                     .($variations->has($variationId) ? ' ('.$variations[$variationId]->label.')' : ''))->join(', ').'.']);
             }
+
+            foreach ($items as $item) {
+                $item->setRelation('product', $products[$item->product_id]);
+                if ($item->quantity < 1 || ($item->variation_id && $variations[$item->variation_id]->product_id !== $item->product_id)) {
+                    throw ValidationException::withMessages(['item_ids' => 'An item changed. Refresh your cart.']);
+                }
+            }
+            $shipping = $this->priceShipping($buyer, $items, $to, $carriers);
 
             // Each line's price (with its product voucher), then the checkout vouchers on top.
             $lineAmounts = $items->mapWithKeys(fn (CartItem $item) => [$item->id => round(self::unitPrice(
@@ -194,45 +225,58 @@ class OrderPlacement
             ] + $to->shipmentColumns()));
             $this->redeem($buyer, $discounts, $shipments);
 
-            return $items->map(function (CartItem $item) use ($buyer, $products, $variations, $lineAmounts, $discounts, $shipments) {
-                $product = $products[$item->product_id];
-                $variation = $item->variation_id ? $variations[$item->variation_id] : null;
-                // The store voucher is the seller's: the order is saved at the lower amount, so commission follows.
-                $storeDiscount = $discounts['lineShares'][$item->id] ?? 0;
-                $amount = round($lineAmounts[$item->id] - $storeDiscount, 2);
-                // The list price before the product's discount, sale or product voucher, so sellers see what discounts cost them.
-                $listAmount = round(($variation?->price !== null ? (float) $variation->price : (float) $product->price) * $item->quantity, 2);
+            return $items->groupBy(fn ($item) => $item->product->seller_id)->map(function (Collection $lines, $sellerId) use ($buyer, $products, $variations, $lineAmounts, $discounts, $shipments, $checkoutKey, $hash) {
+                $snapshots = $lines->map(function (CartItem $item) use ($products, $variations, $lineAmounts, $discounts) {
+                    $product = $products[$item->product_id];
+                    $variation = $item->variation_id ? $variations[$item->variation_id] : null;
+                    $storeDiscount = $discounts['lineShares'][$item->id] ?? 0;
+                    $listAmount = round(($variation?->price !== null ? (float) $variation->price : (float) $product->price) * $item->quantity, 2);
+                    return [
+                        'product_id' => $product->id, 'variation_id' => $variation?->id,
+                        'product_name' => $product->name, 'variation_label' => $variation?->label,
+                        'quantity' => (int) $item->quantity,
+                        'amount' => round($lineAmounts[$item->id] - $storeDiscount, 2),
+                        'store_discount' => $storeDiscount,
+                        'product_discount' => max(0, round($listAmount - $lineAmounts[$item->id], 2)),
+                    ];
+                });
+                $amount = round($snapshots->sum('amount'), 2);
                 $commission = $this->commission->calculate((string) $amount);
-
+                $first = $snapshots->first();
                 $order = Order::create([
+                    'checkout_key' => $checkoutKey, 'checkout_hash' => $hash,
                     'order_number' => 'ORD-'.strtoupper(Str::random(8)),
-                    'product_id' => $product->id,
-                    'variation_id' => $variation?->id,
-                    'buyer_id' => $buyer->id,
-                    'seller_id' => $product->seller_id,
-                    'order_shipment_id' => $shipments[$product->seller_id]->id,
-                    'product_name' => $product->name,
-                    'variation_label' => $variation?->label,
-                    'quantity' => $item->quantity,
-                    'amount' => $amount,
-                    'store_discount' => $storeDiscount,
-                    'product_discount' => max(0, round($listAmount - $lineAmounts[$item->id], 2)),
-                    'commission' => $commission['commission'],
-                    'commission_rate' => $commission['rate'],
-                    'status' => 'placed',
-                    'tracking_status' => 'Order placed and awaiting seller preparation',
+                    'buyer_id' => $buyer->id, 'seller_id' => $sellerId,
+                    'order_shipment_id' => $shipments[$sellerId]->id,
+                    // Retain the legacy summary columns for existing reports; item snapshots are authoritative.
+                    'product_id' => $first['product_id'],
+                    'variation_id' => $snapshots->count() === 1 ? $first['variation_id'] : null,
+                    'product_name' => Str::limit($snapshots->pluck('product_name')->join(', '), 250),
+                    'variation_label' => $snapshots->count() === 1 ? $first['variation_label'] : null,
+                    'quantity' => $snapshots->sum('quantity'), 'amount' => $amount,
+                    'store_discount' => $snapshots->sum('store_discount'),
+                    'product_discount' => $snapshots->sum('product_discount'),
+                    'commission' => $commission['commission'], 'commission_rate' => $commission['rate'],
+                    'status' => 'placed', 'tracking_status' => 'Order placed and awaiting seller preparation',
                 ]);
-
-                $product->decrement('stock', $item->quantity);
-                $variation?->decrement('stock', $item->quantity);
-                $this->alertLowStock($product, $variation, (int) $item->quantity);
-                $item->delete();
-
+                $order->items()->createMany($snapshots->all());
+                $shipment = $shipments[$sellerId];
+                $order->payment()->create(['amount_due' => max(0, round($amount + (float) $shipment->delivery_fee
+                    - (float) $shipment->platform_discount - (float) $shipment->shipping_discount, 2))]);
+                foreach ($lines as $item) {
+                    $product = $products[$item->product_id];
+                    $variation = $item->variation_id ? $variations[$item->variation_id] : null;
+                    $product->decrement('stock', $item->quantity);
+                    $variation?->decrement('stock', $item->quantity);
+                    $this->alertLowStock($product, $variation, (int) $item->quantity);
+                    $item->delete();
+                }
                 return $order;
-            });
+            })->values();
         });
 
         foreach ($placed as $order) {
+            // Database-only notification participates in the checkout transaction.
             $order->seller?->notify(new NewSellerOrder($order));
         }
 
@@ -250,12 +294,15 @@ class OrderPlacement
         $refuse = fn (string $message) => throw ValidationException::withMessages(['vouchers' => $message]);
         $bySeller = $items->groupBy(fn (CartItem $item) => $item->product->seller_id);
 
+        if (array_diff(array_keys(array_filter($chosen['stores'] ?? [])), $bySeller->keys()->all())) {
+            $refuse('A selected store voucher does not belong to this checkout.');
+        }
         $stores = [];
         $lineShares = [];
         foreach ($bySeller as $sellerId => $lines) {
             $subtotal = $lines->sum(fn (CartItem $item) => $lineAmounts[$item->id]);
             $voucher = isset($chosen['stores'][$sellerId])
-                ? (Voucher::whereKey($chosen['stores'][$sellerId])->where('seller_id', $sellerId)->lockForUpdate()->first() ?? $refuse('That store voucher is not available.'))
+                ? (Voucher::whereKey($chosen['stores'][$sellerId])->where('seller_id', $sellerId)->whereIn('type', array_keys(Voucher::STORE_TYPES))->lockForUpdate()->first() ?? $refuse('That store voucher is not available.'))
                 : null;
             if ($voucher && ($problem = $pricing->problem($voucher, $buyer, $subtotal))) {
                 $refuse("{$voucher->code}: {$problem}");

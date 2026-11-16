@@ -86,6 +86,7 @@
                         </td>
                     </tr>
                     @endforeach
+                    <tr class="cart-store-head"><td colspan="7">Store subtotal: &#8369;{{ number_format($storeItems->sum('subtotal'), 2) }}</td></tr>
                     </tbody>
                     @endforeach
                 </table>

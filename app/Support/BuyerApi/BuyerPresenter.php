@@ -256,6 +256,19 @@ final class BuyerPresenter
         return [
             'id'              => $o->id,
             'order_number'    => $o->order_number,
+            'items' => $o->lines()->map(fn ($line) => [
+                'id' => $line instanceof \App\Models\OrderItem ? $line->id : null,
+                'product_id' => $line->product_id, 'product_name' => $line->product_name,
+                'variation_label' => $line->variation_label, 'quantity' => (int) $line->quantity,
+                'image' => self::image($line->product?->primary_image),
+                'unit_price' => self::money($line->amount / max(1, $line->quantity)),
+                'total' => self::money($line->amount),
+            ])->values(),
+            'payment' => $o->payment ? [
+                'status' => $o->payment->status, 'amount_due' => self::money($o->payment->amount_due),
+                'amount_collected' => self::money($o->payment->amount_collected),
+                'collected_at' => self::date($o->payment->collected_at),
+            ] : null,
             'status'          => OrderStatus::of($o),
             'tab'             => OrderStatus::tab($o),
             'seller'          => $o->seller ? self::sellerBrief($o->seller) : null,

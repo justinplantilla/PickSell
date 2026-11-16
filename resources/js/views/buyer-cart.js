@@ -13,7 +13,11 @@ function updateSummary() {
     document.getElementById('totalAmount').textContent = '₱' + total.toLocaleString('en-PH', { minimumFractionDigits: 2 });
     document.getElementById('placeOrderBtn').disabled = checked.length === 0;
     const selectAll = document.querySelector('[data-cart-select-all]');
-    if (selectAll) selectAll.checked = checked.length > 0 && checked.length === document.querySelectorAll('.item-check').length;
+    if (selectAll) {
+        const count = document.querySelectorAll('.item-check').length;
+        selectAll.checked = checked.length > 0 && checked.length === count;
+        selectAll.indeterminate = checked.length > 0 && checked.length < count;
+    }
     document.querySelectorAll('[data-cart-store]').forEach(store => {
         const items = [...store.querySelectorAll('.item-check')];
         const picked = items.filter(item => item.checked).length;

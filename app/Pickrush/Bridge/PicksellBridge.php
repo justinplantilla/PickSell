@@ -249,9 +249,11 @@ class PicksellBridge
         ];
         [$from, $to] = $towardsSeller ? [$buyerEnd, $sellerEnd] : [$sellerEnd, $buyerEnd];
 
-        $quantity = max(1, (int) ($returnRequest->quantity ?: $order->quantity));
-        $quote = $order->product
-            ? $this->quote($order->buyer, $seller, [['product' => $order->product, 'quantity' => $quantity]],
+        $returnLine = $returnRequest->item ?? $order;
+        $quantity = max(1, (int) ($returnRequest->quantity ?: $returnLine->quantity));
+        $returnLines = $returnRequest->item ? collect([$returnLine]) : $order->lines();
+        $quote = $returnLines->every(fn ($line) => $line->product !== null)
+            ? $this->quote($order->buyer, $seller, $returnLines->map(fn ($line) => ['product' => $line->product, 'quantity' => $returnLines->count() === 1 ? $quantity : $line->quantity]),
                 companyId: $shipment?->logistics_company_id)
             : ShippingQuote::failed(QuoteFailure::Unavailable);
         // Priced like a delivery between the same two cities (the route grid is symmetric); the
@@ -279,8 +281,8 @@ class PicksellBridge
             'delivery_municipality_code' => $to['municipality_code'],
             'delivery_lat' => $to['lat'],
             'delivery_lng' => $to['lng'],
-            'item_description' => ($towardsSeller ? 'Return: ' : 'Return sent back: ').$order->product_name
-                .($order->variation_label ? " ({$order->variation_label})" : '')." × {$quantity}",
+            'item_description' => ($towardsSeller ? 'Return: ' : 'Return sent back: ').$returnLine->product_name
+                .($returnLine->variation_label ? " ({$returnLine->variation_label})" : '')." × {$quantity}",
             // Collected from whoever receives it: the seller for a return, the buyer for a send-back.
             'cod_amount' => $fee,
             'shipping_fee' => $fee,
@@ -599,7 +601,7 @@ class PicksellBridge
     /** What is in the parcel, for the label and the rider. */
     private static function contents(Collection $orders): string
     {
-        return $orders->map(fn (Order $order) => $order->product_name.($order->variation_label ? " ({$order->variation_label})" : '')." × {$order->quantity}")->join('; ');
+        return $orders->flatMap(fn (Order $order) => $order->lines())->map(fn ($order) => $order->product_name.($order->variation_label ? " ({$order->variation_label})" : '')." × {$order->quantity}")->join('; ');
     }
 
     /**

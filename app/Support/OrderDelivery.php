@@ -56,6 +56,9 @@ final class OrderDelivery
         if ($order->returnRequest?->refund?->status === 'processed') {
             return 'refunded';
         }
+        if ($order->payment) {
+            return $order->payment->status === 'cancelled' ? null : $order->payment->status;
+        }
         if (in_array($order->status, ['delivered', 'completed'], true) || self::proof($order)) {
             return 'paid';
         }

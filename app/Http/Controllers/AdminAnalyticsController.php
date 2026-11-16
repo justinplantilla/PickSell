@@ -19,7 +19,7 @@ class AdminAnalyticsController extends Controller
         $to = $date($request->query('to'), now()->toDateString());
         $range = [Carbon::parse($from)->startOfDay(), Carbon::parse($to)->endOfDay()];
 
-        $orders = Order::whereBetween('created_at', $range)->with('product:id,category')->get(['id', 'status', 'amount', 'product_id', 'created_at', 'delivered_at']);
+        $orders = Order::whereBetween('created_at', $range)->with('product:id,category', 'items.product:id,category')->get(['id', 'status', 'amount', 'product_id', 'created_at', 'delivered_at']);
         $byStatus = $orders->countBy('status');
 
         $delivered = $orders->whereIn('status', ['delivered', 'completed']);
@@ -31,8 +31,8 @@ class AdminAnalyticsController extends Controller
         $returns = ReturnRequest::whereBetween('created_at', $range)->count();
         $completed = $orders->where('status', 'completed');
 
-        $categories = $completed->groupBy(fn ($order) => $order->product?->category ?: 'Uncategorized')
-            ->map(fn ($group) => ['orders' => $group->count(), 'sales' => (float) $group->sum('amount')])
+        $categories = $completed->flatMap(fn ($order) => $order->lines())->groupBy(fn ($order) => $order->product?->category ?: 'Uncategorized')
+            ->map(fn ($group) => ['orders' => $group->map(fn ($line) => $line->order_id ?? $line->id)->unique()->count(), 'sales' => (float) $group->sum('amount')])
             ->sortByDesc('sales')->take(8);
 
         $lifecycle = collect(Order::STATUS_LIFECYCLE)->mapWithKeys(fn ($status) => [$status => (int) ($byStatus[$status] ?? 0)]);

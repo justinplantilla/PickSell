@@ -38,10 +38,12 @@ class OrderRating
 
         // Rated once the buyer confirmed receipt (OrderReceipt), so the review is published straight away.
         if ($order->status === 'completed' && $order->product_id) {
+            foreach ($order->lines()->whereNotNull('product_id')->unique('product_id') as $line) {
             ProductReview::updateOrCreate(
-                ['product_id' => $order->product_id, 'buyer_id' => $order->buyer_id, 'order_id' => $order->id],
+                ['product_id' => $line->product_id, 'buyer_id' => $order->buyer_id, 'order_id' => $order->id],
                 ['rating' => $product, 'body' => $feedback],
             );
+            }
         }
     }
 }

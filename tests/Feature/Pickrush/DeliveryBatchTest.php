@@ -27,7 +27,7 @@ use Tests\TestCase;
  */
 class DeliveryBatchTest extends TestCase
 {
-    use BuildsNetwork, RefreshDatabase;
+    use BuildsNetwork, RefreshDatabase, \Tests\Feature\BuyerApi\Concerns\BuildsMarketplace;
 
     private Hub $tanauan;
 
@@ -93,6 +93,52 @@ class DeliveryBatchTest extends TestCase
     private function photo(): UploadedFile
     {
         return UploadedFile::fake()->create('proof.jpg', 120, 'image/jpeg');
+    }
+
+
+    public function test_three_store_checkout_can_share_a_trip_with_independent_cod_and_partial_failure(): void
+    {
+        $address = ['province' => 'Batangas', 'municipality' => 'City of Tanauan', 'barangay' => 'Altura Bata',
+            'municipality_code' => '041029000', 'barangay_code' => '041029001'];
+        $buyer = $this->buyer($address);
+        $lines = collect();
+        foreach ([400, 350, 250] as $amount) {
+            $seller = $this->seller($address);
+            $lines->push($this->cartLine($buyer, $this->product($seller, ['price' => $amount])));
+        }
+        $orders = app(\App\Services\OrderPlacement::class)->place($buyer, $lines->pluck('id')->all(), null);
+        $parcels = $orders->map(function ($order) {
+            $order->update(['status' => 'ready_for_pickup']);
+            app(\App\Pickrush\Bridge\PicksellBridge::class)->book($order);
+            $parcel = app(\App\Pickrush\Bridge\PicksellBridge::class)->requestDropoff($order);
+            app(\App\Pickrush\Services\ParcelLedger::class)->record($parcel, ParcelStatus::AtOriginHub, $this->tanauan);
+            return $parcel->fresh();
+        });
+        $rider = $this->rider();
+        $batch = $this->dispatchTo($parcels->all(), $rider);
+        $api = $this->api($rider);
+        $api->postJson("/api/rider/batches/{$batch->id}/accept")->assertOk();
+        foreach ($parcels as $parcel) $api->postJson("/api/rider/batches/{$batch->id}/load", ['tracking_no' => $parcel->tracking_no])->assertOk();
+        $api->postJson("/api/rider/batches/{$batch->id}/start")->assertOk();
+        $api->getJson("/api/rider/batches/{$batch->id}")->assertOk()->assertJsonCount(1, 'batch.stops')->assertJsonCount(3, 'batch.stops.0.items');
+        foreach ($parcels->take(2) as $i => $parcel) {
+            $task = Assignment::where('parcel_id', $parcel->id)->where('type', 'delivery')->sole();
+            $body = ['tracking_no' => $parcel->tracking_no, 'cod_confirmed' => $parcel->cod_amount, 'photo' => $this->photo()];
+            $api->post("/api/rider/batches/{$batch->id}/deliveries/{$task->id}/deliver", $body)->assertOk();
+            // A different request key still cannot collect this order twice.
+            $body['photo'] = $this->photo();
+            $api->post("/api/rider/batches/{$batch->id}/deliveries/{$task->id}/deliver", $body)->assertOk();
+            $this->assertSame('paid', $orders[$i]->fresh()->payment->status);
+            $this->assertEquals($parcel->cod_amount, $orders[$i]->fresh()->payment->amount_collected);
+            $this->assertSame('unpaid', $orders[2]->fresh()->payment->status);
+        }
+        $failed = Assignment::where('parcel_id', $parcels[2]->id)->where('type', 'delivery')->sole();
+        $api->post("/api/rider/batches/{$batch->id}/deliveries/{$failed->id}/fail", ['reason' => 'buyer_unavailable', 'photo' => $this->photo()])->assertOk();
+        $this->assertSame('delivery_failed', $orders[2]->fresh()->status);
+        $this->assertSame('unpaid', $orders[2]->fresh()->payment->status);
+        $this->assertEquals(0, $orders[2]->fresh()->payment->amount_collected);
+        $this->assertEquals($parcels->take(2)->sum('cod_amount'), \App\Models\OrderPayment::sum('amount_collected'));
+        $this->assertDatabaseCount('order_payments', 3);
     }
 
     public function test_delivery_stops_carry_the_buyer_pin_for_navigation(): void

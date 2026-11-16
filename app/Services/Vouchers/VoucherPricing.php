@@ -42,7 +42,7 @@ class VoucherPricing
         $cap = $voucher->max_discount !== null ? (float) $voucher->max_discount : INF;
         $off = match ($voucher->type) {
             Voucher::FIXED => min((float) $voucher->amount, $merchandise),
-            Voucher::PERCENT => min($merchandise * (float) $voucher->amount / 100, $cap),
+            Voucher::PERCENT => min($merchandise, $merchandise * (float) $voucher->amount / 100, $cap),
             Voucher::FREE_SHIPPING => min($shipping, $cap),
             default => 0,
         };

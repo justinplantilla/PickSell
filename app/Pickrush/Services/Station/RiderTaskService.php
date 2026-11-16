@@ -55,6 +55,19 @@ class RiderTaskService
      */
     public function deliver(Assignment $task, float $codConfirmed, string $proofPhotoPath, array $scan = []): void
     {
+        DB::transaction(function () use ($task, $codConfirmed, $proofPhotoPath, $scan) {
+            // Serialize cash-limit checks and retries, even when different request keys are used.
+            \App\Pickrush\Models\Rider::whereKey($task->rider_id)->lockForUpdate()->firstOrFail();
+            $locked = Assignment::whereKey($task->id)->lockForUpdate()->firstOrFail();
+            \App\Pickrush\Models\Parcel::whereKey($locked->parcel_id)->lockForUpdate()->firstOrFail();
+            if ($locked->status === 'completed') return;
+            $this->deliverLocked($locked, $codConfirmed, $proofPhotoPath, $scan);
+            $task->setRawAttributes($locked->getAttributes(), true);
+        });
+    }
+
+    private function deliverLocked(Assignment $task, float $codConfirmed, string $proofPhotoPath, array $scan): void
+    {
         if ($this->replayed($scan)) {
             return;
         }
@@ -79,6 +92,9 @@ class RiderTaskService
                 'cod_collected' => $cod,
                 'completed_at' => $scan['occurred_at'] ?? now(),
             ]);
+            if (! $isReturn) {
+                app(\App\Services\Orders\CollectOrderPayment::class)->collect($task);
+            }
             $this->earnings->credit($task, $task->completed_at);
         });
     }
