@@ -27,12 +27,13 @@ class ThemeAndAccountLayoutTest extends TestCase
 
         preg_match_all('#<span class="card-title">([^<]+)</span>#', $page, $titles);
         $this->assertSame([
-            'Profile Information', 'Change Password', 'Delete Account',
-            'Store Profile', 'Vacation Mode', 'Delivery Partners', 'Shop Pin for Pickups',
+            'Profile Information', 'Change Password',
+            'Store Profile', 'Vacation Mode', 'Delivery Partners', 'Shop Pin for Pickups', 'Delete Account',
         ], $titles[1]);
 
         [$left, $right] = array_slice(explode('<div class="account-column">', $page), 1, 2);
-        $this->assertStringContainsString('Delete Account', $left);
+        $this->assertStringContainsString('Change Password', $left);
+        $this->assertStringNotContainsString('Delete Account', $left);
         $this->assertStringNotContainsString('Store Profile', $left);
         $this->assertStringContainsString('Shop Pin for Pickups', $right);
         // The map spans both columns below them.

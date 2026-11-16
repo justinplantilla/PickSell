@@ -89,17 +89,6 @@
             </div>
         </div>
 
-        <div class="card danger-card">
-            <div class="card-header"><span class="card-title">Delete Account</span></div>
-            <div class="card-body">
-                <p class="account-muted-text">Permanently delete your seller account and its related records.</p>
-                <form method="POST" action="{{ route('account.delete') }}" data-confirm="Delete your account permanently? This cannot be undone.">
-                    @csrf @method('DELETE')
-                    <input type="password" name="password" class="form-control account-spaced" placeholder="Confirm your password" required>
-                    <button type="submit" class="btn btn-danger">Delete Account</button>
-                </form>
-            </div>
-        </div>
     </div>
 
     <div class="account-column">
@@ -225,6 +214,18 @@
                 @error('lat')<div class="account-danger-text">{{ $message }}</div>@enderror
                 @error('lng')<div class="account-danger-text">{{ $message }}</div>@enderror
                 <button type="submit" class="btn btn-coral account-pin-save">Save Pin</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card danger-card">
+        <div class="card-header"><span class="card-title">Delete Account</span></div>
+        <div class="card-body">
+            <p class="account-muted-text">Permanently delete your seller account and its related records.</p>
+            <form method="POST" action="{{ route('account.delete') }}" data-confirm="Delete your account permanently? This cannot be undone.">
+                @csrf @method('DELETE')
+                <input type="password" name="password" class="form-control account-spaced" placeholder="Confirm your password" required>
+                <button type="submit" class="btn btn-danger">Delete Account</button>
             </form>
         </div>
     </div>
