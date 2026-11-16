@@ -75,6 +75,7 @@ class RiderApplicationTest extends TestCase
             'license_back' => UploadedFile::fake()->create('back.jpg', 120, 'image/jpeg'),
             'orcr' => [UploadedFile::fake()->create('orcr.pdf', 80, 'application/pdf')],
             'orcr_expiry' => now()->addMonths(8)->toDateString(),
+            'terms' => '1',
         ], $overrides);
     }
 
@@ -190,6 +191,13 @@ class RiderApplicationTest extends TestCase
 
         app(RiderOnboarding::class)->approve($rider, $this->manager);
         $this->assertSame('active', $rider->fresh()->status);
+    }
+
+    public function test_an_application_needs_the_terms_accepted(): void
+    {
+        $this->apply(['terms' => '0'])->assertStatus(422)
+            ->assertJsonValidationErrors(['terms' => 'You must agree to the Terms of Service and Privacy Policy to apply.']);
+        $this->assertDatabaseCount('pr_riders', 0);
     }
 
     public function test_an_application_needs_a_fresh_email_verification(): void

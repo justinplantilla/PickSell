@@ -168,10 +168,9 @@
     @include('partials.delivery-proof', ['order' => $order])
 
     @include('partials.order-items', ['order' => $order])
-    @include('partials.order-items', ['order' => $order])
     <dl class="order-breakdown">
         <div><dt>Order #</dt><dd>{{ $order->order_number }}</dd></div>
-        @if($order->lines()->count() === 1)<div><dt>Item price</dt><dd>₱{{ number_format($unitPrice, 2) }}</dd></div>@endif@endif
+        @if($order->lines()->count() === 1)<div><dt>Item price</dt><dd>₱{{ number_format($unitPrice, 2) }}</dd></div>@endif
         <div><dt>Quantity</dt><dd>× {{ $order->quantity }}</dd></div>
         @if((float) $order->store_discount > 0)
         <div><dt>Store voucher</dt><dd>−₱{{ number_format($order->store_discount, 2) }} <small class="orders-muted-text">included</small></dd></div>
@@ -234,13 +233,6 @@
                     <option value="not_as_described">Item not as described</option>
                 </select>
                 <p class="orders-muted-text-4">Only problems with the item itself can be returned. For anything else, contact Support.</p>
-                @if($order->items->count() > 1)
-                <label class="form-label">Item to return</label>
-                <select name="order_item_id" class="form-control" onchange="const q=this.form.querySelector('[name=quantity]'); q.max=this.selectedOptions[0].dataset.quantity; q.value=q.max;">
-                    <option value="" data-quantity="{{ $order->quantity }}">All items in this order</option>
-                    @foreach($order->items as $line)<option value="{{ $line->id }}" data-quantity="{{ $line->quantity }}">{{ $line->product_name }} {{ $line->variation_label }}</option>@endforeach
-                </select>
-                @endif
                 @if($order->items->count() > 1)
                 <label class="form-label">Item to return</label>
                 <select name="order_item_id" class="form-control" onchange="const q=this.form.querySelector('[name=quantity]'); q.max=this.selectedOptions[0].dataset.quantity; q.value=q.max;">

@@ -135,6 +135,25 @@ class StoreCheckoutTest extends TestCase
         $this->postJson('/api/mobile/buyer/checkout', ['item_ids' => [$next->id], 'checkout_key' => 'same-key'])->assertUnprocessable()->assertJsonValidationErrors('checkout_key');
         $this->assertDatabaseCount('orders', 1);
     }
+    public function test_buyer_and_seller_pages_list_a_store_orders_items_once(): void
+    {
+        $buyer = $this->actingAsBuyer(); $seller = $this->seller();
+        $one = $this->cartLine($buyer, $this->product($seller, ['name' => 'Desk Lamp']));
+        $two = $this->cartLine($buyer, $this->product($seller, ['name' => 'Lamp Shade']));
+        $order = app(OrderPlacement::class)->place($buyer, [$one->id, $two->id], null)->sole();
+        $order->update(['status' => 'delivered', 'delivered_at' => now()]);
+
+        $html = $this->actingAs($buyer)->get(route('buyer.orders'))->assertOk()->getContent();
+        $this->assertStringNotContainsString('@endif', $html);
+        $this->assertSame(1, substr_count($html, 'aria-label="Order items"'));
+        $this->assertSame(1, substr_count($html, 'name="order_item_id"'));
+
+        $html = $this->actingAs($seller)->get('/seller/orders')->assertOk()->getContent();
+        $this->assertSame(1, substr_count($html, 'aria-label="Order items"'));
+        $this->assertStringNotContainsString('Desk Lamp, Lamp Shade', $html);
+        $this->actingAs($seller)->get("/seller/orders/{$order->id}")->assertOk()->assertSee('Lamp Shade')->assertDontSee('Desk Lamp, Lamp Shade');
+    }
+
     public function test_item_returns_and_reordering_use_the_selected_items_own_price_and_quantity(): void
     {
         $buyer = $this->actingAsBuyer(); $seller = $this->seller();

@@ -655,7 +655,7 @@ class SellerController extends Controller
     public function orders(Request $request)
     {
         $status = $request->get('status', 'all');
-        $query = Order::where('seller_id', $this->seller()->id)->with('buyer');
+        $query = Order::where('seller_id', $this->seller()->id)->with('buyer', 'items.product');
         // pending, action_required and the dashboard's status groups still come in from dashboard links.
         if (array_key_exists($status, self::ORDER_FILTERS)) {
             $query->whereIn('status', self::ORDER_FILTERS[$status]['statuses']);
