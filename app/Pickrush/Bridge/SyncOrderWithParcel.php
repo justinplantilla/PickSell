@@ -12,6 +12,7 @@ use App\Pickrush\Services\ParcelStatusChanged;
 use App\Services\AdminNotificationService;
 use App\Services\Finance\ShipmentSettlement;
 use App\Services\Orders\OrderLifecycleService;
+use App\Services\Returns\ReturnFlow;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -74,6 +75,17 @@ class SyncOrderWithParcel
         }
 
         $event = $changed->event->loadMissing('hub', 'toHub');
+        // A return waybill moves its return (received, held for the seller), not the order.
+        if (PicksellBridge::returnRequestFor($parcel)) {
+            try {
+                app(ReturnFlow::class)->parcelScanned($parcel, $event);
+            } catch (Throwable $e) {
+                report($e);
+                $this->flag($parcel, "The return could not follow parcel scan \"{$event->status->label()}\": {$e->getMessage()}");
+            }
+
+            return;
+        }
         $orders = PicksellBridge::ordersFor($parcel);
         foreach ($orders as $order) {
             try {

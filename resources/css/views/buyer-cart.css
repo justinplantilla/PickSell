@@ -190,6 +190,29 @@ body.dark .checkout-voucher-option.is-unavailable:hover { background: transparen
 body.dark .checkout-voucher-badge--platform { background: #e5e7eb; color: #111; }
 body.dark .checkout-voucher-error { color: #fca5a5; }
 
+/* Voucher ticket: amount first, then min. spend, validity and usage; the stamp is the buyer's uses left. */
+.voucher-ticket { position: relative; align-items: center; }
+.voucher-ticket .checkout-voucher-info { gap: 0.2rem; }
+.voucher-ticket .voucher-usage { margin-top: 0.3rem; }
+.voucher-ticket .voucher-usage-bar { width: auto; flex: 1; max-width: 14rem; }
+.voucher-ticket-amount { font-weight: 800; font-size: 1.05rem; color: var(--coral); letter-spacing: -0.01em; }
+.voucher-ticket-problem { color: #b45309; font-weight: 600; }
+.voucher-ticket-side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.45rem; flex-shrink: 0; }
+.voucher-ticket-stamp { display: inline-grid; place-items: center; min-width: 2.4rem; height: 2.4rem; padding: 0 0.3rem; border: 2px solid var(--coral); border-radius: 50%; color: var(--coral); font-weight: 800; font-size: 0.85rem; opacity: 0.85; }
+.voucher-ticket-flag { position: absolute; top: -0.6rem; left: 0.8rem; padding: 0.1rem 0.5rem; border-radius: 999px; background: var(--coral); color: #fff; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.voucher-ticket.is-recommended { border-color: var(--coral); box-shadow: 0 0 0 3px rgba(255, 111, 97, 0.15); }
+body.dark .voucher-ticket-problem { color: #fbbf24; }
+/* Can't be used right now: a light, see-through grey wash over the ticket; its own colours still show. */
+.voucher-ticket-scope { font-weight: 400; color: #6b7280; }
+.voucher-ticket-flag--off { background: #9ca3af; z-index: 2; }
+.voucher-ticket.is-unavailable { opacity: 1; }
+.voucher-ticket-cover { position: absolute; inset: 0; border-radius: inherit; background: rgba(209, 213, 219, 0.4); z-index: 1; pointer-events: none; }
+body.dark .voucher-ticket-cover { background: rgba(115, 115, 115, 0.3); }
+.voucher-ticket.is-unavailable { cursor: not-allowed; }
+.voucher-ticket.is-shaking { animation: voucher-shake 0.35s; }
+@keyframes voucher-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+@media (prefers-reduced-motion: reduce) { .voucher-ticket.is-shaking { animation: none; } }
+
 @media (max-width: 900px) {
     /* Phones and small tablets: the summary (with Checkout) drops under the items instead of off screen. */
     .cart-layout { grid-template-columns: minmax(0, 1fr); }

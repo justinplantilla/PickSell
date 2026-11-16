@@ -98,6 +98,24 @@ when the order is **completed**, as before.
 Not decided. `ShipmentSettlement::failed()` marks the extension point. Today the parcel
 follows PickRush's own re-attempt and return rules, and no money moves.
 
+## 4b. Buyer returns (return waybill)
+
+When the seller (or PickSell, on a dispute) approves a buyer's return, `PicksellBridge::bookReturn`
+books a **new** parcel, `external_ref` = `RET-{return_request_id}`, straight into the pickup queue:
+pickup at the address the order went to, delivery to the seller, the original order's carrier.
+It is priced like a delivery between the two cities for the returned items; `cod_amount` =
+`shipping_fee` = that fee, which the **seller** pays the rider on hand-over;
+`platform_commission` = 0, so PickSell is owed ₱0 of it (`PicksellSettlement::owedFor`).
+
+- The order does not follow it (`ordersFor` is empty); `SyncOrderWithParcel` hands its scans to
+  `ReturnFlow::parcelScanned`: picked up → `in_transit`, delivered → the return is `received`.
+- A failed hand-over is a seller refusal (`return_failure_reasons`): the parcel stays
+  `delivery_failed` with `return_refused_at`, is listed with the held returns, has no attempt limit,
+  can never go back to the buyer, is reported like any refused return and may be `abandoned`
+  after `return_abandon_days`. PickSell can then refund the buyer without the item.
+- `RTB-{id}`: the item sent back to the buyer when PickSell sides with the seller; the buyer pays
+  its fee as COD, and a refused one goes back to the seller without a return fee.
+
 ## 5. Route prices
 
 Rows in `pr_shipping_rates` / `pr_shipping_overweight_rates` with an `origin_region` are route

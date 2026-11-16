@@ -17,6 +17,8 @@ use App\Pickrush\Services\ParcelLedger;
  * return fee, which the seller pays the return rider on hand-back (PickSell takes no commission).
  * A seller who does not take it back has it held at the station; after
  * policies.return_abandon_days the station may mark it abandoned, and the company keeps it.
+ * A buyer return (Parcel::isBuyerReturn) the seller did not take is held the same way: it is the
+ * seller's item, so it never goes back to the buyer.
  */
 class FailedDeliveries
 {
@@ -27,6 +29,9 @@ class FailedDeliveries
         $returnable = [ParcelStatus::DeliveryFailed, ParcelStatus::ArrivedAtStation];
         if ($parcel->current_hub_id !== $staff->hub_id || ! in_array($parcel->current_status, $returnable, true) || $parcel->is_return) {
             throw new OperationRefused("{$parcel->tracking_no} cannot be sent back from here ({$parcel->current_status->label()}).");
+        }
+        if ($parcel->isBuyerReturn()) {
+            throw new OperationRefused("{$parcel->tracking_no} is a buyer's return for its seller. Hold it here for the seller; it does not go back to the buyer.");
         }
         if ($parcel->assignments()->where(fn ($q) => DispatchService::stillWithRider($q))->exists()) {
             throw new OperationRefused("{$parcel->tracking_no} is still with the rider who tried to deliver it. Scan it in at Receiving first.");
@@ -43,7 +48,9 @@ class FailedDeliveries
     /** The fee the seller pays on hand-back: a PickSell parcel's shipping fee, once delivery was tried. */
     public static function returnFee(Parcel $parcel): ?string
     {
-        return $parcel->source === PicksellBridge::SOURCE && $parcel->attempt_count > 0 && (float) $parcel->shipping_fee > 0
+        // Only an order's own parcel: a buyer return, or an item sent back to the buyer, is not charged again.
+        return $parcel->source === PicksellBridge::SOURCE && PicksellBridge::isShipmentRef($parcel->external_ref)
+            && $parcel->attempt_count > 0 && (float) $parcel->shipping_fee > 0
             ? (string) $parcel->shipping_fee
             : null;
     }
@@ -58,7 +65,8 @@ class FailedDeliveries
     public function abandon(Parcel $parcel, Staff $staff, ?string $note = null): void
     {
         $days = (int) config('pickrush.policies.return_abandon_days');
-        if ($parcel->current_hub_id !== $staff->hub_id || $parcel->current_status !== ParcelStatus::ReturningToSender || ! $parcel->return_refused_at) {
+        $held = $parcel->isBuyerReturn() ? ParcelStatus::DeliveryFailed : ParcelStatus::ReturningToSender;
+        if ($parcel->current_hub_id !== $staff->hub_id || $parcel->current_status !== $held || ! $parcel->isHeldForSeller()) {
             throw new OperationRefused("{$parcel->tracking_no} is not a return held for its seller here.");
         }
         if ($parcel->assignments()->where(fn ($q) => DispatchService::stillWithRider($q))->exists()) {

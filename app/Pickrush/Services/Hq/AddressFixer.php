@@ -30,7 +30,7 @@ class AddressFixer
         if (in_array($parcel->current_status, [ParcelStatus::Delivered, ParcelStatus::ReturnedToSender, ParcelStatus::Cancelled, ParcelStatus::Lost, ParcelStatus::Abandoned], true)) {
             throw new OperationRefused('This parcel has finished its journey.');
         }
-        $notCollected = in_array($parcel->current_status, [ParcelStatus::LabelCreated, ParcelStatus::WaitingPickup], true);
+        $notCollected = in_array($parcel->current_status, [ParcelStatus::LabelCreated, ParcelStatus::WaitingPickup, ParcelStatus::AwaitingDropoff], true);
         if ($side === 'pickup' && ! $notCollected) {
             throw new OperationRefused('The pickup address can only change before the parcel is collected.');
         }

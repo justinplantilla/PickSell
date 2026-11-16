@@ -52,7 +52,7 @@
                 <td data-label="Product">{{ $order->product_name }}@if($order->variation_label)<div class="seller-orders-muted-text">{{ $order->variation_label }}</div>@endif</td>
                 <td data-label="Qty">{{ $order->quantity }}</td>
                 <td data-label="Amount">₱{{ number_format($order->amount, 2) }}</td>
-                <td data-label="Status"><x-order-status-badge :status="$order->status" /></td>
+                <td data-label="Status"><x-order-status-badge :status="$order->status" />@if($order->status === 'ready_for_pickup' && $order->fulfillment === 'dropoff')<div class="seller-orders-muted-text">Drop off by {{ $order->dropoff_by?->format('M d, h:i A') }}</div>@endif</td>
                 <td class="seller-orders-muted-text" data-label="Date">{{ $order->created_at->format('M d, Y') }}</td>
                 <td class="cell-actions">
                     <div class="seller-orders-row">
@@ -93,11 +93,12 @@
         <div class="modal-title">Hand Over the Selected Parcels</div>
         <div class="waybill-generation-note">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-            <span>Are the <strong data-bulk-handover-count>0</strong> selected orders packed with their waybills attached? Their logistics companies will send riders to pick them up, and the buyers and admin are notified. Orders without a waybill are skipped.</span>
+            <span>Are the <strong data-bulk-handover-count>0</strong> selected orders packed with their waybills attached? Choose <strong>Rider Pickup</strong> and their logistics companies send riders, or <strong>Drop Off</strong> and you bring them to your station within {{ \App\Models\Order::DROPOFF_WITHIN_DAYS }} days (no rider is sent; parcels not dropped off in time are cancelled). Orders without a waybill are skipped.</span>
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-outline" data-close-handover>Cancel</button>
-            <button type="submit" form="bulkOrdersForm" name="action" value="handover" class="btn btn-coral">Hand Over</button>
+            <button type="submit" form="bulkOrdersForm" name="action" value="dropoff" class="btn btn-outline">Drop Off</button>
+            <button type="submit" form="bulkOrdersForm" name="action" value="handover" class="btn btn-coral">Rider Pickup</button>
         </div>
     </div>
 </div>
@@ -110,11 +111,12 @@
             @csrf @method('PATCH')
             <div class="waybill-generation-note">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-                <span>Is the parcel packed with its waybill attached? The order's logistics company will send a rider to pick it up, and the buyer and admin are notified.</span>
+                <span>Is the parcel packed with its waybill attached? Choose <strong>Rider Pickup</strong> and the logistics company sends a rider, or <strong>Drop Off</strong> and you bring it to your station within {{ \App\Models\Order::DROPOFF_WITHIN_DAYS }} days (no rider is sent; if it is not dropped off in time, the order is cancelled).</span>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" data-close-handover>Cancel</button>
-                <button type="submit" class="btn btn-coral">Hand Over</button>
+                <button type="submit" name="method" value="dropoff" class="btn btn-outline">Drop Off</button>
+                <button type="submit" name="method" value="pickup" class="btn btn-coral">Rider Pickup</button>
             </div>
         </form>
     </div>

@@ -50,6 +50,22 @@ class ShippingDeadlines
                 }
             });
 
+        // Drop-off chosen but the parcel never reached the station.
+        Order::query()->where('status', 'ready_for_pickup')->where('fulfillment', 'dropoff')->where('dropoff_by', '<=', now())
+            ->with(['buyer', 'seller'])->chunkById(100, function ($orders) use (&$result) {
+                foreach ($orders as $order) {
+                    if (! $this->cancellations->cancelMissedDropoff($order)) {
+                        continue;
+                    }
+                    $result['cancelled']++;
+                    $this->performance->forget($order->seller);
+                    $this->notify(fn () => $order->buyer?->notify(new BuyerOrderUpdate($order,
+                        "Order #{$order->order_number} was cancelled because the seller did not ship it in time. You were not charged for it.")));
+                    $this->notify(fn () => $order->seller?->notify(new SellerShippingDeadline($order,
+                        "Order #{$order->order_number} was cancelled automatically: it was not dropped off at the station within ".Order::DROPOFF_WITHIN_DAYS.' days. This counts against your seller performance.')));
+                }
+            });
+
         // One reminder per order, 12 hours before its deadline (only orders not reminded yet).
         Order::query()->whereIn('status', ['preparing', 'processing'])
             ->whereBetween('ship_by', [now(), now()->addHours(self::REMINDER_HOURS)])->whereNull('ship_reminded_at')
@@ -62,7 +78,8 @@ class ShippingDeadlines
                 }
             });
 
-        Order::query()->where('status', 'ready_for_pickup')->whereNotNull('handed_over_at')
+        // Only pickups: a drop-off waits on the seller, not the courier.
+        Order::query()->where('status', 'ready_for_pickup')->where('fulfillment', 'pickup')->whereNotNull('handed_over_at')
             ->where('handed_over_at', '<=', now()->subHours(self::PICKUP_GRACE_HOURS))
             ->whereNotExists(fn ($q) => $q->from('logistics_issues')->whereColumn('logistics_issues.order_id', 'orders.id')->where('type', 'pickup_missed'))
             ->chunkById(100, function ($orders) use (&$result) {

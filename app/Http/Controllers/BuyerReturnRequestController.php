@@ -4,61 +4,61 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\ReturnRequest;
-use App\Models\ReturnRequestEvent;
-use App\Services\AdminNotificationService;
+use App\Pickrush\Models\Parcel;
+use App\Pickrush\Services\Labels;
+use App\Services\Returns\ReturnFlow;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class BuyerReturnRequestController extends Controller
 {
-    public function store(Request $request, Order $order, AdminNotificationService $notifications)
+    /** Shared with the buyer app (BuyerApi\OrderController::requestReturn). */
+    public static function rules(Order $order): array
+    {
+        return [
+            // Seller-fault reasons only; anything else goes through Contact Support.
+            'reason' => ['required', Rule::in(ReturnRequest::BUYER_REASONS)],
+            'details' => 'required|string|max:2000',
+            'quantity' => 'sometimes|integer|min:1|max:'.$order->quantity,
+            // Where PickSell sends the refund.
+            'gcash_number' => ['required', 'string', 'regex:/^09\d{9}$/'],
+            'gcash_name' => 'required|string|max:120',
+        ];
+    }
+
+    public static function messages(): array
+    {
+        return ['gcash_number.regex' => 'GCash number must be 11 digits starting with 09, e.g. 09171234567.'];
+    }
+
+    public function store(Request $request, Order $order, ReturnFlow $flow)
     {
         abort_if($order->buyer_id !== auth()->id(), 404);
-        abort_unless(in_array($order->status, ['delivered', 'completed'], true), 422, 'Returns can only be requested for delivered orders.');
-        abort_unless($order->returnWindowOpen(), 422, 'Returns can only be requested within '.config('pickrush.policies.return_window_days').' days of delivery.');
-        abort_if($order->returnRequest()->exists(), 409, 'A return request already exists for this order.');
 
-        $data = $request->validate([
-            'reason' => 'required|in:damaged,wrong_item,wrong_size,not_as_described,other',
-            'details' => 'required|string|max:2000',
-            'quantity' => 'sometimes|integer|min:1|max:' . $order->quantity,
+        $data = $request->validate(self::rules($order) + [
             'attachments' => 'nullable|array|max:5',
             'attachments.*' => 'file|mimes:jpg,jpeg,png,webp,mp4,webm|max:10240',
-        ]);
-
-        $quantity = (int) ($data['quantity'] ?? $order->quantity);
-        $attachments = collect($request->file('attachments', []))
-            ->map(fn ($attachment) => $attachment->store('return-requests', 'public'))
-            ->all();
-
-        $returnRequest = ReturnRequest::create([
-            'order_id' => $order->id,
-            'buyer_id' => $order->buyer_id,
-            'seller_id' => $order->seller_id,
-            'reason' => $data['reason'],
-            'details' => $data['details'],
-            'quantity' => $quantity,
-            'refund_amount' => round(((float) $order->amount / max((int) $order->quantity, 1)) * $quantity, 2),
-            'attachments' => $attachments,
-            'status' => 'requested',
-        ]);
-
-        ReturnRequestEvent::create([
-            'return_request_id' => $returnRequest->id,
-            'actor_user_id' => $order->buyer_id,
-            'event_type' => 'request_submitted',
-            'from_status' => null,
-            'to_status' => 'requested',
-            'notes' => $data['details'],
-            'metadata' => ['reason' => $data['reason'], 'quantity' => $quantity],
-        ]);
-        $notifications->notifyAdmins(
-            'return.requested',
-            'Return/refund requested',
-            "A buyer requested a return for order {$order->order_number}.",
-            route('admin.returns.show', $returnRequest, false),
-        );
+        ], self::messages());
+        $flow->request($order, $request->user(), $data, $request->file('attachments', []));
 
         return redirect()->route('buyer.orders')->with('success', 'Return/refund request sent to the seller.');
+    }
+
+    /** The Pickrush 4×6 return label (barcode + QR) the buyer sticks on the package for the rider to scan. */
+    public function waybill(Order $order)
+    {
+        abort_if($order->buyer_id !== auth()->id(), 404);
+
+        return self::waybillFor($order);
+    }
+
+    /** Shared with the buyer app (BuyerApi\OrderController::returnWaybill). */
+    public static function waybillFor(Order $order)
+    {
+        $return = $order->returnRequest;
+        abort_unless($return?->tracking_number && in_array($return->status, ['awaiting_item', 'received'], true), 404);
+        $parcel = Parcel::where('tracking_no', $return->tracking_number)->firstOrFail();
+
+        return app(Labels::class)->parcel($parcel);
     }
 }

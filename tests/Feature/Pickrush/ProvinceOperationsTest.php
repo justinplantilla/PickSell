@@ -143,7 +143,7 @@ class ProvinceOperationsTest extends TestCase
             $this->as($this->sorter)->get($this->pickrushUrl($page))->assertOk()
                 ->assertDontSee($first->tracking_no)->assertSee($first->fresh()->maskedTrackingNo());
         }
-        $this->as($this->sorter)->get($this->pickrushUrl("/parcels/{$first->tracking_no}/label"))->assertForbidden();
+        $this->as($this->sorter)->get($this->pickrushUrl("/parcels/{$first->tracking_no}/label"))->assertNotFound();
 
         $this->as($this->sorter)->post($this->pickrushUrl("/province/trips/{$trip->manifest_no}/receive"), ['tracking_no' => $first->tracking_no])->assertSessionHasNoErrors();
         $this->as($this->sorter)->get($this->pickrushUrl("/province/trips/{$trip->manifest_no}"))->assertOk()

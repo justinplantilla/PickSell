@@ -95,7 +95,9 @@ class RiderTaskService
         }
         $this->expect($task, ['delivery', 'return'], ['out_for_delivery']);
         $isReturn = $task->type === 'return';
-        $reasons = config($isReturn ? 'pickrush.return_failure_reasons' : 'pickrush.failure_reasons');
+        // A buyer return goes to the seller as a delivery; not taking it is a seller refusal, held like a return.
+        $toSeller = $isReturn || $task->parcel->isBuyerReturn();
+        $reasons = config($toSeller ? 'pickrush.return_failure_reasons' : 'pickrush.failure_reasons');
         if (! array_key_exists($reason, $reasons)) {
             throw new OperationRefused('Pick a reason from the list.');
         }
@@ -103,12 +105,12 @@ class RiderTaskService
             throw new OperationRefused('Write a note when the reason is "Other".');
         }
 
-        DB::transaction(function () use ($task, $reason, $reasons, $note, $photoPath, $scan, $isReturn) {
+        DB::transaction(function () use ($task, $reason, $reasons, $note, $photoPath, $scan, $isReturn, $toSeller) {
             $this->ledger->record($task->parcel, $isReturn ? ParcelStatus::ReturningToSender : ParcelStatus::DeliveryFailed, $task->rider->station, [
-                'note' => ($isReturn ? 'Seller did not take the return back: ' : '').$reasons[$reason].($note ? " — {$note}" : ''),
+                'note' => ($toSeller ? 'Seller did not take the return back: ' : '').$reasons[$reason].($note ? " — {$note}" : ''),
                 'meta' => ['reason' => $reason, 'photo' => $photoPath],
             ] + $this->options($task, $scan));
-            if ($isReturn && ! $task->parcel->return_refused_at) {
+            if ($toSeller && ! $task->parcel->return_refused_at) {
                 $task->parcel->forceFill(['return_refused_at' => $scan['occurred_at'] ?? now()])->save();
             }
             $task->update([

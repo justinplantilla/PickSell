@@ -57,6 +57,7 @@ class ParcelEvent extends Model
         return match ($this->status) {
             ParcelStatus::LabelCreated => 'Shipping label created, seller is packing',
             ParcelStatus::WaitingPickup => 'Shipment created, waiting for pickup',
+            ParcelStatus::AwaitingDropoff => 'Shipment created, seller will drop it off at the station',
             ParcelStatus::PickedUp => 'Picked up from the seller',
             ParcelStatus::AtOriginHub, ParcelStatus::AtProvinceHub, ParcelStatus::ArrivedAtStation => 'Arrived at '.($hub ?? 'hub'),
             ParcelStatus::InTransitToProvince, ParcelStatus::InTransitToStation => 'Departed '.($hub ?? 'hub').($to ? ' → '.$to : ''),

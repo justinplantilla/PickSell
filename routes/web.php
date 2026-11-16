@@ -173,6 +173,7 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
     Route::patch('/orders/{order}/cancel', [BuyerController::class, 'cancelOrder'])->name('buyer.orders.cancel');
     Route::patch('/orders/{order}/received', [BuyerController::class, 'confirmReceived'])->name('buyer.orders.received');
     Route::post('/orders/{order}/returns', [BuyerReturnRequestController::class, 'store'])->name('buyer.orders.returns.store');
+    Route::get('/orders/{order}/returns/waybill', [BuyerReturnRequestController::class, 'waybill'])->name('buyer.orders.returns.waybill');
     Route::post('/orders/{order}/delivery-problem', [DeliveryProblemController::class, 'store'])->middleware('throttle:10,1')->name('buyer.orders.delivery-problem');
     Route::post('/orders/{order}/report-off-platform', [OffPlatformReportController::class, 'store'])->middleware('throttle:10,1')->name('buyer.orders.report-off-platform');
     Route::post('/orders/{order}/feedback', [BuyerController::class, 'submitFeedback'])->name('buyer.feedback');
@@ -220,6 +221,8 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     Route::patch('/orders/{order}/pack', [SellerController::class, 'packOrder'])->name('seller.orders.pack');
     Route::post('/orders/{order}/waybill', [SellerController::class, 'generateWaybill'])->name('seller.orders.waybill.generate');
     Route::patch('/orders/{order}/handover',[SellerController::class, 'handoverOrder'])->name('seller.orders.handover');
+    Route::get('/dropoffs/{batch}', [SellerController::class, 'dropoffBatch'])->name('seller.dropoffs.show');
+    Route::get('/dropoffs/{batch}/print', [SellerController::class, 'dropoffBatchPrint'])->name('seller.dropoffs.print');
     Route::patch('/orders/{order}/confirm-delivery', [SellerController::class, 'confirmDelivery'])->name('seller.orders.confirm-delivery');
     Route::post('/orders/{order}/delivery-problem', [DeliveryProblemController::class, 'store'])->middleware('throttle:10,1')->name('seller.orders.delivery-problem');
 
@@ -230,9 +233,8 @@ Route::middleware(['auth', SellerMiddleware::class])->prefix('seller')->group(fu
     Route::patch('/returns/{returnRequest}/approve', [SellerReturnRequestController::class, 'approve'])->name('seller.returns.approve');
     Route::patch('/returns/{returnRequest}/reject', [SellerReturnRequestController::class, 'reject'])->name('seller.returns.reject');
     Route::patch('/returns/{returnRequest}/receive', [SellerReturnRequestController::class, 'markReceived'])->name('seller.returns.receive');
-    Route::patch('/returns/{returnRequest}/tracking', [SellerReturnRequestController::class, 'updateTracking'])->name('seller.returns.tracking');
-    Route::patch('/returns/{returnRequest}/refund-due', [SellerReturnRequestController::class, 'markRefundDue'])->name('seller.returns.refund-due');
-    Route::patch('/returns/{returnRequest}/complete', [SellerReturnRequestController::class, 'complete'])->name('seller.returns.complete');
+    // Checking the returned item; the refund itself is sent by PickSell (admin.refunds.sent).
+    Route::patch('/returns/{returnRequest}/inspect', [SellerReturnRequestController::class, 'inspect'])->name('seller.returns.inspect');
     Route::get('/notifications', [SellerController::class, 'notifications'])->name('seller.notifications');
     Route::post('/notifications/read', [SellerController::class, 'markNotificationsRead'])->name('seller.notifications.read');
 
@@ -353,11 +355,14 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->group(func
     Route::get('/refunds', [AdminRefundController::class, 'index'])->middleware($can(Permission::REFUNDS_VIEW))->name('admin.refunds');
     Route::patch('/refunds/{refund}/approve', [AdminRefundController::class, 'approve'])->middleware($can(Permission::REFUNDS_APPROVE))->name('admin.refunds.approve');
     Route::patch('/refunds/{refund}/reject', [AdminRefundController::class, 'reject'])->middleware($can(Permission::REFUNDS_MANAGE))->name('admin.refunds.reject');
+    Route::patch('/refunds/{refund}/sent', [AdminRefundController::class, 'markSent'])->middleware($can(Permission::REFUNDS_APPROVE))->name('admin.refunds.sent');
     Route::patch('/returns/{returnRequest}/resolve', [AdminReturnDisputeController::class, 'resolve'])->middleware($can(Permission::RETURNS_MANAGE))->name('admin.returns.resolve');
     Route::patch('/returns/{returnRequest}/approve', [AdminReturnController::class, 'approve'])->middleware($can(Permission::RETURNS_MANAGE))->name('admin.returns.approve');
     Route::patch('/returns/{returnRequest}/reject', [AdminReturnController::class, 'reject'])->middleware($can(Permission::RETURNS_MANAGE))->name('admin.returns.reject');
     Route::patch('/returns/{returnRequest}/inspect', [AdminReturnController::class, 'inspect'])->middleware($can(Permission::RETURNS_MANAGE))->name('admin.returns.inspect');
     Route::patch('/returns/{returnRequest}/approve-refund', [AdminReturnController::class, 'approveRefund'])->middleware($can(Permission::RETURNS_MANAGE))->name('admin.returns.approve-refund');
+    Route::patch('/returns/{returnRequest}/refund-without-item', [AdminReturnController::class, 'refundWithoutItem'])->middleware($can(Permission::RETURNS_MANAGE))->name('admin.returns.refund-without-item');
+    Route::patch('/returns/{returnRequest}/book-pickup', [AdminReturnController::class, 'bookPickup'])->middleware($can(Permission::RETURNS_MANAGE))->name('admin.returns.book-pickup');
 
     Route::get('/logistics', [AdminLogisticsController::class, 'index'])->middleware($can(Permission::LOGISTICS_VIEW))->name('admin.logistics.index');
     Route::middleware($can(Permission::LOGISTICS_VIEW))->prefix('/logistics')->name('admin.logistics.')->group(function () {

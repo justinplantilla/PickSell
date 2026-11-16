@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Admin\ResolveReturnDisputeRequest;
 use App\Models\ReturnRequest;
-use App\Services\Admin\ReturnDisputeResolution;
+use App\Services\Returns\ReturnFlow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 
@@ -37,10 +37,10 @@ class AdminReturnDisputeController extends Controller
         return view('admin.returns.show', compact('returnRequest'));
     }
 
-    public function resolve(ResolveReturnDisputeRequest $request, ReturnRequest $returnRequest, ReturnDisputeResolution $resolution)
+    public function resolve(ResolveReturnDisputeRequest $request, ReturnRequest $returnRequest, ReturnFlow $flow)
     {
         $data = $request->validated();
-        $resolution->resolve($returnRequest, $data['decision'], $data['admin_notes']);
+        $flow->resolveDispute($returnRequest, $request->user(), $data['decision'], $data['admin_notes']);
 
         return redirect()->route('admin.returns.show', $returnRequest)->with('success', 'Return dispute resolved.');
     }

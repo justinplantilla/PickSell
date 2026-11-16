@@ -127,7 +127,7 @@ class OrderFlowTest extends TestCase
         $order = $this->order($buyer, $lamp, 'delivered', ['quantity' => 2, 'amount' => 2000]);
 
         $this->post("/api/mobile/buyer/orders/{$order->id}/return", [
-            'reason' => 'Damaged item', 'details' => 'The shade arrived cracked.', 'quantity' => 1,
+            'reason' => 'Damaged item', 'details' => 'The shade arrived cracked.', 'quantity' => 1, 'gcash_number' => '09171234567', 'gcash_name' => 'Lamp Buyer',
             'evidence' => [UploadedFile::fake()->image('crack.jpg')],
         ], ['Accept' => 'application/json'])
             ->assertCreated()->assertJsonPath('return_request.status', 'requested')->assertJsonPath('return_request.refund_amount', 1000);
@@ -139,9 +139,17 @@ class OrderFlowTest extends TestCase
         $this->assertSame('request_submitted', ReturnRequestEvent::sole()->event_type);
         $this->assertSame('/admin/returns/'.$return->id, $admin->notifications()->sole()->data['url']);
 
-        $this->postJson("/api/mobile/buyer/orders/{$order->id}/return", ['reason' => 'other', 'details' => 'Again'])->assertStatus(409);
+        // Pending: the buyer cannot confirm receipt until it is settled.
+        $this->getJson("/api/mobile/buyer/orders/{$order->id}")->assertJsonPath('order.actions.can_confirm_received', false);
+        $this->postJson("/api/mobile/buyer/orders/{$order->id}/received")->assertUnprocessable();
+
+        $this->postJson("/api/mobile/buyer/orders/{$order->id}/return", ['reason' => 'damaged', 'details' => 'Again', 'gcash_number' => '09171234567', 'gcash_name' => 'Lamp Buyer'])->assertStatus(409);
         $notDelivered = $this->order($buyer, $lamp, 'out_for_delivery');
-        $this->postJson("/api/mobile/buyer/orders/{$notDelivered->id}/return", ['reason' => 'other', 'details' => 'Early'])->assertUnprocessable();
+        $this->postJson("/api/mobile/buyer/orders/{$notDelivered->id}/return", ['reason' => 'damaged', 'details' => 'Early', 'gcash_number' => '09171234567', 'gcash_name' => 'Lamp Buyer'])->assertUnprocessable();
+        // Seller-fault reasons only, and the GCash account for the refund.
+        $other = $this->order($buyer, $lamp, 'delivered');
+        $this->postJson("/api/mobile/buyer/orders/{$other->id}/return", ['reason' => 'other', 'details' => 'Changed my mind'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['reason', 'gcash_number', 'gcash_name']);
 
         // Website decisions show up in the app.
         $return->forceFill(['status' => 'rejected', 'dispute_status' => 'open'])->save();

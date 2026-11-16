@@ -21,6 +21,9 @@ class Refund extends Model
         'decision_notes',
         'approved_at',
         'processed_at',
+        'payout_method',
+        'payout_reference',
+        'processed_by',
     ];
 
     protected $casts = [

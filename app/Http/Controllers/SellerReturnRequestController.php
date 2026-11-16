@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\ReturnRequest;
 use App\Models\ReturnRequestEvent;
-use App\Services\Finance\RefundService;
+use App\Pickrush\Bridge\PicksellBridge;
+use App\Services\Returns\ReturnFlow;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class SellerReturnRequestController extends Controller
@@ -59,53 +59,35 @@ class SellerReturnRequestController extends Controller
         return view('seller.returns.show', compact('returnRequest'));
     }
 
-    public function approve(Request $request, ReturnRequest $returnRequest)
+    /** Approve: PickSell books the Pickrush return waybill (pickup at the buyer); the seller pays its fee on hand-over. */
+    public function approve(Request $request, ReturnRequest $returnRequest, ReturnFlow $flow)
     {
-        $this->transition($returnRequest, 'requested');
-        $data = $request->validate([
-            'seller_note' => 'required|string|max:2000',
-            'refund_amount' => 'required|numeric|min:0.01|max:' . $returnRequest->order->amount,
-            'carrier' => 'nullable|string|max:100',
-            'tracking_number' => 'nullable|string|max:120',
-        ]);
-        $trackingStatus = !empty($data['tracking_number']) ? 'label_generated' : 'not_started';
-        $returnRequest->update([
-            'status' => 'awaiting_item',
-            'seller_note' => $data['seller_note'],
-            'refund_amount' => $data['refund_amount'],
-            'carrier' => $data['carrier'] ?? null,
-            'tracking_number' => $data['tracking_number'] ?? null,
-            'tracking_status' => $trackingStatus,
-            'tracking_updated_at' => $trackingStatus === 'label_generated' ? now() : null,
-            'approved_at' => now(),
-        ]);
-        $this->recordEvent($returnRequest, 'seller_approved', 'requested', 'awaiting_item', $data['seller_note'], [
-            'refund_amount' => (float) $data['refund_amount'],
-            'tracking_status' => $trackingStatus,
-            'carrier' => $data['carrier'] ?? null,
-            'tracking_number' => $data['tracking_number'] ?? null,
-        ]);
+        $this->authorizeSeller($returnRequest);
+        $data = $request->validate(['seller_note' => 'required|string|max:2000']);
+        $returnRequest = $flow->approve($returnRequest, auth()->user(), $data['seller_note']);
 
-        return back()->with('success', 'Return approved. The buyer can now send the item back.');
+        return back()->with('success', $returnRequest->tracking_number
+            ? "Return approved. Pickrush will pick it up from the buyer (tracking no. {$returnRequest->tracking_number})."
+            : 'Return approved. PickSell is booking the Pickrush pickup.');
     }
 
-    public function reject(Request $request, ReturnRequest $returnRequest)
+    public function reject(Request $request, ReturnRequest $returnRequest, ReturnFlow $flow)
     {
-        $this->transition($returnRequest, 'requested');
+        $this->authorizeSeller($returnRequest);
         $data = $request->validate(['seller_note' => 'required|string|max:2000']);
-        $returnRequest->update([
-            'status' => 'rejected',
-            'dispute_status' => 'open',
-            'seller_note' => $data['seller_note'],
-            'rejected_at' => now(),
-        ]);
-        $this->recordEvent($returnRequest, 'seller_rejected', 'requested', 'rejected', $data['seller_note']);
+        $flow->reject($returnRequest, auth()->user(), $data['seller_note']);
 
         return back()->with('success', 'Request rejected and escalated to Admin for dispute review.');
     }
 
+    /**
+     * Pickrush marks the return received when it hands it over. Only a return without a Pickrush
+     * waybill (its booking failed and the item came another way) is marked received by the seller.
+     */
     public function markReceived(ReturnRequest $returnRequest)
     {
+        $this->authorizeSeller($returnRequest);
+        abort_if(PicksellBridge::returnParcel($returnRequest), 422, 'Pickrush marks this return received when the rider hands it to you.');
         $this->transition($returnRequest, 'awaiting_item');
         $returnRequest->update([
             'status' => 'received',
@@ -118,64 +100,25 @@ class SellerReturnRequestController extends Controller
         return back()->with('success', 'Returned item marked as received.');
     }
 
-    public function markRefundDue(ReturnRequest $returnRequest, RefundService $refunds)
+    /** The seller checked the returned item: OK sends the refund to PickSell Finance; not OK goes to PickSell. */
+    public function inspect(Request $request, ReturnRequest $returnRequest, ReturnFlow $flow)
     {
-        $this->transition($returnRequest, 'approved_for_refund');
-        $refunds->assertApprovedForReturnRequest($returnRequest);
-        $returnRequest->update(['status' => 'refund_due', 'refund_due_at' => now()]);
-        $this->recordEvent($returnRequest, 'refund_due', 'approved_for_refund', 'refund_due', 'Seller marked the approved refund as due.');
-
-        return back()->with('success', 'Refund marked as due.');
-    }
-
-    public function complete(ReturnRequest $returnRequest, RefundService $refunds)
-    {
-        DB::transaction(function () use ($returnRequest, $refunds): void {
-            $locked = ReturnRequest::query()->whereKey($returnRequest->id)->lockForUpdate()->firstOrFail();
-            $from = $locked->status;
-            abort_unless(in_array($from, ['approved_for_refund', 'refund_due'], true), 422, 'This return request is not ready for refund completion.');
-            $this->transition($locked, $from);
-            $refunds->markProcessedForReturnRequest($locked, auth()->user());
-            $locked->update(['status' => 'completed', 'completed_at' => now()]);
-            $this->recordEvent($locked, 'refund_completed', $from, 'completed', 'Seller confirmed the refund was sent.', [
-                'refund_amount' => (float) $locked->refund_amount,
-            ]);
-        });
-
-        return back()->with('success', 'Refund marked as completed.');
-    }
-
-    public function updateTracking(Request $request, ReturnRequest $returnRequest)
-    {
-        $this->transition($returnRequest, 'awaiting_item');
+        $this->authorizeSeller($returnRequest);
         $data = $request->validate([
-            'tracking_status' => 'required|in:label_generated,in_transit,delivered_to_seller',
-            'carrier' => 'nullable|string|max:100',
-            'tracking_number' => 'nullable|string|max:120',
+            'result' => 'required|in:passed,failed',
+            'inspection_note' => 'required|string|min:5|max:2000',
         ]);
+        $flow->inspect($returnRequest, auth()->user(), $data['result'] === 'passed', $data['inspection_note']);
 
-        $returnRequest->update([
-            'tracking_status' => $data['tracking_status'],
-            'carrier' => $data['carrier'] ?? $returnRequest->carrier,
-            'tracking_number' => $data['tracking_number'] ?? $returnRequest->tracking_number,
-            'tracking_updated_at' => now(),
-        ]);
-        $this->recordEvent(
-            $returnRequest,
-            'tracking_updated',
-            $returnRequest->status,
-            $returnRequest->status,
-            'Return tracking updated to ' . str_replace('_', ' ', $data['tracking_status']) . '.',
-            ['tracking_status' => $data['tracking_status'], 'carrier' => $returnRequest->carrier, 'tracking_number' => $returnRequest->tracking_number],
-        );
-
-        return back()->with('success', 'Return tracking details updated.');
+        return back()->with('success', $data['result'] === 'passed'
+            ? 'Item checked. PickSell will send the buyer\'s refund through GCash.'
+            : 'Problem reported. PickSell will review the return and decide.');
     }
 
     private function transition(ReturnRequest $returnRequest, string $expectedStatus): void
     {
         $this->authorizeSeller($returnRequest);
-        abort_unless($returnRequest->status === $expectedStatus, 422, 'This return request is no longer in the expected state.');
+        abort_unless($returnRequest->status === $expectedStatus && $returnRequest->dispute_status !== 'open', 422, 'This return request is no longer in the expected state.');
     }
 
     private function authorizeSeller(ReturnRequest $returnRequest): void

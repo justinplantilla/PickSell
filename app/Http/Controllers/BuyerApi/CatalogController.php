@@ -179,7 +179,9 @@ class CatalogController extends Controller
         ]] : [];
 
         return response()->json([
-            'product' => $this->cards(collect([$product]))->first() + [
+            // array_replace, not `+`: the card already has a short `seller`, and `+`
+            // keeps the left key, which dropped the logo, rating and followers.
+            'product' => array_replace($this->cards(collect([$product]))->first(), [
                 'description'      => $product->description ?? '',
                 'variation_groups' => BuyerPresenter::variationGroups($product),
                 'max_quantity'     => (int) $product->stock,
@@ -193,7 +195,7 @@ class CatalogController extends Controller
                     ->map(fn ($r) => BuyerPresenter::review($r, $buyer))->values(),
                 'shipping'         => null,
                 'vouchers'         => $vouchers,
-            ],
+            ]),
         ]);
     }
 

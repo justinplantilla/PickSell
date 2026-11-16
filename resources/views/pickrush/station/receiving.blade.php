@@ -34,6 +34,27 @@
     </section>
 @endif
 
+@if($dropoffs->isNotEmpty())
+    <section class="pr-section">
+        <h2>Seller drop-offs expected</h2>
+        <div class="pr-table-wrap">
+            <table class="pr-table">
+                <thead><tr><th>Drop-off</th><th>Seller</th><th class="pr-num">Parcels</th><th></th></tr></thead>
+                <tbody>
+                @foreach($dropoffs as $batch)
+                    <tr>
+                        <td><strong>{{ $batch->batch_no }}</strong><div class="pr-muted">{{ $batch->created_at->format('M d h:i A') }}</div></td>
+                        <td>{{ $batch->seller?->business_name ?: $batch->seller?->full_name }}</td>
+                        <td class="pr-num">{{ $batch->parcel_count }}</td>
+                        <td><a href="{{ route('pickrush.station.dropoffs.show', $batch) }}" class="pr-btn pr-btn-outline pr-btn-sm">Check drop-off</a></td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+    </section>
+@endif
+
 <div class="pr-two">
     <section class="pr-section">
         <h2>On the way here ({{ $inTransit->count() }})</h2>

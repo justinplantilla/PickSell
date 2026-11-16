@@ -16,11 +16,13 @@ class ReturnRefundWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const GCASH = ['gcash_number' => '09171234567', 'gcash_name' => 'Buyer ReturnTest'];
+
     public function test_buyer_can_request_a_return_for_a_delivered_order_without_changing_shipping_status(): void
     {
         $buyer = $this->makeUser('buyer');
         $seller = $this->makeUser('seller');
-        $order = $this->makeOrder($buyer, $seller, 'completed');
+        $order = $this->makeOrder($buyer, $seller, 'delivered');
         $order->update(['quantity' => 2, 'amount' => 2400]);
         Storage::fake('public');
 
@@ -35,7 +37,7 @@ class ReturnRefundWorkflowTest extends TestCase
                 'details' => 'The item arrived damaged.',
                 'quantity' => 1,
                 'attachments' => [UploadedFile::fake()->create('damaged-item.png', 10, 'image/png')],
-            ])
+            ] + self::GCASH)
             ->assertRedirect(route('buyer.orders'));
 
         $returnRequest = ReturnRequest::where('order_id', $order->id)->firstOrFail();
@@ -44,7 +46,8 @@ class ReturnRefundWorkflowTest extends TestCase
         $this->assertSame('1200.00', $returnRequest->refund_amount);
         $this->assertCount(1, $returnRequest->attachments);
         Storage::disk('public')->assertExists($returnRequest->attachments[0]);
-        $this->assertSame('completed', $order->fresh()->status);
+        $this->assertSame('09171234567', $returnRequest->refund_gcash_number);
+        $this->assertSame('delivered', $order->fresh()->status);
 
         $this->actingAs($seller)
             ->get(route('seller.returns.show', $returnRequest))
@@ -80,7 +83,7 @@ class ReturnRefundWorkflowTest extends TestCase
             ->post(route('buyer.orders.returns.store', $order), [
                 'reason' => 'damaged',
                 'details' => 'Duplicate request.',
-            ])
+            ] + self::GCASH)
             ->assertStatus(409);
     }
 
@@ -89,11 +92,11 @@ class ReturnRefundWorkflowTest extends TestCase
         config(['pickrush.policies.return_window_days' => 5]);
         $buyer = $this->makeUser('buyer');
         $seller = $this->makeUser('seller');
-        $order = $this->makeOrder($buyer, $seller, 'completed');
+        $order = $this->makeOrder($buyer, $seller, 'delivered');
         $order->forceFill(['delivered_at' => now()->subDays(4)])->save();
         $return = fn () => $this->actingAs($buyer)->post(route('buyer.orders.returns.store', $order), [
             'reason' => 'damaged', 'details' => 'The item arrived damaged.',
-        ]);
+        ] + self::GCASH);
 
         $this->assertTrue($order->fresh()->returnWindowOpen());
         $this->actingAs($buyer)->get(route('buyer.orders'))->assertSee('Request return or refund');
@@ -124,12 +127,12 @@ class ReturnRefundWorkflowTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_seller_can_complete_the_approved_refund_lifecycle_and_cannot_change_another_sellers_request(): void
+    public function test_the_refund_lifecycle_runs_from_seller_approval_to_the_gcash_transfer_and_other_sellers_cannot_act(): void
     {
         $buyer = $this->makeUser('buyer');
         $seller = $this->makeUser('seller');
         $otherSeller = $this->makeUser('seller');
-        $order = $this->makeOrder($buyer, $seller, 'completed');
+        $order = $this->makeOrder($buyer, $seller, 'delivered');
         $returnRequest = $this->makeReturnRequest($order);
 
         $this->actingAs($seller)
@@ -141,7 +144,7 @@ class ReturnRefundWorkflowTest extends TestCase
             ->assertSee('Buyer submission')
             ->assertSee('Return logistics')
             ->assertSee('Return history')
-            ->assertSee('Refund amount (PHP)')
+            ->assertSee('Approving books the Pickrush pickup from the buyer.')
             ->assertSee('Approve Return')
             ->assertSee('Reject Return');
 
@@ -154,55 +157,36 @@ class ReturnRefundWorkflowTest extends TestCase
             ->assertForbidden();
 
         $this->actingAs($seller)
-            ->patch(route('seller.returns.approve', $returnRequest), [
-                'seller_note' => 'Please return the item.',
-                'refund_amount' => 900,
-                'carrier' => 'PickSell Logistics',
-                'tracking_number' => 'RET-TRACK-123',
-            ])
+            ->patch(route('seller.returns.approve', $returnRequest), ['seller_note' => 'Please return the item.'])
             ->assertRedirect();
+        // The Pickrush return waybill is booked (no stations here, so it waits for an address fix at HQ).
         $this->assertSame('awaiting_item', $returnRequest->fresh()->status);
-        $this->assertSame('900.00', $returnRequest->fresh()->refund_amount);
+        $this->assertSame('1200.00', $returnRequest->fresh()->refund_amount, 'the item price, not chosen by the seller');
         $this->assertSame('label_generated', $returnRequest->fresh()->tracking_status);
+        $this->assertTrue(\App\Pickrush\Bridge\PicksellBridge::returnParcel($returnRequest)->needs_address_fix);
 
-        $this->patch(route('seller.returns.tracking', $returnRequest), [
-            'tracking_status' => 'in_transit',
-            'carrier' => 'PickSell Logistics',
-            'tracking_number' => 'RET-TRACK-123',
-        ])->assertRedirect();
-        $this->assertSame('in_transit', $returnRequest->fresh()->tracking_status);
-
-        $this->patch(route('seller.returns.receive', $returnRequest))->assertRedirect();
-        $this->assertSame('received', $returnRequest->fresh()->status);
-        $this->assertSame('delivered_to_seller', $returnRequest->fresh()->tracking_status);
-
-        $this->patch(route('seller.returns.refund-due', $returnRequest))->assertStatus(422);
-        $this->assertSame('received', $returnRequest->fresh()->status);
+        // Pickrush, not the seller, marks it received (Pickrush\BuyerReturnsTest drives the hand-over).
+        $this->patch(route('seller.returns.receive', $returnRequest))->assertStatus(422);
+        $returnRequest->update(['status' => 'received', 'received_at' => now(), 'tracking_status' => 'delivered_to_seller']);
+        $this->patch(route('seller.returns.inspect', $returnRequest), ['result' => 'passed', 'inspection_note' => 'Damage matches the photos.'])
+            ->assertRedirect();
+        $this->assertSame(['approved_for_refund', 'passed'], [$returnRequest->fresh()->status, $returnRequest->fresh()->inspection_result]);
+        $this->assertSame('delivered', $order->fresh()->status, 'the payment is still held');
 
         $admin = $this->makeUser('admin');
-        $this->actingAs($admin)
-            ->patch(route('admin.returns.inspect', $returnRequest), ['admin_notes' => 'Item condition matches the buyer evidence.'])
-            ->assertRedirect();
-        $this->assertSame('inspected', $returnRequest->fresh()->status);
-        $this->assertSame($admin->id, $returnRequest->fresh()->reviewed_by);
-
-        $this->patch(route('admin.returns.approve-refund', $returnRequest), [
-            'admin_notes' => 'Refund approved after inspection.',
-            'refund_amount' => 900,
-        ])->assertRedirect();
-        $this->assertSame('approved_for_refund', $returnRequest->fresh()->status);
         $refund = $returnRequest->refunds()->sole();
         $this->assertSame('requested', $refund->status);
+        $this->actingAs($admin)->patch(route('admin.refunds.sent', $refund), ['payout_reference' => 'GC-1'])->assertStatus(422);
         $this->actingAs($admin)->patch(route('admin.refunds.approve', $refund), [
             'reason' => 'Refund amount approved for payout.',
         ])->assertRedirect();
         $this->assertSame('approved', $refund->fresh()->status);
+        $this->assertSame('completed', $order->fresh()->status, 'approving completes the order before the refund ledger');
 
-        $this->actingAs($seller)->patch(route('seller.returns.complete', $returnRequest))->assertRedirect();
+        $this->actingAs($admin)->patch(route('admin.refunds.sent', $refund), ['payout_reference' => 'GC-0012345'])->assertRedirect();
         $this->assertSame('completed', $returnRequest->fresh()->status);
         $this->assertNotNull($returnRequest->fresh()->completed_at);
-        $this->assertSame('completed', $order->fresh()->status);
-        $this->assertSame(7, $returnRequest->events()->count());
+        $this->assertSame('GC-0012345', $refund->fresh()->payout_reference);
     }
 
     public function test_rejection_escalates_to_admin_and_admin_can_approve_or_uphold_it(): void
@@ -226,7 +210,7 @@ class ReturnRefundWorkflowTest extends TestCase
 
         $this->get(route('seller.returns.show', $returnRequest))
             ->assertOk()
-            ->assertSee('This return request was rejected. The buyer may escalate this decision to Platform Admin for final dispute resolution.');
+            ->assertSee('You rejected this return request. PickSell is reviewing it and will decide.');
 
         $this->actingAs($admin)
             ->get(route('admin.disputes', ['status' => 'open']))
@@ -248,7 +232,7 @@ class ReturnRefundWorkflowTest extends TestCase
         $this->assertSame('awaiting_item', $returnRequest->status);
         $this->assertSame('resolved', $returnRequest->dispute_status);
 
-        $secondOrder = $this->makeOrder($buyer, $seller, 'completed');
+        $secondOrder = $this->makeOrder($buyer, $seller, 'delivered');
         $secondRequest = $this->makeReturnRequest($secondOrder);
         $this->actingAs($seller)
             ->patch(route('seller.returns.reject', $secondRequest), ['seller_note' => 'Not eligible.'])
@@ -263,6 +247,7 @@ class ReturnRefundWorkflowTest extends TestCase
         $secondRequest->refresh();
         $this->assertSame('rejected', $secondRequest->status);
         $this->assertSame('resolved', $secondRequest->dispute_status);
+        $this->assertSame('completed', $secondOrder->fresh()->status, 'the upheld rejection releases the payment');
     }
 
     public function test_buyer_cannot_request_a_return_for_another_buyers_order_or_an_undelivered_order(): void
@@ -275,16 +260,16 @@ class ReturnRefundWorkflowTest extends TestCase
 
         $this->actingAs($otherBuyer)
             ->post(route('buyer.orders.returns.store', $deliveredOrder), [
-                'reason' => 'other',
+                'reason' => 'damaged',
                 'details' => 'Not my order.',
-            ])
+            ] + self::GCASH)
             ->assertNotFound();
 
         $this->actingAs($buyer)
             ->post(route('buyer.orders.returns.store', $placedOrder), [
-                'reason' => 'other',
+                'reason' => 'damaged',
                 'details' => 'The item has not arrived.',
-            ])
+            ] + self::GCASH)
             ->assertStatus(422);
 
         $this->assertDatabaseCount('return_requests', 0);
@@ -359,6 +344,10 @@ class ReturnRefundWorkflowTest extends TestCase
             'seller_id' => $order->seller_id,
             'reason' => 'damaged',
             'details' => 'The product was damaged.',
+            'quantity' => $order->quantity,
+            'refund_amount' => $order->amount,
+            'refund_gcash_number' => '09171234567',
+            'refund_gcash_name' => 'Buyer ReturnTest',
             'status' => 'requested',
         ]);
     }

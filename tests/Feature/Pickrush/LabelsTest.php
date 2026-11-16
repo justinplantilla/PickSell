@@ -53,7 +53,7 @@ class LabelsTest extends TestCase
         $this->assertGreaterThanOrEqual(25, count(Codes::qr('PR2610200483921K')), 'QR version 2 or higher with a quiet zone');
     }
 
-    public function test_hub_staff_print_labels_and_manifests_for_their_own_parcels(): void
+    public function test_hub_staff_print_manifests_but_not_labels(): void
     {
         $this->buildNetwork();
         $tanauan = $this->station('041029000');
@@ -61,10 +61,8 @@ class LabelsTest extends TestCase
         $parcel = app(ParcelRegistrar::class)->register(['shipper_name' => 'Tote House', 'pickup_municipality_code' => '041029000',
             'consignee_name' => 'Ana Reyes', 'delivery_municipality_code' => '043405000', 'cod_amount' => 750]);
 
-        $this->actingAs($manager, 'pickrush')->get($this->pickrushUrl("/parcels/{$parcel->tracking_no}/label"))
-            ->assertOk()->assertHeader('content-type', 'application/pdf');
-        $this->actingAs($this->staff(StaffRole::HubManager, $this->station('041005000')), 'pickrush')
-            ->get($this->pickrushUrl("/parcels/{$parcel->tracking_no}/label"))->assertNotFound();
+        // Waybills come only from the seller (or the returning buyer); the portal has no label print.
+        $this->actingAs($manager, 'pickrush')->get($this->pickrushUrl("/parcels/{$parcel->tracking_no}/label"))->assertNotFound();
 
         $this->actingAs($manager, 'pickrush');
         app(ParcelLedger::class)->record($parcel, ParcelStatus::AtOriginHub, $tanauan);

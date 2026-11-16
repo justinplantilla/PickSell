@@ -65,6 +65,43 @@ class RiderEarningsController extends Controller
         ]);
     }
 
+    /**
+     * What finished tasks earned between two days the rider picks (both included, up to a year,
+     * not past today), with a line per day for ranges up to 62 days. Same ledger as [index].
+     */
+    public function range(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'from' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from', 'before_or_equal:today'],
+        ], ['to.after_or_equal' => 'The end date must be on or after the start date.']);
+
+        $from = Carbon::createFromFormat('Y-m-d', $data['from'])->startOfDay();
+        $to = Carbon::createFromFormat('Y-m-d', $data['to'])->endOfDay();
+        if ($from->diffInDays($to) >= 366) {
+            return response()->json(['message' => 'Pick a range of one year or less.'], 422);
+        }
+
+        $earned = DB::table('pr_rider_earnings')->where('rider_id', Actor::rider()->id)->whereBetween('earned_at', [$from, $to])
+            ->get(['kind', 'amount', 'earned_at'])
+            ->map(fn ($row) => (object) ['kind' => $row->kind, 'amount' => (float) $row->amount, 'day' => Carbon::parse($row->earned_at)->toDateString()]);
+
+        $length = (int) $from->diffInDays($to->copy()->startOfDay()) + 1;
+        $byDay = $earned->groupBy('day');
+        $days = $length > 62 ? [] : collect(range(0, $length - 1))->map(function (int $i) use ($from, $byDay) {
+            $day = $from->copy()->addDays($i)->toDateString();
+
+            return ['date' => $day] + self::sum($byDay->get($day, collect()));
+        })->values()->all();
+
+        return response()->json([
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'total' => self::sum($earned),
+            'days' => $days,
+        ]);
+    }
+
     /** What a rider earned today, for the home screen. */
     public static function today(Rider $rider): array
     {

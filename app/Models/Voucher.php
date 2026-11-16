@@ -47,10 +47,33 @@ class Voucher extends Model
             ->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>=', now()));
     }
 
+    /** Shown to buyers at checkout: live ones, plus switched-on ones that have not started yet (a teaser). */
+    public function scopeOffered($query)
+    {
+        return $query->where('is_active', true)
+            ->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>=', now()));
+    }
+
+    public function isUpcoming(): bool
+    {
+        return (bool) $this->starts_at?->isFuture();
+    }
+
     /** "₱50 off · min. spend ₱500", "10% off up to ₱100", "Free shipping". */
     public function getSummaryAttribute(): string
     {
         return $this->discount_label.((float) $this->min_spend > 0 ? ' · min. spend ₱'.self::displayNumber($this->min_spend) : '');
+    }
+
+    /** How much of the usage limit is used, 0–100 (rounded down); null when there is no limit. */
+    public function getUsedPercentAttribute(): ?int
+    {
+        if ($this->usage_limit === null) {
+            return null;
+        }
+        $used = $this->redemptions_count ?? $this->redemptions()->count();
+
+        return min(100, (int) floor($used / max(1, $this->usage_limit) * 100));
     }
 
     private static function displayNumber(mixed $value): string

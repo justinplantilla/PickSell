@@ -52,3 +52,56 @@ if (pinBox && profileForm) {
         });
     });
 }
+
+// Store Profile: the banner and the logo circle open their file pickers (they are <label>s);
+// the preview follows what will be saved — a newly picked image, or the empty state when
+// "Remove current …" is ticked — until "Save store profile".
+const bannerPreview = document.querySelector('[data-banner-preview]');
+const logoPreview = document.querySelector('[data-logo-preview]');
+const unsaved = document.querySelector('[data-store-unsaved]');
+const bannerInput = document.getElementById('store_banner');
+const logoInput = document.getElementById('store_logo');
+const removeBanner = document.querySelector('[data-remove-banner]');
+const removeLogo = document.querySelector('[data-remove-logo]');
+const savedBanner = bannerPreview?.style.backgroundImage || '';
+const savedLogo = logoPreview?.querySelector('img')?.src || '';
+const pickedUrl = input => (input?.files?.[0] ? URL.createObjectURL(input.files[0]) : '');
+
+function showBanner() {
+    if (!bannerPreview) return;
+    const picked = pickedUrl(bannerInput);
+    const bg = picked ? `url('${picked}')` : (removeBanner?.checked ? '' : savedBanner);
+    bannerPreview.style.backgroundImage = bg;
+    bannerPreview.classList.toggle('has-banner', bg !== '');
+}
+function showLogo() {
+    if (!logoPreview) return;
+    const src = pickedUrl(logoInput) || (removeLogo?.checked ? '' : savedLogo);
+    let img = logoPreview.querySelector('img');
+    if (src && !img) {
+        img = document.createElement('img');
+        img.alt = '';
+        logoPreview.prepend(img);
+    }
+    if (img) { if (src) img.src = src; else img.remove(); }
+    logoPreview.querySelector('.store-profile-logo-initial').hidden = Boolean(src);
+}
+function markUnsaved() {
+    if (unsaved) unsaved.hidden = !(bannerInput?.files?.length || logoInput?.files?.length || removeBanner?.checked || removeLogo?.checked);
+}
+bannerInput?.addEventListener('change', () => {
+    if (bannerInput.files?.length && removeBanner) removeBanner.checked = false;
+    showBanner(); markUnsaved();
+});
+logoInput?.addEventListener('change', () => {
+    if (logoInput.files?.length && removeLogo) removeLogo.checked = false;
+    showLogo(); markUnsaved();
+});
+removeBanner?.addEventListener('change', () => {
+    if (removeBanner.checked && bannerInput) bannerInput.value = '';
+    showBanner(); markUnsaved();
+});
+removeLogo?.addEventListener('change', () => {
+    if (removeLogo.checked && logoInput) logoInput.value = '';
+    showLogo(); markUnsaved();
+});

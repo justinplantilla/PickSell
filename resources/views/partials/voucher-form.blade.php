@@ -15,7 +15,7 @@
         </div>
         <div class="form-group">
             <label class="form-label" for="voucher-{{ $key }}-type">Kind *</label>
-            <select id="voucher-{{ $key }}-type" name="type" class="form-control" required>
+            <select id="voucher-{{ $key }}-type" name="type" class="form-control" required data-voucher-kind>
                 @foreach($types as $value => $label)
                 <option value="{{ $value }}" @selected(old('type', $voucher?->type) === $value)>{{ $label }}</option>
                 @endforeach
@@ -30,7 +30,7 @@
             <label class="form-label" for="voucher-{{ $key }}-min">Minimum spend (₱)</label>
             <input type="number" id="voucher-{{ $key }}-min" name="min_spend" class="form-control" min="0" step="0.01" placeholder="0" value="{{ old('min_spend', $voucher?->min_spend) }}">
         </div>
-        <div class="form-group">
+        <div class="form-group" data-voucher-cap>
             <label class="form-label" for="voucher-{{ $key }}-cap">Maximum discount (₱)</label>
             <input type="number" id="voucher-{{ $key }}-cap" name="max_discount" class="form-control" min="0" step="0.01" placeholder="No cap" value="{{ old('max_discount', $voucher?->max_discount) }}">
             <small class="form-hint">{{ array_key_exists(\App\Models\Voucher::FREE_SHIPPING, $types) ? 'For % off and free shipping.' : 'For % off vouchers only.' }}</small>
@@ -58,3 +58,25 @@
     <label class="voucher-active"><input type="hidden" name="is_active" value="0"><input type="checkbox" name="is_active" value="1" @checked(old('is_active', $voucher?->is_active ?? true))> Active</label>
     <button type="submit" class="btn btn-coral btn-sm">{{ $voucher ? 'Save voucher' : 'Create voucher' }}</button>
 </form>
+
+@once
+<script>
+    // A peso-off voucher has no cap: Maximum discount is greyed out and not sent.
+    (() => {
+        const sync = (form) => {
+            const kind = form.querySelector('[data-voucher-kind]');
+            const group = form.querySelector('[data-voucher-cap]');
+            if (!kind || !group) return;
+            const off = kind.value === '{{ \App\Models\Voucher::FIXED }}';
+            const input = group.querySelector('input');
+            input.disabled = off;
+            if (off) input.value = '';
+            group.classList.toggle('is-disabled', off);
+        };
+        document.addEventListener('change', (e) => {
+            if (e.target.matches('[data-voucher-kind]')) sync(e.target.closest('form'));
+        });
+        document.addEventListener('DOMContentLoaded', () => document.querySelectorAll('.voucher-form').forEach(sync));
+    })();
+</script>
+@endonce

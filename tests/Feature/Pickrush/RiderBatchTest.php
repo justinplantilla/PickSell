@@ -192,7 +192,10 @@ class RiderBatchTest extends TestCase
             ->assertJsonPath('today.pickups', 2)
             ->assertJsonPath('today.earnings', fn ($earned) => (float) $earned === 2 * (float) config('pickrush.shipping.min_rider_pay'))   // unclassed parcels pay the minimum
             ->assertJsonPath('activity.0.type', 'dropped_off')
-            ->assertJsonPath('activity.0.count', 2);
+            ->assertJsonPath('activity.0.count', 2)
+            // The header names the company the rider works for (their station's company).
+            ->assertJsonPath('company.id', (string) $rider->company_id)
+            ->assertJsonPath('company.name', \App\Pickrush\Models\Company::find($rider->company_id)->name);
     }
 
     public function test_parcels_the_seller_could_not_hand_over_go_back_to_the_queue_with_the_reason(): void

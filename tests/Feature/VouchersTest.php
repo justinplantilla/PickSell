@@ -55,7 +55,7 @@ class VouchersTest extends TestCase
 
         $this->actingAs($buyer)->get(route('buyer.checkout.start', ['item_ids' => [$line->id]]))
             ->assertOk()->assertDontSee('Guaranteed 100% FREE')
-            ->assertSee('₱10.25 off')->assertSee('Minimum spend ₱500.5 · Once per buyer · 25 total uses');
+            ->assertSee('₱10.25 off')->assertSee('Min. spend ₱500.5')->assertSee('0% used');
 
         $this->assertSame('Guaranteed 100% FREE', $voucher->fresh()->title);
     }

@@ -31,11 +31,26 @@ if (dialog && typeof dialog.showModal === 'function') {
 }
 
 // Small page helpers, declared in the markup instead of inline handlers.
-// data-check-all="<selector>": a checkbox that ticks or clears every matching checkbox.
+// data-check-all="<selector>": a checkbox that ticks or clears every matching checkbox. Masters
+// stay in step both ways: ticking one parcel or a group updates every master that covers it
+// (ticked when all its boxes are, half-ticked when some are).
+const syncCheckAll = () => {
+    document.querySelectorAll('input[type="checkbox"][data-check-all]').forEach(master => {
+        const boxes = [...document.querySelectorAll(master.dataset.checkAll)].filter(b => b !== master && !b.disabled);
+        const ticked = boxes.filter(b => b.checked).length;
+        master.checked = boxes.length > 0 && ticked === boxes.length;
+        master.indeterminate = ticked > 0 && ticked < boxes.length;
+    });
+};
 document.addEventListener('change', event => {
-    const master = event.target.closest('input[type="checkbox"][data-check-all]');
-    if (master) document.querySelectorAll(master.dataset.checkAll).forEach(box => { box.checked = master.checked; });
+    const box = event.target.closest('input[type="checkbox"]');
+    if (!box) return;
+    if (box.matches('[data-check-all]')) {
+        document.querySelectorAll(box.dataset.checkAll).forEach(b => { if (!b.disabled) b.checked = box.checked; });
+    }
+    syncCheckAll();
 });
+document.addEventListener('DOMContentLoaded', syncCheckAll);
 // Driver fields, formatted like the rider app: data-digits-only keeps digits, data-license-no
 // shapes the license as A00-00-000000 (1 letter, then 10 digits).
 document.addEventListener('input', event => {

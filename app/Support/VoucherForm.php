@@ -40,7 +40,9 @@ final class VoucherForm
             'seller_id' => $sellerId,
             'amount' => $data['type'] === Voucher::FREE_SHIPPING ? 0 : $data['amount'],
             'min_spend' => $data['min_spend'] ?? 0,
+            // A peso-off voucher has no cap.
+            'max_discount' => $data['type'] === Voucher::FIXED ? null : ($data['max_discount'] ?? null),
             'is_active' => $request->boolean('is_active', true),
-        ] + collect($data)->except(['amount', 'min_spend'])->all();
+        ] + collect($data)->except(['amount', 'min_spend', 'max_discount'])->all();
     }
 }

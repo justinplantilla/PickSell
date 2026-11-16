@@ -75,7 +75,8 @@ class DispatchService
             if ($parcel->assignments()->where(fn ($q) => self::stillWithRider($q))->exists()) {
                 throw new OperationRefused("{$parcel->tracking_no} is still with the rider who tried to deliver it. Scan it in at Receiving when they return.");
             }
-            if ($type === 'delivery' && $parcel->attempt_count >= config('pickrush.policies.max_delivery_attempts')) {
+            // A buyer return held for its seller can be brought again whenever they ask.
+            if ($type === 'delivery' && ! $parcel->isBuyerReturn() && $parcel->attempt_count >= config('pickrush.policies.max_delivery_attempts')) {
                 throw new OperationRefused("{$parcel->tracking_no} has reached the delivery attempt limit; return it to the seller.");
             }
             // Every task checks the vehicle against the parcel; only a delivery adds its COD.

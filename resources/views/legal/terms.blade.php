@@ -51,8 +51,11 @@
 
 <h2>4. Returns and refunds</h2>
 <ul>
-    <li>You may ask for a return within <strong>{{ $p['return_window_days'] }} days after delivery</strong> if the item is damaged, wrong, the wrong size, or not as described. Give the details and photos the request form asks for.</li>
-    <li>The seller reviews the request. If it is accepted, you send the item back as instructed; once the seller receives and inspects it, the refund is processed as shown on the return.</li>
+    <li>You may ask for a return within <strong>{{ $p['return_window_days'] }} days after delivery</strong> if the item is damaged, wrong, the wrong size, or not as described. Give the details, the photos and the GCash account for the refund that the request form asks for. Other reasons go through Contact Support.</li>
+    <li>Tapping <strong>Order Received</strong> means you checked the item: the order is completed, the seller's payment is released and the regular return is closed. If you do nothing within the {{ $p['return_window_days'] }} days, the order is completed the same way, unless a return request is pending.</li>
+    <li>While a request is pending, the seller's payment stays on hold until it is resolved, even after the {{ $p['return_window_days'] }} days, and the order cannot be marked received.</li>
+    <li>The seller reviews the request. If it is accepted, a logistics partner picks the item up from you and delivers it to the seller, who pays the return fee. Once the seller receives and checks it, PickSell sends the refund (the price of the returned items) to your GCash out of the held payment, and the return is marked Refunded when the transfer is confirmed.</li>
+    <li>A seller who does not take a returned item is treated as in section 6. PickSell may then refund you without the item.</li>
     <li>If you and the seller do not agree, either of you can ask PickSell to review it. We decide based on the order, the photos, the chat and the delivery records, and our decision on the Platform is final, without affecting any right you have under the law.</li>
     <li>Your rights under the Consumer Act of the Philippines (Republic Act No. 7394) and other laws are not reduced by these Terms.</li>
 </ul>

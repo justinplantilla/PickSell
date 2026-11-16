@@ -32,6 +32,11 @@
                 <div><dt>Quantity requested</dt><dd>{{ $returnRequest->quantity }} of {{ $returnRequest->order->quantity }}</dd></div>
                 <div><dt>Requested refund</dt><dd>₱{{ number_format($returnRequest->refund_amount ?? 0, 2) }}</dd></div>
                 <div><dt>Return tracking</dt><dd>{{ ucfirst(str_replace('_', ' ', $returnRequest->tracking_status)) }}{{ $returnRequest->tracking_number ? ' · '.$returnRequest->tracking_number : '' }}</dd></div>
+                <div><dt>Return fee (seller pays)</dt><dd>{{ $returnRequest->return_fee !== null ? '₱'.number_format((float) $returnRequest->return_fee, 2) : '—' }}</dd></div>
+                <div><dt>Refund to GCash</dt><dd>{{ $returnRequest->refund_gcash_number ?? '—' }}{{ $returnRequest->refund_gcash_name ? ' · '.$returnRequest->refund_gcash_name : '' }}</dd></div>
+                @if($returnRequest->inspection_result)
+                    <div><dt>Seller's check</dt><dd>{{ $returnRequest->inspection_result === 'passed' ? 'Item OK' : 'Problem reported' }} · {{ $returnRequest->inspected_at?->format('M d, Y h:i A') }}</dd></div>
+                @endif
                 <div><dt>Request status</dt><dd><x-return-request-status-badge :status="$returnRequest->status" /></dd></div>
                 @if($returnRequest->reviewed_at)
                     <div><dt>Inspected by</dt><dd>{{ $returnRequest->reviewer->full_name ?? 'Admin' }} · {{ $returnRequest->reviewed_at->format('M d, Y h:i A') }}</dd></div>
@@ -46,7 +51,12 @@
             @else
                 <div class="return-detail-copy"><strong>Buyer photo / video evidence</strong><p>No evidence was attached.</p></div>
             @endif
-            <div class="return-detail-copy"><strong>Seller rejection</strong><p>{{ $returnRequest->seller_note }}</p></div>
+            @if($returnRequest->seller_note)
+                <div class="return-detail-copy"><strong>{{ $returnRequest->rejected_at ? 'Seller rejection' : 'Seller response' }}</strong><p>{{ $returnRequest->seller_note }}</p></div>
+            @endif
+            @if($returnRequest->inspection_note)
+                <div class="return-detail-copy"><strong>Seller's check of the returned item</strong><p>{{ $returnRequest->inspection_note }}</p></div>
+            @endif
             @if($returnRequest->events->isNotEmpty())
                 <div class="return-detail-copy">
                     <strong>Return history</strong>
@@ -76,13 +86,23 @@
         <div class="card-body return-workflow-body">
             @if($returnRequest->dispute_status === 'open')
                 @can('resolveDispute', $returnRequest)
-                <p>Decide whether the return should proceed or the seller's rejection should stand.</p>
+                @if($returnRequest->status === 'received')
+                    <p>The seller reported a problem with the returned item. Decide whether the buyer is refunded or the item goes back to them.</p>
+                @else
+                    <p>Decide whether the return should proceed or the seller's rejection should stand.</p>
+                @endif
                 <form method="POST" action="{{ route('admin.returns.resolve', $returnRequest) }}" class="return-transition-form">
                     @csrf @method('PATCH')
                     <label class="form-label" for="decision">Decision</label>
                     <select id="decision" name="decision" class="form-control" required>
-                        <option value="approve_return">Approve return and move to Awaiting item</option>
-                        <option value="uphold_rejection">Uphold seller rejection and close request</option>
+                        @if($returnRequest->status === 'received')
+                            <option value="refund_buyer">Side with the buyer: refund through GCash</option>
+                            <option value="side_with_seller">Side with the seller: no refund, send the item back (buyer pays the fee)</option>
+                        @else
+                            <option value="approve_return">Approve return and book the Pickrush pickup</option>
+                            <option value="uphold_rejection">Uphold seller rejection and close request (order completes)</option>
+                            <option value="refund_without_return">Refund without the item coming back</option>
+                        @endif
                     </select>
                     <label class="form-label" for="admin-notes">Resolution notes</label>
                     <textarea class="form-control" id="admin-notes" name="admin_notes" rows="4" maxlength="2000" required></textarea>
@@ -138,11 +158,21 @@
                     <p>Refund approval requires the returns management permission.</p>
                 @endcan
                 @elseif($returnRequest->status === 'awaiting_item')
-                <p>The return is approved and is awaiting the buyer's return parcel.</p>
-                @elseif($returnRequest->status === 'approved_for_refund')
-                    <p>The refund request is awaiting Finance approval before the seller can issue payment.</p>
-                @elseif($returnRequest->status === 'refund_due')
-                <p>The approved refund is due. The seller must issue the payment and confirm completion.</p>
+                    @if(! $returnRequest->tracking_number)
+                        <p>The return is approved but its Pickrush pickup is not booked yet.</p>
+                        @can('refundWithoutItem', $returnRequest)
+                        <form method="POST" action="{{ route('admin.returns.book-pickup', $returnRequest) }}">
+                            @csrf @method('PATCH')
+                            <button class="btn btn-coral" type="submit">Book pickup</button>
+                        </form>
+                        @endcan
+                    @elseif(in_array($returnRequest->tracking_status, ['held_for_seller', 'abandoned', 'lost'], true))
+                        <div class="alert alert-warning" role="status">{{ ['held_for_seller' => 'The seller did not take the returned item; it is held at the station.', 'abandoned' => 'The returned item was abandoned at the station.', 'lost' => 'The logistics company reported the returned item lost.'][$returnRequest->tracking_status] }} Decide the buyer's refund so they are not left waiting.</div>
+                    @else
+                        <p>The return is approved; Pickrush is bringing it from the buyer to the seller ({{ $returnRequest->tracking_number }}).</p>
+                    @endif
+                @elseif(in_array($returnRequest->status, ['approved_for_refund', 'refund_due'], true))
+                    <p>The refund awaits Finance on the <a href="{{ route('admin.refunds') }}">Refunds</a> page: approve it, send it through GCash, then record the transfer reference.</p>
                 @elseif($returnRequest->status === 'rejected')
                 <p>This return request is rejected and closed.</p>
                 @else
@@ -152,6 +182,15 @@
                     @endif
                 @endif
                 @if($returnRequest->admin_notes)<p>{{ $returnRequest->admin_notes }}</p>@endif
+                @can('refundWithoutItem', $returnRequest)
+                    <form method="POST" action="{{ route('admin.returns.refund-without-item', $returnRequest) }}" class="return-transition-form">
+                        @csrf @method('PATCH')
+                        <label class="form-label" for="without-item-notes">Refund without the item</label>
+                        <textarea class="form-control" id="without-item-notes" name="admin_notes" rows="3" maxlength="2000" required placeholder="Why: seller did not take it, item lost, not worth returning…"></textarea>
+                        <p class="return-help">Refunds ₱{{ number_format((float) $returnRequest->refund_amount, 2) }} through GCash out of the held payment. A pickup not made yet is cancelled.</p>
+                        <button class="btn btn-outline" type="submit">Refund without item</button>
+                    </form>
+                @endcan
             @endif
         </div>
     </section>

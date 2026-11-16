@@ -64,8 +64,8 @@
                                 <div><span class="pr-badge pr-badge-warn">Still with {{ $withRider->rider?->full_name }}</span></div>
                             @endif
                         </td>
-                        <td>{{ $parcel->shipper_name }}<div class="pr-muted">{{ $parcel->shipper_mobile }}</div></td>
-                        <td class="pr-num">₱{{ number_format((float) $parcel->return_fee, 2) }}</td>
+                        <td>{{ $parcel->sellerName() }}<div class="pr-muted">{{ $parcel->sellerMobile() }}</div>@if($parcel->isBuyerReturn())<div class="pr-muted">Buyer's return</div>@endif</td>
+                        <td class="pr-num">₱{{ number_format($parcel->sellerFee(), 2) }}</td>
                         <td>
                             {{ $days }} {{ \Illuminate\Support\Str::plural('day', $days) }}
                             @if($days >= $abandonDays)<div><span class="pr-badge pr-badge-bad">Can be abandoned</span></div>

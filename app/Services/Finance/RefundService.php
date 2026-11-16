@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\AdminNotificationService;
 use App\Services\AuditLogger;
 use App\Services\CommissionService;
+use App\Services\Orders\OrderReceipt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -124,6 +125,9 @@ class RefundService
             ];
             $changes = AuditLogger::diff($locked, $values, array_keys($values));
             $locked->update($values);
+            // A buyer return held the order as Delivered: it completes now, posting the seller's held
+            // payment, and the refund below takes its share back out of it.
+            app(OrderReceipt::class)->afterReturn($order, $actor, 'Return settled: refund approved');
             $this->ledger->postApprovedRefund($locked, $actor);
 
             if ($locked->return_request_id) {
@@ -214,22 +218,48 @@ class RefundService
         );
     }
 
-    public function markProcessedForReturnRequest(ReturnRequest $returnRequest, User $actor): void
+    /**
+     * Finance sent the approved refund to the buyer's GCash: with the transfer reference the refund
+     * is processed and its return is done (Refunded). PickSell pays it out of the seller's held payment.
+     */
+    public function markSent(Refund $refund, User $actor, string $reference, string $notes = ''): void
     {
-        $refund = Refund::query()
-            ->where('return_request_id', $returnRequest->id)
-            ->where('status', 'approved')
-            ->lockForUpdate()
-            ->first();
-        abort_unless($refund, 422, 'The refund must be approved by Finance before it can be processed.');
+        DB::transaction(function () use ($refund, $actor, $reference, $notes): void {
+            $locked = Refund::query()->whereKey($refund->id)->lockForUpdate()->firstOrFail();
+            abort_unless($locked->status === 'approved', 422, 'Only an approved refund can be marked as sent.');
 
-        $values = ['status' => 'processed', 'processed_at' => now()];
-        $changes = AuditLogger::diff($refund, $values, array_keys($values));
-        $refund->update($values);
-        $this->audit->record('refund.processed', $refund, $changes, [
-            'order_id' => $refund->order_id,
-            'amount' => (float) $refund->amount,
-        ]);
+            $values = ['status' => 'processed', 'processed_at' => now(), 'payout_method' => 'gcash',
+                'payout_reference' => $reference, 'processed_by' => $actor->id];
+            $changes = AuditLogger::diff($locked, $values, array_keys($values));
+            $locked->update($values);
+
+            if ($locked->return_request_id) {
+                $returnRequest = ReturnRequest::query()->whereKey($locked->return_request_id)->lockForUpdate()->firstOrFail();
+                $from = $returnRequest->status;
+                $returnRequest->update(['status' => 'completed', 'completed_at' => now()]);
+                ReturnRequestEvent::create([
+                    'return_request_id' => $returnRequest->id,
+                    'actor_user_id' => $actor->id,
+                    'event_type' => 'refund_completed',
+                    'from_status' => $from,
+                    'to_status' => 'completed',
+                    'notes' => trim("Refund sent through GCash, reference {$reference}. {$notes}"),
+                    'metadata' => ['refund_id' => $locked->id, 'refund_amount' => (float) $locked->amount, 'payout_reference' => $reference],
+                ]);
+                $this->notifyReturnParticipants($returnRequest, 'refunded', 'Your refund of ₱'.number_format((float) $locked->amount, 2)
+                    ." was sent to your GCash ({$returnRequest->refund_gcash_number}), reference {$reference}.", [
+                        'refund_id' => $locked->id,
+                        'refund_amount' => (float) $locked->amount,
+                    ]);
+            }
+
+            $this->audit->record('refund.processed', $locked, $changes, [
+                'order_id' => $locked->order_id,
+                'amount' => (float) $locked->amount,
+                'payout_method' => 'gcash',
+                'payout_reference' => $reference,
+            ], Permission::REFUNDS_APPROVE);
+        });
     }
 
     public function createComplaintReturn(Complaint $complaint, User $actor, string $notes): ReturnRequest

@@ -204,11 +204,14 @@ class AdminRefundManagementTest extends TestCase
         $this->assertDatabaseCount('financial_transactions', 0);
     }
 
-    public function test_seller_cannot_mark_a_refund_processed_before_finance_approves_it(): void
+    public function test_finance_cannot_mark_a_refund_sent_before_it_is_approved_and_the_seller_cannot_at_all(): void
     {
-        $this->actingAs($this->seller)
-            ->patch(route('seller.returns.complete', $this->returnRequest))
+        $this->actingAs($this->admin)
+            ->patch(route('admin.refunds.sent', $this->refund), ['payout_reference' => 'GC-123456'])
             ->assertStatus(422);
+        $this->actingAs($this->seller)
+            ->patch(route('admin.refunds.sent', $this->refund), ['payout_reference' => 'GC-123456'])
+            ->assertRedirect();   // out of the admin area
 
         $this->assertSame('approved_for_refund', $this->returnRequest->fresh()->status);
         $this->assertSame('requested', $this->refund->fresh()->status);

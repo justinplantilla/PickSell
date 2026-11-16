@@ -96,6 +96,7 @@ Route::prefix('mobile')->name('buyer-api.')->group(function () {
             Route::post('/orders/{order}/delivery-problem', [OrderController::class, 'deliveryProblem'])->middleware('throttle:10,1,buyer-api-delivery-problem')->name('orders.delivery-problem');
             Route::post('/orders/{order}/report-off-platform', [OrderController::class, 'reportOffPlatform'])->middleware('throttle:10,1,buyer-api-off-platform')->name('orders.report-off-platform');
             Route::post('/orders/{order}/return', [OrderController::class, 'requestReturn'])->middleware('throttle:10,1,buyer-api-return')->name('orders.return');
+            Route::get('/orders/{order}/return/waybill', [OrderController::class, 'returnWaybill'])->name('orders.return.waybill');
             Route::post('/orders/{order}/reorder', [OrderController::class, 'reorder'])->name('orders.reorder');
             Route::get('/reorder', [OrderController::class, 'reorderCandidates'])->name('reorder');
             Route::get('/support/tickets', [OrderController::class, 'tickets'])->name('support.tickets');

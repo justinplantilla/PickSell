@@ -29,8 +29,11 @@ class MarketplaceIssueController extends PortalController
             'claimsTotal' => (float) LogisticsClaim::where('company_id', $companyId)->where('status', 'charged')->sum('amount'),
             'canRespond' => in_array($this->staff()->role->value, ['super_admin', 'support'], true),
             // Returns held for their seller past the hold, not reported yet.
-            'unreported' => Parcel::withoutGlobalScopes()->where('company_id', $companyId)->where('is_return', true)
-                ->whereIn('current_status', [ParcelStatus::ReturningToSender, ParcelStatus::Abandoned])
+            'unreported' => Parcel::withoutGlobalScopes()->where('company_id', $companyId)
+                ->where(fn ($q) => $q->where(fn ($r) => $r->where('is_return', true)->whereIn('current_status', [ParcelStatus::ReturningToSender, ParcelStatus::Abandoned]))
+                    // Buyer returns ("RET-…") the seller did not take.
+                    ->orWhere(fn ($r) => $r->where('source', 'picksell')->where('external_ref', 'like', 'RET-%')
+                        ->whereIn('current_status', [ParcelStatus::DeliveryFailed, ParcelStatus::Abandoned])))
                 ->whereDate('return_refused_at', '<=', today()->subDays((int) config('pickrush.policies.return_hold_days')))
                 ->whereNotIn('id', LogisticsIssue::where('company_id', $companyId)->where('type', 'return_refused')->whereNotNull('parcel_id')->select('parcel_id'))
                 ->oldest('return_refused_at')->limit(50)->get(),

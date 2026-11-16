@@ -69,8 +69,8 @@
             @elseif($order->status === 'preparing' && $order->ship_by)
             <span class="orders-muted-text" title="The seller is packing your order, so it can no longer be cancelled. If it is not shipped by then, it is cancelled for you.">Ships by {{ $order->ship_by->format('M d, h:i A') }}</span>
             @endif
-            @if($order->status === 'delivered')
-            <form method="POST" action="{{ route('buyer.orders.received', $order) }}" data-no-confirm>
+            @if($order->status === 'delivered' && ! $order->hasOpenReturn())
+            <form method="POST" action="{{ route('buyer.orders.received', $order) }}" data-confirm="Did you check the item? Once you confirm, the order is completed, the seller is paid and you can no longer ask for a return or refund.">
                 @csrf @method('PATCH')
                 <button type="submit" class="btn btn-coral btn-sm">Order Received</button>
             </form>
@@ -78,8 +78,10 @@
             @if(! $order->returnRequest && $order->returnWindowOpen())
             <button type="button" class="btn btn-outline btn-sm" data-open-return="{{ $order->id }}" title="Until {{ $order->returnWindowEndsAt()->format('M j, g:i A') }}">Return / Refund</button>
             @endif
-            @if($order->status === 'delivered')
-            <span class="orders-muted-text-4">Got your parcel? Confirm it, then rate it.@if($autoAt = \App\Services\Orders\OrderReceipt::autoConfirmAt($order)) We’ll confirm it for you on {{ $autoAt->format('M d, Y') }}.@endif</span>
+            @if($order->status === 'delivered' && $order->hasOpenReturn())
+            <span class="orders-muted-text-4">Your return/refund request is being handled. The order stays open until it is resolved.</span>
+            @elseif($order->status === 'delivered')
+            <span class="orders-muted-text-4">Check your item. Confirm it, or ask for a return/refund {{ $order->returnWindowOpen() ? 'by '.$order->returnWindowEndsAt()->format('M d, g:i A') : '' }}.@if($autoAt = \App\Services\Orders\OrderReceipt::autoConfirmAt($order)) If you do nothing, it is marked received on {{ $autoAt->format('M d, Y') }}.@endif</span>
             @endif
             @if($order->status === 'completed' && !$order->rating)
             <button class="btn btn-coral btn-sm" type="button" data-open-feedback="{{ $order->id }}"
@@ -114,6 +116,18 @@
             <strong>₱{{ number_format($orderTotal, 2) }}</strong>
         </div>
     </div>
+
+    {{-- ETA (same estimate as the app's tracking screen). --}}
+    @php
+        $eta = app(\App\Pickrush\Services\Shipping\DeliveryEstimate::class)->forOrder($order);
+    @endphp
+    @if($eta)
+        <div class="order-eta order-eta-{{ $eta['status'] }}">
+            <span class="order-eta-label">{{ $eta['status'] === 'today' ? 'Arriving' : 'Estimated arrival' }}</span>
+            <strong>{{ $eta['status'] === 'today' ? 'Today' : $eta['label'] }}</strong>
+            <span class="order-eta-note">{{ $eta['message'] }}</span>
+        </div>
+    @endif
 
     {{-- Tracking Steps --}}
     @php
@@ -188,7 +202,12 @@
                 <strong>Return / refund</strong>
                 <span class="badge {{ $returnBadgeClass }}">{{ ucfirst(str_replace('_', ' ', $returnStatus)) }}</span>
             </div>
-            <p>Reason: {{ ucfirst(str_replace('_', ' ', $order->returnRequest->reason)) }}</p>
+            <p>{{ \App\Support\BuyerApi\BuyerPresenter::returnStageLabel($order->returnRequest) }}</p>
+            <p>Reason: {{ ucfirst(str_replace('_', ' ', $order->returnRequest->reason)) }} · Refund: ₱{{ number_format((float) $order->returnRequest->refund_amount, 2) }} to GCash {{ $order->returnRequest->refund_gcash_number ?? '' }}</p>
+            @if($order->returnRequest->tracking_number && in_array($returnStatus, ['awaiting_item', 'received'], true))
+                <p>Pickrush return tracking no. <strong>{{ $order->returnRequest->tracking_number }}</strong> — print the waybill and stick it on the package for the rider to scan.</p>
+                <p><a class="btn btn-primary btn-sm" href="{{ route('buyer.orders.returns.waybill', $order) }}" target="_blank" rel="noopener">Print Waybill</a></p>
+            @endif
             @if($order->returnRequest->seller_note)
                 <p>Seller response: {{ $order->returnRequest->seller_note }}</p>
             @endif
@@ -199,7 +218,7 @@
                 <p>Admin resolution: {{ $order->returnRequest->admin_notes }}</p>
             @endif
         </div>
-    @elseif(in_array($order->status, ['delivered', 'completed'], true) && $order->returnWindowOpen())
+    @elseif($order->returnWindowOpen())
         <details class="return-request-panel" id="return-panel-{{ $order->id }}">
             <summary>Request return or refund <small>(until {{ $order->returnWindowEndsAt()->format('M j, g:i A') }})</small></summary>
             <form method="POST" action="{{ route('buyer.orders.returns.store', $order) }}" class="return-request-form" enctype="multipart/form-data">
@@ -211,14 +230,19 @@
                     <option value="wrong_item">Wrong item received</option>
                     <option value="wrong_size">Wrong size</option>
                     <option value="not_as_described">Item not as described</option>
-                    <option value="other">Other</option>
                 </select>
+                <p class="orders-muted-text-4">Only problems with the item itself can be returned. For anything else, contact Support.</p>
                 <label class="form-label" for="return-quantity-{{ $order->id }}">Quantity to return</label>
                 <input class="form-control" type="number" id="return-quantity-{{ $order->id }}" name="quantity" min="1" max="{{ $order->quantity }}" value="{{ $order->quantity }}" required>
                 <label class="form-label" for="return-details-{{ $order->id }}">What happened?</label>
                 <textarea class="form-control" id="return-details-{{ $order->id }}" name="details" rows="3" maxlength="2000" required></textarea>
                 <label class="form-label" for="return-attachments-{{ $order->id }}">Photos or videos (up to 5)</label>
                 <input class="form-control" type="file" id="return-attachments-{{ $order->id }}" name="attachments[]" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" multiple>
+                <label class="form-label" for="return-gcash-{{ $order->id }}">GCash number for your refund</label>
+                <input class="form-control" id="return-gcash-{{ $order->id }}" name="gcash_number" inputmode="numeric" placeholder="09XXXXXXXXX" pattern="09[0-9]{9}" maxlength="11" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 11)" title="11 digits starting with 09" value="{{ old('gcash_number', $order->buyer?->contact_no) }}" required>
+                <label class="form-label" for="return-gcash-name-{{ $order->id }}">GCash account name</label>
+                <input class="form-control" id="return-gcash-name-{{ $order->id }}" name="gcash_name" maxlength="120" value="{{ old('gcash_name', $order->buyer?->full_name) }}" required>
+                <p class="orders-muted-text-4">If the seller approves, a Pickrush rider picks the item up from you. After the seller checks it, PickSell sends the refund to this GCash.</p>
                 <button class="btn btn-coral btn-sm" type="submit">Submit return request</button>
             </form>
         </details>

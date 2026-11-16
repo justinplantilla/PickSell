@@ -61,7 +61,7 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
 
         Route::get('/parcels', [ParcelController::class, 'index'])->name('parcels.index');
         Route::get('/parcels/{parcel}', [ParcelController::class, 'show'])->name('parcels.show');
-        Route::get('/parcels/{parcel}/label', [ParcelController::class, 'label'])->name('parcels.label');
+        // No label printing here: waybills come only from the seller (or the buyer, for a return).
 
         Route::get('/account', [AccountController::class, 'edit'])->name('account');
         Route::put('/account/password', [AccountController::class, 'updatePassword'])->name('account.password');
@@ -172,6 +172,9 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
 
             Route::get('/receiving', [Station\ReceivingController::class, 'index'])->name('receiving');
             Route::post('/receiving', [Station\ReceivingController::class, 'scan'])->name('receiving.scan');
+            Route::get('/dropoffs/{batch}', [Station\DropoffController::class, 'show'])->name('dropoffs.show');
+            Route::post('/dropoffs/{batch}/scan', [Station\DropoffController::class, 'scan'])->name('dropoffs.scan');
+            Route::post('/dropoffs/{batch}/confirm', [Station\DropoffController::class, 'confirm'])->name('dropoffs.confirm');
 
             Route::get('/trips', [Station\TripController::class, 'index'])->name('trips.index');
             Route::post('/trips', [Station\TripController::class, 'store'])->name('trips.store');

@@ -5,6 +5,7 @@ namespace App\Pickrush\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Pickrush\Enums\ParcelStatus;
 use App\Pickrush\Models\Assignment;
+use App\Pickrush\Models\Company;
 use App\Pickrush\Models\ParcelEvent;
 use App\Pickrush\Models\Rider;
 use App\Pickrush\Models\RiderBatch;
@@ -29,6 +30,8 @@ class RiderHomeController extends Controller
         return response()->json([
             'shift_status' => $rider->shift_status,
             'hub' => $rider->station ? RiderProfile::hub($rider->station) : null,
+            // The logistics company the rider works for, shown in the app header.
+            'company' => ($company = Company::find($rider->company_id)) ? RiderProfile::company($company) : null,
             'today' => [
                 'earnings' => $today['earnings'],
                 'pickups' => $today['pickups'],

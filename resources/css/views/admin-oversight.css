@@ -173,3 +173,18 @@ body.dark .saved-filter-controls .filter-select { background: #2a2a2a; border-co
 .settle-dispute .btn { height: 34px; flex-shrink: 0; }
 body.dark .settle-step { border-left-color: #333; }
 body.dark .settle-dispute input { background: #1a1a1a; border-color: #3a3a3a; color: #e5e7eb; }
+
+/* Refund review actions: one note + buttons in a row, same width on every row. */
+.refund-review-form { display: flex; flex-direction: column; gap: 0.45rem; width: 260px; }
+.refund-review-label { font-size: 0.72rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.03em; }
+.refund-review-hint { font-size: 0.78rem; line-height: 1.35; color: #6b7280; }
+.refund-review-hint strong { color: var(--charcoal); }
+.refund-review-form textarea, .refund-review-form input { width: 100%; box-sizing: border-box; padding: 0.45rem 0.6rem; border: 1px solid #e0d9cd; border-radius: 6px; background: #fff; font: inherit; font-size: 0.8rem; color: var(--charcoal); }
+.refund-review-form textarea { min-height: 56px; resize: vertical; }
+.refund-review-form input { height: 34px; }
+.refund-review-form textarea:focus, .refund-review-form input:focus { outline: none; border-color: var(--coral); box-shadow: 0 0 0 2px rgba(240, 90, 60, 0.15); }
+.refund-review-actions { display: flex; gap: 0.4rem; }
+.refund-review-actions .btn { flex: 1; justify-content: center; white-space: nowrap; }
+.refund-review-inline { display: flex; gap: 0.4rem; }
+.refund-review-inline input { flex: 1; min-width: 0; }
+.refund-review-inline .btn { white-space: nowrap; }

@@ -66,12 +66,13 @@
         <p>You can ask for a return or refund within <strong>{{ $returnDays }} {{ Str::plural('day', $returnDays) }} after delivery</strong>.</p>
         <ol>
             <li>Go to <strong>My Orders</strong> and find the delivered order.</li>
-            <li>Tap <strong>Return / Refund</strong>, choose the reason and add photos of the item.</li>
-            <li>The seller reviews your request. If it is approved, you send the item back and are refunded once the seller receives it.</li>
+            <li>Tap <strong>Return / Refund</strong>, choose the reason (damaged, wrong item, wrong size or not as described), add photos of the item and the GCash number for your refund.</li>
+            <li>The seller reviews your request. If it is approved, a Pickrush rider picks the item up from you; there is nothing to pay.</li>
+            <li>Once the seller receives and checks the item, PickSell sends the refund to your GCash.</li>
         </ol>
-        <p>If you and the seller can't agree, contact us and PickSell will review the case.</p>
+        <p>If you and the seller can't agree, PickSell reviews the case and decides.</p>
         <h3>Confirming you received your order</h3>
-        <p>Once your parcel arrives, tap <strong>Order Received</strong>. Then you can rate the product, the seller and the delivery. If you don't, the order is confirmed for you {{ $confirmDays }} days after delivery.</p>
+        <p>Once your parcel arrives, check the item, then tap <strong>Order Received</strong>. Then you can rate the product, the seller and the delivery. After you confirm, the regular return is closed (contact Support if something is wrong). If you don't confirm, the order is confirmed for you {{ $confirmDays }} days after delivery, unless you asked for a return.</p>
     </section>
 
     <section id="cancellations">

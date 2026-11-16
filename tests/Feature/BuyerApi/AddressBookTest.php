@@ -25,7 +25,7 @@ class AddressBookTest extends TestCase
     {
         $this->actingAsBuyer();
         $this->getJson('/api/mobile/buyer/addresses')->assertOk()
-            ->assertJsonPath('addresses', [])->assertJsonPath('max', 10)
+            ->assertJsonPath('addresses', [])->assertJsonPath('max', 3)
             ->assertJsonPath('default.full_address', '12, Gorordo Ave, Lahug, Cebu City, Cebu');
 
         $book = $this->postJson('/api/mobile/buyer/addresses', $this->office(['lat' => 14.6538, 'lng' => 121.0685]))->assertCreated()->json();
@@ -51,14 +51,14 @@ class AddressBookTest extends TestCase
         $this->assertSame(0, BuyerAddress::count());
     }
 
-    public function test_up_to_ten_addresses_and_only_your_own(): void
+    public function test_up_to_three_addresses_and_only_your_own(): void
     {
         $buyer = $this->actingAsBuyer();
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 3; $i++) {
             $this->postJson('/api/mobile/buyer/addresses', $this->office(['label' => "Place {$i}"]))->assertCreated();
         }
         $this->postJson('/api/mobile/buyer/addresses', $this->office())->assertUnprocessable()
-            ->assertJsonPath('errors.address.0', 'You can save up to 10 addresses.');
+            ->assertJsonPath('errors.address.0', 'You can save up to 3 addresses.');
 
         $theirs = BuyerAddress::create(['user_id' => $this->buyer()->id, 'recipient_name' => 'Ben', 'contact_no' => '09170000000',
             'province' => 'Cebu', 'municipality' => 'Cebu City', 'barangay' => 'Lahug']);
@@ -66,7 +66,7 @@ class AddressBookTest extends TestCase
         $this->deleteJson("/api/mobile/buyer/addresses/{$theirs->id}")->assertNotFound();
         $this->postJson("/api/mobile/buyer/addresses/{$theirs->id}/default")->assertNotFound();
         $this->assertModelExists($theirs);
-        $this->assertCount(10, $buyer->addresses);
+        $this->assertCount(3, $buyer->addresses);
     }
 
     public function test_making_an_address_the_default_keeps_the_old_default_in_the_book(): void

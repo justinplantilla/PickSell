@@ -16,7 +16,11 @@ class FailedController extends StationController
 {
     public function index()
     {
-        $parcels = Parcel::where('current_hub_id', $this->station()->id)->where('current_status', ParcelStatus::DeliveryFailed)
+        $station = $this->station()->id;
+        // Buyer returns the seller did not take are listed with the held returns, not retried towards a buyer.
+        $heldBuyerReturn = fn ($q) => $q->where('source', 'picksell')->where('external_ref', 'like', 'RET-%')->whereNotNull('return_refused_at');
+        $parcels = Parcel::where('current_hub_id', $station)->where('current_status', ParcelStatus::DeliveryFailed)
+            ->whereNot($heldBuyerReturn)
             ->with(['events' => fn ($q) => $q->where('status', ParcelStatus::DeliveryFailed),
                 // Not handed back yet: still on the delivery rider's vehicle.
                 'assignments' => fn ($q) => DispatchService::stillWithRider($q)->with('rider')])
@@ -27,8 +31,10 @@ class FailedController extends StationController
             'maxAttempts' => config('pickrush.policies.max_delivery_attempts'),
             'returning' => Parcel::where('current_hub_id', $this->station()->id)->where('current_status', ParcelStatus::ReturningToSender)
                 ->whereNull('return_refused_at')->get(),
-            'held' => Parcel::where('current_hub_id', $this->station()->id)->where('current_status', ParcelStatus::ReturningToSender)
-                ->whereNotNull('return_refused_at')->with(['assignments' => fn ($q) => DispatchService::stillWithRider($q)->with('rider')])
+            'held' => Parcel::where('current_hub_id', $station)
+                ->where(fn ($q) => $q->where(fn ($r) => $r->where('current_status', ParcelStatus::ReturningToSender)->whereNotNull('return_refused_at'))
+                    ->orWhere(fn ($r) => $heldBuyerReturn($r->where('current_status', ParcelStatus::DeliveryFailed))))
+                ->with(['assignments' => fn ($q) => DispatchService::stillWithRider($q)->with('rider')])
                 ->oldest('return_refused_at')->get(),
             'holdDays' => (int) config('pickrush.policies.return_hold_days'),
             'abandonDays' => (int) config('pickrush.policies.return_abandon_days'),

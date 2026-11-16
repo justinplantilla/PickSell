@@ -5,6 +5,7 @@ namespace App\Http\Controllers\BuyerApi;
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Http\Controllers\BuyerReturnRequestController;
 use App\Http\Controllers\DeliveryProblemController;
 use App\Models\Complaint;
 use App\Models\LogisticsIssue;
@@ -12,19 +13,17 @@ use App\Models\Order;
 use App\Models\ProductReview;
 use App\Models\ProductReviewPhoto;
 use App\Models\ReturnRequest;
-use App\Models\ReturnRequestEvent;
-use App\Services\AdminNotificationService;
 use App\Services\Logistics\LogisticsIssueDesk;
 use App\Services\OffPlatform\OffPlatformMonitor;
 use App\Services\Orders\OrderCancellationService;
 use App\Services\Orders\OrderRating;
 use App\Services\Orders\OrderReceipt;
+use App\Services\Returns\ReturnFlow;
 use App\Support\BuyerApi\BuyerPresenter;
 use App\Support\BuyerApi\OrderStatus;
 use App\Support\OrderDelivery;
 use DomainException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -197,65 +196,37 @@ class OrderController extends Controller
         return response()->json(['message' => 'Thank you. PickSell will review this seller. Keep paying and chatting on PickSell so your order stays protected.'], 201);
     }
 
-    /**
-     * POST /buyer/orders/{id}/return {reason, details, quantity?, evidence[]?} — the website's
-     * return request (BuyerReturnRequestController): the seller reviews it first.
-     */
-    public function requestReturn(Request $request, Order $order, AdminNotificationService $notifications)
+    /** GET /buyer/orders/{id}/return/waybill — the Pickrush return label PDF to print and stick on the package. */
+    public function returnWaybill(Request $request, Order $order)
     {
         $this->find($request, $order);
-        abort_unless(in_array($order->status, ['delivered', 'completed'], true), 422, 'Returns can only be requested for delivered orders.');
-        abort_unless($order->returnWindowOpen(), 422, 'Returns can only be requested within '.config('pickrush.policies.return_window_days').' days of delivery.');
-        abort_if($order->returnRequest()->exists(), 409, 'A return request already exists for this order.');
+
+        return BuyerReturnRequestController::waybillFor($order);
+    }
+
+    /**
+     * POST /buyer/orders/{id}/return {reason, details, quantity?, gcash_number, gcash_name, evidence[]?}
+     * — the website's return request (ReturnFlow): the seller reviews it first.
+     */
+    public function requestReturn(Request $request, Order $order, ReturnFlow $flow)
+    {
+        $this->find($request, $order);
 
         // The app may send the label it showed; store the website's code.
         $request->merge(['reason' => array_search($request->input('reason'), ReturnRequest::REASONS, true) ?: $request->input('reason')]);
         // Same limits as the website: up to 5 photos or videos, 10 MB each ("evidence" from the app).
         $fileRules = ['nullable', 'array', 'max:5'];
         $eachFile = 'file|mimes:jpg,jpeg,png,webp,mp4,webm|max:10240';
-        $data = $request->validate([
-            'reason'        => ['required', Rule::in(array_keys(ReturnRequest::REASONS))],
-            'details'       => 'required|string|max:2000',
-            'quantity'      => 'sometimes|integer|min:1|max:'.$order->quantity,
+        $data = $request->validate(BuyerReturnRequestController::rules($order) + [
             'evidence'      => $fileRules,
             'evidence.*'    => $eachFile,
             'attachments'   => $fileRules,
             'attachments.*' => $eachFile,
-        ]);
+        ], BuyerReturnRequestController::messages());
         $files = [...$request->file('evidence', []), ...$request->file('attachments', [])];
         abort_if(count($files) > 5, 422, 'Attach up to 5 photos or videos.');
 
-        $quantity = (int) ($data['quantity'] ?? $order->quantity);
-        $returnRequest = DB::transaction(function () use ($order, $data, $quantity, $files) {
-            $returnRequest = ReturnRequest::create([
-                'order_id' => $order->id,
-                'buyer_id' => $order->buyer_id,
-                'seller_id' => $order->seller_id,
-                'reason' => $data['reason'],
-                'details' => $data['details'],
-                'quantity' => $quantity,
-                'refund_amount' => round(((float) $order->amount / max((int) $order->quantity, 1)) * $quantity, 2),
-                'attachments' => collect($files)->map(fn ($file) => $file->store('return-requests', 'public'))->all(),
-                'status' => 'requested',
-            ]);
-            ReturnRequestEvent::create([
-                'return_request_id' => $returnRequest->id,
-                'actor_user_id' => $order->buyer_id,
-                'event_type' => 'request_submitted',
-                'from_status' => null,
-                'to_status' => 'requested',
-                'notes' => $data['details'],
-                'metadata' => ['reason' => $data['reason'], 'quantity' => $quantity],
-            ]);
-
-            return $returnRequest;
-        });
-        $notifications->notifyAdmins(
-            'return.requested',
-            'Return/refund requested',
-            "A buyer requested a return for order {$order->order_number}.",
-            "/admin/returns/{$returnRequest->id}",
-        );
+        $returnRequest = $flow->request($order, $request->user(), $data, $files);
 
         return response()->json([
             'message'        => 'Return/refund request sent to the seller.',
@@ -326,7 +297,8 @@ class OrderController extends Controller
             'report_categories'  => config('buyer-api.report_categories'),
             'delivery_problem_types' => collect(LogisticsIssue::BUYER_REPORTS)
                 ->map(fn ($t) => ['value' => $t, 'label' => LogisticsIssue::TYPES[$t]])->values(),
-            'return_reasons'     => array_values(ReturnRequest::REASONS),
+            // Seller-fault reasons only (ReturnRequest::BUYER_REASONS).
+            'return_reasons'     => array_values(array_intersect_key(ReturnRequest::REASONS, array_flip(ReturnRequest::BUYER_REASONS))),
             'refund_methods'     => [],
         ]);
     }

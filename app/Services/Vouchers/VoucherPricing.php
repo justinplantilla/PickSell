@@ -17,7 +17,10 @@ class VoucherPricing
     /** Why the buyer cannot use [$voucher] on [$spend] pesos of items right now, or null. */
     public function problem(Voucher $voucher, User $buyer, float $spend): ?string
     {
-        if (! $voucher->is_active || ($voucher->starts_at && $voucher->starts_at->isFuture()) || ($voucher->ends_at && $voucher->ends_at->isPast())) {
+        if ($voucher->is_active && $voucher->isUpcoming()) {
+            return 'Starts '.$voucher->starts_at->format('M j').'.';
+        }
+        if (! $voucher->is_active || ($voucher->ends_at && $voucher->ends_at->isPast())) {
             return 'This voucher is not available right now.';
         }
         if ($voucher->usage_limit !== null && $voucher->redemptions()->count() >= $voucher->usage_limit) {
@@ -48,28 +51,41 @@ class VoucherPricing
     }
 
     /**
-     * Vouchers to offer, best saving first, each with its discount or why it cannot be used.
+     * Vouchers to offer, best saving first, each with its discount or why it cannot be used, how
+     * many more times this buyer may use it, and whether it is the one to recommend (the best
+     * usable saving).
      *
-     * @return Collection<int, array{voucher: Voucher, discount: float, problem: ?string}>
+     * @return Collection<int, array{voucher: Voucher, discount: float, problem: ?string, uses_left: int, upcoming: bool, recommended: bool}>
      */
     public function options(Collection $vouchers, User $buyer, float $merchandise, float $shipping = 0): Collection
     {
-        return $vouchers->map(fn (Voucher $voucher) => [
+        $used = VoucherRedemption::where('buyer_id', $buyer->id)->whereIn('voucher_id', $vouchers->pluck('id'))
+            ->selectRaw('voucher_id, count(*) as uses')->groupBy('voucher_id')->pluck('uses', 'voucher_id');
+        $options = $vouchers->map(fn (Voucher $voucher) => [
             'voucher' => $voucher,
             'discount' => $this->discount($voucher, $merchandise, $shipping),
             'problem' => $this->problem($voucher, $buyer, $merchandise),
+            'uses_left' => max(0, (int) $voucher->per_buyer_limit - (int) ($used[$voucher->id] ?? 0)),
+            'upcoming' => $voucher->isUpcoming(),
+            'recommended' => false,
         ])->sortBy([fn ($a, $b) => ($a['problem'] !== null) <=> ($b['problem'] !== null), fn ($a, $b) => $b['discount'] <=> $a['discount']])->values();
+
+        if ($options->isNotEmpty() && $options[0]['problem'] === null && $options[0]['discount'] > 0) {
+            $options[0] = ['recommended' => true] + $options[0];
+        }
+
+        return $options;
     }
 
-    /** Store vouchers on offer from [$sellerId] (live ones only). */
+    /** Store vouchers on offer from [$sellerId]: live ones, and scheduled ones shown ahead (not usable yet). */
     public function storeVouchers(int $sellerId): Collection
     {
-        return Voucher::live()->where('seller_id', $sellerId)->get();
+        return Voucher::offered()->where('seller_id', $sellerId)->get();
     }
 
     public function platformVouchers(): Collection
     {
-        return Voucher::live()->whereNull('seller_id')->get();
+        return Voucher::offered()->whereNull('seller_id')->get();
     }
 
     /**

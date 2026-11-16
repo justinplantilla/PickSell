@@ -746,7 +746,7 @@ class SellerController extends Controller
         $data = $request->validate([
             'order_ids' => 'required|array|min:1|max:100',
             'order_ids.*' => 'integer',
-            'action' => 'required|in:confirm,waybills,print,handover',
+            'action' => 'required|in:confirm,waybills,print,handover,dropoff',
         ], ['order_ids.required' => 'Select at least one order first.']);
         $orders = Order::where('seller_id', $this->seller()->id)->whereIn('id', $data['order_ids'])->orderBy('id')->get();
 
@@ -761,6 +761,7 @@ class SellerController extends Controller
 
         $done = 0;
         $skipped = 0;
+        $dropped = [];
         $labelled = 0;
         $unlabelled = 0;
         $handled = [];
@@ -773,8 +774,9 @@ class SellerController extends Controller
                 if ($data['action'] === 'confirm') {
                     $done += $this->prepareParcel($order, $lifecycle);
                     $this->tryWaybill($order, $pickrush) ? $labelled++ : $unlabelled++;
-                } elseif ($data['action'] === 'handover') {
-                    $this->handOverParcel($order, $lifecycle, $pickrush);
+                } elseif (in_array($data['action'], ['handover', 'dropoff'], true)) {
+                    $parcel = $this->handOverParcel($order, $lifecycle, $pickrush, $data['action'] === 'dropoff');
+                    $data['action'] === 'dropoff' && $dropped[] = $parcel;
                     $done++;
                 } else {
                     PicksellBridge::hasParcel($order) ? $skipped++ : ($this->waybillFor($order, $pickrush) && $done++);
@@ -792,9 +794,21 @@ class SellerController extends Controller
                 .($skipped ? " {$skipped} skipped." : ''));
         }
 
-        $what = $data['action'] === 'handover'
-            ? ($done === 1 ? 'parcel handed over for pickup' : 'parcels handed over for pickup')
-            : ($done === 1 ? 'waybill generated' : 'waybills generated');
+        // Bulk drop-off: one manifest per station, scanned at the counter.
+        if ($data['action'] === 'dropoff' && $dropped) {
+            $batches = app(\App\Pickrush\Services\Station\DropoffBatches::class)->create($this->seller(), collect($dropped)->map->fresh());
+            if ($batches->count() === 1) {
+                return redirect()->route('seller.dropoffs.show', $batches->first())->with('success',
+                    "{$done} ".($done === 1 ? 'parcel' : 'parcels').' set for drop-off. Print this manifest and bring it with the parcels within '.Order::DROPOFF_WITHIN_DAYS.' days.'
+                    .($skipped ? " {$skipped} skipped: not at that step yet or already done." : ''));
+            }
+        }
+
+        $what = match ($data['action']) {
+            'handover' => $done === 1 ? 'parcel handed over for pickup' : 'parcels handed over for pickup',
+            'dropoff' => ($done === 1 ? 'parcel' : 'parcels').' set for drop-off. Bring '.($done === 1 ? 'it' : 'them').' to your station within '.Order::DROPOFF_WITHIN_DAYS.' days',
+            default => $done === 1 ? 'waybill generated' : 'waybills generated',
+        };
 
         return back()->with('success', "{$done} {$what}.".($skipped ? " {$skipped} skipped: not at that step yet or already done." : ''));
     }
@@ -853,28 +867,55 @@ class SellerController extends Controller
     }
 
     /** Step 2: the parcel is packed and labelled; Pickrush schedules the pickup. */
-    public function handoverOrder(Order $order, OrderLifecycleService $lifecycle, PicksellBridge $pickrush)
+    public function handoverOrder(Request $request, Order $order, OrderLifecycleService $lifecycle, PicksellBridge $pickrush)
     {
-        $parcel = $this->handOverParcel($order, $lifecycle, $pickrush);
+        $dropoff = $request->validate(['method' => 'nullable|in:pickup,dropoff'])['method'] ?? null;
+        $parcel = $this->handOverParcel($order, $lifecycle, $pickrush, $dropoff === 'dropoff');
 
-        return back()->with('success', 'Order handed over to Pickrush. A rider will pick up waybill '.$parcel->tracking_no.'.');
+        return back()->with('success', $dropoff === 'dropoff'
+            ? 'Bring waybill '.$parcel->tracking_no.' to '.($parcel->originHub?->name ?? 'your station').' within '.Order::DROPOFF_WITHIN_DAYS.' days or the order is cancelled.'
+            : 'Order handed over to Pickrush. A rider will pick up waybill '.$parcel->tracking_no.'.');
     }
 
-    /** Requests the pickup, moves the parcel's items to ready for pickup and notifies the buyer and admins. */
-    private function handOverParcel(Order $order, OrderLifecycleService $lifecycle, PicksellBridge $pickrush)
+    /** A bulk drop-off: its manifest, then (once the station confirms) the receipt. */
+    public function dropoffBatch(\App\Pickrush\Models\DropoffBatch $batch)
     {
-        $parcel = DB::transaction(function () use ($order, $lifecycle, $pickrush) {
+        abort_unless($batch->seller_id === $this->seller()->id, 404);
+
+        return view('seller.dropoff-batch', ['batch' => $batch->load('originHub', 'receiver', 'parcels'),
+            'orderNumbers' => PicksellBridge::orderNumbers($batch->parcels->all())]);
+    }
+
+    public function dropoffBatchPrint(\App\Pickrush\Models\DropoffBatch $batch)
+    {
+        abort_unless($batch->seller_id === $this->seller()->id, 404);
+        $batch->load('originHub', 'seller', 'parcels');
+
+        return \Barryvdh\DomPDF\Facade\Pdf::loadView('pickrush.labels.dropoff', ['batch' => $batch,
+            'orderNumbers' => PicksellBridge::orderNumbers($batch->parcels->all())])
+            ->setPaper('a4')->stream("dropoff-{$batch->batch_no}.pdf");
+    }
+
+    /**
+     * Requests the pickup (or, for drop-off, tells Pickrush the seller brings it in), moves the
+     * parcel's items to ready for pickup and notifies the buyer and admins.
+     */
+    private function handOverParcel(Order $order, OrderLifecycleService $lifecycle, PicksellBridge $pickrush, bool $dropoff = false)
+    {
+        $parcel = DB::transaction(function () use ($order, $lifecycle, $pickrush, $dropoff) {
             $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
             abort_if($locked->seller_id !== $this->seller()->id, 403);
             abort_unless(in_array($locked->status, ['preparing', 'processing'], true), 422, 'Prepare the order before handing it over.');
             abort_unless(PicksellBridge::hasParcel($locked), 422, 'Generate and print the waybill before handing the order over.');
 
-            $parcel = $pickrush->requestPickup($locked);
+            $parcel = $dropoff ? $pickrush->requestDropoff($locked) : $pickrush->requestPickup($locked);
             foreach ($this->parcelOrders($locked)->filter(fn (Order $o) => in_array($o->status, ['preparing', 'processing'], true)) as $item) {
                 $lifecycle->transition($item, 'ready_for_pickup', $this->seller()->id, 'seller', null, [
                     'waybill_number' => $parcel->tracking_no,
                     'handed_over_at' => now(),
-                    'tracking_status' => 'Pickup requested from seller',
+                    'fulfillment' => $dropoff ? 'dropoff' : 'pickup',
+                    'dropoff_by' => $dropoff ? now()->addDays(Order::DROPOFF_WITHIN_DAYS) : null,
+                    'tracking_status' => $dropoff ? 'Seller will drop it off at the station' : 'Pickup requested from seller',
                 ]);
             }
             $order->setRawAttributes($locked->getAttributes(), true);

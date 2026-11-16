@@ -38,7 +38,8 @@ class CheckoutVouchersTest extends TestCase
         $this->assertSame($seller->id, $v['stores'][0]['seller_id']);
         $this->assertSame([
             'id' => $save100->id, 'code' => 'SAVE100', 'title' => '₱100 off', 'summary' => 'Minimum spend ₱500 · Once per buyer',
-            'type' => 'fixed', 'discount' => 100, 'problem' => null, 'ends_at' => null,
+            'type' => 'fixed', 'discount' => 100, 'problem' => null, 'ends_at' => null, 'used_percent' => null,
+            'uses_left' => 1, 'recommended' => true, 'min_spend' => 500, 'starts_at' => null, 'upcoming' => false,
         ], $v['stores'][0]['options'][0]);
         $this->assertSame([$big->id, 'Spend ₱4,000.00 more to use this voucher.'], [$v['stores'][0]['options'][1]['id'], $v['stores'][0]['options'][1]['problem']]);
         $this->assertSame([$tenPct->id, 50, '10% off up to ₱50'], [$v['platform'][0]['id'], $v['platform'][0]['discount'], $v['platform'][0]['title']]);
@@ -62,6 +63,58 @@ class CheckoutVouchersTest extends TestCase
         $this->postJson('/api/mobile/buyer/checkout/quote', ['item_ids' => [$lamp->id], 'store_vouchers' => [$seller->id => $big->id]])
             ->assertJsonPath('vouchers.picked.stores', [])
             ->assertJsonPath('vouchers.error', 'BIG: Spend ₱4,400.00 more to use this voucher.');
+    }
+
+    public function test_buyers_see_how_much_of_a_limited_voucher_is_used(): void
+    {
+        $seller = $this->seller();
+        $buyer = $this->actingAsBuyer();
+        $lamp = $this->cartLine($buyer, $this->product($seller, ['name' => 'Lamp', 'price' => 600]));
+        $limited = $this->voucher(['code' => 'FIRST20', 'usage_limit' => 20]);
+        foreach (range(1, 4) as $_) {
+            VoucherRedemption::forceCreate(['voucher_id' => $limited->id, 'buyer_id' => $this->seller()->id, 'amount' => 50]);
+        }
+
+        $this->postJson('/api/mobile/buyer/checkout/quote', ['item_ids' => [$lamp->id]])
+            ->assertOk()->assertJsonPath('vouchers.platform.0.used_percent', 20);
+        $this->get(route('buyer.checkout.start', ['item_ids' => [$lamp->id]]))
+            ->assertOk()->assertSee('20% used')->assertSee('aria-valuenow="20"', false)
+            ->assertSee('Recommended')->assertSee('>x1<', false)->assertSee('No minimum spend');
+    }
+
+    public function test_scheduled_vouchers_are_shown_ahead_but_cannot_be_picked_yet(): void
+    {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-16 10:00:00'));
+        $seller = $this->seller();
+        $buyer = $this->actingAsBuyer();
+        $lamp = $this->cartLine($buyer, $this->product($seller, ['name' => 'Lamp', 'price' => 600]));
+        $soon = $this->voucher(['code' => 'PAYDAY', 'starts_at' => '2026-11-20 00:00', 'ends_at' => '2026-11-30 23:59']);
+        $this->voucher(['code' => 'OFFNOW', 'starts_at' => '2026-11-20 00:00', 'is_active' => false]);
+
+        $v = $this->postJson('/api/mobile/buyer/checkout/quote', ['item_ids' => [$lamp->id], 'platform_voucher' => $soon->id])->assertOk()->json('vouchers');
+        $this->assertCount(1, $v['platform'], 'a switched-off voucher stays hidden');
+        $this->assertSame([true, false, 'Starts Nov 20.'], [$v['platform'][0]['upcoming'], $v['platform'][0]['recommended'], $v['platform'][0]['problem']]);
+        $this->assertNull($v['picked']['platform'], 'not usable before it starts');
+
+        $this->get(route('buyer.checkout.start', ['item_ids' => [$lamp->id]]))
+            ->assertOk()->assertSee('Starts Nov 20')->assertSee("Can't use", false)
+            ->assertSee('voucher-ticket-cover', false)->assertSee('data-voucher-blocked="Starts Nov 20."', false);
+    }
+
+    public function test_vouchers_that_cannot_be_used_for_these_items_say_so_per_store(): void
+    {
+        $tote = $this->seller();
+        $mugs = $this->seller();
+        $buyer = $this->actingAsBuyer();
+        $bag = $this->cartLine($buyer, $this->product($tote, ['name' => 'Bag', 'price' => 300]));
+        $mug = $this->cartLine($buyer, $this->product($mugs, ['name' => 'Mug', 'price' => 900]));
+        $this->voucher(['seller_id' => $tote->id, 'code' => 'TOTE50']);
+        $this->voucher(['seller_id' => $tote->id, 'code' => 'TOTEBIG', 'min_spend' => 500]);
+
+        $page = $this->get(route('buyer.checkout.start', ['item_ids' => [$bag->id, $mug->id]]))->assertOk();
+        $page->assertSee("Can't use", false)->assertSee('Spend ₱200.00 more to use this voucher.')
+            ->assertSee('for '.($tote->business_name ?? $tote->full_name).' items only', false)
+            ->assertSee('aria-disabled="true"', false)->assertSee('voucher-ticket-cover', false)->assertSee('data-voucher-blocked="Spend ₱200.00 more to use this voucher."', false);
     }
 
     public function test_placing_the_order_applies_the_vouchers_like_the_website(): void

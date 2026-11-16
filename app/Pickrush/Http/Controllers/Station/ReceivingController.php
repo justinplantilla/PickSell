@@ -5,6 +5,8 @@ namespace App\Pickrush\Http\Controllers\Station;
 use App\Pickrush\Enums\ParcelStatus;
 use App\Pickrush\Models\Manifest;
 use App\Pickrush\Models\Parcel;
+use App\Pickrush\Models\DropoffBatch;
+use App\Pickrush\Services\Station\DropoffBatches;
 use App\Pickrush\Services\Station\StationReceiving;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -20,6 +22,7 @@ class ReceivingController extends StationController
             'scanKey' => (string) Str::uuid(),
             'trips' => Manifest::with('fromHub')->where('to_hub_id', $station->id)->whereIn('status', ['dispatched', 'received'])->latest('dispatched_at')->get(),
             'inTransit' => Parcel::where('next_hub_id', $station->id)->where('current_status', ParcelStatus::InTransitToStation)->latest('updated_at')->limit(100)->get(),
+            'dropoffs' => DropoffBatch::with('seller')->where('origin_hub_id', $station->id)->where('status', 'open')->latest()->limit(50)->get(),
             'firstMile' => Parcel::where('origin_hub_id', $station->id)->whereIn('current_status', [ParcelStatus::WaitingPickup, ParcelStatus::PickedUp])
                 ->with('openAssignment.rider')->oldest()->limit(100)->get(),
         ]);
@@ -30,6 +33,9 @@ class ReceivingController extends StationController
         $data = $request->validate(['tracking_no' => 'required|string|max:30', 'scan_key' => 'nullable|string|max:80']);
         if ($trip = self::arrivingTrip($data['tracking_no'], $this->station()->id)) {
             return redirect()->route('pickrush.station.trips.show', $trip)->with('success', "Trip {$trip->manifest_no}: scan each parcel off the vehicle.");
+        }
+        if ($batch = DropoffBatches::scanned($data['tracking_no'], $this->station()->id)) {
+            return redirect()->route('pickrush.station.dropoffs.show', $batch)->with('success', "Drop-off {$batch->batch_no}: scan each parcel the seller brought.");
         }
 
         return $this->attempt(

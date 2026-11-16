@@ -51,6 +51,30 @@ class OrderCancellationService
         });
     }
 
+    /**
+     * The seller chose drop-off but did not bring the parcel to the station by the deadline:
+     * cancelled for the buyer and, like a late hand-over, recorded against the seller.
+     *
+     * @return bool whether this call cancelled it
+     */
+    public function cancelMissedDropoff(Order $order): bool
+    {
+        return DB::transaction(function () use ($order): bool {
+            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
+            if ($locked->status !== 'ready_for_pickup' || $locked->fulfillment !== 'dropoff' || ! $locked->dropoff_by || $locked->dropoff_by->isFuture()) {
+                return false;
+            }
+            $locked->forceFill(['late_cancelled_at' => now()])->save();
+            app(PicksellBridge::class)->cancel($locked, 'The seller did not drop the parcel off by '.$locked->dropoff_by->format('M d, Y h:i A').'.');
+            app(OrderLifecycleService::class)->transition($locked, 'cancelled', null, 'system',
+                'The seller did not drop the parcel off at the station in time.',
+                ['tracking_status' => 'Cancelled: the seller did not drop it off in time']);
+            $order->setRawAttributes($locked->getAttributes(), true);
+
+            return true;
+        });
+    }
+
     private function void(Order $locked, ?int $actorId, string $role, ?string $reason): void
     {
         // The seller may already have printed the waybill; void it so it can never be picked up.

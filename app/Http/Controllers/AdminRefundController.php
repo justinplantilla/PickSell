@@ -7,6 +7,7 @@ use App\Http\Requests\RejectRefundRequest;
 use App\Models\Refund;
 use App\Services\Finance\RefundService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class AdminRefundController extends Controller
 {
@@ -36,6 +37,19 @@ class AdminRefundController extends Controller
         $refunds->approve($refund, $request->user(), $request->validated('reason'));
 
         return back()->with('success', 'Refund approved and financial ledger entries recorded.');
+    }
+
+    /** Finance sent the approved refund to the buyer's GCash; the reference closes the return as Refunded. */
+    public function markSent(Request $request, Refund $refund, RefundService $refunds)
+    {
+        Gate::authorize('send', $refund);
+        $data = $request->validate([
+            'payout_reference' => 'required|string|min:4|max:120',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+        $refunds->markSent($refund, $request->user(), trim($data['payout_reference']), (string) ($data['notes'] ?? ''));
+
+        return back()->with('success', 'Refund marked as sent through GCash. The buyer was told.');
     }
 
     public function reject(RejectRefundRequest $request, Refund $refund, RefundService $refunds)

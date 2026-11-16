@@ -324,6 +324,89 @@ class PicksellBridgeTest extends TestCase
         $this->assertNull($order->statusHistories()->where('source', 'pickrush')->latest('id')->value('changed_by'));
     }
 
+    public function test_drop_off_sends_no_rider_and_the_station_scan_receives_it(): void
+    {
+        $order = $this->preparing();
+        $this->actingAs($this->seller)->post(config('app.url')."/seller/orders/{$order->id}/waybill")->assertRedirect();
+        $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$order->id}/handover", ['method' => 'dropoff'])->assertSessionHasNoErrors();
+
+        $order->refresh();
+        $parcel = PicksellBridge::parcelFor($order);
+        $this->assertSame(ParcelStatus::AwaitingDropoff, $parcel->current_status);
+        $this->assertSame(['ready_for_pickup', 'dropoff'], [$order->status, $order->fulfillment]);
+        $this->assertTrue($order->dropoff_by->between(now()->addDays(2)->subMinute(), now()->addDays(2)->addMinute()));
+
+        $staff = $this->staff(StaffRole::HubManager, $parcel->originHub);
+        $message = app(\App\Pickrush\Services\Station\StationReceiving::class)->scan($parcel->tracking_no, $staff);
+        $this->assertStringContainsString('received', $message);
+        $this->assertSame(ParcelStatus::AtOriginHub, $parcel->fresh()->current_status);
+        $this->assertSame('at_sorting_center', $order->fresh()->status);
+    }
+
+    public function test_sellers_see_the_drop_off_choice_and_then_where_and_by_when(): void
+    {
+        $order = $this->preparing();
+        $this->actingAs($this->seller)->post(config('app.url')."/seller/orders/{$order->id}/waybill")->assertRedirect();
+        $this->actingAs($this->seller)->get(config('app.url')."/seller/orders/{$order->id}")->assertOk()->assertSee('Drop Off at Station');
+        $this->actingAs($this->seller)->get(config('app.url').'/seller/orders')->assertOk()->assertSee('value="dropoff"', false);
+
+        $this->actingAs($this->seller)->patch(config('app.url')."/seller/orders/{$order->id}/handover", ['method' => 'dropoff']);
+        $station = PicksellBridge::parcelFor($order)->originHub;
+        $this->actingAs($this->seller)->get(config('app.url')."/seller/orders/{$order->id}")->assertOk()
+            ->assertSee("at {$station->name}", false)->assertDontSee('Drop Off at Station');
+        $this->actingAs($this->seller)->get(config('app.url').'/seller/orders')->assertOk()->assertSee('Drop off by');
+    }
+
+    public function test_a_bulk_drop_off_gets_one_manifest_the_station_checks_and_confirms(): void
+    {
+        $orders = collect([$this->preparing(), $this->preparing(), $this->preparing()]);
+        $orders->each(fn (Order $o) => $this->actingAs($this->seller)->post(config('app.url')."/seller/orders/{$o->id}/waybill"));
+        $response = $this->actingAs($this->seller)->post(config('app.url').'/seller/orders/bulk', ['action' => 'dropoff', 'order_ids' => $orders->pluck('id')->all()]);
+
+        $batch = \App\Pickrush\Models\DropoffBatch::sole();
+        $response->assertRedirect(route('seller.dropoffs.show', $batch));
+        $this->assertSame(3, $batch->parcel_count);
+        $this->actingAs($this->seller)->get(route('seller.dropoffs.show', $batch))->assertOk()->assertSee($batch->batch_no)->assertSee('To drop off');
+        $this->actingAs($this->seller)->get(route('seller.dropoffs.print', $batch))->assertOk();
+
+        // The counter: the manifest code opens the batch, two of three parcels are scanned, then confirmed.
+        $staff = $this->staff(StaffRole::HubManager, $batch->originHub);
+        $this->actingAs($staff, 'pickrush');
+        $this->post(route('pickrush.station.receiving.scan'), ['tracking_no' => strtolower($batch->batch_no)])
+            ->assertRedirect(route('pickrush.station.dropoffs.show', $batch));
+        $parcels = $batch->parcels()->get();
+        foreach ($parcels->take(2) as $parcel) {
+            $this->post(route('pickrush.station.dropoffs.scan', $batch), ['tracking_no' => $parcel->tracking_no])->assertSessionHasNoErrors();
+        }
+        $this->get(route('pickrush.station.dropoffs.show', $batch))->assertOk()->assertSee('2 of 3 received');
+        $this->post(route('pickrush.station.dropoffs.confirm', $batch))->assertSessionHasNoErrors();
+
+        $batch->refresh();
+        $this->assertSame(['received', $staff->id], [$batch->status, $batch->received_by]);
+        $this->assertSame(ParcelStatus::AwaitingDropoff, $parcels->last()->fresh()->current_status, 'the missing one keeps waiting');
+        $receipt = $this->seller->notifications()->where('type', \App\Notifications\SellerDropoffReceipt::class)->sole();
+        $this->assertStringContainsString('received 2 of 3', $receipt->data['message']);
+        $this->post(route('pickrush.station.dropoffs.confirm', $batch))->assertSessionHasErrors('operation');
+    }
+
+    public function test_a_drop_off_not_brought_in_within_two_days_is_cancelled(): void
+    {
+        $order = $this->preparing();
+        $this->actingAs($this->seller)->post(config('app.url')."/seller/orders/{$order->id}/waybill")->assertRedirect();
+        $this->actingAs($this->seller)->post(config('app.url').'/seller/orders/bulk', ['action' => 'dropoff', 'order_ids' => [$order->id]])->assertSessionHasNoErrors();
+
+        $this->travel(47)->hours();
+        app(\App\Services\Orders\ShippingDeadlines::class)->run();
+        $this->assertSame('ready_for_pickup', $order->fresh()->status, 'still inside the 2 days');
+
+        $this->travel(2)->hours();
+        $result = app(\App\Services\Orders\ShippingDeadlines::class)->run();
+        $this->assertSame(0, $result['pickup_issues'], 'a drop-off never blames the courier');
+        $this->assertSame('cancelled', $order->fresh()->status);
+        $this->assertNotNull($order->fresh()->late_cancelled_at);
+        $this->assertSame(ParcelStatus::Cancelled, PicksellBridge::parcelFor($order)->fresh()->current_status);
+    }
+
     public function test_walk_in_and_same_city_parcels_skip_steps_they_never_had(): void
     {
         $neighbour = $this->user('buyer', 'Batangas', 'City of Tanauan', 'Altura Bata');

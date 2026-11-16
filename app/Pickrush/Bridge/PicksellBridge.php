@@ -5,6 +5,7 @@ namespace App\Pickrush\Bridge;
 use App\Models\BuyerAddress;
 use App\Models\Order;
 use App\Models\OrderShipment;
+use App\Models\ReturnRequest;
 use App\Models\User;
 use App\Pickrush\Enums\ParcelStatus;
 use App\Pickrush\Models\Company;
@@ -182,6 +183,149 @@ class PicksellBridge
         ] : []), Actor::picksell(), ParcelStatus::LabelCreated);
     }
 
+    /**
+     * The return waybill for an approved buyer return: a new parcel, linked to the order through
+     * its return ("RET-{id}"), picked up at the address the order went to and delivered to the
+     * seller. The seller pays the return fee as its COD on hand-over; PickSell takes nothing, the
+     * fee pays the riders and the logistics company keeps the rest (so PickSell is owed ₱0 of it).
+     * It goes straight to the pickup queue, with the carrier of the original order. Idempotent.
+     */
+    public function bookReturn(ReturnRequest $returnRequest): Parcel
+    {
+        return $this->bookBetween($returnRequest, ReturnRequest::parcelRef($returnRequest), towardsSeller: true);
+    }
+
+    /**
+     * PickSell sided with the seller after a failed inspection: the item goes back to the buyer,
+     * who pays the fee as its COD ("RTB-{id}"). Idempotent.
+     */
+    public function bookBackToBuyer(ReturnRequest $returnRequest): Parcel
+    {
+        return $this->bookBetween($returnRequest, ReturnRequest::BACK_TO_BUYER_REF.$returnRequest->id, towardsSeller: false);
+    }
+
+    /** The return waybill of a return, if one was booked. */
+    public static function returnParcel(ReturnRequest $returnRequest): ?Parcel
+    {
+        return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->where('external_ref', ReturnRequest::parcelRef($returnRequest))->first();
+    }
+
+    /** The return a return waybill ("RET-") or a send-back to the buyer ("RTB-") belongs to. */
+    public static function returnRequestFor(Parcel $parcel): ?ReturnRequest
+    {
+        $id = self::returnRefId($parcel->source === self::SOURCE ? $parcel->external_ref : null);
+
+        return $id ? ReturnRequest::find($id) : null;
+    }
+
+    /** A return waybill nobody has picked up yet is cancelled (e.g. PickSell refunded without the item). */
+    public function cancelReturn(ReturnRequest $returnRequest, string $reason): void
+    {
+        $parcel = self::returnParcel($returnRequest);
+        if ($parcel && in_array($parcel->current_status, [ParcelStatus::LabelCreated, ParcelStatus::WaitingPickup], true)) {
+            $this->ledger->record($parcel, ParcelStatus::Cancelled, null, ['note' => $reason, 'actor' => Actor::picksell()]);
+        }
+    }
+
+    private function bookBetween(ReturnRequest $returnRequest, string $ref, bool $towardsSeller): Parcel
+    {
+        if ($existing = Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->where('external_ref', $ref)->first()) {
+            return $existing;
+        }
+
+        $order = $returnRequest->order;
+        $seller = $order->seller;
+        $shipment = $order->shipment;
+        $buyerEnd = $this->buyerEnd($order);
+        $sellerCodes = $this->codes($seller);
+        $sellerEnd = [
+            'name' => $seller?->business_name ?: $seller?->full_name ?: 'Picksell seller',
+            'mobile' => $seller?->contact_no,
+            'address' => self::address($seller),
+            'barangay_code' => $sellerCodes['barangay_code'],
+            'municipality_code' => $sellerCodes['municipality_code'],
+            'lat' => $seller?->pickup_lat,
+            'lng' => $seller?->pickup_lng,
+        ];
+        [$from, $to] = $towardsSeller ? [$buyerEnd, $sellerEnd] : [$sellerEnd, $buyerEnd];
+
+        $quantity = max(1, (int) ($returnRequest->quantity ?: $order->quantity));
+        $quote = $order->product
+            ? $this->quote($order->buyer, $seller, [['product' => $order->product, 'quantity' => $quantity]],
+                companyId: $shipment?->logistics_company_id)
+            : ShippingQuote::failed(QuoteFailure::Unavailable);
+        // Priced like a delivery between the same two cities (the route grid is symmetric); the
+        // original order's fee when it cannot be priced now (e.g. the product lost its weight).
+        $fee = $quote->ok() ? $quote->deliveryFee : (string) ($shipment?->delivery_fee ?? 0);
+        $riderPay = $quote->ok() ? $quote->riderPay : (string) ($shipment?->rider_pay ?? config('pickrush.shipping.min_rider_pay'));
+        $money = app(CommissionService::class);
+        $riderPay = $money->fromCents(min($money->toCents($riderPay), $money->toCents($fee)));
+
+        return $this->registrar->register([
+            'company_id' => $shipment?->logistics_company_id,
+            'source' => self::SOURCE,
+            'external_ref' => $ref,
+            'shipper_name' => $from['name'],
+            'shipper_mobile' => $from['mobile'],
+            'pickup_address' => $from['address'],
+            'pickup_barangay_code' => $from['barangay_code'],
+            'pickup_municipality_code' => $from['municipality_code'],
+            'pickup_lat' => $from['lat'],
+            'pickup_lng' => $from['lng'],
+            'consignee_name' => $to['name'],
+            'consignee_mobile' => $to['mobile'],
+            'delivery_address' => $to['address'],
+            'delivery_barangay_code' => $to['barangay_code'],
+            'delivery_municipality_code' => $to['municipality_code'],
+            'delivery_lat' => $to['lat'],
+            'delivery_lng' => $to['lng'],
+            'item_description' => ($towardsSeller ? 'Return: ' : 'Return sent back: ').$order->product_name
+                .($order->variation_label ? " ({$order->variation_label})" : '')." × {$quantity}",
+            // Collected from whoever receives it: the seller for a return, the buyer for a send-back.
+            'cod_amount' => $fee,
+            'shipping_fee' => $fee,
+            'weight_kg' => $quote->ok() ? $quote->chargeableWeightKg : $shipment?->chargeable_weight_kg,
+            'parcel_class' => $quote->ok() ? $quote->parcelClass : $shipment?->parcel_class,
+            'rider_pay' => $riderPay,
+            'platform_commission' => '0.00',
+            'logistics_share' => $money->fromCents($money->toCents($fee) - $money->toCents($riderPay)),
+        ], Actor::picksell(), ParcelStatus::WaitingPickup);
+    }
+
+    /** Where the order went: the address chosen at checkout (kept on the shipment), or the buyer's profile. */
+    private function buyerEnd(Order $order): array
+    {
+        $buyer = $order->buyer;
+        $shipment = $order->shipment;
+        $to = $shipment?->delivery_province ? $shipment : null;
+        $codes = $to
+            ? ($to->delivery_municipality_code ? ['municipality_code' => $to->delivery_municipality_code, 'barangay_code' => $to->delivery_barangay_code]
+                : $this->addresses->resolve($to->delivery_province, $to->delivery_municipality, $to->delivery_barangay))
+            : $this->codes($buyer);
+
+        return [
+            'name' => $to?->recipient_name ?? $buyer?->full_name ?? 'Picksell buyer',
+            'mobile' => $to ? $to->recipient_phone : $buyer?->contact_no,
+            'address' => $to ? $to->delivery_address : self::address($buyer),
+            'barangay_code' => $codes['barangay_code'],
+            'municipality_code' => $codes['municipality_code'],
+            'lat' => $to ? $to->delivery_lat : $buyer?->delivery_lat,
+            'lng' => $to ? $to->delivery_lng : $buyer?->delivery_lng,
+        ];
+    }
+
+    /** The return id in a "RET-{id}" or "RTB-{id}" reference, else null. */
+    private static function returnRefId(?string $ref): ?int
+    {
+        foreach ([ReturnRequest::PARCEL_REF, ReturnRequest::BACK_TO_BUYER_REF] as $prefix) {
+            if (str_starts_with((string) $ref, $prefix) && ctype_digit(substr($ref, strlen($prefix)))) {
+                return (int) substr($ref, strlen($prefix));
+            }
+        }
+
+        return null;
+    }
+
     /** The seller handed the packed parcel over: it joins the station's pickup queue. Idempotent. */
     public function requestPickup(Order $order): Parcel
     {
@@ -190,6 +334,19 @@ class PicksellBridge
 
         if ($parcel->current_status === ParcelStatus::LabelCreated) {
             $this->ledger->record($parcel, ParcelStatus::WaitingPickup, null, ['actor' => Actor::picksell()]);
+        }
+
+        return $parcel;
+    }
+
+    /** The seller brings the parcel to their station instead: no pickup rider is sent. */
+    public function requestDropoff(Order $order): Parcel
+    {
+        $parcel = self::parcelFor($order);
+        abort_unless($parcel, 409, 'Generate the waybill before choosing drop-off.');
+
+        if ($parcel->current_status === ParcelStatus::LabelCreated) {
+            $this->ledger->record($parcel, ParcelStatus::AwaitingDropoff, null, ['actor' => Actor::picksell()]);
         }
 
         return $parcel;
@@ -204,7 +361,7 @@ class PicksellBridge
         $parcel = self::parcelFor($order);
         $parcelOpen = $parcel && $parcel->current_status !== ParcelStatus::Cancelled;
         if ($parcelOpen) {
-            abort_unless(in_array($parcel->current_status, [ParcelStatus::LabelCreated, ParcelStatus::WaitingPickup], true), 409,
+            abort_unless(in_array($parcel->current_status, [ParcelStatus::LabelCreated, ParcelStatus::WaitingPickup, ParcelStatus::AwaitingDropoff], true), 409,
                 "Pickrush already has parcel {$parcel->tracking_no} ({$parcel->current_status->label()}); it cannot be cancelled, only returned.");
         }
 
@@ -236,7 +393,7 @@ class PicksellBridge
         $refs = self::refsWhere('seller_id', $seller->id);
 
         return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->whereIn('external_ref', $refs)
-            ->whereIn('current_status', [ParcelStatus::LabelCreated, ParcelStatus::WaitingPickup])
+            ->whereIn('current_status', [ParcelStatus::LabelCreated, ParcelStatus::WaitingPickup, ParcelStatus::AwaitingDropoff])
             ->update(['pickup_lat' => $seller->pickup_lat, 'pickup_lng' => $seller->pickup_lng]);
     }
 
@@ -336,15 +493,21 @@ class PicksellBridge
         return Parcel::withoutGlobalScopes()->where('source', self::SOURCE)->where('external_ref', self::ref($order))->exists();
     }
 
+    /** The order a parcel is for: the one it carries, or the one a return waybill brings back. */
     public static function orderFor(Parcel $parcel): ?Order
     {
+        if (self::returnRefId($parcel->external_ref) !== null) {
+            return self::returnRequestFor($parcel)?->order;
+        }
+
         return self::ordersFor($parcel)->first();
     }
 
     /** @return Collection<int, Order> every order travelling in the parcel, cancelled ones included */
     public static function ordersFor(Parcel $parcel): Collection
     {
-        if ($parcel->source !== self::SOURCE) {
+        // A return waybill carries no order of its own: the order already reached the buyer.
+        if ($parcel->source !== self::SOURCE || self::returnRefId($parcel->external_ref) !== null) {
             return collect();
         }
         if (self::isShipmentRef($parcel->external_ref)) {
@@ -428,7 +591,7 @@ class PicksellBridge
             ->merge(OrderShipment::where($column, $userId)->pluck('reference'));
     }
 
-    private static function isShipmentRef(?string $ref): bool
+    public static function isShipmentRef(?string $ref): bool
     {
         return str_starts_with((string) $ref, 'SHP-');
     }

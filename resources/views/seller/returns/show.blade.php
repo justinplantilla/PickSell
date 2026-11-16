@@ -70,9 +70,10 @@
             <div class="card-header"><span class="card-title">Return logistics</span></div>
             <div class="card-body">
                 @php
-                    $trackingStates = ['not_started' => 'Not started', 'label_generated' => 'Label generated', 'in_transit' => 'In transit', 'delivered_to_seller' => 'Delivered to seller'];
-                    $trackingOrder = ['not_started', 'label_generated', 'in_transit', 'delivered_to_seller'];
+                    $trackingStates = ['label_generated' => 'Pickup booked', 'in_transit' => 'Picked up from buyer', 'delivered_to_seller' => 'Delivered to you'];
+                    $trackingOrder = array_keys($trackingStates);
                     $trackingIndex = array_search($returnRequest->tracking_status, $trackingOrder, true);
+                    $trackingProblem = ['held_for_seller' => 'Held at the station: you did not take it', 'abandoned' => 'Abandoned at the station', 'lost' => 'Reported lost', 'cancelled' => 'Pickup cancelled'][$returnRequest->tracking_status] ?? null;
                 @endphp
                 <ol class="return-logistics-track">
                     @foreach($trackingOrder as $trackingState)
@@ -82,28 +83,16 @@
                         </li>
                     @endforeach
                 </ol>
+                @if($trackingProblem)
+                    <div class="alert alert-warning" role="status">{{ $trackingProblem }}.</div>
+                @endif
                 <dl class="return-detail-list return-tracking-meta">
-                    <div><dt>Carrier</dt><dd>{{ $returnRequest->carrier ?? 'Not provided' }}</dd></div>
-                    <div><dt>Tracking number</dt><dd>{{ $returnRequest->tracking_number ?? 'Not provided' }}</dd></div>
+                    <div><dt>Carrier</dt><dd>{{ $returnRequest->carrier ?? 'Not booked yet' }}</dd></div>
+                    <div><dt>Tracking number</dt><dd>{{ $returnRequest->tracking_number ?? 'Not booked yet' }}</dd></div>
+                    <div><dt>Return fee you pay the rider</dt><dd>{{ $returnRequest->return_fee !== null ? '₱'.number_format((float) $returnRequest->return_fee, 2) : '—' }}</dd></div>
                     <div><dt>Last updated</dt><dd>{{ $returnRequest->tracking_updated_at?->format('M d, Y h:i A') ?? 'No tracking update' }}</dd></div>
                 </dl>
-                <p class="return-help">Tracking is seller-updated; live carrier synchronization is not connected.</p>
-                @if($returnRequest->status === 'awaiting_item')
-                    <form method="POST" action="{{ route('seller.returns.tracking', $returnRequest) }}" class="return-transition-form">
-                        @csrf @method('PATCH')
-                        <label class="form-label" for="return-tracking-status">Tracking status</label>
-                        <select class="form-control" name="tracking_status" id="return-tracking-status" required>
-                            @foreach(['label_generated' => 'Label generated', 'in_transit' => 'In transit', 'delivered_to_seller' => 'Delivered to seller'] as $value => $label)
-                                <option value="{{ $value }}" {{ $returnRequest->tracking_status === $value ? 'selected' : '' }}>{{ $label }}</option>
-                            @endforeach
-                        </select>
-                        <label class="form-label" for="return-carrier">Carrier</label>
-                        <input class="form-control" id="return-carrier" name="carrier" value="{{ $returnRequest->carrier }}" maxlength="100">
-                        <label class="form-label" for="return-tracking-number">Tracking number</label>
-                        <input class="form-control" id="return-tracking-number" name="tracking_number" value="{{ $returnRequest->tracking_number }}" maxlength="120">
-                        <button class="btn btn-outline" type="submit">Save tracking update</button>
-                    </form>
-                @endif
+                <p class="return-help">Once you approve, Pickrush picks the item up from the buyer and brings it to you. Pay the return fee to the rider on hand-over. A return you do not take is held at the station for {{ config('pickrush.policies.return_hold_days') }} days, reported to PickSell (a strike), and after {{ config('pickrush.policies.return_abandon_days') }} days kept by the logistics company.</p>
             </div>
         </section>
 
@@ -112,16 +101,12 @@
             <div class="card-body return-workflow-body">
                 @if($returnRequest->status === 'requested')
                     <p>Review the evidence and respond to the buyer. This decision is recorded in the audit timeline.</p>
+                    <p class="return-refund-summary">Refund if the return goes through: <strong>₱{{ number_format((float) $returnRequest->refund_amount, 2) }}</strong> (item price × {{ $returnRequest->quantity }}), taken from this order's held payment.</p>
                     <form method="POST" action="{{ route('seller.returns.approve', $returnRequest) }}" class="return-transition-form">
                         @csrf @method('PATCH')
                         <label class="form-label" for="seller-approve-response">Seller response to buyer</label>
                         <textarea class="form-control" id="seller-approve-response" name="seller_note" rows="3" maxlength="2000" required>{{ old('seller_note') }}</textarea>
-                        <label class="form-label" for="refund-amount">Refund amount (PHP)</label>
-                        <div class="return-currency-input"><span aria-hidden="true">₱</span><input class="form-control" type="number" id="refund-amount" name="refund_amount" min="0.01" max="{{ $returnRequest->order->amount }}" step="0.01" value="{{ old('refund_amount', $returnRequest->refund_amount ?? $returnRequest->order->amount) }}" required></div>
-                        <label class="form-label" for="approve-carrier">Return carrier (optional)</label>
-                        <input class="form-control" id="approve-carrier" name="carrier" maxlength="100">
-                        <label class="form-label" for="approve-tracking-number">Return tracking number (optional)</label>
-                        <input class="form-control" id="approve-tracking-number" name="tracking_number" maxlength="120">
+                        <p class="return-help">Approving books the Pickrush pickup from the buyer.</p>
                         <button type="submit" class="btn btn-success">Approve Return</button>
                     </form>
                     <form method="POST" action="{{ route('seller.returns.reject', $returnRequest) }}" class="return-transition-form return-reject-form">
@@ -132,32 +117,39 @@
                         <button type="submit" class="btn btn-danger">Reject Return</button>
                     </form>
                 @elseif($returnRequest->status === 'awaiting_item')
-                    <p>Waiting for the return parcel. Confirm receipt only after the item arrives.</p>
-                    <form method="POST" action="{{ route('seller.returns.receive', $returnRequest) }}">
-                        @csrf @method('PATCH')
-                        <button type="submit" class="btn btn-coral">Confirm item received</button>
-                    </form>
-                @elseif($returnRequest->status === 'received')
-                    <p>The returned item is awaiting Admin inspection before a refund can be approved.</p>
-                @elseif(in_array($returnRequest->status, ['approved_for_refund', 'refund_due'], true))
-                    @if($returnRequest->latestRefund?->status === 'approved')
-                        <p>Finance approved this refund. Send the payment through the agreed method; this app does not transfer funds automatically.</p>
-                        <p class="return-refund-summary">Refund to issue: <strong>₱{{ number_format($returnRequest->latestRefund->amount, 2) }}</strong></p>
-                        <form method="POST" action="{{ route('seller.returns.complete', $returnRequest) }}">
-                            @csrf @method('PATCH')
-                            <button type="submit" class="btn btn-success">Confirm refund sent</button>
-                        </form>
+                    @if($returnRequest->tracking_number)
+                        <p>Pickrush is bringing the item back to you. It is marked received when the rider hands it over.</p>
                     @else
-                        <p>The refund is awaiting Finance review. Do not issue payment until it is approved.</p>
-                        <p class="return-refund-summary">Requested refund: <strong>₱{{ number_format($returnRequest->refund_amount ?? 0, 2) }}</strong></p>
+                        <p>PickSell is booking the Pickrush pickup. If the item reaches you another way, confirm it here.</p>
+                        <form method="POST" action="{{ route('seller.returns.receive', $returnRequest) }}">
+                            @csrf @method('PATCH')
+                            <button type="submit" class="btn btn-coral">Confirm item received</button>
+                        </form>
                     @endif
+                @elseif($returnRequest->status === 'received' && $returnRequest->dispute_status === 'open')
+                    <div class="alert alert-warning" role="status">You reported a problem with the returned item. PickSell is reviewing it.</div>
+                @elseif($returnRequest->status === 'received')
+                    <p>Check the returned item. If it is what the buyer described, PickSell sends the buyer's refund through GCash out of this order's held payment.</p>
+                    <form method="POST" action="{{ route('seller.returns.inspect', $returnRequest) }}" class="return-transition-form">
+                        @csrf @method('PATCH')
+                        <label class="form-label" for="inspection-note">What you found</label>
+                        <textarea class="form-control" id="inspection-note" name="inspection_note" rows="3" maxlength="2000" required>{{ old('inspection_note') }}</textarea>
+                        <div class="return-inspection-actions">
+                            <button type="submit" name="result" value="passed" class="btn btn-success">Item OK, refund the buyer</button>
+                            <button type="submit" name="result" value="failed" class="btn btn-danger">Report a problem</button>
+                        </div>
+                        <p class="return-help">Reporting a problem (wrong, used or damaged item) sends the return to PickSell to decide.</p>
+                    </form>
+                @elseif(in_array($returnRequest->status, ['inspected', 'approved_for_refund', 'refund_due'], true))
+                    <p>PickSell Finance is processing the buyer's refund. There is nothing for you to pay: it comes out of this order's held payment.</p>
+                    <p class="return-refund-summary">Refund: <strong>₱{{ number_format((float) $returnRequest->refund_amount, 2) }}</strong></p>
                 @elseif($returnRequest->status === 'rejected' && $returnRequest->dispute_status === 'open')
-                    <div class="alert alert-warning" role="status">This return request was rejected. The buyer may escalate this decision to Platform Admin for final dispute resolution.</div>
+                    <div class="alert alert-warning" role="status">You rejected this return request. PickSell is reviewing it and will decide.</div>
                     <p>Seller decision controls are now read-only while Admin reviews the case.</p>
                 @elseif($returnRequest->status === 'rejected')
-                    <p>Admin upheld the rejection. This request is closed.</p>
+                    <p>{{ $returnRequest->admin_decision === 'side_with_seller' ? 'PickSell sided with you after the inspection. Hand the item to the Pickrush rider to send it back to the buyer.' : 'The rejection stands. This request is closed and your payment for the order is released.' }}</p>
                 @else
-                    <p>Refund completed on {{ $returnRequest->completed_at?->format('M d, Y h:i A') }}.</p>
+                    <p>Refunded on {{ $returnRequest->completed_at?->format('M d, Y h:i A') }}.</p>
                 @endif
             </div>
         </section>

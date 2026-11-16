@@ -32,12 +32,12 @@ class StationReceiving
             ?? throw new OperationRefused('Unknown tracking number. Check the waybill.');
 
         // First mile: seller walk-in, or the pickup rider bringing it in.
-        if (in_array($parcel->current_status, [ParcelStatus::WaitingPickup, ParcelStatus::PickedUp], true)) {
+        if (in_array($parcel->current_status, [ParcelStatus::WaitingPickup, ParcelStatus::AwaitingDropoff, ParcelStatus::PickedUp], true)) {
             if ($parcel->origin_hub_id !== $station->id) {
                 throw new OperationRefused("{$parcel->tracking_no} should be dropped off at {$parcel->originHub?->name}, not here.");
             }
             DB::transaction(function () use ($parcel, $station, $idempotencyKey) {
-                $walkIn = $parcel->current_status === ParcelStatus::WaitingPickup;
+                $walkIn = $parcel->current_status !== ParcelStatus::PickedUp;
                 $this->ledger->record($parcel, ParcelStatus::AtOriginHub, $station, [
                     'idempotency_key' => $idempotencyKey,
                     'note' => $walkIn ? 'Seller drop-off at the station' : null,

@@ -31,6 +31,7 @@
 .return-workflow-body > p { margin:0.35rem 0 0; color:#555; font-size:0.82rem; line-height:1.55; white-space:pre-wrap; }
 .return-transition-form { display:grid; gap:0.5rem; margin-top:1.2rem; padding-top:1rem; border-top:1px solid #f0ebe0; }
 .return-transition-form button { justify-self:start; }
+.return-inspection-actions { display:flex; flex-wrap:wrap; gap:0.5rem; }
 .return-workflow-body > form { margin-top:1rem; }
 .return-detail-shell { display:grid; gap:1rem; }
 .return-detail-header { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:1rem 1.2rem; background:#fff; border:1px solid #e8e2d8; border-left:3px solid var(--coral); border-radius:12px; box-shadow:0 1px 3px rgba(31,35,40,.05); }

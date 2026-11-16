@@ -20,7 +20,7 @@ use Illuminate\Validation\ValidationException;
  */
 class BuyerAddressBook
 {
-    public const MAX = 10;
+    public const MAX = 3;
 
     public function __construct(private AddressResolver $resolver) {}
 

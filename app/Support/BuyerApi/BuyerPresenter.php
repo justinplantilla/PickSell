@@ -230,6 +230,12 @@ final class BuyerPresenter
             'discount' => self::money($o['discount']),
             'problem'  => $o['problem'],
             'ends_at'  => $o['voucher']->ends_at?->toIso8601String(),
+            'used_percent' => $o['voucher']->used_percent,
+            'uses_left' => $o['uses_left'] ?? null,
+            'recommended' => $o['recommended'] ?? false,
+            'min_spend' => self::money($o['voucher']->min_spend),
+            'starts_at' => $o['voucher']->starts_at?->toIso8601String(),
+            'upcoming' => $o['upcoming'] ?? false,
         ];
 
         return [
@@ -305,6 +311,8 @@ final class BuyerPresenter
             'waybill_number'    => $parcel?->tracking_no ?? $o->waybill_number,
             'logistics'         => $parcel ? ['name' => $o->carrierName()] : null,
             'tracking_status'   => $o->tracking_status,
+            // ETA for the tracking screen (null once delivered, cancelled or returned).
+            'estimated_delivery' => app(\App\Pickrush\Services\Shipping\DeliveryEstimate::class)->forOrder($o),
             'events'            => self::timeline($o),
             'tracking'          => $parcel ? self::tracking($parcel) : null,
             'feedback'          => $o->feedback,
@@ -321,7 +329,8 @@ final class BuyerPresenter
             'return_request'    => $return ? self::returnRequest($return) : null,
             'actions'           => [
                 'can_cancel'  => in_array($status, OrderStatus::CANCELLABLE, true),
-                'can_confirm_received' => in_array($status, OrderStatus::RECEIVABLE, true),
+                // Not while a return/refund is pending: the order waits for it to be settled.
+                'can_confirm_received' => in_array($status, OrderStatus::RECEIVABLE, true) && ! $return?->isOpen(),
                 'can_rate'    => in_array($status, OrderStatus::RATEABLE, true) && ! $o->rating,
                 'can_return'  => in_array($status, OrderStatus::RETURNABLE, true) && ! $return && $o->returnWindowOpen(),
                 'return_until' => $return ? null : self::date($o->returnWindowOpen() ? $o->returnWindowEndsAt() : null),
@@ -392,9 +401,11 @@ final class BuyerPresenter
             'reason'        => ReturnRequest::REASONS[$r->reason] ?? $r->reason,
             'details'       => $r->details,
             'refund_amount' => self::money($r->refund?->amount ?? $r->refund_amount),
-            'refund_to'     => 'Handled by PickSell support',
+            'refund_to'     => $r->refund_gcash_number ? 'GCash '.$r->refund_gcash_number.($r->refund_gcash_name ? " ({$r->refund_gcash_name})" : '') : 'Handled by PickSell support',
+            'refund_reference' => $r->status === 'completed' ? $r->refund?->payout_reference : null,
             'seller_note'   => $r->seller_note,
-            'tracking'      => $r->status === 'awaiting_item' && $r->tracking_number
+            // The Pickrush return pickup at the buyer's address.
+            'tracking'      => $r->tracking_number && in_array($r->status, ['awaiting_item', 'received'], true)
                 ? ['carrier' => $r->carrier, 'number' => $r->tracking_number, 'status' => $r->tracking_status]
                 : null,
             'requested_at'  => self::date($r->created_at),
@@ -411,15 +422,23 @@ final class BuyerPresenter
     {
         return match ($r->status) {
             'requested' => 'Waiting for the seller to review your request',
-            'awaiting_item' => 'Approved: send the item back to the seller',
-            'received' => 'The seller received the item; PickSell is inspecting it',
-            'inspected' => 'Inspected; waiting for refund approval',
-            'approved_for_refund' => 'Refund approved',
+            'awaiting_item' => match ($r->tracking_status) {
+                'label_generated' => 'Approved: a Pickrush rider will pick the item up from you',
+                'in_transit' => 'Picked up: on its way to the seller',
+                'held_for_seller', 'abandoned', 'lost' => 'PickSell is deciding your refund',
+                default => 'Approved: PickSell is booking the pickup',
+            },
+            'received' => $r->dispute_status === 'open'
+                ? 'The seller reported a problem with the item; PickSell is reviewing it'
+                : 'The seller received the item and is checking it',
+            'inspected', 'approved_for_refund' => 'Refund approved; PickSell is sending it to your GCash',
             'refund_due' => 'Refund on its way',
-            'completed' => 'Refund completed',
-            'rejected' => $r->dispute_status === 'open'
-                ? 'The seller declined; PickSell support is reviewing it'
-                : 'Request declined',
+            'completed' => 'Refunded to your GCash',
+            'rejected' => match (true) {
+                $r->dispute_status === 'open' => 'The seller declined; PickSell support is reviewing it',
+                $r->admin_decision === 'side_with_seller' => 'No refund: the item is being sent back to you',
+                default => 'Request declined',
+            },
             default => ucfirst(str_replace('_', ' ', $r->status)),
         };
     }

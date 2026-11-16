@@ -4,6 +4,7 @@ namespace App\Services\Orders;
 
 use App\Models\Order;
 use App\Models\ProductReview;
+use App\Models\ReturnRequest;
 use App\Models\User;
 use App\Notifications\BuyerOrderUpdate;
 use App\Notifications\SellerDeliveryReceived;
@@ -17,6 +18,10 @@ use Illuminate\Support\Facades\DB;
  * left before, on an older order, becomes the product review now. If the buyer doesn't confirm
  * within AUTO_CONFIRM_DAYS of delivery, it is confirmed for them (orders:auto-confirm-received).
  * Used by the website's order pages and the buyer app. The seller does not confirm deliveries.
+ *
+ * While a return or refund is pending the order waits as Delivered, past the deadline too: the
+ * buyer cannot tap Order Received and nothing is confirmed for them. Once the return is settled,
+ * afterReturn() completes it, so the seller's held payment is posted (a refund then reverses part of it).
  */
 class OrderReceipt
 {
@@ -27,6 +32,7 @@ class OrderReceipt
     public function confirm(Order $order, User $buyer): Order
     {
         abort_if($order->buyer_id !== $buyer->id, 404, 'Order not found.');
+        abort_if($order->hasOpenReturn(), 422, 'Your return/refund request is still being handled. You can confirm once it is resolved.');
 
         return $this->complete($order, $buyer->id, 'buyer', 'Buyer confirmed receipt', $buyer);
     }
@@ -34,7 +40,21 @@ class OrderReceipt
     /** When a delivered order is confirmed automatically if the buyer hasn't; null once it isn't waiting. */
     public static function autoConfirmAt(Order $order): ?CarbonInterface
     {
-        return $order->status === 'delivered' && $order->delivered_at ? $order->delivered_at->copy()->addDays(self::AUTO_CONFIRM_DAYS) : null;
+        return $order->status === 'delivered' && $order->delivered_at && ! $order->hasOpenReturn()
+            ? $order->delivered_at->copy()->addDays(self::AUTO_CONFIRM_DAYS) : null;
+    }
+
+    /**
+     * The return on a delivered order is settled (rejected for good, or refunded): the order
+     * completes now, whatever day it is. Nothing to do once it is completed already.
+     */
+    public function afterReturn(Order $order, ?User $actor, string $trackingStatus): Order
+    {
+        if ($order->status !== 'delivered') {
+            return $order;
+        }
+
+        return $this->complete($order, $actor?->id, $actor ? 'admin' : 'system', $trackingStatus, $actor);
     }
 
     /** Confirms every delivered order the buyer left unconfirmed for AUTO_CONFIRM_DAYS. @return int orders confirmed */
@@ -43,6 +63,9 @@ class OrderReceipt
         $done = 0;
         Order::where('status', 'delivered')->whereNotNull('delivered_at')
             ->where('delivered_at', '<=', now()->subDays(self::AUTO_CONFIRM_DAYS))
+            // A pending return holds the order (and the seller's payment) until it is settled.
+            ->whereDoesntHave('returns', fn ($q) => $q->whereIn('status', ReturnRequest::OPEN)
+                ->orWhere(fn ($disputed) => $disputed->where('status', 'rejected')->where('dispute_status', 'open')))
             ->orderBy('id')->each(function (Order $order) use (&$done): void {
                 try {
                     $completed = $this->complete($order, null, 'system', 'Automatically confirmed '.self::AUTO_CONFIRM_DAYS.' days after delivery');

@@ -34,7 +34,7 @@ class AutoConfirmReceivedTest extends TestCase
             ->assertJsonPath('order.auto_confirm_at', now()->addDay()->toIso8601String());
         $this->getJson("/api/mobile/buyer/orders/{$shipping->id}")->assertJsonPath('order.auto_confirm_at', null);
         $this->actingAs($buyer)->get(route('buyer.orders'))->assertOk()
-            ->assertSee('We’ll confirm it for you on '.now()->addDay()->format('M d, Y'), false);
+            ->assertSee('If you do nothing, it is marked received on '.now()->addDay()->format('M d, Y'), false);
 
         $this->artisan('orders:auto-confirm-received')->expectsOutput('Confirmed 1 delivered orders.')->assertSuccessful();
 

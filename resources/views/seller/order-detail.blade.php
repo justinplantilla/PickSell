@@ -108,6 +108,14 @@
                             </form>
                             @elseif($isPreparing)
                             <a href="{{ route('seller.orders.waybill', $order) }}" target="_blank" class="btn btn-outline">Print Waybill</a>
+                            @php($dropoffStation = \App\Pickrush\Bridge\PicksellBridge::parcelFor($order)?->originHub)
+                            @if($dropoffStation)
+                            <form method="POST" action="{{ route('seller.orders.handover', $order) }}">
+                                @csrf @method('PATCH')
+                                <input type="hidden" name="method" value="dropoff">
+                                <button type="submit" class="btn btn-outline" data-confirm="You will bring the parcel to {{ $dropoffStation->name }} yourself within {{ \App\Models\Order::DROPOFF_WITHIN_DAYS }} days. No rider is sent. If it is not dropped off in time, the order is cancelled automatically.">Drop Off at Station</button>
+                            </form>
+                            @endif
                             <form method="POST" action="{{ route('seller.orders.handover', $order) }}">
                                 @csrf @method('PATCH')
                                 <button type="submit" class="btn btn-success" data-confirm="Is the parcel packed with the waybill attached? {{ $order->carrierName() }} will send a rider to pick it up.">Hand Over to {{ $order->carrierName() }}</button>
@@ -122,11 +130,24 @@
                         @if(! $order->waybill_number)
                         <span>{{ $order->carrierName() }}'s tracking number becomes your waybill. No rider is called yet, so take your time packing.</span>
                         @else
-                        <span>Waybill <strong>{{ $order->waybill_number }}</strong> is ready. Print it, attach it to the packed parcel, then hand over to request a {{ $order->carrierName() }} pickup.</span>
+                        <span>Waybill <strong>{{ $order->waybill_number }}</strong> is ready. Print it, attach it to the packed parcel, then hand over to request a {{ $order->carrierName() }} pickup, or drop it off at the station yourself.</span>
                         @endif
                     </div>
                     @endif
-                    @if(in_array($order->status, ['shipped', 'ready_for_pickup'], true))
+                    @if($order->status === 'ready_for_pickup' && $order->fulfillment === 'dropoff')
+                    @php($dropoffStation = \App\Pickrush\Bridge\PicksellBridge::parcelFor($order)?->originHub)
+                    <div class="alert {{ $order->dropoff_by?->lt(now()->addHours(\App\Services\Orders\ShippingDeadlines::REMINDER_HOURS)) ? 'alert-warning' : 'alert-info' }} order-detail-flush" role="status">
+                        <strong>Drop off waybill {{ $order->waybill_number }} at {{ $dropoffStation?->name ?? 'your station' }}</strong>@if($dropoffStation?->address), {{ $dropoffStation->address }}@endif,
+                        by {{ $order->dropoff_by?->format('M d, Y h:i A') }} ({{ $order->dropoff_by?->diffForHumans() }}).
+                        If it is not dropped off by then, the order is cancelled automatically and counts against your seller performance.
+                        @if($dropoffStation?->lat && $dropoffStation?->lng)
+                        <a href="https://www.google.com/maps/search/?api=1&query={{ $dropoffStation->lat }},{{ $dropoffStation->lng }}" target="_blank" rel="noopener">Open in Maps</a>
+                        @endif
+                        @if($dropoffBatchId = \App\Pickrush\Bridge\PicksellBridge::parcelFor($order)?->dropoff_batch_id)
+                        <a href="{{ route('seller.dropoffs.show', $dropoffBatchId) }}">View drop-off manifest</a>
+                        @endif
+                    </div>
+                    @elseif(in_array($order->status, ['shipped', 'ready_for_pickup'], true))
                     <div class="alert alert-info order-detail-flush">Handed over: <strong>{{ $order->waybill_number }}</strong>. Waiting for {{ $order->carrierName() }} to pick it up.</div>
                     @elseif($order->status === 'delivered')
                     <div class="alert alert-success order-detail-flush">{{ $order->carrierName() }} delivered this order. It completes and your earnings are released once the buyer confirms they received it.</div>

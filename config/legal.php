@@ -7,6 +7,6 @@
 | (terms_version / terms_accepted_at), which is the proof of consent if a dispute ever comes up.
 */
 return [
-    'version' => '2026-11-15',
-    'effective_date' => '2026-11-15',
+    'version' => '2026-11-16',
+    'effective_date' => '2026-11-16',
 ];

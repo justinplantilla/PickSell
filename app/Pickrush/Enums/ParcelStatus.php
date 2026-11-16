@@ -10,6 +10,8 @@ enum ParcelStatus: string
 {
     case LabelCreated = 'label_created';
     case WaitingPickup = 'waiting_pickup';
+    // The seller chose to bring the parcel to the station: no pickup rider is sent.
+    case AwaitingDropoff = 'awaiting_dropoff';
     case PickedUp = 'picked_up';
     case AtOriginHub = 'at_origin_hub';
     case InTransitToProvince = 'in_transit_to_province';
@@ -31,7 +33,8 @@ enum ParcelStatus: string
     /** status => statuses it may move to */
     private const TRANSITIONS = [
         // The seller printed the waybill but is still packing; riders only see it once handed over.
-        'label_created' => ['waiting_pickup', 'cancelled'],
+        'label_created' => ['waiting_pickup', 'awaiting_dropoff', 'cancelled'],
+        'awaiting_dropoff' => ['at_origin_hub', 'cancelled'],
         'waiting_pickup' => ['picked_up', 'at_origin_hub', 'cancelled'],
         'picked_up' => ['at_origin_hub', 'on_hold'],
         'at_origin_hub' => ['in_transit_to_province', 'assigned_to_rider', 'on_hold', 'returned_to_sender'],
@@ -43,7 +46,8 @@ enum ParcelStatus: string
         'assigned_to_rider' => ['out_for_delivery', 'arrived_at_station'],
         // A return the seller did not take back goes back to the station as "returning" again.
         'out_for_delivery' => ['delivered', 'delivery_failed', 'returned_to_sender', 'returning_to_sender'],
-        'delivery_failed' => ['assigned_to_rider', 'arrived_at_station', 'returning_to_sender'],
+        // A buyer return the seller did not take is held, then may be abandoned (never sent back to the buyer).
+        'delivery_failed' => ['assigned_to_rider', 'arrived_at_station', 'returning_to_sender', 'abandoned'],
         'on_hold' => ['at_origin_hub', 'at_province_hub', 'arrived_at_station', 'returning_to_sender', 'lost', 'cancelled'],
         'returning_to_sender' => ['in_transit_to_province', 'assigned_to_rider', 'returned_to_sender', 'on_hold', 'abandoned'],
         'delivered' => [],
@@ -74,6 +78,7 @@ enum ParcelStatus: string
         return match ($this) {
             self::LabelCreated => 'Label created',
             self::WaitingPickup => 'Waiting for pickup',
+            self::AwaitingDropoff => 'Waiting for seller drop-off',
             self::PickedUp => 'Picked up',
             self::AtOriginHub => 'At origin hub',
             self::InTransitToProvince => 'In transit to province hub',

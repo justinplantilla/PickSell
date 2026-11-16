@@ -178,4 +178,18 @@ class ShoppingTest extends TestCase
             ->assertJsonPath('stores.0.name', "Juan's Store");
         $this->assertStringEndsWith('/storage/stores/juan-logo.png', $this->getJson('/api/mobile/products?search=juan')->json('stores.0.logo'));
     }
+
+    /** The product page's seller block is the full store summary (it was cut to the card's short one). */
+    public function test_product_details_carry_the_sellers_logo_and_trust_signals(): void
+    {
+        $juan = $this->seller(['business_name' => "Juan's Store", 'store_logo' => 'stores/juan-logo.png']);
+        $bag = $this->product($juan, ['name' => 'Backpack']);
+
+        $seller = $this->getJson("/api/mobile/products/{$bag->id}")->assertOk()->json('product.seller');
+        $this->assertSame($juan->id, $seller['id']);
+        $this->assertStringEndsWith('/storage/stores/juan-logo.png', $seller['logo']);
+        $this->assertArrayHasKey('followers', $seller);
+        $this->assertArrayHasKey('joined_at', $seller);
+        $this->assertArrayHasKey('review_count', $seller);
+    }
 }

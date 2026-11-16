@@ -10,7 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * The buyer's address book, as on the website's account page (BuyerAddressBook): up to 10 extra
+ * The buyer's address book, as on the website's account page (BuyerAddressBook): up to 3 extra
  * delivery addresses to choose at checkout; the profile address is the default. Every action
  * answers with the whole book so the app can redraw it.
  */

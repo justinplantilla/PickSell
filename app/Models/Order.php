@@ -11,6 +11,9 @@ class Order extends Model
     /** Once preparing starts, the seller must hand the parcel to the courier within this many hours. */
     public const SHIP_WITHIN_HOURS = 48;
 
+    /** A seller who chose drop-off has this long to bring the parcel to the station. */
+    public const DROPOFF_WITHIN_DAYS = 2;
+
     /** Pre-orders: the seller sets how many days they need, within this range. */
     public const PREORDER_MIN_DAYS = 3;
 
@@ -53,13 +56,14 @@ class Order extends Model
         'waybill_number', 'tracking_status',
         'packed_at', 'handed_over_at', 'delivered_at', 'confirmed_by_seller_at',
         'confirmed_at', 'preparing_at', 'ready_for_pickup_at', 'picked_up_at', 'sorting_received_at',
-        'sorted_at', 'assigned_to_rider_at', 'out_for_delivery_at', 'completed_at', 'ship_by', 'late_cancelled_at',
+        'sorted_at', 'assigned_to_rider_at', 'out_for_delivery_at', 'completed_at', 'ship_by', 'late_cancelled_at', 'fulfillment', 'dropoff_by',
         'rating', 'seller_rating', 'delivery_rating', 'delivery_rider_id', 'feedback',
     ];
 
     protected $casts = [
         'commission_rate' => 'decimal:2',
         'packed_at' => 'datetime',
+        'dropoff_by' => 'datetime',
         'handed_over_at' => 'datetime',
         'delivered_at' => 'datetime',
         'confirmed_by_seller_at' => 'datetime',
@@ -219,12 +223,27 @@ class Order extends Model
         return $delivered?->copy()->addDays((int) config('pickrush.policies.return_window_days'));
     }
 
-    /** Delivered, and still within the return window. */
+    /**
+     * Delivered, not confirmed received yet, and still within the return window. Once the buyer
+     * taps Order Received (or the window ends) the order is Completed and only Contact Support is left.
+     */
     public function returnWindowOpen(): bool
     {
         $ends = $this->returnWindowEndsAt();
 
-        return in_array($this->status, ['delivered', 'completed'], true) && $ends !== null && now()->lt($ends);
+        return $this->status === 'delivered' && $ends !== null && now()->lt($ends);
+    }
+
+    /** A return or refund on this order is still being handled, so the seller's payment stays on hold. */
+    public function hasOpenReturn(): bool
+    {
+        $return = match (true) {
+            $this->relationLoaded('returns') => $this->returns,
+            $this->relationLoaded('returnRequest') => $this->returnRequest,
+            default => $this->returns()->first(),
+        };
+
+        return (bool) $return?->isOpen();
     }
 
     public function returns()

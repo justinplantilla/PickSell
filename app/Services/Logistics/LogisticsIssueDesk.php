@@ -120,8 +120,8 @@ class LogisticsIssueDesk
         if ($parcel->company_id !== $staff->company_id || $parcel->source !== PicksellBridge::SOURCE) {
             throw new DomainException('That is not one of your PickSell parcels.');
         }
-        if (! $parcel->is_return || ! $parcel->return_refused_at
-            || ! in_array($parcel->current_status, [ParcelStatus::ReturningToSender, ParcelStatus::Abandoned], true)) {
+        $held = $parcel->isBuyerReturn() ? ParcelStatus::DeliveryFailed : ParcelStatus::ReturningToSender;
+        if (! $parcel->isHeldForSeller() || ! in_array($parcel->current_status, [$held, ParcelStatus::Abandoned], true)) {
             throw new DomainException("{$parcel->tracking_no} is not a return the seller did not take back.");
         }
         if (LogisticsIssue::where('parcel_id', $parcel->id)->where('type', 'return_refused')->exists()) {

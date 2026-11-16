@@ -24,7 +24,8 @@ class ReturnRequestPolicy
             return Response::deny('You do not have permission to perform this action.');
         }
 
-        return $returnRequest->status === 'rejected' && $returnRequest->dispute_status === 'open'
+        // A rejected request, or a returned item the seller reported a problem with.
+        return in_array($returnRequest->status, ['rejected', 'received'], true) && $returnRequest->dispute_status === 'open'
             ? Response::allow()
             : Response::denyWithStatus(422, 'This dispute is no longer open.');
     }
@@ -49,13 +50,19 @@ class ReturnRequestPolicy
         return $this->manageAtStatus($admin, $returnRequest, 'inspected');
     }
 
-    private function manageAtStatus(User $admin, ReturnRequest $returnRequest, string $status): Response
+    /** Refund the buyer without waiting for (or after not getting) the item back (ReturnFlow::refundWithoutItem). */
+    public function refundWithoutItem(User $admin, ReturnRequest $returnRequest): Response
+    {
+        return $this->manageAtStatus($admin, $returnRequest, 'requested', 'awaiting_item', 'received');
+    }
+
+    private function manageAtStatus(User $admin, ReturnRequest $returnRequest, string ...$statuses): Response
     {
         if (! $admin->hasPermission(Permission::RETURNS_MANAGE)) {
             return Response::deny('You do not have permission to perform this action.');
         }
 
-        return $returnRequest->status === $status && $returnRequest->dispute_status !== 'open'
+        return in_array($returnRequest->status, $statuses, true) && $returnRequest->dispute_status !== 'open'
             ? Response::allow()
             : Response::denyWithStatus(422, 'This return request is no longer in the expected state.');
     }

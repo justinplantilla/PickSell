@@ -1,6 +1,6 @@
 @extends('buyer.layout')
 @section('styles')
-@vite('resources/css/views/buyer-cart.css')
+@vite(['resources/css/views/buyer-cart.css', 'resources/css/components/vouchers.css'])
 @endsection
 @section('title', 'Checkout')
 
@@ -206,17 +206,8 @@
                     <div class="checkout-voucher-list">
                         @foreach($options as $option)
                         @php $isPicked = $pickedId === $option['voucher']->id; @endphp
-                        <a class="checkout-voucher-option {{ $isPicked ? 'selected' : '' }} {{ $option['problem'] ? 'is-unavailable' : '' }}"
-                           href="{{ $isPicked ? $checkoutLink(['store_voucher' => array_diff_key($vouchers['picked']['stores'], [$sellerId => 0])]) : ($option['problem'] ? '#vouchers' : $checkoutLink(['store_voucher' => array_replace($vouchers['picked']['stores'], [$sellerId => $option['voucher']->id])])) }}"
-                           @if($isPicked) aria-current="true" @endif @if($option['problem']) aria-disabled="true" @endif>
-                            <div class="checkout-voucher-badge">{{ $option['voucher']->code }}</div>
-                            <div class="checkout-voucher-info">
-                                <span class="checkout-voucher-label">{{ $option['voucher']->discount_label }}</span>
-                                <span class="checkout-voucher-desc">{{ $option['voucher']->buyer_conditions }}</span>
-                                @if($option['problem'])<span class="checkout-voucher-desc">{{ $option['problem'] }}</span>@endif
-                            </div>
-                            <span class="checkout-voucher-savings">{{ $isPicked ? 'Remove' : ($option['problem'] ? '' : '−₱'.number_format($option['discount'], 2)) }}</span>
-                        </a>
+                        @include('buyer.partials.voucher-option', ['option' => $option, 'isPicked' => $isPicked, 'scope' => 'for '.($store->business_name ?? $store->full_name).' items only',
+                            'href' => $isPicked ? $checkoutLink(['store_voucher' => array_diff_key($vouchers['picked']['stores'], [$sellerId => 0])]) : ($option['problem'] ? '#vouchers' : $checkoutLink(['store_voucher' => array_replace($vouchers['picked']['stores'], [$sellerId => $option['voucher']->id])]))])
                         @endforeach
                     </div>
                 @endforeach
@@ -227,17 +218,8 @@
                     <div class="checkout-voucher-list">
                         @foreach($vouchers['platform'] as $option)
                         @php $isPicked = $vouchers['picked']['platform'] === $option['voucher']->id; @endphp
-                        <a class="checkout-voucher-option {{ $isPicked ? 'selected' : '' }} {{ $option['problem'] ? 'is-unavailable' : '' }}"
-                           href="{{ $isPicked ? $checkoutLink(['platform_voucher' => null]) : ($option['problem'] ? '#vouchers' : $checkoutLink(['platform_voucher' => $option['voucher']->id])) }}"
-                           @if($isPicked) aria-current="true" @endif @if($option['problem']) aria-disabled="true" @endif>
-                            <div class="checkout-voucher-badge checkout-voucher-badge--platform">{{ $option['voucher']->code }}</div>
-                            <div class="checkout-voucher-info">
-                                <span class="checkout-voucher-label">{{ $option['voucher']->discount_label }}</span>
-                                <span class="checkout-voucher-desc">{{ $option['voucher']->buyer_conditions }}</span>
-                                @if($option['problem'])<span class="checkout-voucher-desc">{{ $option['problem'] }}</span>@endif
-                            </div>
-                            <span class="checkout-voucher-savings">{{ $isPicked ? 'Remove' : ($option['problem'] ? '' : '−₱'.number_format($option['discount'], 2)) }}</span>
-                        </a>
+                        @include('buyer.partials.voucher-option', ['option' => $option, 'isPicked' => $isPicked, 'scope' => 'counts your whole order',
+                            'href' => $isPicked ? $checkoutLink(['platform_voucher' => null]) : ($option['problem'] ? '#vouchers' : $checkoutLink(['platform_voucher' => $option['voucher']->id]))])
                         @endforeach
                     </div>
                 @endif
@@ -351,6 +333,19 @@
 
 @section('scripts')
 @vite('resources/js/components/address-picker.js')
+<script>
+// A voucher that can't be used for these items answers a tap with why, instead of doing nothing.
+document.addEventListener('click', (event) => {
+    const ticket = event.target.closest('[data-voucher-blocked]');
+    if (!ticket) return;
+    event.preventDefault();
+    ticket.classList.remove('is-shaking');
+    void ticket.offsetWidth;
+    ticket.classList.add('is-shaking');
+    const message = "Can't use this voucher. " + ticket.dataset.voucherBlocked;
+    window.notify ? window.notify.warning(message) : alert(message);
+});
+</script>
 <script>
 // Keeps the Order Summary in view while scrolling. When it is taller than the screen it scrolls
 // through with the page and sticks at its top or bottom edge, so no part of the card is cut off.

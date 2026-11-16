@@ -112,26 +112,28 @@
         <div class="card" id="store-profile">
             <div class="card-header"><span class="card-title">Store Profile</span></div>
             <div class="card-body">
-                <div class="store-profile-preview" @if($seller->store_banner_url) style="background-image:url('{{ $seller->store_banner_url }}')" @endif>
-                    <span class="store-profile-logo">@if($seller->store_logo_url)<img src="{{ $seller->store_logo_url }}" alt="">@else{{ strtoupper(substr($seller->business_name ?: $seller->first_name, 0, 1)) }}@endif</span>
-                    <strong>{{ $seller->business_name ?? $seller->full_name }}</strong>
-                </div>
                 <form method="POST" action="{{ route('seller.account.store-profile') }}" enctype="multipart/form-data">
                     @csrf
-                    <div class="form-group">
-                        <label class="form-label" for="store_logo">Logo</label>
-                        <input type="file" id="store_logo" name="store_logo" class="form-control" accept="image/jpeg,image/png,image/webp">
-                        <small class="form-hint">Square works best · JPG, PNG or WEBP · 2 MB.</small>
-                        @if($seller->store_logo)<label class="store-profile-remove"><input type="checkbox" name="remove_store_logo" value="1"> Remove current logo</label>@endif
-                        @error('store_logo')<div class="field-error">{{ $message }}</div>@enderror
+                    {{-- Tap the banner or the logo circle to pick a new image; it previews here until saved. --}}
+                    <div class="store-profile-preview {{ $seller->store_banner_url ? 'has-banner' : '' }}" data-banner-preview @if($seller->store_banner_url) style="background-image:url('{{ $seller->store_banner_url }}')" @endif>
+                        <label class="store-profile-banner-hit" for="store_banner" title="Change banner">
+                            <span class="store-profile-banner-empty"><span aria-hidden="true">＋</span> Add banner</span>
+                            <span class="store-profile-banner-edit">Change banner</span>
+                        </label>
+                        <label class="store-profile-logo" for="store_logo" title="Change logo" data-logo-preview>
+                            @if($seller->store_logo_url)<img src="{{ $seller->store_logo_url }}" alt="">@endif<span class="store-profile-logo-initial" @if($seller->store_logo_url) hidden @endif>{{ strtoupper(substr($seller->business_name ?: $seller->first_name, 0, 1)) }}</span>
+                            <span class="store-profile-logo-plus" aria-hidden="true">+</span>
+                        </label>
+                        <strong>{{ $seller->business_name ?? $seller->full_name }}</strong>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="store_banner">Banner</label>
-                        <input type="file" id="store_banner" name="store_banner" class="form-control" accept="image/jpeg,image/png,image/webp">
-                        <small class="form-hint">Wide image, about 1200 × 300 · 4 MB.</small>
-                        @if($seller->store_banner)<label class="store-profile-remove"><input type="checkbox" name="remove_store_banner" value="1"> Remove current banner</label>@endif
-                        @error('store_banner')<div class="field-error">{{ $message }}</div>@enderror
-                    </div>
+                    <input type="file" id="store_logo" name="store_logo" class="sr-only" accept="image/jpeg,image/png,image/webp" aria-label="Store logo">
+                    <input type="file" id="store_banner" name="store_banner" class="sr-only" accept="image/jpeg,image/png,image/webp" aria-label="Store banner">
+                    <small class="form-hint">Logo: square, 2 MB · Banner: wide, about 1200 × 300, 4 MB · JPG, PNG or WEBP.</small>
+                    <p class="store-profile-unsaved" data-store-unsaved hidden>Changes not saved yet. Click <strong>Save store profile</strong> to keep it.</p>
+                    @if($seller->store_logo)<label class="store-profile-remove"><input type="checkbox" name="remove_store_logo" value="1" data-remove-logo> Remove current logo</label>@endif
+                    @if($seller->store_banner)<label class="store-profile-remove"><input type="checkbox" name="remove_store_banner" value="1" data-remove-banner> Remove current banner</label>@endif
+                    @error('store_logo')<div class="field-error">{{ $message }}</div>@enderror
+                    @error('store_banner')<div class="field-error">{{ $message }}</div>@enderror
                     <div class="form-group">
                         <label class="form-label" for="store_description">About the store</label>
                         <textarea id="store_description" name="store_description" class="form-control" rows="4" maxlength="1000" placeholder="What you sell, where you ship from, what makes your store worth following.">{{ old('store_description', $seller->store_description) }}</textarea>

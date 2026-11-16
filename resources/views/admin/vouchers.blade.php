@@ -22,11 +22,7 @@
                 <summary>
                     <span class="voucher-code">{{ $voucher->code }}</span>
                     <span class="voucher-main"><strong>{{ $voucher->title }}</strong><small>{{ $voucher->summary }}@if($voucher->starts_at || $voucher->ends_at) · {{ $voucher->starts_at?->format('M j, g:i A') ?? 'now' }} – {{ $voucher->ends_at?->format('M j, g:i A') ?? 'no end' }}@endif</small></span>
-                    <span class="voucher-meta">
-                        @php $live = $voucher->is_active && (! $voucher->ends_at || $voucher->ends_at->isFuture()) && (! $voucher->starts_at || $voucher->starts_at->isPast()); @endphp
-                        <span class="voucher-state {{ $live ? 'is-live' : '' }}">{{ ! $voucher->is_active ? 'Off' : ($voucher->starts_at?->isFuture() ? 'Scheduled' : ($voucher->ends_at?->isPast() ? 'Ended' : 'Live')) }}</span>
-                        <small>{{ $voucher->redemptions_count }} used{{ $voucher->usage_limit ? ' of '.$voucher->usage_limit : '' }} · PickSell paid ₱{{ number_format((float) $voucher->redemptions_sum_amount, 2) }}</small>
-                    </span>
+                    @include('partials.voucher-usage', ['voucher' => $voucher])
                 </summary>
                 @can(\App\Auth\Permission::SETTINGS_MANAGE)
                 @include('partials.voucher-form', ['voucher' => $voucher, 'action' => route('admin.vouchers.update', $voucher)])

@@ -87,6 +87,39 @@ class Parcel extends Model
     }
 
     /**
+     * A PickSell buyer return: picked up at the buyer and delivered to the seller, who pays the
+     * return fee (its COD) on hand-over. A seller who does not take it is treated like one who does
+     * not take back a failed delivery: it is held at the station, never sent back to the buyer, and
+     * after policies.return_abandon_days it may be abandoned (FailedDeliveries).
+     */
+    public function isBuyerReturn(): bool
+    {
+        return $this->source === 'picksell' && str_starts_with((string) $this->external_ref, 'RET-');
+    }
+
+    /** A parcel the station holds for a seller who did not take it: a failed-delivery return, or a buyer return. */
+    public function isHeldForSeller(): bool
+    {
+        return $this->return_refused_at !== null && ($this->is_return || $this->isBuyerReturn());
+    }
+
+    /** The seller it is going back to, and the fee they pay on hand-over. */
+    public function sellerName(): ?string
+    {
+        return $this->isBuyerReturn() ? $this->consignee_name : $this->shipper_name;
+    }
+
+    public function sellerMobile(): ?string
+    {
+        return $this->isBuyerReturn() ? $this->consignee_mobile : $this->shipper_mobile;
+    }
+
+    public function sellerFee(): float
+    {
+        return (float) ($this->isBuyerReturn() ? $this->cod_amount : $this->return_fee);
+    }
+
+    /**
      * A parcel on its way to the viewer's hub. Its full tracking number stays hidden there until
      * it is scanned in, so it can only be received off the label of the parcel itself.
      */

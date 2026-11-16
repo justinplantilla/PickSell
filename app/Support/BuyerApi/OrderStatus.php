@@ -51,7 +51,8 @@ final class OrderStatus
     public const RECEIVABLE = ['delivered'];
 
     /** A return can be asked for once it arrived, confirmed or not (website rule). */
-    public const RETURNABLE = ['delivered', 'completed'];
+    /** Completed (Order Received, or the window ended) closes the regular return: Contact Support only. */
+    public const RETURNABLE = ['delivered'];
 
     public static function of(Order $order): string
     {

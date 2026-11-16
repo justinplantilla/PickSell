@@ -21,6 +21,18 @@ class RefundPolicy
         return $this->review($admin, $refund, Permission::REFUNDS_APPROVE);
     }
 
+    /** Finance confirms the GCash transfer of an approved refund (the same people who approve). */
+    public function send(User $admin, Refund $refund): Response
+    {
+        if (! $admin->hasPermission(Permission::REFUNDS_APPROVE)) {
+            return Response::deny('You do not have permission to send refunds.');
+        }
+
+        return $refund->status === 'approved'
+            ? Response::allow()
+            : Response::denyWithStatus(422, 'Only an approved refund can be marked as sent.');
+    }
+
     public function reject(User $admin, Refund $refund): Response
     {
         return $this->review($admin, $refund, Permission::REFUNDS_MANAGE);
