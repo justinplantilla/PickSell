@@ -20,7 +20,7 @@ class ReceivingController extends StationController
 
         return view('pickrush.station.receiving', [
             'scanKey' => (string) Str::uuid(),
-            'trips' => Manifest::with('fromHub')->where('to_hub_id', $station->id)->whereIn('status', ['dispatched', 'received'])->latest('dispatched_at')->get(),
+            'trips' => Manifest::with('fromHub', 'route.stops.toHub')->where('to_hub_id', $station->id)->whereIn('status', ['dispatched', 'received'])->latest('dispatched_at')->get(),
             'inTransit' => Parcel::where('next_hub_id', $station->id)->where('current_status', ParcelStatus::InTransitToStation)->latest('updated_at')->limit(100)->get(),
             'dropoffs' => DropoffBatch::with('seller')->where('origin_hub_id', $station->id)->where('status', 'open')->latest()->limit(50)->get(),
             'firstMile' => Parcel::where('origin_hub_id', $station->id)->whereIn('current_status', [ParcelStatus::WaitingPickup, ParcelStatus::PickedUp])

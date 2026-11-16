@@ -8,6 +8,7 @@ use App\Pickrush\Models\Hub;
 use App\Pickrush\Models\Manifest;
 use App\Pickrush\Models\ManifestParcel;
 use App\Pickrush\Models\Parcel;
+use App\Pickrush\Models\Route;
 use App\Pickrush\Models\ParcelException;
 use App\Pickrush\Models\Staff;
 use App\Pickrush\Models\Vehicle;
@@ -25,6 +26,8 @@ use Illuminate\Support\Str;
  * The receiving hub records when the truck arrived (its button, or the first parcel scanned off
  * it); a trip not arrived by its due time is overdue.
  * Used by station hubs (to and from their province hub) and province hubs alike.
+ * A trip can also be one stop of a province hub's multi-stop route (RouteService): it leaves with
+ * the route, and the route ends once its last stop has arrived.
  */
 class ManifestService
 {
@@ -113,6 +116,9 @@ class ManifestService
             if ($manifest->status !== 'draft' || $manifest->from_hub_id !== $staff->hub_id) {
                 throw new OperationRefused('Only a trip still being loaded can be cancelled, by the hub sending it.');
             }
+            if ($manifest->route_id) {
+                throw new OperationRefused('This trip is a stop on a route; remove the stop from the route instead.');
+            }
             $count = $manifest->items()->count();
             $manifest->delete();   // its parcel list goes with it
 
@@ -130,56 +136,76 @@ class ManifestService
         $original = $manifest;
         DB::transaction(function () use ($manifest, $vehicle, $driver, $staff, $original) {
             $manifest = Manifest::withoutGlobalScope('hub')->whereKey($manifest->id)->lockForUpdate()->firstOrFail();
+            if ($manifest->route_id) {
+                throw new OperationRefused('This trip is a stop on a route; it leaves when the route is dispatched.');
+            }
             if ($manifest->status !== 'draft') {
                 throw new OperationRefused('This trip was already dispatched.');
             }
             if ($manifest->items()->count() === 0) {
                 throw new OperationRefused('Add at least one parcel before dispatching.');
             }
-            if ($vehicle->hub_id !== $manifest->from_hub_id || $driver->hub_id !== $manifest->from_hub_id) {
-                throw new OperationRefused('Only this hub\'s own trucks and drivers can take its trips.');
-            }
-            if (! $vehicle->is_active) {
-                throw new OperationRefused("{$vehicle->plate_no} is inactive.");
-            }
-            if (! $driver->is_active) {
-                throw new OperationRefused("{$driver->full_name} is inactive.");
-            }
-            if ($driver->isLicenseExpired()) {
-                throw new OperationRefused("{$driver->full_name}'s license expired on {$driver->license_expiry->format('M d, Y')}. Renew it under Trucks & drivers.");
-            }
-            if (! $vehicle->hasPapers()) {
-                throw new OperationRefused("{$vehicle->plate_no} has no OR/CR on file. Add its papers under Trucks & drivers.");
-            }
-            if ($vehicle->isRegistrationExpired()) {
-                throw new OperationRefused("{$vehicle->plate_no}'s registration (OR) expired on {$vehicle->registration_expiry->format('M d, Y')}. Renew it under Trucks & drivers.");
-            }
-            $out = Manifest::withoutGlobalScope('hub')->where('status', 'dispatched');
-            if ((clone $out)->where('vehicle_id', $vehicle->id)->exists()) {
-                throw new OperationRefused("{$vehicle->plate_no} is still out on a trip.");
-            }
-            if ((clone $out)->where('driver_id', $driver->id)->exists()) {
-                throw new OperationRefused("{$driver->full_name} is still out on a trip.");
-            }
-
-            $status = $manifest->toHub->isProvince() ? ParcelStatus::InTransitToProvince : ParcelStatus::InTransitToStation;
-            foreach ($manifest->items()->with('parcel')->get() as $item) {
-                $this->ledger->record($item->parcel, $status, $manifest->fromHub, [
-                    'to_hub' => $manifest->toHub,
-                    'meta' => ['manifest' => $manifest->manifest_no, 'vehicle' => $vehicle->plate_no, 'driver' => $driver->full_name],
-                    'actor' => Actor::current(),
-                ]);
-            }
-
-            $manifest->update([
-                'status' => 'dispatched',
-                'vehicle_id' => $vehicle->id, 'vehicle_plate' => $vehicle->plate_no,
-                'driver_id' => $driver->id, 'driver_name' => $driver->full_name,
-                'dispatched_by' => $staff->id, 'dispatched_at' => now(),
-                'due_at' => now()->addHours(Manifest::tripHours($manifest->fromHub, $manifest->toHub)),
-            ]);
+            $this->assertCanDrive($manifest->fromHub, $vehicle, $driver);
+            $this->send($manifest, $vehicle, $driver, $staff, Manifest::tripHours($manifest->fromHub, $manifest->toHub));
             $original->setRawAttributes($manifest->getAttributes(), true);
         });
+    }
+
+    /**
+     * The truck and driver can take a trip from $from: the hub's own, active, papers and license in
+     * order, and not already out on the road.
+     */
+    public function assertCanDrive(Hub $from, Vehicle $vehicle, Driver $driver): void
+    {
+        if ($vehicle->hub_id !== $from->id || $driver->hub_id !== $from->id) {
+            throw new OperationRefused('Only this hub\'s own trucks and drivers can take its trips.');
+        }
+        if (! $vehicle->is_active) {
+            throw new OperationRefused("{$vehicle->plate_no} is inactive.");
+        }
+        if (! $driver->is_active) {
+            throw new OperationRefused("{$driver->full_name} is inactive.");
+        }
+        if ($driver->isLicenseExpired()) {
+            throw new OperationRefused("{$driver->full_name}'s license expired on {$driver->license_expiry->format('M d, Y')}. Renew it under Trucks & drivers.");
+        }
+        if (! $vehicle->hasPapers()) {
+            throw new OperationRefused("{$vehicle->plate_no} has no OR/CR on file. Add its papers under Trucks & drivers.");
+        }
+        if ($vehicle->isRegistrationExpired()) {
+            throw new OperationRefused("{$vehicle->plate_no}'s registration (OR) expired on {$vehicle->registration_expiry->format('M d, Y')}. Renew it under Trucks & drivers.");
+        }
+        $out = Manifest::fleetOnTheRoad();
+        if ($out->contains('vehicle_id', $vehicle->id)) {
+            throw new OperationRefused("{$vehicle->plate_no} is still out on a trip.");
+        }
+        if ($out->contains('driver_id', $driver->id)) {
+            throw new OperationRefused("{$driver->full_name} is still out on a trip.");
+        }
+    }
+
+    /**
+     * Put every parcel on the trip in transit and mark it dispatched, due in $hours. The caller has
+     * locked the trip and checked the truck and driver.
+     */
+    public function send(Manifest $manifest, Vehicle $vehicle, Driver $driver, Staff $staff, int $hours): void
+    {
+        $status = $manifest->toHub->isProvince() ? ParcelStatus::InTransitToProvince : ParcelStatus::InTransitToStation;
+        foreach ($manifest->items()->with('parcel')->get() as $item) {
+            $this->ledger->record($item->parcel, $status, $manifest->fromHub, [
+                'to_hub' => $manifest->toHub,
+                'meta' => ['manifest' => $manifest->manifest_no, 'vehicle' => $vehicle->plate_no, 'driver' => $driver->full_name],
+                'actor' => Actor::current(),
+            ]);
+        }
+
+        $manifest->update([
+            'status' => 'dispatched',
+            'vehicle_id' => $vehicle->id, 'vehicle_plate' => $vehicle->plate_no,
+            'driver_id' => $driver->id, 'driver_name' => $driver->full_name,
+            'dispatched_by' => $staff->id, 'dispatched_at' => now(),
+            'due_at' => now()->addHours($hours),
+        ]);
     }
 
     /** The receiving hub records the truck at its gate, which stops the trip from going overdue. */
@@ -194,6 +220,7 @@ class ManifestService
                 throw new OperationRefused('This truck was already marked arrived.');
             }
             $manifest->update(['arrived_at' => now(), 'arrived_by' => $staff->id]);
+            $this->stopArrived($manifest);
         });
     }
 
@@ -210,6 +237,7 @@ class ManifestService
             }
             if ($manifest->arrived_at === null) {
                 $manifest->update(['arrived_at' => now(), 'arrived_by' => $staff->id]);   // first scan off the truck
+                $this->stopArrived($manifest);
             }
             $parcel = Parcel::withoutGlobalScope(ParcelHubScope::class)->where('tracking_no', self::normalize($trackingNo))->first()
                 ?? throw new OperationRefused('Unknown tracking number.');
@@ -257,10 +285,24 @@ class ManifestService
                     'opened_by' => $staff->id,
                 ]);
             }
-            $manifest->update(['status' => 'closed', 'closed_at' => now(), 'received_by' => $manifest->received_by ?? $staff->id]);
+            $manifest->update(['status' => 'closed', 'closed_at' => now(), 'received_by' => $manifest->received_by ?? $staff->id,
+                'arrived_at' => $manifest->arrived_at ?? now(), 'arrived_by' => $manifest->arrived_by ?? $staff->id]);
+            $this->stopArrived($manifest);
 
             return $missing->count();
         });
+    }
+
+    /** A stop on a route has arrived: once every stop has, the truck and driver are free again. */
+    private function stopArrived(Manifest $manifest): void
+    {
+        if (! $manifest->route_id) {
+            return;
+        }
+        $route = Route::withoutGlobalScopes()->whereKey($manifest->route_id)->lockForUpdate()->first();
+        if ($route?->status === 'dispatched' && ! $route->stops()->whereNull('arrived_at')->exists()) {
+            $route->update(['status' => 'completed', 'completed_at' => now()]);
+        }
     }
 
     /** Arrival scan at a hub for a parcel in transit to it. */

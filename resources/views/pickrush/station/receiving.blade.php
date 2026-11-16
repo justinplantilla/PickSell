@@ -21,7 +21,7 @@
                 @foreach($trips as $trip)
                     <tr>
                         <td><strong>{{ $trip->manifest_no }}</strong><div class="pr-muted">{{ $trip->dispatched_at?->format('M d h:i A') }}</div></td>
-                        <td>{{ $trip->fromHub->name }}</td>
+                        <td>{{ $trip->fromHub->name }}@if($trip->route)<div class="pr-muted">Stop {{ $trip->stop_order }} of {{ $trip->route->stops->count() }} · {{ $trip->route->position() }}</div>@endif</td>
                         <td>{{ $trip->vehicle_plate }} · {{ $trip->driver_name }}</td>
                         <td class="pr-num">{{ $trip->parcel_count }}</td>
                         <td><span class="pr-badge {{ $trip->status === 'received' ? 'pr-badge-warn' : 'pr-badge-brand' }}">{{ $trip->status === 'received' ? 'Checking' : 'On the road' }}</span></td>

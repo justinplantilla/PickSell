@@ -21,10 +21,19 @@
     {{-- LEFT: cart table --}}
     <div>
         <div class="card cart-items-card">
-            <div class="card-header">
+            <div class="card-header cart-toolbar" data-cart-toolbar>
                 <label class="cart-row">
                     <input type="checkbox" id="selectAll" data-cart-select-all> Select All
                 </label>
+                {{-- Shown once something is ticked: clear the selection, or delete it all in one go. --}}
+                <div class="cart-bulk" data-cart-bulk hidden>
+                    <span class="cart-bulk-count" aria-live="polite"><strong data-cart-bulk-count>0</strong> selected</span>
+                    <button type="button" class="cart-bulk-clear" data-cart-bulk-clear>Clear</button>
+                    <button type="button" class="cart-bulk-delete" data-cart-bulk-delete>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        <span>Delete <span data-cart-bulk-label>selected</span></span>
+                    </button>
+                </div>
             </div>
             <div class="cart-scroll">
                 <table class="table-cards">

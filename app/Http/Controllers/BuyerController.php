@@ -478,6 +478,20 @@ class BuyerController extends Controller
             : back()->with('success', 'Item removed from cart.');
     }
 
+    /** Remove several selected items at once. Only the buyer's own cart items are touched. */
+    public function removeManyFromCart(Request $request)
+    {
+        $data = $request->validate(['item_ids' => 'required|array|min:1', 'item_ids.*' => 'integer']);
+        $removed = CartItem::whereIn('id', $data['item_ids'])
+            ->whereHas('cart', fn ($q) => $q->where('buyer_id', $this->buyer()->id))
+            ->delete();
+        $message = $removed === 1 ? '1 item removed from cart.' : "{$removed} items removed from cart.";
+
+        return $request->expectsJson()
+            ? response()->json(['success' => true, 'removed' => $removed, 'message' => $message])
+            : back()->with('success', $message);
+    }
+
     // Place Order: the same OrderPlacement the buyer app's checkout uses (routes/buyer-api.php).
     public function placeOrder(Request $request, OrderPlacement $placement)
     {

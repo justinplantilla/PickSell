@@ -5,10 +5,11 @@ namespace App\Pickrush\Services;
 use App\Pickrush\Bridge\PicksellBridge;
 use App\Pickrush\Models\Manifest;
 use App\Pickrush\Models\Parcel;
+use App\Pickrush\Models\Route;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Symfony\Component\HttpFoundation\Response;
 
-/** Printable PDFs: the 4×6 parcel label (barcode + QR) and the trip manifest. */
+/** Printable PDFs: the 4×6 parcel label (barcode + QR), the trip manifest and the driver's route sheet. */
 class Labels
 {
     public function parcel(Parcel $parcel): Response
@@ -49,10 +50,20 @@ class Labels
 
     public function manifest(Manifest $manifest): Response
     {
-        $manifest->loadMissing('fromHub', 'toHub', 'items.parcel.originHub', 'items.parcel.destHub');
+        $manifest->loadMissing('fromHub', 'toHub', 'items.parcel.originHub', 'items.parcel.destHub', 'route.stops.toHub');
 
         return Pdf::loadView('pickrush.labels.manifest', ['manifest' => $manifest])
             ->setPaper('a4')
             ->stream("pickrush-manifest-{$manifest->manifest_no}.pdf");
+    }
+
+    /** The driver's route sheet: every stop in order, with its trip barcode for the station to scan. */
+    public function route(Route $route): Response
+    {
+        $route->loadMissing('hub', 'stops.toHub');
+
+        return Pdf::loadView('pickrush.labels.route', ['route' => $route, 'legs' => RouteService::legs($route)])
+            ->setPaper('a4')
+            ->stream("pickrush-route-{$route->route_no}.pdf");
     }
 }

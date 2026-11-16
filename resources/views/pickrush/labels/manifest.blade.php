@@ -25,6 +25,10 @@
         <div class="muted">{{ $manifest->parcel_count }} parcels · {{ ucfirst($manifest->status) }}
             @if($manifest->vehicle_plate) · {{ $manifest->vehicle_plate }} · {{ $manifest->driver_name }}@endif
             @if($manifest->dispatched_at) · dispatched {{ $manifest->dispatched_at->format('M d, Y h:i A') }}@endif</div>
+        @if($manifest->route)
+            <div><strong>Stop {{ $manifest->stop_order }} of {{ $manifest->route->stops->count() }}</strong> on route {{ $manifest->route->route_no }}:
+                {{ $manifest->route->stops->map(fn ($s) => $s->stop_order.'. '.$s->toHub->name)->join(' → ') }}</div>
+        @endif
     </td>
     <td style="text-align:right;width:240pt">
         @include('pickrush.partials.barcode', ['value' => $manifest->manifest_no, 'module' => 1, 'height' => 34])

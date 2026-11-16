@@ -4,6 +4,7 @@ namespace App\Pickrush\Http\Controllers\Hq;
 
 use App\Http\Controllers\Controller;
 use App\Pickrush\Models\Hub;
+use App\Pickrush\Models\Route;
 use App\Pickrush\Services\Hq\Alerts;
 use App\Pickrush\Services\Hq\NetworkMetrics;
 use Illuminate\Http\Request;
@@ -26,6 +27,7 @@ class DashboardController extends Controller
             'cash' => $metrics->cashOutstanding(),
             'sla' => (float) config('pickrush.policies.sla_success_rate'),
             'alertCount' => collect($alerts->all())->sum(fn ($a) => $a['items']->count()),
+            'routes' => Route::withoutGlobalScope('hub')->with('hub', 'stops.toHub')->where('status', 'dispatched')->oldest('dispatched_at')->get(),
             'network' => ['provinces' => Hub::provinces()->count(), 'stations' => Hub::stations()->count()],
         ]);
     }

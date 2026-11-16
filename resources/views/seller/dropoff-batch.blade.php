@@ -25,7 +25,7 @@
         @else
         <div class="alert alert-info order-detail-flush" role="status">
             Bring these {{ $batch->parcel_count }} parcels and this printed manifest to <strong>{{ $batch->originHub?->name }}</strong>@if($batch->originHub?->address), {{ $batch->originHub->address }}@endif.
-            The station scans the manifest, then each parcel. No rider is sent.
+            Drop-off hours: <strong>{{ \App\Models\Order::DROPOFF_HOURS }}</strong> daily. The station scans the manifest, then each parcel. No rider is sent.
             @if($batch->originHub?->lat && $batch->originHub?->lng)
             <a href="https://www.google.com/maps/search/?api=1&query={{ $batch->originHub->lat }},{{ $batch->originHub->lng }}" target="_blank" rel="noopener">Open in Maps</a>
             @endif

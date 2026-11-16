@@ -48,6 +48,12 @@ class Manifest extends Model
         return $this->hasMany(ManifestParcel::class);
     }
 
+    /** The multi-stop route this trip is one stop of, if any. */
+    public function route()
+    {
+        return $this->belongsTo(Route::class)->withoutGlobalScopes();
+    }
+
     public function vehicle()
     {
         return $this->belongsTo(Vehicle::class)->withoutGlobalScopes();
@@ -69,6 +75,23 @@ class Manifest extends Model
         $long = $from->isProvince() && $to->isProvince();
 
         return (int) config('pickrush.fleet.trip_hours.'.($long ? 'long' : 'local'), $long ? 24 : 6);
+    }
+
+    /**
+     * Trucks and drivers out on the road: on a single trip not yet received, or on a route whose
+     * last stop has not arrived. Rows of [vehicle_id, driver_id].
+     *
+     * @return \Illuminate\Support\Collection<int, object{vehicle_id: ?int, driver_id: ?int}>
+     */
+    public static function fleetOnTheRoad(?int $hubId = null)
+    {
+        $trips = self::withoutGlobalScope('hub')->where('status', 'dispatched')->whereNull('route_id')
+            ->when($hubId, fn ($q) => $q->where('from_hub_id', $hubId))->get(['vehicle_id', 'driver_id']);
+        $routes = Route::withoutGlobalScope('hub')->where('status', 'dispatched')
+            ->when($hubId, fn ($q) => $q->where('hub_id', $hubId))->get(['vehicle_id', 'driver_id']);
+
+        return $trips->toBase()->concat($routes->toBase())
+            ->map(fn ($row) => (object) ['vehicle_id' => $row->vehicle_id, 'driver_id' => $row->driver_id])->values();
     }
 
     /** On the road past its due time, not yet marked arrived. */

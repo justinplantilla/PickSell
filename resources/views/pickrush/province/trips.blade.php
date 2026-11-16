@@ -21,6 +21,58 @@
 @include('pickrush.trips.partials.loading', ['prefix' => 'pickrush.province.trips'])
 
 <section class="pr-section">
+    <h2>Multi-stop routes</h2>
+    <p class="pr-muted">One truck drops at up to {{ $maxStops }} stations in one run. Stops are ordered nearest-next from this hub; you can change the order before dispatch.</p>
+    @if($stations->count() > 1)
+        <form method="POST" action="{{ route('pickrush.province.routes.store') }}" class="pr-card" style="margin-bottom:1rem">
+            @csrf
+            <div>
+                @foreach($stations as $station)
+                    <label class="pr-check" style="display:inline-flex;margin-right:1rem">
+                        <input type="checkbox" name="stations[]" value="{{ $station->id }}" @checked(in_array($station->id, old('stations', [])))>
+                        {{ $station->name }}@if($ready = $destinations->firstWhere('hub.id', $station->id)) <span class="pr-muted">· {{ $ready->ready }} ready</span>@endif
+                    </label>
+                @endforeach
+            </div>
+            <div class="pr-actions"><button type="submit" class="pr-btn pr-btn-primary">Start route</button> <span class="pr-muted" data-stop-count></span></div>
+        </form>
+        <script>
+            (function () {
+                const max = {{ (int) $maxStops }};
+                const form = document.currentScript.previousElementSibling;
+                const boxes = form.querySelectorAll('input[name="stations[]"]');
+                const counter = form.querySelector('[data-stop-count]');
+                function sync() {
+                    const picked = [...boxes].filter(b => b.checked).length;
+                    boxes.forEach(b => { b.disabled = !b.checked && picked >= max; });
+                    counter.textContent = picked + ' / ' + max + ' selected';
+                }
+                boxes.forEach(b => b.addEventListener('change', sync));
+                sync();
+            })();
+        </script>
+    @endif
+    <div class="pr-table-wrap">
+        <table class="pr-table">
+            <thead><tr><th>Route</th><th>Stops</th><th class="pr-num">Parcels</th><th>Status</th><th>Truck</th></tr></thead>
+            <tbody>
+            @forelse($routes as $run)
+                <tr>
+                    <td><a href="{{ route('pickrush.province.routes.show', $run) }}">{{ $run->route_no }}</a></td>
+                    <td>{{ $run->stops->map(fn ($s) => $s->toHub->name)->join(' → ') }}</td>
+                    <td class="pr-num">{{ $run->stops->sum('parcel_count') }}</td>
+                    <td><span class="pr-badge">{{ $run->status === 'draft' ? 'Being loaded' : 'On the road' }}</span></td>
+                    <td>{{ $run->vehicle_plate ?? '—' }}</td>
+                </tr>
+            @empty
+                <tr><td colspan="5" class="pr-muted">No route is being loaded or on the road.</td></tr>
+            @endforelse
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="pr-section">
     <h2>Ready to leave, by destination</h2>
     <div class="pr-table-wrap">
         <table class="pr-table">
@@ -57,7 +109,7 @@
             @forelse($recent as $trip)
                 <tr>
                     <td><a href="{{ route('pickrush.province.trips.show', $trip) }}">{{ $trip->manifest_no }}</a></td>
-                    <td>{{ $trip->fromHub->name }} → {{ $trip->toHub->name }}</td>
+                    <td>{{ $trip->fromHub->name }} → {{ $trip->toHub->name }}@if($trip->route) <span class="pr-badge">Stop {{ $trip->stop_order }} · {{ $trip->route->route_no }}</span>@endif</td>
                     <td class="pr-num">{{ $trip->parcel_count }}</td>
                     <td><span class="pr-badge">{{ ucfirst($trip->status) }}</span></td>
                     <td>{{ $trip->updated_at->diffForHumans() }}</td>

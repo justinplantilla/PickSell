@@ -42,6 +42,8 @@ return [
         // Hours a trip has to arrive before it is overdue: between a station and its province hub
         // (local), and between two province hubs (long).
         'trip_hours' => ['local' => 6, 'long' => 24],
+        // A province hub's truck can drop at up to this many of its stations in one run.
+        'route_max_stops' => 5,
     ],
 
     'policies' => [

@@ -29,7 +29,7 @@ class FleetController extends PortalController
     public function index()
     {
         $hub = $this->hub();
-        $out = Manifest::where('from_hub_id', $hub->id)->where('status', 'dispatched')->get(['vehicle_id', 'driver_id']);
+        $out = Manifest::fleetOnTheRoad($hub->id);
 
         return view('pickrush.fleet.index', [
             'vehicles' => Vehicle::with('defaultDriver', 'renewals.renewer')->orderBy('plate_no')->get(),

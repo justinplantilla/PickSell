@@ -70,6 +70,30 @@
     </section>
 </div>
 
+@if($routes->isNotEmpty())
+<section class="pr-section">
+    <div class="pr-card-head"><h2>Multi-stop routes on the road ({{ $routes->count() }})</h2></div>
+    <div class="pr-table-wrap">
+        <table class="pr-table">
+            <thead><tr><th>Route</th><th>From</th><th>Stops</th><th>Truck</th><th>Where</th><th>Next due</th></tr></thead>
+            <tbody>
+            @foreach($routes as $run)
+                @php($next = $run->nextStop())
+                <tr>
+                    <td><strong>{{ $run->route_no }}</strong><div class="pr-muted">{{ $run->dispatched_at?->format('M d h:i A') }}</div></td>
+                    <td>{{ $run->hub->name }}</td>
+                    <td>{{ $run->stops->map(fn ($s) => $s->toHub->name)->join(' → ') }}</td>
+                    <td>{{ $run->vehicle_plate }} · {{ $run->driver_name }}@if($run->driver?->mobile_no)<div class="pr-muted">{{ $run->driver->mobile_no }}</div>@endif</td>
+                    <td>{{ $run->position() }}</td>
+                    <td>{{ $next?->due_at?->format('M d, h:i A') ?? '—' }}@if($next?->isOverdue()) <span class="pr-badge pr-badge-bad">Overdue</span>@endif</td>
+                </tr>
+            @endforeach
+            </tbody>
+        </table>
+    </div>
+</section>
+@endif
+
 <section class="pr-section">
     <div class="pr-card-head"><h2>Hub ranking</h2>@if($ranking->count() > 25)<a href="{{ route('pickrush.hq.reports', ['period' => $period]) }}">See all {{ $ranking->count() }} stations</a>@endif</div>
     @include('pickrush.hq.partials.ranking', ['ranking' => $ranking->take(25)])

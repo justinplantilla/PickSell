@@ -14,6 +14,9 @@ class Order extends Model
     /** A seller who chose drop-off has this long to bring the parcel to the station. */
     public const DROPOFF_WITHIN_DAYS = 2;
 
+    /** When stations accept seller drop-offs. */
+    public const DROPOFF_HOURS = '8:00 AM – 6:00 PM';
+
     /** Pre-orders: the seller sets how many days they need, within this range. */
     public const PREORDER_MIN_DAYS = 3;
 

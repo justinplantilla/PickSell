@@ -21,7 +21,7 @@ trait ManagesTrips
 
     public function show(Manifest $manifest, ManifestService $manifests)
     {
-        $manifest->load('fromHub', 'toHub', 'items.parcel', 'items.scanner', 'arriver');
+        $manifest->load('fromHub', 'toHub', 'items.parcel', 'items.scanner', 'arriver', 'route.stops.toHub');
 
         return view('pickrush.trips.show', [
             'prefix' => $this->tripRoutePrefix(),
@@ -31,7 +31,7 @@ trait ManagesTrips
             'readyCount' => $manifest->status === 'draft' ? $manifests->readyFor($manifest->fromHub, $manifest->toHub)->count() : 0,
             'vehicles' => Vehicle::where('is_active', true)->orderBy('plate_no')->get(),
             'drivers' => Driver::where('is_active', true)->orderBy('full_name')->get(),
-            'onTrip' => Manifest::withoutGlobalScope('hub')->where('status', 'dispatched')->get(['vehicle_id', 'driver_id']),
+            'onTrip' => Manifest::fleetOnTheRoad(),
         ]);
     }
 

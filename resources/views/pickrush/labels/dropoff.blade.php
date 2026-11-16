@@ -51,6 +51,6 @@
     <td>Dropped off by (seller): ______________________</td>
     <td>Received by (station): ______________________</td>
 </tr></table>
-<p class="muted">The station scans this code, then every parcel. You get a receipt listing what was received. Parcels not dropped off within {{ \App\Models\Order::DROPOFF_WITHIN_DAYS }} days of hand-over are cancelled.</p>
+<p class="muted">The station scans this code, then every parcel. You get a receipt listing what was received. Parcels not dropped off within {{ \App\Models\Order::DROPOFF_WITHIN_DAYS }} days of hand-over are cancelled. Drop-off hours: {{ \App\Models\Order::DROPOFF_HOURS }} daily.</p>
 </body>
 </html>

@@ -209,22 +209,31 @@
                         </div>
                         @if($parcel['ok'])
                             <div class="checkout-ship-meta">
-                                <span class="checkout-ship-chip">{{ $parcel['carrier_name'] }}</span>
-                                @if($parcel['estimated_delivery'])<span class="checkout-ship-chip is-eta">Arrives {{ $parcel['estimated_delivery']['label'] }}</span>@endif
-                                <span class="checkout-ship-chip">{{ $parcel['chargeable_weight_kg'] }} kg</span>
+                                {{-- With one courier the chip names it; with a choice, the cards below do. --}}
+                                @if(count($parcel['carriers']) <= 1)<span class="checkout-ship-chip">{{ $parcel['carrier_name'] }}</span>@endif
+                                @if($parcel['estimated_delivery'])
+                                    <span class="checkout-ship-chip is-eta"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Arrives {{ $parcel['estimated_delivery']['label'] }}</span>
+                                @endif
+                                <span class="checkout-ship-chip"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>{{ $parcel['chargeable_weight_kg'] }} kg</span>
                                 @if($parcel['parcel_class'] !== 'STANDARD')<span class="checkout-ship-chip">{{ ucfirst(strtolower($parcel['parcel_class'])) }} parcel</span>@endif
                             </div>
                         @endif
                         @if(count($parcel['carriers']) > 1)
-                            <p class="checkout-ship-label">Ship with</p>
+                            <p class="checkout-ship-label">Choose a courier</p>
                             <div class="checkout-ship-carriers" role="radiogroup" aria-label="Logistics company for {{ $parcel['seller']->business_name ?? $parcel['seller']->full_name }}">
                                 @foreach($parcel['carriers'] as $option)
                                     <a class="checkout-ship-carrier {{ $option['selected'] ? 'selected' : '' }} {{ $option['ok'] ? '' : 'is-unavailable' }}"
                                        href="{{ $option['ok'] && ! $option['selected'] ? $checkoutLink(['carrier' => array_replace($carriers, [$sellerId => (int) $option['id']])]).'#shipping' : '#shipping' }}"
                                        role="radio" aria-checked="{{ $option['selected'] ? 'true' : 'false' }}">
-                                        <span class="checkout-ship-carrier-name">{{ $option['name'] }}@if($option['is_default']) <small>recommended</small>@endif</span>
-                                        <span class="checkout-ship-carrier-desc">{{ $option['ok'] ? ($option['estimated_delivery'] ? 'Arrives '.$option['estimated_delivery']['label'] : 'Date shown after ordering') : $option['message'] }}</span>
-                                        @if($option['ok'])<span class="checkout-ship-carrier-fee">₱{{ number_format((float) $option['delivery_fee'], 2) }}</span>@endif
+                                        <span class="checkout-ship-radio" aria-hidden="true"></span>
+                                        <span class="checkout-ship-carrier-info">
+                                            <span class="checkout-ship-carrier-top">
+                                                <span class="checkout-ship-carrier-name">{{ $option['name'] }}</span>
+                                                @if($option['ok'])<span class="checkout-ship-carrier-fee">₱{{ number_format((float) $option['delivery_fee'], 2) }}</span>@endif
+                                            </span>
+                                            <span class="checkout-ship-carrier-desc">{{ $option['ok'] ? ($option['estimated_delivery'] ? 'Arrives '.$option['estimated_delivery']['label'] : 'Date shown after ordering') : $option['message'] }}</span>
+                                            @if($option['is_default'])<span class="checkout-ship-badge">Recommended</span>@endif
+                                        </span>
                                     </a>
                                 @endforeach
                             </div>

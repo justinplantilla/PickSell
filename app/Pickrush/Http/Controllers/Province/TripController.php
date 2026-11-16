@@ -44,8 +44,11 @@ class TripController extends PortalController
         return view('pickrush.province.trips', [
             'destinations' => $destinations,
             'allDestinations' => $hub->childStations()->orderBy('name')->get()->concat($router->neighbors($hub)),
-            'drafts' => Manifest::with('toHub')->where('from_hub_id', $hub->id)->where('status', 'draft')->latest()->get(),
-            'recent' => Manifest::with('fromHub', 'toHub')->where(fn ($q) => $q->where('from_hub_id', $hub->id)->orWhere('to_hub_id', $hub->id))
+            'drafts' => Manifest::with('toHub')->where('from_hub_id', $hub->id)->where('status', 'draft')->whereNull('route_id')->latest()->get(),
+            'routes' => \App\Pickrush\Models\Route::with('stops.toHub')->where('hub_id', $hub->id)->whereIn('status', ['draft', 'dispatched'])->latest()->get(),
+            'stations' => $hub->childStations()->orderBy('name')->get(),
+            'maxStops' => \App\Pickrush\Services\RouteService::maxStops(),
+            'recent' => Manifest::with('fromHub', 'toHub', 'route')->where(fn ($q) => $q->where('from_hub_id', $hub->id)->orWhere('to_hub_id', $hub->id))
                 ->where('status', '!=', 'draft')->latest('updated_at')->limit(40)->get(),
         ]);
     }

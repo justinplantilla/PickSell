@@ -26,6 +26,16 @@ function updateSummary() {
         box.indeterminate = picked > 0 && picked < items.length;
     });
 
+    // Bulk bar: appears while anything is ticked.
+    const bulk = document.querySelector('[data-cart-bulk]');
+    if (bulk) {
+        const total = document.querySelectorAll('.item-check').length;
+        bulk.hidden = checked.length === 0;
+        document.querySelector('[data-cart-toolbar]')?.classList.toggle('is-selecting', checked.length > 0);
+        document.querySelector('[data-cart-bulk-count]').textContent = checked.length;
+        document.querySelector('[data-cart-bulk-label]').textContent = checked.length === total && total > 1 ? 'all' : `(${checked.length})`;
+    }
+
     // Spinning border on summary card
     document.getElementById('cartSummaryCard')?.classList.toggle('has-selection', checked.length > 0);
 
@@ -107,6 +117,37 @@ document.querySelectorAll('.qty-input').forEach(input => input.addEventListener(
     syncStepperState(this);
     updateQty(itemId, val);
 }));
+
+document.querySelector('[data-cart-bulk-clear]')?.addEventListener('click', () => {
+    document.querySelectorAll('.item-check').forEach(item => { item.checked = false; });
+    updateSummary();
+});
+
+document.querySelector('[data-cart-bulk-delete]')?.addEventListener('click', async function () {
+    const checked = [...document.querySelectorAll('.item-check:checked')];
+    if (checked.length === 0) return;
+    const noun = checked.length === 1 ? 'this item' : `these ${checked.length} items`;
+    const confirmed = await window.showConfirm(`Remove ${noun} from your cart?`, { okText: 'Delete', cancelText: 'Keep' });
+    if (!confirmed) return;
+
+    this.disabled = true;
+    this.classList.add('is-busy');
+    try {
+        const response = await fetch('/buyer/cart/items', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, Accept: 'application/json' },
+            body: JSON.stringify({ item_ids: checked.map(item => item.value) })
+        });
+        if (!response.ok) throw new Error();
+        const rows = checked.map(item => item.closest('tr'));
+        rows.forEach(row => row.classList.add('cart-row-leaving'));
+        setTimeout(() => window.location.reload(), 280);
+    } catch {
+        this.disabled = false;
+        this.classList.remove('is-busy');
+        showToast('Unable to remove the selected items. Please try again.', 'error');
+    }
+});
 
 document.querySelectorAll('.remove-item-btn').forEach(button => button.addEventListener('click', function () {
     const itemId = this.dataset.itemId;

@@ -58,7 +58,7 @@ class CarrierChoiceTest extends TestCase
         $items = $this->cart($this->buyer, [[$this->product(), 1]]);
 
         $page = $this->actingAs($this->buyer)->get($this->url('/buyer/cart/checkout?'.http_build_query(['item_ids' => $items])))->assertOk();
-        $page->assertSeeInOrder(['Ship with', 'Pickrush Logistics', 'recommended', 'Bilis Hatid Express', '₱60.00'])
+        $page->assertSeeInOrder(['Choose a courier', 'Pickrush Logistics', 'Recommended', 'Bilis Hatid Express', '₱60.00'])
             ->assertSee('<input type="hidden" name="carriers['.$this->seller->id.']" value="'.Company::defaultId().'">', false);
 
         $this->checkout($this->buyer, $items)->assertSessionHasNoErrors();
@@ -70,7 +70,7 @@ class CarrierChoiceTest extends TestCase
         $items = $this->cart($this->buyer, [[$this->product(), 1]]);
         $query = http_build_query(['item_ids' => $items, 'carrier' => [$this->seller->id => $this->bilis->id]]);
         $this->actingAs($this->buyer)->get($this->url("/buyer/cart/checkout?{$query}"))->assertOk()
-            ->assertSee('<span class="checkout-ship-chip">Bilis Hatid Express</span>', false)->assertSee('<input type="hidden" name="carriers['.$this->seller->id.']" value="'.$this->bilis->id.'">', false);
+            ->assertSee('aria-checked="true"', false)->assertSeeInOrder(['aria-checked="true"', 'Bilis Hatid Express'], false)->assertSee('<input type="hidden" name="carriers['.$this->seller->id.']" value="'.$this->bilis->id.'">', false);
 
         $this->checkout($this->buyer, $items, [$this->seller->id => $this->bilis->id])->assertSessionHasNoErrors();
         $order = Order::sole();

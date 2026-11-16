@@ -164,6 +164,7 @@ Route::middleware(['auth', BuyerMiddleware::class])->prefix('buyer')->group(func
     Route::post('/cart/{product}', [BuyerController::class, 'addToCart'])->name('buyer.cart.add');
     Route::patch('/cart/item/{item}', [BuyerController::class, 'updateCart'])->name('buyer.cart.update');
     Route::delete('/cart/item/{item}', [BuyerController::class, 'removeFromCart'])->name('buyer.cart.remove');
+    Route::delete('/cart/items', [BuyerController::class, 'removeManyFromCart'])->name('buyer.cart.remove-many');
 
     // Wishlist (shared with the buyer mobile app)
     Route::get('/wishlist', [BuyerWishlistController::class, 'index'])->name('buyer.wishlist');

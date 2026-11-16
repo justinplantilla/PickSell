@@ -164,6 +164,18 @@ Route::domain(config('pickrush.domain'))->name('pickrush.')->group(function () {
             Route::post('/trips/{manifest}/arrived', [Province\TripController::class, 'arrived'])->name('trips.arrived');
             Route::post('/trips/{manifest}/receive', [Province\TripController::class, 'receive'])->name('trips.receive');
             Route::post('/trips/{manifest}/close', [Province\TripController::class, 'close'])->name('trips.close');
+
+            // Multi-stop routes: one truck to several of this province's stations.
+            Route::post('/routes', [Province\RouteController::class, 'store'])->name('routes.store');
+            Route::get('/routes/{tripRoute}', [Province\RouteController::class, 'show'])->name('routes.show');
+            Route::get('/routes/{tripRoute}/print', [Province\RouteController::class, 'print'])->name('routes.print');
+            Route::post('/routes/{tripRoute}/stops', [Province\RouteController::class, 'addStop'])->name('routes.stops.add');
+            Route::delete('/routes/{tripRoute}/stops/{stop}', [Province\RouteController::class, 'removeStop'])->name('routes.stops.remove');
+            Route::post('/routes/{tripRoute}/stops/{stop}/move', [Province\RouteController::class, 'move'])->name('routes.stops.move');
+            Route::post('/routes/{tripRoute}/auto-order', [Province\RouteController::class, 'autoOrder'])->name('routes.auto-order');
+            Route::post('/routes/{tripRoute}/load-all', [Province\RouteController::class, 'loadAll'])->name('routes.load-all');
+            Route::post('/routes/{tripRoute}/dispatch', [Province\RouteController::class, 'dispatch'])->name('routes.dispatch');
+            Route::delete('/routes/{tripRoute}', [Province\RouteController::class, 'cancel'])->name('routes.cancel');
         });
 
         // Station hub portal: first mile, last mile, riders and cash for one municipality.

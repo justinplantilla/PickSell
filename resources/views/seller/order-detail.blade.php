@@ -117,7 +117,7 @@
                             <form method="POST" action="{{ route('seller.orders.handover', $order) }}">
                                 @csrf @method('PATCH')
                                 <input type="hidden" name="method" value="dropoff">
-                                <button type="submit" class="btn btn-outline" data-confirm="You will bring the parcel to {{ $dropoffStation->name }} yourself within {{ \App\Models\Order::DROPOFF_WITHIN_DAYS }} days. No rider is sent. If it is not dropped off in time, the order is cancelled automatically.">Drop Off at Station</button>
+                                <button type="submit" class="btn btn-outline" data-confirm="You will bring the parcel to {{ $dropoffStation->name }} yourself within {{ \App\Models\Order::DROPOFF_WITHIN_DAYS }} days, between {{ \App\Models\Order::DROPOFF_HOURS }}. No rider is sent. If it is not dropped off in time, the order is cancelled automatically.">Drop Off at Station</button>
                             </form>
                             @endif
                             <form method="POST" action="{{ route('seller.orders.handover', $order) }}">
@@ -143,7 +143,7 @@
                     <div class="alert {{ $order->dropoff_by?->lt(now()->addHours(\App\Services\Orders\ShippingDeadlines::REMINDER_HOURS)) ? 'alert-warning' : 'alert-info' }} order-detail-flush" role="status">
                         <strong>Drop off waybill {{ $order->waybill_number }} at {{ $dropoffStation?->name ?? 'your station' }}</strong>@if($dropoffStation?->address), {{ $dropoffStation->address }}@endif,
                         by {{ $order->dropoff_by?->format('M d, Y h:i A') }} ({{ $order->dropoff_by?->diffForHumans() }}).
-                        If it is not dropped off by then, the order is cancelled automatically and counts against your seller performance.
+                        If it is not dropped off by then, the order is cancelled automatically and counts against your seller performance. Drop-off hours: <strong>{{ \App\Models\Order::DROPOFF_HOURS }}</strong> daily.
                         @if($dropoffStation?->lat && $dropoffStation?->lng)
                         <a href="https://www.google.com/maps/search/?api=1&query={{ $dropoffStation->lat }},{{ $dropoffStation->lng }}" target="_blank" rel="noopener">Open in Maps</a>
                         @endif

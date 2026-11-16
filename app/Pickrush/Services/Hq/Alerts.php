@@ -90,8 +90,9 @@ class Alerts
                 ParcelException::withoutGlobalScope('hub')->with('parcel', 'hub', 'againstHub')->where('type', 'missing')->where('status', 'open')->get()
                     ->map(fn ($e) => ['label' => $e->parcel?->tracking_no, 'meta' => "at {$e->hub?->name}, against {$e->againstHub?->name}", 'url' => $e->parcel ? route('pickrush.parcels.show', $e->parcel) : null])],
             [2, 'bad', 'Trucks overdue', 'Dispatched trips not marked arrived by their due time. Call the driver.',
-                Manifest::withoutGlobalScope('hub')->with('fromHub', 'toHub', 'driver')->overdue()->oldest('due_at')->get()
-                    ->map(fn ($m) => ['label' => "{$m->manifest_no} · {$m->fromHub?->name} → {$m->toHub?->name}",
+                Manifest::withoutGlobalScope('hub')->with('fromHub', 'toHub', 'driver', 'route.stops')->overdue()->oldest('due_at')->get()
+                    ->map(fn ($m) => ['label' => "{$m->manifest_no} · {$m->fromHub?->name} → {$m->toHub?->name}"
+                        .($m->route ? " · stop {$m->stop_order} of {$m->route->stops->count()} on {$m->route->route_no}" : ''),
                         'meta' => "{$m->vehicle_plate} · {$m->driver_name}".($m->driver?->mobile_no ? " ({$m->driver->mobile_no})" : '').' · '.$m->due_at->diffForHumans(null, true).' late', 'url' => null])],
             [2, 'warn', "Stuck parcels (no scan for {$stuckHours}h+)", 'Still in the network with no movement.',
                 Parcel::withoutGlobalScope(ParcelHubScope::class)->with('currentHub', 'nextHub')->whereNotIn('current_status', $open)
